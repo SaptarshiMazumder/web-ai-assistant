@@ -1,27 +1,34 @@
-import { marked } from "marked";
-import hljs from "highlight.js";
 
-// TypeScript global augmentation (only needed if you see errors)
-declare global {
-  interface Window {
-    pageText?: string; // or however you store page text
-  }
-}
 
+// Get elements
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
-async function appendMessage(text: string, sender: "user" | "bot") {
-  const bubble = document.createElement("div");
-  bubble.className = "bubble " + sender;
-  bubble.innerHTML = await marked.parse(text);
-
-  // Highlight all code blocks (after innerHTML set)
-  bubble.querySelectorAll("pre code").forEach((block) => {
-    hljs.highlightElement(block as HTMLElement);
+// Util: get visible page text from the current active tab
+function getPageTextFromActiveTab(): Promise<string> {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id !== undefined) {
+        chrome.tabs.sendMessage(
+          tabs[0].id,
+          { type: "GET_PAGE_TEXT" },
+          (resp) => {
+            resolve(resp?.text || "");
+          }
+        );
+      } else {
+        resolve("");
+      }
+    });
   });
+}
 
+// Renders markdown with code highlight
+function appendMessage(text: string, sender: 'user' | 'bot') {
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ' + sender;
+  bubble.textContent = text;
   chatDiv.appendChild(bubble);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
@@ -31,10 +38,13 @@ askBtn.onclick = async function () {
   if (!question) return;
   appendMessage(question, "user");
 
-  // Example: get page text however your extension does it (here using window.pageText)
-  const pageText = window.pageText || "";
+  // Get page text from content script
+  const pageText = await getPageTextFromActiveTab();
 
-  // Send question to backend
+  // Debug: See if you’re actually getting the text!
+  // console.log("Page text length:", pageText.length);
+
+  // Send question + page text to backend
   const resp = await fetch("http://localhost:5000/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,7 +52,6 @@ askBtn.onclick = async function () {
   });
   const data = await resp.json();
 
-  // data.answer is markdown
   appendMessage(data.answer, "bot");
   questionInput.value = "";
 };
