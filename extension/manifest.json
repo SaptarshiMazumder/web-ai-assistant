@@ -1,14 +1,18 @@
 {
     "manifest_version": 3,
     "name": "Web AI Assistant",
-    "version": "1.0",
-    "description": "Extracts full text from any website.",
+    "version": "1.1",
+    "description": "Chat with the current page content and jump to cited sources.",
     "permissions": [
-        "activeTab",
-        "scripting"
+        "scripting",
+        "tabs",
+        "sidePanel"
     ],
-    "action": {
-        "default_popup": "popup.html"
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "side_panel": {
+        "default_path": "sidepanel.html"
     },
     "content_scripts": [
         {
@@ -17,6 +21,17 @@
             ],
             "js": [
                 "dist/content.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "styles/github-dark.css"
+            ],
+            "matches": [
+                "<all_urls>"
             ]
         }
     ]

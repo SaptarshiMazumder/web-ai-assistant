@@ -5,14 +5,18 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "esbuild src/popup.ts --bundle --outfile=dist/popup.js && esbuild src/content.ts --bundle --outfile=dist/content.js"
+    "build": "esbuild src/sidepanel.ts --bundle --outfile=dist/sidepanel.js && esbuild src/content.ts --bundle --outfile=dist/content.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/chrome": "^0.1.1",
+    "@types/marked": "^6.0.0",
     "esbuild": "^0.25.8",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1"
   }
 }
