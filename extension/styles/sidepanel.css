@@ -1,29 +1,45 @@
 /* styles/sidepanel.css */
 
 .bubble {
-    display: block;
+    display: inline-block;  /* Only as wide as content unless flex-stretched */
     padding: 10px 15px;
     border-radius: 18px;
     margin: 8px 0;
-    max-width: 80%;
-    word-break: break-word;
     font-size: 1em;
+    max-width: 96%;
+    word-break: break-word;
+    position: relative;
+    clear: both;
 }
 
-.bubble.user {
-    background: #2196f3;
-    color: #fff;
-    margin-left: 20%;
-    text-align: right;
-    align-self: flex-end;
-}
-
+/* AI Bubble (Bot): full width minus some margin */
 .bubble.bot {
     background: #f3f3f6;
     color: #222;
-    margin-right: 20%;
+    margin-right: 0;
+    margin-left: 0;
     text-align: left;
     align-self: flex-start;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 18px;
+    box-sizing: border-box;
+    /* Optionally add shadow */
+    /* box-shadow: 0 1px 4px rgba(60,60,80,0.04); */
+}
+
+/* User Bubble: right, only as wide as text */
+.bubble.user {
+    background: #2196f3;
+    color: #fff;
+    margin-left: auto;
+    margin-right: 0;
+    text-align: right;
+    align-self: flex-end;
+    max-width: 70%;
+    width: fit-content;
+    min-width: 50px;
+    box-sizing: border-box;
 }
 
 .bubble.thinking {
@@ -94,6 +110,9 @@ body {
     padding: 10px;
     margin-bottom: 10px;
     background: #fafbfc;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     /* Remove fixed min/max height */
 }
 
