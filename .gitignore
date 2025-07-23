@@ -1,0 +1,24 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# FastAPI/Langchain
+.env
+.env.*
+*.env
+
+# Node/Extension
+extension/node_modules/
+extension/dist/
+extension/.env
+
+# General
+.DS_Store
+*.log
+
+# VSCode
+.vscode/
+
+# OS
+Thumbs.db
