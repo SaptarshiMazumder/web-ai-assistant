@@ -1,11 +1,7 @@
-
-
-// Get elements
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
-// Util: get visible page text from the current active tab
 function getPageTextFromActiveTab(): Promise<string> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -24,7 +20,6 @@ function getPageTextFromActiveTab(): Promise<string> {
   });
 }
 
-// Renders markdown with code highlight
 function appendMessage(text: string, sender: 'user' | 'bot') {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + sender;
@@ -33,18 +28,45 @@ function appendMessage(text: string, sender: 'user' | 'bot') {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
+// ---- SOURCE LOGIC STARTS HERE ----
+function renderSources(sources: Array<{ excerpt: string }>) {
+  if (!sources || sources.length === 0) return;
+
+  const srcDiv = document.createElement("div");
+  srcDiv.className = "sources";
+  srcDiv.innerHTML = "<b>Sources:</b> ";
+
+  sources.forEach((src, idx) => {
+    const btn = document.createElement("button");
+    btn.textContent = `Source ${idx + 1}`;
+    btn.style.marginRight = "8px";
+    btn.onclick = () => jumpToSource(src.excerpt);
+    srcDiv.appendChild(btn);
+  });
+
+  chatDiv.appendChild(srcDiv);
+}
+
+function jumpToSource(excerpt: string) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id !== undefined) {
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: "JUMP_TO_POSITION", excerpt },
+        () => {}
+      );
+    }
+  });
+}
+// ---- SOURCE LOGIC ENDS HERE ----
+
 askBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
   appendMessage(question, "user");
 
-  // Get page text from content script
   const pageText = await getPageTextFromActiveTab();
 
-  // Debug: See if you’re actually getting the text!
-  // console.log("Page text length:", pageText.length);
-
-  // Send question + page text to backend
   const resp = await fetch("http://localhost:5000/ask", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,5 +75,8 @@ askBtn.onclick = async function () {
   const data = await resp.json();
 
   appendMessage(data.answer, "bot");
+  if (data.sources && data.sources.length > 0) {
+    renderSources(data.sources);
+  }
   questionInput.value = "";
 };
