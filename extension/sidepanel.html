@@ -1,5 +1,67 @@
 <!DOCTYPE html>
 <html>
+<style>
+    .bubble {
+        display: block;
+        padding: 10px 15px;
+        border-radius: 18px;
+        margin: 8px 0;
+        max-width: 80%;
+        word-break: break-word;
+        font-size: 1em;
+    }
+
+    .bubble.user {
+        background: #2196f3;
+        color: #fff;
+        margin-left: 20%;
+        text-align: right;
+        align-self: flex-end;
+    }
+
+    .bubble.bot {
+        background: #f3f3f6;
+        color: #222;
+        margin-right: 20%;
+        text-align: left;
+        align-self: flex-start;
+    }
+
+    .bubble.thinking {
+        background: #fffbe6;
+        color: #888;
+        border: 1px dashed #eed700;
+        font-style: italic;
+        margin-right: 20%;
+    }
+
+    .sources {
+        margin-top: 8px;
+        margin-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .source-btn {
+        background: #eee;
+        border: 1px solid #bbb;
+        border-radius: 7px;
+        color: #222;
+        cursor: pointer;
+        font-size: 0.97em;
+        padding: 6px 10px;
+        margin-bottom: 5px;
+        text-align: left;
+        white-space: normal;
+        word-break: break-word;
+        transition: background 0.2s;
+    }
+
+    .source-btn:hover {
+        background: #d8e3fa;
+    }
+</style>
 
     <head>
         <title>Web AI Assistant</title>
