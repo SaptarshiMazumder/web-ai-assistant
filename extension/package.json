@@ -20,6 +20,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "highlight.js": "^11.11.1"
+    "highlight.js": "^11.11.1",
+    "marked": "^16.1.1"
   }
 }

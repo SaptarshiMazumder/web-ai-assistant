@@ -1,3 +1,8 @@
+import {marked} from "marked";
+
+import hljs from "highlight.js";
+
+
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
@@ -20,14 +25,27 @@ function getPageTextFromActiveTab(): Promise<string> {
   });
 }
 
-function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): HTMLElement {
+async function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): Promise<HTMLElement> {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + sender;
-  bubble.textContent = text;
+
+  // Bot messages (and optionally 'thinking') get markdown formatting
+  if (sender === 'bot') {
+    const parsed = await marked.parse(text);
+    bubble.innerHTML = parsed;
+    // Highlight any code blocks
+    bubble.querySelectorAll("pre code").forEach((block) => {
+      hljs.highlightElement(block as HTMLElement);
+    });
+  } else {
+    bubble.textContent = text;
+  }
+
   chatDiv.appendChild(bubble);
   chatDiv.scrollTop = chatDiv.scrollHeight;
   return bubble;
 }
+
 
 // ---- SOURCE LOGIC STARTS HERE ----
 function renderSources(sources: Array<{ excerpt: string }>) {
@@ -63,13 +81,12 @@ function jumpToSource(excerpt: string) {
 }
 
 // ---- SOURCE LOGIC ENDS HERE ----
-
 askBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
-  appendMessage(question, "user");
+  await appendMessage(question, "user");
 
-  const thinkingBubble = appendMessage("Thinking...", "thinking");
+  const thinkingBubble = await appendMessage("Thinking...", "thinking");
 
   const pageText = await getPageTextFromActiveTab();
 
@@ -83,7 +100,7 @@ askBtn.onclick = async function () {
 
     thinkingBubble.remove();
 
-    appendMessage(data.answer, "bot");
+    await appendMessage(data.answer, "bot");
     if (data.sources && data.sources.length > 0) {
       renderSources(data.sources);
     }
@@ -93,4 +110,5 @@ askBtn.onclick = async function () {
 
   questionInput.value = "";
 };
+
 
