@@ -12,7 +12,58 @@ declare global {
   }
 }
 
+function extractTablesAsMarkdown(): string[] {
+  // Converts each HTML table into a markdown table
+  const tables: string[] = [];
+  document.querySelectorAll("table").forEach((table) => {
+    const rows = Array.from(table.rows);
+    if (rows.length === 0) return;
+
+    // Table headers
+    const headers = Array.from(rows[0].cells).map((cell) =>
+      cell.textContent?.trim() ?? ""
+    );
+    const headerLine = "| " + headers.join(" | ") + " |";
+    const divider = "| " + headers.map(() => "---").join(" | ") + " |";
+
+    // Table rows
+    const bodyLines = rows.slice(1).map((row) => {
+      const cells = Array.from(row.cells).map((cell) =>
+        cell.textContent?.trim() ?? ""
+      );
+      return "| " + cells.join(" | ") + " |";
+    });
+
+    tables.push([headerLine, divider, ...bodyLines].join("\n"));
+  });
+  return tables;
+}
+
 chrome.runtime.onMessage.addListener((req, sender, sendResp) => {
+  if (req.type === "GET_PAGE_DATA") {
+    // 1. Visible text
+    const text = document.body.innerText;
+
+    // 2. Tables as markdown
+    const tables = extractTablesAsMarkdown();
+
+    // 3. All links: text and href
+    const links = Array.from(document.querySelectorAll("a"))
+      .filter((a) => a.href && a.innerText.trim().length > 0)
+      .map((a) => ({
+        text: a.innerText.trim(),
+        href: a.href,
+      }));
+
+    // 4. Images: alt and src
+    const images = Array.from(document.querySelectorAll("img")).map((img) => ({
+      alt: img.alt,
+      src: img.src,
+    }));
+
+    sendResp?.({ text, tables, links, images });
+  }
+
   if (req.type === "GET_PAGE_TEXT") {
     sendResp?.({ text: document.body.innerText });
   }

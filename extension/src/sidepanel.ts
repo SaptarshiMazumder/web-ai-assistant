@@ -1,42 +1,54 @@
-import {marked} from "marked";
-
+import { marked } from "marked";
 import hljs from "highlight.js";
-
 
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
-function getPageTextFromActiveTab(): Promise<string> {
+// --- New: Get all page data (text, tables, links, images) ---
+function getPageDataFromActiveTab(): Promise<{
+  text: string;
+  tables: string[];
+  links: Array<{ text: string; href: string }>;
+  images: Array<{ alt: string; src: string }>;
+}> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.id !== undefined) {
         chrome.tabs.sendMessage(
           tabs[0].id,
-          { type: "GET_PAGE_TEXT" },
+          { type: "GET_PAGE_DATA" },
           (resp) => {
-            resolve(resp?.text || "");
+            resolve(resp || { text: "", tables: [], links: [], images: [] });
           }
         );
       } else {
-        resolve("");
+        resolve({ text: "", tables: [], links: [], images: [] });
       }
     });
   });
 }
 
-async function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): Promise<HTMLElement> {
+// --- Chat message rendering (with markdown for bot) ---
+function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): HTMLElement {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + sender;
 
-  // Bot messages (and optionally 'thinking') get markdown formatting
   if (sender === 'bot') {
-    const parsed = await marked.parse(text);
-    bubble.innerHTML = parsed;
-    // Highlight any code blocks
-    bubble.querySelectorAll("pre code").forEach((block) => {
-      hljs.highlightElement(block as HTMLElement);
-    });
+    const parsed = marked.parse(text);
+    if (parsed instanceof Promise) {
+      parsed.then((html) => {
+        bubble.innerHTML = html;
+        bubble.querySelectorAll("pre code").forEach((block) => {
+          hljs.highlightElement(block as HTMLElement); // code highlighting
+        });
+      });
+    } else {
+      bubble.innerHTML = parsed;
+      bubble.querySelectorAll("pre code").forEach((block) => {
+        hljs.highlightElement(block as HTMLElement); // code highlighting
+      });
+    }
   } else {
     bubble.textContent = text;
   }
@@ -46,8 +58,7 @@ async function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'):
   return bubble;
 }
 
-
-// ---- SOURCE LOGIC STARTS HERE ----
+// --- Source link logic ---
 function renderSources(sources: Array<{ excerpt: string }>) {
   if (!sources || sources.length === 0) return;
 
@@ -67,7 +78,6 @@ function renderSources(sources: Array<{ excerpt: string }>) {
   chatDiv.appendChild(srcDiv);
 }
 
-
 function jumpToSource(excerpt: string) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.id !== undefined) {
@@ -80,27 +90,46 @@ function jumpToSource(excerpt: string) {
   });
 }
 
-// ---- SOURCE LOGIC ENDS HERE ----
+// --- Main ask button handler ---
 askBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
-  await appendMessage(question, "user");
+  appendMessage(question, "user");
 
-  const thinkingBubble = await appendMessage("Thinking...", "thinking");
+  const thinkingBubble = appendMessage("Thinking...", "thinking");
 
-  const pageText = await getPageTextFromActiveTab();
+  // Get rich page data (not just text)
+  const pageData = await getPageDataFromActiveTab();
+
+  // Compose a context string for the LLM (text + tables + links + images)
+  let context = pageData.text;
+
+  if (pageData.tables && pageData.tables.length > 0) {
+    context += "\n\n# Tables:\n";
+    context += pageData.tables.map((t, i) => `Table ${i+1}:\n${t}`).join("\n\n");
+  }
+
+  if (pageData.links && pageData.links.length > 0) {
+    context += "\n\n# Links:\n";
+    context += pageData.links.map((l, i) => `- [${l.text}](${l.href})`).join("\n");
+  }
+
+  if (pageData.images && pageData.images.length > 0) {
+    context += "\n\n# Images:\n";
+    context += pageData.images.map((img, i) => `- alt: "${img.alt}" src: ${img.src}`).join("\n");
+  }
 
   try {
     const resp = await fetch("http://localhost:5000/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: pageText, question }),
+      body: JSON.stringify({ text: context, question }),
     });
     const data = await resp.json();
 
     thinkingBubble.remove();
 
-    await appendMessage(data.answer, "bot");
+    appendMessage(data.answer, "bot");
     if (data.sources && data.sources.length > 0) {
       renderSources(data.sources);
     }
@@ -110,5 +139,3 @@ askBtn.onclick = async function () {
 
   questionInput.value = "";
 };
-
-
