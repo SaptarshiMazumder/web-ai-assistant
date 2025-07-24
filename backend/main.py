@@ -308,6 +308,19 @@ class SmartQARequest(BaseModel):
     links: List[Dict[str, str]]
     page_url: str
 
+class SmartHopState(BaseModel):
+    text: str
+    question: str
+    links: List[Dict[str, str]]
+    page_url: str
+    answer: str = ""
+    sources: List[Any] = []
+    sufficient: bool = False
+    selected_link: Dict[str, str] = None
+    visited_urls: List[str] = []
+    hops: int = 0
+
+
 def answer_sufficiency_llm_node(state):
     """
     Uses LLM to decide if the answer is sufficient.
@@ -359,35 +372,106 @@ def llm_select_relevant_links_node(state):
         state["selected_links"] = []
     return state
 
-@app.post("/ask-smart")
-async def ask_smart(request: SmartQARequest):
-    # 1. Chunk/answer exactly like /ask
-    state = {
-        "text": request.text,
-        "question": request.question,
-        "links": request.links,
-        "page_url": request.page_url,
-    }
-    # Step 1: enhance, retrieve, answer (same as /ask)
-    s1 = enhance_query_node(State(text=state["text"], question=state["question"]))
+def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:
+    s1 = enhance_query_node(State(text=state.text, question=state.question))
     s1 = retrieve_node(s1)
     s1 = answer_node(s1)
-    state["answer"] = s1.answer
-    state["sources"] = s1.used_chunks
+    state.answer = s1.answer
+    state.sources = s1.used_chunks
+    return state
 
-    # Step 2: LLM decides sufficiency
-    state = answer_sufficiency_llm_node(state)
-    
-    # Step 3: If not sufficient, have LLM pick links
-    if not state["sufficient"]:
-        state = llm_select_relevant_links_node(state)
-    else:
-        state["selected_links"] = []
+def check_sufficiency_node(state: SmartHopState) -> SmartHopState:
+    out = answer_sufficiency_llm_node({
+        "question": state.question,
+        "answer": state.answer
+    })
+    state.sufficient = out["sufficient"]
+    return state
 
+def pick_next_link_node(state: SmartHopState) -> SmartHopState:
+    # Only pick from unvisited links
+    unvisited_links = [l for l in state.links if l["href"] not in (state.visited_urls or [])]
+    if not unvisited_links:
+        state.selected_link = None
+        return state
+    out = llm_select_relevant_links_node({
+        "question": state.question,
+        "links": unvisited_links,
+    })
+    next_links = out.get("selected_links", [])
+    state.selected_link = next_links[0] if next_links else None
+    return state
+
+def fetch_link_node(state: SmartHopState) -> SmartHopState:
+    if not state.selected_link:
+        return state
+    url = state.selected_link["href"]
+    state.visited_urls.append(url)
+    try:
+        resp = requests.get(url, timeout=12)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        state.text = soup.get_text(separator="\n", strip=True)
+        state.page_url = url
+        # Extract new links from new page
+        page_links = [
+            {"text": a.get_text(strip=True), "href": a.get("href")}
+            for a in soup.find_all("a", href=True)
+            if a.get("href", "").startswith("http")
+        ]
+        state.links = [l for l in page_links if l["href"].startswith("http")]
+        state.hops += 1
+    except Exception as e:
+        state.selected_link = None  # Can't fetch, stop
+    return state
+
+from langgraph.graph import StateGraph, END
+
+def hops_remaining(state: SmartHopState):
+    return state.hops < 3
+
+graph = StateGraph(SmartHopState)
+graph.add_node("RetrieveAndAnswer", retrieve_and_answer_node)
+graph.add_node("CheckSufficiency", check_sufficiency_node)
+graph.add_node("PickNextLink", pick_next_link_node)
+graph.add_node("FetchLink", fetch_link_node)
+graph.add_edge("RetrieveAndAnswer", "CheckSufficiency")
+graph.add_conditional_edges(
+    "CheckSufficiency",
+    lambda s: "end" if s.sufficient or not hops_remaining(s) or not s.links else "pick",
+    {
+        "end": END,
+        "pick": "PickNextLink",
+    },
+)
+graph.add_conditional_edges(
+    "PickNextLink",
+    lambda s: "end" if not s.selected_link else "fetch",
+    {
+        "end": END,
+        "fetch": "FetchLink",
+    },
+)
+graph.add_edge("FetchLink", "RetrieveAndAnswer")
+graph.set_entry_point("RetrieveAndAnswer")
+compiled_hop_graph = graph.compile()
+
+
+
+@app.post("/ask-smart")
+async def ask_smart(request: SmartQARequest):
+    state = SmartHopState(
+        text=request.text,
+        question=request.question,
+        links=request.links,
+        page_url=request.page_url,
+        visited_urls=[request.page_url],
+        hops=0
+    )
+    result = compiled_hop_graph.invoke(state)
     return {
-        "answer": state["answer"],
-        "sources": state["sources"],
-        "sufficient": state["sufficient"],
-        "selected_links": state["selected_links"],
-        "links": state["links"],  # Optionally all links, for fallback/debug
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "visited_urls": result["visited_urls"],
+        "sufficient": result["sufficient"],
+        # Optionally, add: "final_links": result.links
     }
