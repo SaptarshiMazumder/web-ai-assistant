@@ -265,7 +265,7 @@ async def ask_site(request: SiteQARequest):
     }
     for d in all_docs
 ]
-    return {"answer": answer, "sources": sources, "scanned_urls": urls}
+    # return {"answer": answer, "sources": sources, "scanned_urls": urls}
     urls = request.urls[:10]  # LIMIT to 10 for debug! Increase if works.
     contents = []
     for url in urls:
