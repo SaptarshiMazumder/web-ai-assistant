@@ -10,6 +10,10 @@ from langchain.vectorstores import Chroma
 from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 
+# New imports for crawling
+import requests
+from bs4 import BeautifulSoup
+
 load_dotenv()
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
@@ -28,6 +32,10 @@ app.add_middleware(
 class QARequest(BaseModel):
     text: str
     question: str
+
+class SiteQARequest(BaseModel):
+    question: str
+    urls: List[str]
 
 class State(BaseModel):
     text: str
@@ -81,21 +89,10 @@ def retrieve_node(state: State) -> State:
         state.retrieved_docs = []
         return state
 
-    # Test embeddings directly
     embeddings = OpenAIEmbeddings(api_key=openai_api_key)
-    try:
-        test_embed = embeddings.embed_query("hello world")
-        print("Test embedding length:", len(test_embed))
-    except Exception as e:
-        print("Embeddings test failed:", e)
-
-    try:
-        vectordb = Chroma.from_documents(
-            docs, embeddings, collection_name="webpage", persist_directory=None
-        )
-    except Exception as e:
-        print("Chroma.from_documents failed:", e)
-        raise
+    vectordb = Chroma.from_documents(
+        docs, embeddings, collection_name="webpage", persist_directory=None
+    )
 
     retriever = vectordb.as_retriever(search_kwargs={"k": 10})
     relevant_docs = retriever.get_relevant_documents(enhanced_query or state.question)
@@ -119,8 +116,7 @@ def answer_node(state: State) -> State:
     f"CONTENT:\n{context}\n\n"
     f"USER QUESTION: {question}\n\n"
     "ANSWER:"
-)
-
+    )
     print("\n--- PROMPT TO LLM ---\n")
     print(prompt)
     print("\n--- END OF PROMPT ---\n")
@@ -129,7 +125,6 @@ def answer_node(state: State) -> State:
     result = llm.invoke([{"role": "user", "content": prompt}])
     answer = result.content.strip()
     def get_excerpt(chunk):
-    # Get first 8 words or 80 chars, whichever comes first
         text = chunk.page_content.strip().replace('\n', ' ')
         words = text.split()
         if len(words) > 8:
@@ -148,6 +143,7 @@ def answer_node(state: State) -> State:
     ]
     return state
 
+# Existing page QA graph
 builder = StateGraph(State)
 builder.add_node("EnhanceQuery", enhance_query_node)
 builder.add_node("Retrieve", retrieve_node)
@@ -168,3 +164,45 @@ async def ask(request: QARequest):
         "sources": result["used_chunks"],
     }
 
+# --- NEW: Site-wide QA endpoint ---
+def extract_visible_text(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    # Remove scripts/styles
+    for tag in soup(['script', 'style', 'noscript']):
+        tag.decompose()
+    return soup.get_text(separator='\n', strip=True)
+
+@app.post("/ask-site")
+async def ask_site(request: SiteQARequest):
+    urls = request.urls[:10]  # LIMIT to 10 for debug! Increase if works.
+    contents = []
+    for url in urls:
+        try:
+            print(f"Fetching: {url}")
+            resp = requests.get(url, timeout=15)
+            if resp.ok:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                # Get visible text
+                text = soup.get_text(separator="\n", strip=True)
+                title = soup.title.string.strip() if soup.title else url
+                contents.append(f"[{title}]\n{text}")
+            else:
+                contents.append(f"[{url}] -- Failed with status {resp.status_code}")
+        except Exception as e:
+            contents.append(f"[{url}] -- Exception: {e}")
+
+    # Join all contents (may be large, but will prove the LLM can answer)
+    context = "\n\n---\n\n".join(contents)
+    question = request.question
+
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0.2)
+    prompt = (
+        f"You are a helpful assistant. Using ONLY the following website content, answer the user's question as best as possible. "
+        f"If you use information from a specific page, mention the page's title or URL for clarity.\n\n"
+        f"CONTENT:\n{context}\n\nUSER QUESTION: {question}\n\nANSWER:"
+    )
+    print("\n--- PROMPT TO LLM ---\n")
+    print(prompt[:1200] + "\n...")  # Print start of prompt, to check size
+
+    result = llm.invoke([{"role": "user", "content": prompt}])
+    return {"answer": result.content.strip()}

@@ -13,30 +13,35 @@ declare global {
 }
 
 function extractTablesAsMarkdown(): string[] {
-  // Converts each HTML table into a markdown table
   const tables: string[] = [];
   document.querySelectorAll("table").forEach((table) => {
     const rows = Array.from(table.rows);
     if (rows.length === 0) return;
-
-    // Table headers
-    const headers = Array.from(rows[0].cells).map((cell) =>
-      cell.textContent?.trim() ?? ""
-    );
+    const headers = Array.from(rows[0].cells).map((cell) => cell.textContent?.trim() ?? "");
     const headerLine = "| " + headers.join(" | ") + " |";
     const divider = "| " + headers.map(() => "---").join(" | ") + " |";
-
-    // Table rows
     const bodyLines = rows.slice(1).map((row) => {
-      const cells = Array.from(row.cells).map((cell) =>
-        cell.textContent?.trim() ?? ""
-      );
+      const cells = Array.from(row.cells).map((cell) => cell.textContent?.trim() ?? "");
       return "| " + cells.join(" | ") + " |";
     });
-
     tables.push([headerLine, divider, ...bodyLines].join("\n"));
   });
   return tables;
+}
+
+// --- Utility: get all same-domain links (unique, clean) ---
+function extractSameDomainLinks(): string[] {
+  const origin = location.origin;
+  const links = Array.from(document.querySelectorAll("a"))
+    .map(a => a.href)
+    .filter(href =>
+      href.startsWith(origin) &&
+      !href.endsWith("#") &&
+      !href.startsWith("javascript:") &&
+      href !== location.href
+    );
+  // Remove duplicates
+  return Array.from(new Set(links));
 }
 
 chrome.runtime.onMessage.addListener((req, sender, sendResp) => {
@@ -62,6 +67,12 @@ chrome.runtime.onMessage.addListener((req, sender, sendResp) => {
     }));
 
     sendResp?.({ text, tables, links, images });
+  }
+
+  // --- NEW: Give all same-domain links for "site QA" ---
+  if (req.type === "GET_ALL_SAME_DOMAIN_LINKS") {
+    const pageLinks = extractSameDomainLinks();
+    sendResp?.({ links: pageLinks });
   }
 
   if (req.type === "GET_PAGE_TEXT") {
