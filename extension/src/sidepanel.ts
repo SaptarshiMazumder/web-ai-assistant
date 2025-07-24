@@ -83,21 +83,31 @@ function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): HTMLE
 }
 
 // Source link logic (unchanged)
-function renderSources(sources: Array<{ excerpt: string }>) {
+function renderSources(sources: Array<{ excerpt: string; title?: string; url?: string }>) {
   if (!sources || sources.length === 0) return;
+
   const srcDiv = document.createElement("div");
   srcDiv.className = "sources";
   srcDiv.innerHTML = "<b style='color:#444;margin-bottom:2px;'>Sources:</b>";
+
   sources.forEach((src) => {
-    const btn = document.createElement("button");
-    btn.className = "source-btn";
-    btn.title = src.excerpt;
-    btn.onclick = () => jumpToSource(src.excerpt);
-    btn.textContent = src.excerpt.length > 100 ? src.excerpt.slice(0, 100) + "..." : src.excerpt;
-    srcDiv.appendChild(btn);
+    const infoText =
+      (src.title ? `<b>${src.title}</b>` : "") +
+      (src.url ? ` <span style="color:#0a5; font-size:0.93em;">${src.url}</span>` : "");
+
+    // Show excerpt as quote, then source info
+    const srcBlock = document.createElement("div");
+    srcBlock.style.marginBottom = "8px";
+    srcBlock.innerHTML =
+      `<div style="font-size:0.98em; color:#555; margin-bottom:1px;"><i>${src.excerpt}</i></div>` +
+      `<div>${infoText}</div>`;
+
+    srcDiv.appendChild(srcBlock);
   });
+
   chatDiv.appendChild(srcDiv);
 }
+
 function jumpToSource(excerpt: string) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.id !== undefined) {
