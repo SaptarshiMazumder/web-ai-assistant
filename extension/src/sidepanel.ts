@@ -245,6 +245,19 @@ smartBtn.onclick = async function () {
             });
           }
 
+          if (data.visited_urls && data.visited_urls.length > 0) {
+            const urls = data.visited_urls;
+            let msg = "Pages visited:\n";
+            urls.forEach((url: string, idx: number) => {
+              if (idx === urls.length - 1) {
+                msg += `• ${url} ← answer found here\n`;
+              } else {
+                msg += `• ${url}\n`;
+              }
+            });
+            appendMessage(msg, "bot");
+          }
+
         } catch (err) {
           thinkingBubble.textContent = "Error (smart QA). Please try again.";
         }

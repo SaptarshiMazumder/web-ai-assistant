@@ -144,20 +144,20 @@ def answer_node(state: State) -> State:
     return state
 
 # Existing page QA graph
-builder = StateGraph(State)
-builder.add_node("EnhanceQuery", enhance_query_node)
-builder.add_node("Retrieve", retrieve_node)
-builder.add_node("Answer", answer_node)
-builder.add_edge("EnhanceQuery", "Retrieve")
-builder.add_edge("Retrieve", "Answer")
-builder.add_edge("Answer", END)
-builder.set_entry_point("EnhanceQuery")
-graph = builder.compile()
+qa_builder = StateGraph(State)
+qa_builder.add_node("EnhanceQuery", enhance_query_node)
+qa_builder.add_node("Retrieve", retrieve_node)
+qa_builder.add_node("Answer", answer_node)
+qa_builder.add_edge("EnhanceQuery", "Retrieve")
+qa_builder.add_edge("Retrieve", "Answer")
+qa_builder.add_edge("Answer", END)
+qa_builder.set_entry_point("EnhanceQuery")
+qa_graph = qa_builder.compile()
 
 @app.post("/ask")
 async def ask(request: QARequest):
     state = State(text=request.text, question=request.question)
-    result = graph.invoke(state)
+    result = qa_graph.invoke(state)
     return {
         "answer": result["answer"],
         "enhanced_query": result["enhanced_query"],
