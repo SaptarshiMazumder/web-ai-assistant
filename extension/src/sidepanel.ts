@@ -16,20 +16,26 @@ document.getElementById("inputRow")?.appendChild(siteBtn);
 function getSameDomainLinksFromActiveTab(): Promise<string[]> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id !== undefined) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { type: "GET_ALL_SAME_DOMAIN_LINKS" },
-          (resp) => {
-            resolve(resp?.links || []);
-          }
-        );
-      } else {
+      if (!tabs[0]?.id) {
         resolve([]);
+        return;
       }
+      chrome.tabs.sendMessage(
+        tabs[0].id,
+        { type: "GET_ALL_SAME_DOMAIN_LINKS" },
+        (resp) => {
+          if (chrome.runtime.lastError || !resp) {
+            // Content script not loaded or tab not accessible
+            resolve([]);
+            return;
+          }
+          resolve(resp.links || []);
+        }
+      );
     });
   });
 }
+
 
 // Existing: get current page data
 function getPageDataFromActiveTab(): Promise<{
