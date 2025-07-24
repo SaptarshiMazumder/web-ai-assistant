@@ -5,12 +5,37 @@ const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
-// -- Add a new button for "site QA"
-const siteBtn = document.createElement("button");
-siteBtn.textContent = "Ask about this site";
-siteBtn.id = "site-ask-btn";
-siteBtn.style.marginLeft = "8px";
-document.getElementById("inputRow")?.appendChild(siteBtn);
+// --- DROPDOWN to toggle between Ask and Ask Smart ---
+
+const dropdown = document.createElement("select");
+dropdown.id = "ask-mode";
+dropdown.style.marginLeft = "8px";
+
+const optionAsk = document.createElement("option");
+optionAsk.value = "ask";
+optionAsk.textContent = "Ask";
+dropdown.appendChild(optionAsk);
+
+const optionSmart = document.createElement("option");
+optionSmart.value = "smart";
+optionSmart.textContent = "Ask Smart";
+dropdown.appendChild(optionSmart);
+
+// --- Smart Ask button (created but hidden by default) ---
+const smartBtn = document.createElement("button");
+smartBtn.textContent = "Ask Smart";
+smartBtn.id = "smart-ask-btn";
+smartBtn.style.marginLeft = "8px";
+smartBtn.style.display = "none";
+
+const inputRow = document.getElementById("inputRow");
+// askBtn is already there after input, so insert smartBtn after askBtn
+inputRow?.insertBefore(smartBtn, askBtn.nextSibling);
+// dropdown always after smartBtn
+inputRow?.insertBefore(dropdown, smartBtn.nextSibling);
+
+
+// -- REMOVE the "site QA" button section completely --
 
 // Utility: get all same-domain links from the active tab
 function getSameDomainLinksFromActiveTab(): Promise<string[]> {
@@ -35,7 +60,6 @@ function getSameDomainLinksFromActiveTab(): Promise<string[]> {
     });
   });
 }
-
 
 // Existing: get current page data
 function getPageDataFromActiveTab(): Promise<{
@@ -166,47 +190,7 @@ askBtn.onclick = async function () {
   questionInput.value = "";
 };
 
-// --- NEW: "Ask about this site" handler ---
-siteBtn.onclick = async function () {
-  const question = questionInput.value.trim();
-  if (!question) return;
-  appendMessage(`[Site-wide] ${question}`, "user");
-  const thinkingBubble = appendMessage("Thinking (site-wide)...", "thinking");
-
-  const sameDomainLinks = await getSameDomainLinksFromActiveTab();
-
-  if (sameDomainLinks.length === 0) {
-    thinkingBubble.textContent = "No other site pages found.";
-    return;
-  }
-
-  try {
-    const resp = await fetch("http://localhost:5000/ask-site", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, urls: sameDomainLinks }),
-    });
-    const data = await resp.json();
-    thinkingBubble.remove();
-    appendMessage(data.answer, "bot");
-    // Optionally handle sources if your backend sends them
-    if (data.sources && data.sources.length > 0) {
-      renderSources(data.sources);
-    }
-  } catch (err) {
-    thinkingBubble.textContent = "Error (site-wide). Please try again.";
-  }
-  questionInput.value = "";
-};
-
-
-// Add Smart Ask button logic if not already present
-const smartBtn = document.createElement("button");
-smartBtn.textContent = "Ask Smart";
-smartBtn.id = "smart-ask-btn";
-smartBtn.style.marginLeft = "8px";
-document.getElementById("inputRow")?.appendChild(smartBtn);
-
+// --- Smart Ask button logic ---
 smartBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
@@ -271,3 +255,19 @@ smartBtn.onclick = async function () {
     );
   });
 };
+
+// --- DROPDOWN LOGIC: toggle visible button ---
+dropdown.addEventListener("change", () => {
+  if (dropdown.value === "ask") {
+    askBtn.style.display = "inline-block";
+    smartBtn.style.display = "none";
+  } else {
+    askBtn.style.display = "none";
+    smartBtn.style.display = "inline-block";
+  }
+});
+
+// Default to "Ask"
+dropdown.value = "ask";
+askBtn.style.display = "inline-block";
+smartBtn.style.display = "none";
