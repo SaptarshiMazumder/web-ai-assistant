@@ -114,8 +114,10 @@ def answer_node(state: State) -> State:
     "You are an expert assistant. Using only the content below, answer the user's question as fully and helpfully as possible. "
     "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
     "If you use information from the content, include a relevant short excerpt from the source as a citation at the end of your answer in this format: (Source: <short excerpt>...) "
-    "If you cannot answer, but there is related information in the content, try your best to answer using the most relevant context. "
-    "Only say 'Not found in the content.' if nothing remotely relevant exists.\n\n"
+    "If you cannot find a direct answer in the content, briefly summarize anything related or useful you did find, "
+    "and politely inform the user that the answer does not seem to be present on this page. "
+    "Suggest they check a more relevant page on this website, or search online if necessary, for the information they need. "
+    "Do not hallucinate. Always provide a helpful response.\n\n"
     f"CONTENT:\n{context}\n\n"
     f"USER QUESTION: {question}\n\n"
     "ANSWER:"
@@ -491,7 +493,7 @@ async def ask_smart(request: SmartQARequest):
         original_domain=original_domain
     )
     result = compiled_hop_graph.invoke(state)
-    
+
     return {
         "answer": result["answer"],
         "sources": result["sources"],

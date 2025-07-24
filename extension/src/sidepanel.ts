@@ -249,14 +249,13 @@ smartBtn.onclick = async function () {
             const urls = data.visited_urls;
             let msg = "Pages visited:\n";
             urls.forEach((url: string, idx: number) => {
-              if (idx === urls.length - 1) {
-                msg += `• ${url} ← answer found here\n`;
-              } else {
-                msg += `• ${url}\n`;
-              }
+              msg += `• ${url}\n`;
             });
+            // Subtle suggestion for last visited page:
+            msg += `\nYou can also view the last visited page for more details..`;
             appendMessage(msg, "bot");
           }
+
 
         } catch (err) {
           thinkingBubble.textContent = "Error (smart QA). Please try again.";
