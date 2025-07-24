@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -316,7 +316,7 @@ class SmartHopState(BaseModel):
     answer: str = ""
     sources: List[Any] = []
     sufficient: bool = False
-    selected_link: Dict[str, str] = None
+    selected_link: Optional[Dict[str, str]] = None
     visited_urls: List[str] = []
     hops: int = 0
 
@@ -445,7 +445,7 @@ graph.add_conditional_edges(
 )
 graph.add_conditional_edges(
     "PickNextLink",
-    lambda s: "end" if not s.selected_link else "fetch",
+    lambda s: "end" if s.selected_link is None else "fetch",
     {
         "end": END,
         "fetch": "FetchLink",
