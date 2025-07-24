@@ -192,3 +192,64 @@ siteBtn.onclick = async function () {
   }
   questionInput.value = "";
 };
+
+
+// Add Smart Ask button logic if not already present
+const smartBtn = document.createElement("button");
+smartBtn.textContent = "Ask Smart";
+smartBtn.id = "smart-ask-btn";
+smartBtn.style.marginLeft = "8px";
+document.getElementById("inputRow")?.appendChild(smartBtn);
+
+smartBtn.onclick = async function () {
+  const question = questionInput.value.trim();
+  if (!question) return;
+  appendMessage(`[Smart QA] ${question}`, "user");
+  const thinkingBubble = appendMessage("Thinking (smart)...", "thinking");
+
+  // Get tab/page data as before (get text, links, url)
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const tab = tabs[0];
+    const page_url = tab?.url ?? "";
+    chrome.tabs.sendMessage(
+      tab.id!,
+      { type: "GET_PAGE_DATA" },
+      async (pageData) => {
+        const body = {
+          text: pageData.text,
+          question,
+          links: pageData.links,
+          page_url,
+        };
+        try {
+          const resp = await fetch("http://localhost:5000/ask-smart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await resp.json();
+          thinkingBubble.remove();
+
+          // Show the answer
+          appendMessage(data.answer, "bot");
+          // Show sources (if any)
+          if (data.sources && data.sources.length > 0) {
+            renderSources(data.sources);
+          }
+
+          // If not sufficient, show LLM-picked links (plain, no style)
+          if (data.sufficient === false && data.selected_links && data.selected_links.length > 0) {
+            appendMessage("Try checking one of these links for more info:", "bot");
+            data.selected_links.forEach((l: any) => {
+              appendMessage(`• ${l.text} — ${l.href}`, "bot");
+            });
+          }
+
+        } catch (err) {
+          thinkingBubble.textContent = "Error (smart QA). Please try again.";
+        }
+        questionInput.value = "";
+      }
+    );
+  });
+};

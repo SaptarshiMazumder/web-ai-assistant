@@ -298,3 +298,96 @@ async def ask_site(request: SiteQARequest):
 
     result = llm.invoke([{"role": "user", "content": prompt}])
     return {"answer": result.content.strip()}
+
+
+# ... (other imports/models/nodes unchanged) ...
+
+class SmartQARequest(BaseModel):
+    text: str
+    question: str
+    links: List[Dict[str, str]]
+    page_url: str
+
+def answer_sufficiency_llm_node(state):
+    """
+    Uses LLM to decide if the answer is sufficient.
+    Returns state with 'sufficient': bool
+    """
+    print("\n=== [Answer Sufficiency LLM Node] ===")
+    prompt = (
+        f"Question: {state['question']}\n"
+        f"Answer given: {state['answer']}\n\n"
+        "Based on the answer, is the user's question fully answered with clear and specific information? "
+        "Reply with only 'YES' if it is enough, or 'NO' if it is not clear/specific enough."
+    )
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    result = llm.invoke([{"role": "user", "content": prompt}])
+    sufficient = "yes" in result.content.strip().lower()
+    print(f"LLM says answer sufficient: {sufficient}")
+    state["sufficient"] = sufficient
+    return state
+
+def llm_select_relevant_links_node(state):
+    """
+    Uses LLM to select the most relevant links for the user's question.
+    """
+    print("\n=== [LLM Link Selector Node] ===")
+    links = state["links"][:30]
+    prompt = (
+        f"Question: {state['question']}\n"
+        "Here are available links from the page:\n" +
+        "\n".join([f"- {l['text']} ({l['href']})" for l in links]) +
+        "\n\nWhich of these links are most likely to contain the answer or helpful information? "
+        "Reply with a JSON array of up to 3 objects with 'text' and 'href'."
+    )
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    result = llm.invoke([{"role": "user", "content": prompt}])
+    import json, re
+    output = result.content.strip()
+    # Remove code block if present
+    if output.startswith("```"):
+        output = re.sub(r"^```(\w+)?", "", output).strip()
+        if output.endswith("```"):
+            output = output[:-3].strip()
+    try:
+        selected_links = json.loads(output)
+        if not isinstance(selected_links, list):
+            raise ValueError
+        state["selected_links"] = selected_links[:3]
+    except Exception as e:
+        print(f"Failed to parse LLM output: {e}\n{result.content}")
+        state["selected_links"] = []
+    return state
+
+@app.post("/ask-smart")
+async def ask_smart(request: SmartQARequest):
+    # 1. Chunk/answer exactly like /ask
+    state = {
+        "text": request.text,
+        "question": request.question,
+        "links": request.links,
+        "page_url": request.page_url,
+    }
+    # Step 1: enhance, retrieve, answer (same as /ask)
+    s1 = enhance_query_node(State(text=state["text"], question=state["question"]))
+    s1 = retrieve_node(s1)
+    s1 = answer_node(s1)
+    state["answer"] = s1.answer
+    state["sources"] = s1.used_chunks
+
+    # Step 2: LLM decides sufficiency
+    state = answer_sufficiency_llm_node(state)
+    
+    # Step 3: If not sufficient, have LLM pick links
+    if not state["sufficient"]:
+        state = llm_select_relevant_links_node(state)
+    else:
+        state["selected_links"] = []
+
+    return {
+        "answer": state["answer"],
+        "sources": state["sources"],
+        "sufficient": state["sufficient"],
+        "selected_links": state["selected_links"],
+        "links": state["links"],  # Optionally all links, for fallback/debug
+    }
