@@ -33,13 +33,17 @@ function extractTablesAsMarkdown(): string[] {
 function extractSameDomainLinks(): string[] {
   const origin = location.origin;
   const links = Array.from(document.querySelectorAll("a"))
-    .map(a => a.href)
-    .filter(href =>
-      href.startsWith(origin) &&
-      !href.endsWith("#") &&
-      !href.startsWith("javascript:") &&
-      href !== location.href
-    );
+  .filter((a) =>
+    a.href &&
+    a.href.startsWith(origin) &&  // Only same-origin
+    !a.href.endsWith("#") &&
+    !a.href.startsWith("javascript:") &&
+    a.href !== location.href
+  )
+  .map((a) => ({
+    text: a.innerText.trim(),
+    href: a.href,
+  }));
   // Remove duplicates
   return Array.from(new Set(links));
 }

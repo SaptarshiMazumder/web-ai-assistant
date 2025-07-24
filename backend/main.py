@@ -1,4 +1,6 @@
 import os
+import json
+from urllib.parse import urlparse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -13,6 +15,7 @@ from dotenv import load_dotenv
 # New imports for crawling
 import requests
 from bs4 import BeautifulSoup
+import re
 
 load_dotenv()
 
@@ -319,7 +322,19 @@ class SmartHopState(BaseModel):
     selected_link: Optional[Dict[str, str]] = None
     visited_urls: List[str] = []
     hops: int = 0
+    original_domain: str = ""
 
+
+def extract_json_from_text(text):
+    # Look for JSON code block first
+    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if code_block:
+        return code_block.group(1)
+    # Else, look for first [ ... ] in text
+    arr_match = re.search(r"\[[\s\S]*\]", text)
+    if arr_match:
+        return arr_match.group(0)
+    return None
 
 def answer_sufficiency_llm_node(state):
     """
@@ -341,9 +356,6 @@ def answer_sufficiency_llm_node(state):
     return state
 
 def llm_select_relevant_links_node(state):
-    """
-    Uses LLM to select the most relevant links for the user's question.
-    """
     print("\n=== [LLM Link Selector Node] ===")
     links = state["links"][:30]
     prompt = (
@@ -355,15 +367,13 @@ def llm_select_relevant_links_node(state):
     )
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
     result = llm.invoke([{"role": "user", "content": prompt}])
-    import json, re
     output = result.content.strip()
-    # Remove code block if present
-    if output.startswith("```"):
-        output = re.sub(r"^```(\w+)?", "", output).strip()
-        if output.endswith("```"):
-            output = output[:-3].strip()
+
+    json_str = extract_json_from_text(output)
     try:
-        selected_links = json.loads(output)
+        if json_str is None:
+            raise ValueError("No JSON array found in LLM output")
+        selected_links = json.loads(json_str)
         if not isinstance(selected_links, list):
             raise ValueError
         state["selected_links"] = selected_links[:3]
@@ -371,7 +381,6 @@ def llm_select_relevant_links_node(state):
         print(f"Failed to parse LLM output: {e}\n{result.content}")
         state["selected_links"] = []
     return state
-
 def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:
     s1 = enhance_query_node(State(text=state.text, question=state.question))
     s1 = retrieve_node(s1)
@@ -388,9 +397,20 @@ def check_sufficiency_node(state: SmartHopState) -> SmartHopState:
     state.sufficient = out["sufficient"]
     return state
 
+
 def pick_next_link_node(state: SmartHopState) -> SmartHopState:
-    # Only pick from unvisited links
-    unvisited_links = [l for l in state.links if l["href"] not in (state.visited_urls or [])]
+    # Only pick from unvisited, same-domain links
+    original_domain = urlparse(state.page_url).netloc if not hasattr(state, "original_domain") else state.original_domain
+    if hasattr(state, "original_domain"):
+        original_domain = state.original_domain
+    else:
+        original_domain = urlparse(state.page_url).netloc
+
+    unvisited_links = [
+        l for l in state.links
+        if l["href"] not in (state.visited_urls or [])
+        and urlparse(l["href"]).netloc == original_domain
+    ]
     if not unvisited_links:
         state.selected_link = None
         return state
@@ -427,7 +447,7 @@ def fetch_link_node(state: SmartHopState) -> SmartHopState:
 from langgraph.graph import StateGraph, END
 
 def hops_remaining(state: SmartHopState):
-    return state.hops < 3
+    return state.hops < 5
 
 graph = StateGraph(SmartHopState)
 graph.add_node("RetrieveAndAnswer", retrieve_and_answer_node)
@@ -459,15 +479,19 @@ compiled_hop_graph = graph.compile()
 
 @app.post("/ask-smart")
 async def ask_smart(request: SmartQARequest):
+    original_domain = urlparse(request.page_url).netloc
+
     state = SmartHopState(
         text=request.text,
         question=request.question,
         links=request.links,
         page_url=request.page_url,
         visited_urls=[request.page_url],
-        hops=0
+        hops=0,
+        original_domain=original_domain
     )
     result = compiled_hop_graph.invoke(state)
+    
     return {
         "answer": result["answer"],
         "sources": result["sources"],
