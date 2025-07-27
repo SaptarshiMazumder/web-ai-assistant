@@ -22,3 +22,14 @@ extension/.env
 
 # OS
 Thumbs.db
+
+# Ignore all Chroma DB files/folders recursively
+backend/chroma_db/
+**/chroma_db/
+**/*.sqlite3
+**/*.sqlite
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.pkl
+
