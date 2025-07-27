@@ -3,6 +3,9 @@ import hljs from "highlight.js";
 
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
+
+askBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#fff"/></svg>`;
+askBtn.title = "Send";
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
 // --- DROPDOWN to toggle between Ask and Ask Smart ---
@@ -23,7 +26,8 @@ dropdown.appendChild(optionSmart);
 
 // --- Smart Ask button (created but hidden by default) ---
 const smartBtn = document.createElement("button");
-smartBtn.textContent = "Ask Smart";
+smartBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#fff"/></svg>`;
+smartBtn.title = "Send";
 smartBtn.id = "smart-ask-btn";
 smartBtn.style.marginLeft = "8px";
 smartBtn.style.display = "none";
@@ -194,7 +198,19 @@ askBtn.onclick = async function () {
 smartBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
-  appendMessage(`[Smart QA] ${question}`, "user");
+
+  // Add "Smart QA" tag above the bubble
+  const tag = document.createElement('div');
+  tag.textContent = "Smart QA";
+  tag.style.fontSize = "0.8em";
+  tag.style.color = "#0a5";
+  tag.style.fontWeight = "bold";
+  tag.style.letterSpacing = "0.03em";
+  tag.style.margin = "0 10px 0 0";
+  tag.style.textAlign = "right";
+  tag.style.width = "100%";
+  chatDiv.appendChild(tag);
+  appendMessage(question, "user");
   const thinkingBubble = appendMessage("Thinking (smart)...", "thinking");
 
   // Get tab/page data as before (get text, links, url)

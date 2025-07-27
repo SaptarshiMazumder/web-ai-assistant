@@ -402,6 +402,9 @@ def check_sufficiency_node(state: SmartHopState) -> SmartHopState:
 
 
 def pick_next_link_node(state: SmartHopState) -> SmartHopState:
+    for link in state.links:
+        print("=== Link ===")
+        print(f"Link: {link['text']} ({link['href']})")
     # Only pick from unvisited, same-domain links
     original_domain = urlparse(state.page_url).netloc if not hasattr(state, "original_domain") else state.original_domain
     if hasattr(state, "original_domain"):
