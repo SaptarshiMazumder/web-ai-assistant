@@ -98,7 +98,8 @@ def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:
     s1 = answer_node(s1)
     state.answer = s1.answer
     state.sources = s1.used_chunks
-    log(f"Answer: {state.answer[:120]}...")  
+    log(state.answer)
+
     return state
 
 def check_sufficiency_node(state: SmartHopState) -> SmartHopState:

@@ -84,7 +84,7 @@ async def ask_site_handler(request):
         "Do not say 'Not found' unless you are certain nothing relevant is present.\n\n"
         f"CONTENT:\n{context}\n\n"
         f"USER QUESTION: {request.question}\n\n"
-        "ANSWER:"
+        
     )
 
     result = llm.invoke([{"role": "user", "content": prompt}])
