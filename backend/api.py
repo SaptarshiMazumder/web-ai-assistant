@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from graph_qa import qa_graph, State
 from graph_site_qa import ask_site_handler
-from graph_smart_qa import smart_qa_graph, SmartQARequest, SmartHopState
+from graph_smart_qa import smart_qa_graph
+from state import SmartHopState, SmartQARequest
 import os
 # --- Page QA API ---
 
@@ -41,7 +42,7 @@ smart_qa_router = APIRouter()
 
 @smart_qa_router.post("/ask-smart")
 async def ask_smart(request: SmartQARequest):
-    result = smart_qa_graph.invoke(
+    result = await smart_qa_graph.ainvoke(
         SmartHopState(
             text=request.text,
             question=request.question,

@@ -5,41 +5,27 @@ import requests
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-
+from concurrent.futures import ThreadPoolExecutor
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 
 from graph_qa import enhance_query_node, retrieve_node, answer_node
+from state import SmartHopState
+from utils import extract_json_from_text
+from playwright.async_api import async_playwright
+import time
+from urllib.parse import urljoin
+import sys
+import asyncio
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-class SmartQARequest(BaseModel):
-    text: str
-    question: str
-    links: List[Dict[str, str]]
-    page_url: str
 
-class SmartHopState(BaseModel):
-    text: str
-    question: str
-    links: List[Dict[str, str]]
-    page_url: str
-    answer: str = ""
-    sources: List[Any] = []
-    sufficient: bool = False
-    selected_link: Optional[Dict[str, str]] = None
-    visited_urls: List[str] = []
-    hops: int = 0
-    original_domain: str = ""
 
-def extract_json_from_text(text):
-    code_block = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-    if code_block:
-        return code_block.group(1)
-    arr_match = re.search(r"\[[\s\S]*\]", text)
-    if arr_match:
-        return arr_match.group(0)
-    return None
+
 
 def answer_sufficiency_llm_node(state):
     prompt = (
@@ -116,25 +102,65 @@ def pick_next_link_node(state: SmartHopState) -> SmartHopState:
     state.selected_link = next_links[0] if next_links else None
     return state
 
-def fetch_link_node(state: SmartHopState) -> SmartHopState:
+
+def _blocking_browser_scrape(url: str, headless: bool = True):
+    import sys
+    import asyncio
+
+    # Ensure correct policy ALSO inside the thread
+    if sys.platform.startswith("win"):
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+    async def _run():
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(url, timeout=12000)
+            try:
+                # await page.wait_for_load_state("networkidle", timeout=1000)
+                await page.wait_for_load_state("load", timeout=1000)
+
+            except Exception:
+                pass
+            html = await page.content()
+            current_url = page.url
+            await browser.close()
+            return html, current_url
+
+    return asyncio.run(_run())
+
+
+async def fetch_link_node(state: SmartHopState) -> SmartHopState:
     if not state.selected_link:
         return state
+
     url = state.selected_link["href"]
     state.visited_urls.append(url)
+
     try:
-        resp = requests.get(url, timeout=12)
-        soup = BeautifulSoup(resp.text, "html.parser")
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            html, final_url = await loop.run_in_executor(pool, _blocking_browser_scrape, url, False)
+
+        soup = BeautifulSoup(html, "html.parser")
         state.text = soup.get_text(separator="\n", strip=True)
-        state.page_url = url
+        state.page_url = final_url
+
         page_links = [
-            {"text": a.get_text(strip=True), "href": a.get("href")}
+            {
+                "text": a.get_text(strip=True),
+                "href": urljoin(final_url, a.get("href"))
+            }
             for a in soup.find_all("a", href=True)
-            if a.get("href", "").startswith("http")
+            if a.get("href", "").startswith(("http", "/"))
         ]
         state.links = [l for l in page_links if l["href"].startswith("http")]
         state.hops += 1
-    except Exception:
+
+    except Exception as e:
+        print(f"[fetch_link_node] Failed: {e}")
         state.selected_link = None
+
     return state
 
 def hops_remaining(state: SmartHopState):
