@@ -9,15 +9,19 @@
     </head>
 
     <body>
-        <div id="debug-log"
+        <!-- <div id="debug-log"
             style="background:#111;color:#0f0;font-size:13px;white-space:pre-wrap;padding:6px 12px;max-height:200px;overflow:auto;">
-        </div>
+        </div> -->
 
         <div id="container">
             <div id="chat"></div>
             <div id="inputRow">
                 <input type="text" id="question" placeholder="Ask about this page..." />
                 <button id="ask-btn">Ask</button>
+            </div>
+            <button id="toggle-log-btn" style="margin:8px 0 0 0;">Show/Hide SmartQA Thinking</button>
+            <div id="smartqa-log-panel"
+                style="display:none; background:#181818; color:#0f0; font-size:13px; white-space:pre-wrap; padding:6px 12px; max-height:200px; overflow:auto; border-radius:6px; margin-top:4px;">
             </div>
 
         </div>

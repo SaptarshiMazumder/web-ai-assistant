@@ -1,7 +1,8 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from graph_smart_qa import smartqa_log_relay
 
 from api import qa_router, site_qa_router, smart_qa_router, chroma_router
 
@@ -25,3 +26,14 @@ app.include_router(qa_router)
 app.include_router(site_qa_router)
 app.include_router(smart_qa_router)
 app.include_router(chroma_router)
+
+@app.websocket("/ws/smartqa-logs")
+async def smartqa_logs_ws(websocket: WebSocket):
+    await websocket.accept()
+    queue = smartqa_log_relay.register()
+    try:
+        while True:
+            msg = await queue.get()
+            await websocket.send_text(msg)
+    except WebSocketDisconnect:
+        smartqa_log_relay.unregister(queue)

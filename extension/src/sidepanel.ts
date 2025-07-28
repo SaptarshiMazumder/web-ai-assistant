@@ -126,10 +126,33 @@ function extractSameDomainLinksFromHtml(html: string, baseUrl: string): { text: 
 
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
-
-askBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#fff"/></svg>`;
-askBtn.title = "Send";
 const questionInput = document.getElementById("question")! as HTMLInputElement;
+
+// --- Add these lines here, after the above ---
+const logPanel = document.getElementById("smartqa-log-panel")!;
+const toggleLogBtn = document.getElementById("toggle-log-btn")!;
+
+toggleLogBtn.onclick = () => {
+  logPanel.style.display = logPanel.style.display === "none" ? "block" : "none";
+};
+
+// --- SmartQA log streaming ---
+let smartqaLogSocket: WebSocket | null = null;
+
+function connectSmartQALogSocket() {
+  if (smartqaLogSocket) {
+    smartqaLogSocket.close();
+  }
+  smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
+  smartqaLogSocket.onmessage = (event) => {
+    logPanel.style.display = "block";
+    logPanel.innerText += event.data + "\n";
+    logPanel.scrollTop = logPanel.scrollHeight;
+  };
+  smartqaLogSocket.onclose = () => {
+    // Optionally reconnect or clear
+  };
+}
 
 // --- DROPDOWN to toggle between Ask and Ask Smart ---
 
@@ -321,6 +344,8 @@ askBtn.onclick = async function () {
 
 // --- Smart Ask button logic ---
 smartBtn.onclick = async function () {
+  logPanel.innerText = "";
+  connectSmartQALogSocket();
   const question = questionInput.value.trim();
   if (!question) return;
 

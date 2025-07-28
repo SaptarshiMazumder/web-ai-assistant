@@ -17,14 +17,39 @@ import time
 from urllib.parse import urljoin
 import sys
 import asyncio
+from asyncio import Queue
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
+# Logging utility to relay messages to the frontend
+class SmartQALogRelay:
+    def __init__(self):
+        self.queues = []
 
+    def register(self):
+        q = Queue()
+        self.queues.append(q)
+        return q
 
+    def unregister(self, q):
+        if q in self.queues:
+            self.queues.remove(q)
+
+    def log(self, msg):
+        for q in self.queues:
+            q.put_nowait(msg)
+
+    def clear(self):
+        self.queues.clear()
+
+smartqa_log_relay = SmartQALogRelay()
+
+def log(msg):
+    print(msg)
+    smartqa_log_relay.log(msg)
 
 
 def answer_sufficiency_llm_node(state):
@@ -73,6 +98,7 @@ def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:
     s1 = answer_node(s1)
     state.answer = s1.answer
     state.sources = s1.used_chunks
+    log(f"Answer: {state.answer[:120]}...")  
     return state
 
 def check_sufficiency_node(state: SmartHopState) -> SmartHopState:
@@ -156,6 +182,7 @@ async def fetch_link_node(state: SmartHopState) -> SmartHopState:
         ]
         state.links = [l for l in page_links if l["href"].startswith("http")]
         state.hops += 1
+        log(f"Fetched and parsed: {final_url}")
 
     except Exception as e:
         print(f"[fetch_link_node] Failed: {e}")
