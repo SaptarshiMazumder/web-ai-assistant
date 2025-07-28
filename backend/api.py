@@ -1,11 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, FastAPI, Query
 from pydantic import BaseModel
 from typing import List, Dict, Any
-
 from graph_qa import qa_graph, State
 from graph_site_qa import ask_site_handler
 from graph_smart_qa import smart_qa_graph, SmartQARequest, SmartHopState
-
+import os
 # --- Page QA API ---
 
 class QARequest(BaseModel):
@@ -59,3 +58,29 @@ async def ask_smart(request: SmartQARequest):
         "visited_urls": result["visited_urls"],
         "sufficient": result["sufficient"],
     }
+
+
+class PageData(BaseModel):
+    url: str
+    html: str
+    domain: str
+
+chroma_router = APIRouter()
+
+@chroma_router.get("/chroma_exists")
+async def chroma_exists(domain: str = Query(...)):
+    # Check if chroma db folder for this domain exists (e.g., backend/chroma_db/<domain>)
+    print(f"Checking if chroma db exists for domain: {domain}")
+    path = f"backend/chroma_db/{domain}"
+    return {"exists": os.path.exists(path)}
+
+
+@chroma_router.post("/add_page_data")
+async def add_page_data(data: PageData):
+    print(f"\n--- Received page data ---")
+    print(f"Domain: {data.domain}")
+    print(f"URL: {data.url}")
+    print(f"HTML length: {len(data.html)}")
+    # For debug, print the first 200 chars only:
+    print(f"First part of HTML: {data.html[:200]!r}")
+    return {"ok": True}

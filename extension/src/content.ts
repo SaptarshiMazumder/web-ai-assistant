@@ -30,22 +30,29 @@ function extractTablesAsMarkdown(): string[] {
 }
 
 // --- Utility: get all same-domain links (unique, clean) ---
-function extractSameDomainLinks(): string[] {
+function extractSameDomainLinks(): { text: string; href: string }[] {
   const origin = location.origin;
   const links = Array.from(document.querySelectorAll("a"))
-  .filter((a) =>
-    a.href &&
-    a.href.startsWith(origin) &&  // Only same-origin
-    !a.href.endsWith("#") &&
-    !a.href.startsWith("javascript:") &&
-    a.href !== location.href
-  )
-  .map((a) => ({
-    text: a.innerText.trim(),
-    href: a.href,
-  }));
-  // Remove duplicates
-  return Array.from(new Set(links));
+    .filter((a) =>
+      a.href &&
+      a.href.startsWith(origin) &&  // Only same-origin
+      !a.href.endsWith("#") &&
+      !a.href.startsWith("javascript:") &&
+      a.href !== location.href
+    )
+    .map((a) => ({
+      text: a.innerText.trim(),
+      href: a.href,
+    }));
+
+  // Remove duplicates by href
+  const uniqueLinksMap = new Map<string, { text: string; href: string }>();
+  links.forEach(link => {
+    if (!uniqueLinksMap.has(link.href)) {
+      uniqueLinksMap.set(link.href, link);
+    }
+  });
+  return Array.from(uniqueLinksMap.values());
 }
 
 chrome.runtime.onMessage.addListener((req, sender, sendResp) => {

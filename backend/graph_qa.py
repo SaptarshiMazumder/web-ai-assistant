@@ -43,7 +43,13 @@ def retrieve_node(state: State) -> State:
     docs = []
     pos = 0
     for i, chunk in enumerate(chunks):
-        metadata = {"chunk_id": i, "start_char": pos, "end_char": pos + len(chunk)}
+        metadata = {
+            "chunk_id": i,
+            "start_char": pos,
+            "end_char": pos + len(chunk),
+            "url": getattr(state, "page_url", None)  # Or state.page_url if it's always set
+        }
+
         from langchain.schema import Document
         doc = Document(page_content=chunk, metadata=metadata)
         docs.append(doc)
@@ -66,10 +72,28 @@ def retrieve_node(state: State) -> State:
     state.retrieved_docs = relevant_docs
     return state
 
+
 def answer_node(state: State) -> State:
     question = state.question
     relevant_docs = state.retrieved_docs
-    context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
+     # PRINT RETRIEVED CHUNKS HERE
+    print("\n=== Retrieved Chunks ===")
+    for i, d in enumerate(relevant_docs):
+        url = d.metadata.get("url")
+        print(f"[Chunk {i}] (url: {url})")
+        print(d.page_content[:500])  # print first 500 chars for brevity
+        print("------")
+    print("======================\n")
+    def format_chunk(doc):
+        url = doc.metadata.get("url")
+        chunk_text = doc.page_content
+        if url:
+            return f"[Source URL: {url}]\n{chunk_text}"
+        return chunk_text
+
+    context = "\n\n---\n\n".join([format_chunk(d) for d in relevant_docs])
+    # context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
+
     prompt = (
     "You are an expert assistant. Using only the content below, answer the user's question as fully and helpfully as possible. "
     "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
@@ -78,6 +102,9 @@ def answer_node(state: State) -> State:
     "and politely inform the user that the answer does not seem to be present on this page. "
     "Say that they may navigate to a more relevant page on this website, or search online if necessary, "
     "if they think that the information is not present on this page. "
+    "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
+    "If you cite information from a source, always include the full URL shown in the source."
+    "If you cannot find a direct answer, suggest a related page by URL if present in the content."
     "Do not hallucinate. Always provide a helpful response.\n\n"
     f"CONTENT:\n{context}\n\n"
     f"USER QUESTION: {question}\n\n"

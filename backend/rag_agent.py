@@ -28,7 +28,7 @@ def main():
     parser.add_argument("question", help="The user question to answer")
     parser.add_argument("--db-dir", default=CHROMA_DB_DIR, help="ChromaDB directory")
     parser.add_argument("--collection", default=CHROMA_COLLECTION, help="ChromaDB collection name")
-    parser.add_argument("--top-k", type=int, default=6, help="Top-K chunks to retrieve")
+    parser.add_argument("--top-k", type=int, default=10, help="Top-K chunks to retrieve")
     args = parser.parse_args()
 
     # --- 1. Connect to ChromaDB ---

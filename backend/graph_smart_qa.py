@@ -55,6 +55,8 @@ def answer_sufficiency_llm_node(state):
     return state
 
 def llm_select_relevant_links_node(state):
+    
+    
     links = state["links"][:30]
     prompt = (
         f"Question: {state['question']}\n"
@@ -76,6 +78,7 @@ def llm_select_relevant_links_node(state):
         state["selected_links"] = selected_links[:3]
     except Exception:
         state["selected_links"] = []
+    print(f"Selected links: {state['selected_links']}")
     return state
 
 def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:

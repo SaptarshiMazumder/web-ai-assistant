@@ -2,7 +2,7 @@
 insert_docs.py
 --------------
 Command-line utility to crawl any URL using Crawl4AI, detect content type (sitemap, .txt, or regular page),
-use the appropriate crawl method, chunk the resulting Markdown into <1000 character blocks by header hierarchy,
+use the appropriate crawl method, chunk the resulting Markdown into <1600 character blocks by header hierarchy,
 and insert all chunks into ChromaDB with metadata.
 
 Usage:
@@ -19,7 +19,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 import requests
 from utils import get_chroma_client, get_or_create_collection, add_documents_to_collection
 
-def smart_chunk_markdown(markdown: str, max_len: int = 1000) -> List[str]:
+def smart_chunk_markdown(markdown: str, max_len: int = 1600) -> List[str]:
     """Hierarchically splits markdown by #, ##, ### headers, then by characters, to ensure all chunks < max_len."""
     def split_by_header(md, header_pattern):
         indices = [m.start() for m in re.finditer(header_pattern, md, re.MULTILINE)]
@@ -59,7 +59,7 @@ def is_sitemap(url: str) -> bool:
 def is_txt(url: str) -> bool:
     return url.endswith('.txt')
 
-async def crawl_recursive_internal_links(start_urls, max_depth=3, max_concurrent=10) -> List[Dict[str,Any]]:
+async def crawl_recursive_internal_links(start_urls, max_depth=3, max_concurrent=50) -> List[Dict[str,Any]]:
     """Recursive crawl using logic from 5-crawl_recursive_internal_links.py. Returns list of dicts with url and markdown."""
     browser_config = BrowserConfig(headless=True, verbose=False)
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
@@ -158,8 +158,8 @@ def main():
     parser.add_argument("--collection", default="docs", help="ChromaDB collection name")
     parser.add_argument("--db-dir", default="./chroma_db", help="ChromaDB directory")
     parser.add_argument("--embedding-model", default="all-MiniLM-L6-v2", help="Embedding model name")
-    parser.add_argument("--chunk-size", type=int, default=1000, help="Max chunk size (chars)")
-    parser.add_argument("--max-depth", type=int, default=3, help="Recursion depth for regular URLs")
+    parser.add_argument("--chunk-size", type=int, default=1600, help="Max chunk size (chars)")
+    parser.add_argument("--max-depth", type=int, default=5, help="Recursion depth for regular URLs")
     parser.add_argument("--max-concurrent", type=int, default=10, help="Max parallel browser sessions")
     parser.add_argument("--batch-size", type=int, default=100, help="ChromaDB insert batch size")
     args = parser.parse_args()

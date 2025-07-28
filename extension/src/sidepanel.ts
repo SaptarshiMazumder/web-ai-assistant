@@ -1,5 +1,128 @@
 import { marked } from "marked";
 import hljs from "highlight.js";
+import { crawlEntireSite, debugLog } from "./siteCrawler";
+
+
+// crawl webpage start
+
+const BACKEND_BASE_URL = "http://localhost:5000";
+
+function getActiveTabInfo(): Promise<{ url: string; domain: string; origin: string }> {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const url = tabs[0]?.url || "";
+      try {
+        const urlObj = new URL(url);
+        resolve({
+          url,
+          domain: urlObj.hostname,
+          origin: urlObj.origin,
+        });
+      } catch {
+        resolve({ url, domain: "", origin: "" });
+      }
+    });
+  });
+}
+// Code to crawl the entire site and store in chroma
+// window.addEventListener("DOMContentLoaded", () => {
+//   getActiveTabInfo().then(({ url, domain, origin }) => {
+//     if (!domain || domain.startsWith("chrome") || domain === "newtab") {
+//       debugLog("Not crawling: Not a website page.");
+//       return;
+//     }
+//     debugLog(`Loaded sidepanel. Hostname: ${domain}`);
+//     fetch(`${BACKEND_BASE_URL}/chroma_exists?domain=${domain}`)
+//       .then(resp => resp.json())
+//       .then(async ({ exists }) => {
+//         debugLog(`Chroma exists for ${domain}? ${exists}`);
+//         if (!exists) {
+//           debugLog("Starting crawl...");
+//           await crawlEntireSite(origin, domain, BACKEND_BASE_URL);
+//           debugLog("Crawling complete!");
+//         }
+//       }).catch(e => debugLog("Error checking chroma: " + e));
+//   });
+// });
+
+
+
+
+// Helper to extract all same-domain links from a page's HTML
+// Helper to extract all same-domain links from a page's HTML
+function extractSameDomainLinksFromHtml(html: string, baseUrl: string): { text: string; href: string }[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const baseUrlObject = new URL(baseUrl); // Create URL object for the base
+  const baseUrlOrigin = baseUrlObject.origin;
+
+  debugLog(`Extracting same-domain links from: ${baseUrlOrigin}`);
+
+  let allLinks = Array.from(doc.querySelectorAll("a"));
+
+  const sameDomainValidLinks = allLinks.filter(link => {
+    try {
+      // Resolve the link.href relative to the baseUrl
+      const linkUrl = new URL(link.href, baseUrl); // <--- THIS IS THE KEY CHANGE
+
+      // Ensure it's http/https scheme
+      if (!['http:', 'https:'].includes(linkUrl.protocol)) {
+        debugLog(`Skipping non-http/https link: ${link.href} (resolved to: ${linkUrl.href})`);
+        return false;
+      }
+
+      // Ensure it's the same origin
+      // Note: linkUrl.origin will now correctly resolve to pvp.co.jp if link.href was relative to it
+      if (linkUrl.origin !== baseUrlOrigin) {
+        debugLog(`Skipping cross-origin link: ${link.href} (resolved to: ${linkUrl.href}, Base Origin: ${baseUrlOrigin})`);
+        return false;
+      }
+
+      // If you want to avoid fragment identifiers (#hash), you can strip them
+      // linkUrl.hash = ''; // Optional: uncomment if you want to treat #links as the same page
+      // Or if you want to filter out links that are just fragments on the same page:
+      // if (linkUrl.href === baseUrlObject.href && link.href.startsWith('#')) return false;
+
+
+      return true;
+    } catch (e) {
+      debugLog(`Invalid URL in link href, skipping: ${link.href} - Error: ${e}`);
+      return false;
+    }
+  });
+
+  // Your iana.org logging (can remain or be removed, as it's separate from crawling)
+  // const ianaLinks = sameDomainValidLinks.filter(link => link.href.includes("iana.org"));
+  // ianaLinks.forEach(link => {
+  //   debugLog(`IANA Link (for debug): text="${link.text}", href="${link.href}"`);
+  // });
+
+  const uniqueLinksMap = new Map<string, { text: string; href: string }>();
+  sameDomainValidLinks.forEach(link => {
+    // Re-resolve the URL to store its absolute form consistently in the map/queue
+    // This is important because the 'href' property of the DOM element might still be relative
+    // if you didn't mutate it. By passing 'link.href' and 'baseUrl' to new URL(),
+    // you get the canonical, absolute URL.
+    const absoluteHref = new URL(link.href, baseUrl).href;
+    if (!uniqueLinksMap.has(absoluteHref)) {
+      uniqueLinksMap.set(absoluteHref, { text: link.text, href: absoluteHref });
+    }
+  });
+
+  return Array.from(uniqueLinksMap.values());
+}
+
+
+
+
+
+
+
+// crawl webpage end
+
+
+
+
 
 const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
@@ -37,6 +160,8 @@ const inputRow = document.getElementById("inputRow");
 inputRow?.insertBefore(smartBtn, askBtn.nextSibling);
 // dropdown always after smartBtn
 inputRow?.insertBefore(dropdown, smartBtn.nextSibling);
+
+
 
 
 // -- REMOVE the "site QA" button section completely --
