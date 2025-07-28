@@ -128,26 +128,18 @@ const chatDiv = document.getElementById("chat")!;
 const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
-// --- Add these lines here, after the above ---
-const logPanel = document.getElementById("smartqa-log-panel")!;
-const toggleLogBtn = document.getElementById("toggle-log-btn")!;
-
-toggleLogBtn.onclick = () => {
-  logPanel.style.display = logPanel.style.display === "none" ? "block" : "none";
-};
-
 // --- SmartQA log streaming ---
 let smartqaLogSocket: WebSocket | null = null;
 
-function connectSmartQALogSocket() {
+function connectSmartQALogSocket(logContainer: HTMLElement) {
   if (smartqaLogSocket) {
     smartqaLogSocket.close();
   }
   smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
   smartqaLogSocket.onmessage = (event) => {
-    logPanel.style.display = "block";
-    logPanel.innerText += event.data + "\n";
-    logPanel.scrollTop = logPanel.scrollHeight;
+    logContainer.style.display = "block";
+    logContainer.innerText += event.data + "\n";
+    logContainer.scrollTop = logContainer.scrollHeight;
   };
   smartqaLogSocket.onclose = () => {
     // Optionally reconnect or clear
@@ -241,7 +233,42 @@ function getPageDataFromActiveTab(): Promise<{
 function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): HTMLElement {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + sender;
-  if (sender === 'bot') {
+
+  if (sender === 'thinking') {
+    const thinkingText = document.createElement('span');
+    thinkingText.textContent = text;
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = 'Show/Hide Thinking';
+    toggleBtn.style.marginLeft = '10px';
+    toggleBtn.style.cursor = 'pointer';
+
+    const logContainer = document.createElement('div');
+    logContainer.className = 'thinking-log';
+    logContainer.style.display = 'none';
+    logContainer.style.whiteSpace = 'pre-wrap';
+    logContainer.style.maxHeight = '200px';
+    logContainer.style.overflowY = 'auto';
+    logContainer.style.marginTop = '5px';
+    logContainer.style.padding = '5px';
+    logContainer.style.border = '1px solid #ccc';
+    logContainer.style.borderRadius = '4px';
+
+
+    toggleBtn.onclick = () => {
+      const isHidden = logContainer.style.display === 'none';
+      logContainer.style.display = isHidden ? 'block' : 'none';
+    };
+
+    bubble.appendChild(thinkingText);
+    bubble.appendChild(toggleBtn);
+    bubble.appendChild(logContainer);
+
+    // Store references for later updates
+    (bubble as any).thinkingText = thinkingText;
+    (bubble as any).logContainer = logContainer;
+
+  } else if (sender === 'bot') {
     const parsed = marked.parse(text);
     if (parsed instanceof Promise) {
       parsed.then(html => {
@@ -344,8 +371,6 @@ askBtn.onclick = async function () {
 
 // --- Smart Ask button logic ---
 smartBtn.onclick = async function () {
-  logPanel.innerText = "";
-  connectSmartQALogSocket();
   const question = questionInput.value.trim();
   if (!question) return;
 
@@ -361,7 +386,11 @@ smartBtn.onclick = async function () {
   tag.style.width = "100%";
   chatDiv.appendChild(tag);
   appendMessage(question, "user");
-  const thinkingBubble = appendMessage("Thinking (smart)...", "thinking");
+  const thinkingBubble = appendMessage("Thinking...", "thinking");
+  const logContainer = (thinkingBubble as any).logContainer;
+  logContainer.innerText = "";
+  connectSmartQALogSocket(logContainer);
+
 
   // Get tab/page data as before (get text, links, url)
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
@@ -384,7 +413,10 @@ smartBtn.onclick = async function () {
             body: JSON.stringify(body),
           });
           const data = await resp.json();
-          thinkingBubble.remove();
+          (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
+          if (smartqaLogSocket) {
+            smartqaLogSocket.close();
+          }
 
           // Show the answer
           appendMessage(data.answer, "bot");
@@ -414,7 +446,7 @@ smartBtn.onclick = async function () {
 
 
         } catch (err) {
-          thinkingBubble.textContent = "Error (smart QA). Please try again.";
+          (thinkingBubble as any).thinkingText.textContent = "Error (smart QA). Please try again.";
         }
         questionInput.value = "";
       }
