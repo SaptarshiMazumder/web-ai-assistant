@@ -92,7 +92,10 @@ async def _is_sufficient(question: str, answer: str) -> bool:
         "Based on the answer, is the user's question fully answered with clear and specific information? "
         "Reply with only 'YES' or 'NO'"
     )
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0)
+    llm = ChatOpenAI(api_key=openai_api_key, 
+                    #  model="gpt-3.5-turbo", 
+                     model="gpt-4o", 
+                     temperature=0)
     result = llm.invoke([{"role": "user", "content": prompt}])
     out = (result.content or "").strip().lower()
     print(f"⚡ [SUFFICIENCY] {out}")
