@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import sys
 import asyncio
+from markdownify import markdownify
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -107,14 +108,9 @@ def extract_tables_as_markdown(soup):
 
 def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[str, str]]]:
     soup = BeautifulSoup(html, "html.parser")
-    # Get main text as before
-    text = soup.get_text(separator="\n", strip=True)
-    # Extract tables as Markdown
-    table_chunks = extract_tables_as_markdown(soup)
-    # Append all tables (as markdown) to the end of text (or you can choose to prepend)
-    if table_chunks:
-        text += "\n\n=== EXTRACTED TABLES ===\n" + "\n\n".join(table_chunks)
-    # Get links as before
+    # Convert to Markdown while preserving structure (headings, lists, tables, code, links, etc.)
+    markdown = markdownify(str(soup.body), heading_style="ATX") if soup.body else markdownify(str(soup))
+    # Links extraction (unchanged)
     page_links = [
         {
             "text": a.get_text(strip=True),
@@ -124,7 +120,8 @@ def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[st
         if a.get("href", "").startswith(("http", "/"))
     ]
     page_links = [l for l in page_links if l["href"].startswith("http")]
-    return text, page_links
+    return markdown, page_links
+
 
 
 async def scrape_one(url: str) -> Dict[str, Any]:
