@@ -113,14 +113,14 @@ def answer_node(state: State) -> State:
     # )
 
     prompt = (
-        "You are an expert assistant. Using only the content below, answer the user's question as accurately and helpfully as possible. "
-        "If you find an exact passage, code block, or table that answers the question, quote it directly (preserving formatting). "
-        "If quoting alone is insufficient, paraphrase or summarize using your reasoning. "
-        "Always include a short excerpt and the full URL as a citation if you use content from a source. "
-        "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggesting a relevant page by URL if available. "
-        "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
+        "You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. "
+        "DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. "
+        "Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. "
+        "If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. "
+        "If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. "
+        "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' "
         "If you cite information from a source, always include the full URL shown in the source."
-        "If you cannot find a direct answer, suggest a related page by URL if present in the content."
+        "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. "
         "Do not hallucinate."
         "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.\n\n"
         f"CONTENT:\n{context}\n\n"
