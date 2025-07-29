@@ -55,7 +55,12 @@ function extractSameDomainLinks(): { text: string; href: string }[] {
   return Array.from(uniqueLinksMap.values());
 }
 
+
 chrome.runtime.onMessage.addListener((req, sender, sendResp) => {
+  
+   if (req.type === "PING") {
+    sendResp({ pong: true });
+  }
   if (req.type === "GET_PAGE_DATA") {
     // 1. Visible text
     const text = document.body.innerText;

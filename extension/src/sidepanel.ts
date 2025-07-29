@@ -7,6 +7,28 @@ import { crawlEntireSite, debugLog } from "./siteCrawler";
 
 const BACKEND_BASE_URL = "http://localhost:5000";
 
+function ensureContentScript(tabId: number, cb: () => void) {
+  debugLog(`Ensuring content script is injected for tab ${tabId}`);
+  chrome.tabs.sendMessage(tabId, { type: "PING" }, (response) => {
+    if (chrome.runtime.lastError) {
+      // Not present, inject content script
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          files: ["dist/content.js"], // or "content.bundle.js" if you use webpack
+        },
+        () => {
+          // Wait a tick for it to initialize
+          setTimeout(cb, 100);
+        }
+      );
+    } else {
+      cb();
+    }
+  });
+}
+
+
 function getActiveTabInfo(): Promise<{ url: string; domain: string; origin: string }> {
   return new Promise((resolve) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -182,28 +204,28 @@ inputRow?.insertBefore(dropdown, smartBtn.nextSibling);
 // -- REMOVE the "site QA" button section completely --
 
 // Utility: get all same-domain links from the active tab
-function getSameDomainLinksFromActiveTab(): Promise<string[]> {
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs[0]?.id) {
-        resolve([]);
-        return;
-      }
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { type: "GET_ALL_SAME_DOMAIN_LINKS" },
-        (resp) => {
-          if (chrome.runtime.lastError || !resp) {
-            // Content script not loaded or tab not accessible
-            resolve([]);
-            return;
-          }
-          resolve(resp.links || []);
-        }
-      );
-    });
-  });
-}
+// function getSameDomainLinksFromActiveTab(): Promise<string[]> {
+//   return new Promise((resolve) => {
+//     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+//       if (!tabs[0]?.id) {
+//         resolve([]);
+//         return;
+//       }
+//       chrome.tabs.sendMessage(
+//         tabs[0].id,
+//         { type: "GET_ALL_SAME_DOMAIN_LINKS" },
+//         (resp) => {
+//           if (chrome.runtime.lastError || !resp) {
+//             // Content script not loaded or tab not accessible
+//             resolve([]);
+//             return;
+//           }
+//           resolve(resp.links || []);
+//         }
+//       );
+//     });
+//   });
+// }
 
 // Existing: get current page data
 function getPageDataFromActiveTab(): Promise<{
@@ -212,20 +234,24 @@ function getPageDataFromActiveTab(): Promise<{
   links: Array<{ text: string; href: string }>;
   images: Array<{ alt: string; src: string }>;
 }> {
+  console.log("getting page data from active tab");
   return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id !== undefined) {
-        chrome.tabs.sendMessage(
-          tabs[0].id,
-          { type: "GET_PAGE_DATA" },
-          (resp) => {
-            resolve(resp || { text: "", tables: [], links: [], images: [] });
-          }
-        );
-      } else {
-        resolve({ text: "", tables: [], links: [], images: [] });
-      }
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const tabId = tabs[0]?.id;
+  if (typeof tabId === "number") {
+    ensureContentScript(tabId, () => {
+      chrome.tabs.sendMessage(
+        tabId,
+        { type: "GET_PAGE_DATA" },
+        (resp) => {
+          resolve(resp || { text: "", tables: [], links: [], images: [] });
+        }
+      );
     });
+  } else {
+    resolve({ text: "", tables: [], links: [], images: [] });
+  }
+});
   });
 }
 
@@ -317,17 +343,17 @@ function renderSources(sources: Array<{ excerpt: string; title?: string; url?: s
   chatDiv.appendChild(srcDiv);
 }
 
-function jumpToSource(excerpt: string) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id !== undefined) {
-      chrome.tabs.sendMessage(
-        tabs[0].id,
-        { type: "JUMP_TO_POSITION", excerpt },
-        () => {}
-      );
-    }
-  });
-}
+// function jumpToSource(excerpt: string) {
+//   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+//     if (tabs[0]?.id !== undefined) {
+//       chrome.tabs.sendMessage(
+//         tabs[0].id,
+//         { type: "JUMP_TO_POSITION", excerpt },
+//         () => {}
+//       );
+//     }
+//   });
+// }
 
 // --- Standard "current page" ask ---
 askBtn.onclick = async function () {
@@ -391,66 +417,58 @@ smartBtn.onclick = async function () {
   logContainer.innerText = "";
   connectSmartQALogSocket(logContainer);
 
-
-  // Get tab/page data as before (get text, links, url)
+  // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
+  const pageData = await getPageDataFromActiveTab();
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const tab = tabs[0];
     const page_url = tab?.url ?? "";
-    chrome.tabs.sendMessage(
-      tab.id!,
-      { type: "GET_PAGE_DATA" },
-      async (pageData) => {
-        const body = {
-          text: pageData.text,
-          question,
-          links: pageData.links,
-          page_url,
-        };
-        try {
-          const resp = await fetch("http://localhost:5000/ask-smart", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          const data = await resp.json();
-          (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
-          if (smartqaLogSocket) {
-            smartqaLogSocket.close();
-          }
-
-          // Show the answer
-          appendMessage(data.answer, "bot");
-          // Show sources (if any)
-          if (data.sources && data.sources.length > 0) {
-            renderSources(data.sources);
-          }
-
-          // If not sufficient, show LLM-picked links (plain, no style)
-          if (data.sufficient === false && data.selected_links && data.selected_links.length > 0) {
-            appendMessage("Try checking one of these links for more info:", "bot");
-            data.selected_links.forEach((l: any) => {
-              appendMessage(`• ${l.text} — ${l.href}`, "bot");
-            });
-          }
-
-          if (data.visited_urls && data.visited_urls.length > 0) {
-            const urls = data.visited_urls;
-            let msg = "Pages visited:\n";
-            urls.forEach((url: string, idx: number) => {
-              msg += `• ${url}\n`;
-            });
-            // Subtle suggestion for last visited page:
-            msg += `\nYou can also view the last visited page for more details..`;
-            appendMessage(msg, "bot");
-          }
-
-
-        } catch (err) {
-          (thinkingBubble as any).thinkingText.textContent = "Error (smart QA). Please try again.";
-        }
-        questionInput.value = "";
+    const body = {
+      text: pageData.text,
+      question,
+      links: pageData.links,
+      page_url,
+    };
+    try {
+      const resp = await fetch("http://localhost:5000/ask-smart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
+      if (smartqaLogSocket) {
+        smartqaLogSocket.close();
       }
-    );
+
+      // Show the answer
+      appendMessage(data.answer, "bot");
+      // Show sources (if any)
+      if (data.sources && data.sources.length > 0) {
+        renderSources(data.sources);
+      }
+
+      // If not sufficient, show LLM-picked links (plain, no style)
+      if (data.sufficient === false && data.selected_links && data.selected_links.length > 0) {
+        appendMessage("Try checking one of these links for more info:", "bot");
+        data.selected_links.forEach((l: any) => {
+          appendMessage(`• ${l.text} — ${l.href}`, "bot");
+        });
+      }
+
+      if (data.visited_urls && data.visited_urls.length > 0) {
+        const urls = data.visited_urls;
+        let msg = "Pages visited:\n";
+        urls.forEach((url: string, idx: number) => {
+          msg += `• ${url}\n`;
+        });
+        msg += `\nYou can also view the last visited page for more details..`;
+        appendMessage(msg, "bot");
+      }
+
+    } catch (err) {
+      (thinkingBubble as any).thinkingText.textContent = "Error (smart QA). Please try again.";
+    }
+    questionInput.value = "";
   });
 };
 
