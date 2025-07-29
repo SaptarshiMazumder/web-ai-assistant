@@ -7,6 +7,10 @@ from graph_smart_qa import smartqa_log_relay
 from api import qa_router, site_qa_router, smart_qa_router, chroma_router
 
 load_dotenv()
+import sys
+import asyncio
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 if not openai_api_key:

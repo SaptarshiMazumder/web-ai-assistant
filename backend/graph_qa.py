@@ -74,6 +74,7 @@ def retrieve_node(state: State) -> State:
 
 
 def answer_node(state: State) -> State:
+    print("Came inside answer_node")
     question = state.question
     relevant_docs = state.retrieved_docs
      # PRINT RETRIEVED CHUNKS HERE
@@ -81,7 +82,7 @@ def answer_node(state: State) -> State:
     for i, d in enumerate(relevant_docs):
         url = d.metadata.get("url")
         print(f"[Chunk {i}] (url: {url})")
-        print(d.page_content[:500])  # print first 500 chars for brevity
+        print(d.page_content)  # print first 500 chars for brevity
         print("------")
     print("======================\n")
     def format_chunk(doc):

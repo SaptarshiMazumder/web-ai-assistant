@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from graph_qa import qa_graph, State
@@ -6,8 +6,8 @@ from graph_site_qa import ask_site_handler
 from graph_smart_qa import smart_qa_graph
 from state import SmartHopState, SmartQARequest
 import os
-# --- Page QA API ---
 
+# --- Page QA API ---
 class QARequest(BaseModel):
     text: str
     question: str
@@ -25,7 +25,6 @@ async def ask(request: QARequest):
     }
 
 # --- Site QA API ---
-
 class SiteQARequest(BaseModel):
     question: str
     urls: List[str]
@@ -37,11 +36,13 @@ async def ask_site(request: SiteQARequest):
     return await ask_site_handler(request)
 
 # --- Smart Hop QA API ---
-
 smart_qa_router = APIRouter()
 
 @smart_qa_router.post("/ask-smart")
 async def ask_smart(request: SmartQARequest):
+    print(f"Received {len(request.links)} links from frontend:")
+    for l in request.links:
+        print(f"  - {l.get('text', '')[:60]} → {l.get('href')}")
     result = await smart_qa_graph.ainvoke(
         SmartHopState(
             text=request.text,
@@ -53,6 +54,16 @@ async def ask_smart(request: SmartQARequest):
             original_domain=request.page_url.split('/')[2] if '://' in request.page_url else ""
         )
     )
+
+    # Clean print for backend log/debugging
+    print("\n\n===== SMART QA TRACE =====")
+    print(f"✅ Sufficient: {result['sufficient']}")
+    print(f"🔗 Visited URLs ({len(result['visited_urls'])}):")
+    for url in result['visited_urls']:
+        print(f"   - {url}")
+    print(f"\n🧠 Final Answer:\n{result['answer'][:500]}...\n")
+    print("===== END OF TRACE =====\n")
+
     return {
         "answer": result["answer"],
         "sources": result["sources"],
@@ -60,7 +71,7 @@ async def ask_smart(request: SmartQARequest):
         "sufficient": result["sufficient"],
     }
 
-
+# --- Chroma debug API ---
 class PageData(BaseModel):
     url: str
     html: str
@@ -70,11 +81,9 @@ chroma_router = APIRouter()
 
 @chroma_router.get("/chroma_exists")
 async def chroma_exists(domain: str = Query(...)):
-    # Check if chroma db folder for this domain exists (e.g., backend/chroma_db/<domain>)
     print(f"Checking if chroma db exists for domain: {domain}")
     path = f"backend/chroma_db/{domain}"
     return {"exists": os.path.exists(path)}
-
 
 @chroma_router.post("/add_page_data")
 async def add_page_data(data: PageData):
@@ -82,6 +91,5 @@ async def add_page_data(data: PageData):
     print(f"Domain: {data.domain}")
     print(f"URL: {data.url}")
     print(f"HTML length: {len(data.html)}")
-    # For debug, print the first 200 chars only:
     print(f"First part of HTML: {data.html[:200]!r}")
     return {"ok": True}

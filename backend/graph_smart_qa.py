@@ -1,33 +1,32 @@
 import os
-import json
-import re
-import requests
-from bs4 import BeautifulSoup
+import asyncio
+from typing import List, Dict, Any, Optional, Set
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
+
 from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, END
 
 from graph_qa import enhance_query_node, retrieve_node, answer_node
 from state import SmartHopState
+from smart_parallel import (
+    llm_select_relevant_links,
+    scrape_and_qa_many,
+    PageQAResult,
+)
 from utils import extract_json_from_text
-from playwright.async_api import async_playwright
-import time
-from urllib.parse import urljoin
 import sys
-import asyncio
-from asyncio import Queue
 
 if sys.platform.startswith("win"):
+    import asyncio
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-# Logging utility to relay messages to the frontend
+# --- Log relay (keep for compatibility) ---
+from asyncio import Queue
 class SmartQALogRelay:
     def __init__(self):
-        self.queues = []
+        self.queues: List[Queue] = []
 
     def register(self):
         q = Queue()
@@ -38,184 +37,225 @@ class SmartQALogRelay:
         if q in self.queues:
             self.queues.remove(q)
 
-    def log(self, msg):
+    def log(self, msg: str):
+        print(msg)
         for q in self.queues:
             q.put_nowait(msg)
 
     def clear(self):
         self.queues.clear()
-
 smartqa_log_relay = SmartQALogRelay()
 
-def log(msg):
-    print(msg)
+def log(msg: str):
     smartqa_log_relay.log(msg)
 
+DEFAULT_MAX_HOPS = 5
+DEFAULT_K_LINKS = 3
+DEFAULT_MAX_CONCURRENCY = 3
+DEFAULT_TOTAL_PAGE_BUDGET = 25  # safety
 
-def answer_sufficiency_llm_node(state):
+async def _run_page_qa_once(
+    text: str,
+    question: str,
+    page_url: str | None
+) -> PageQAResult:
+    print(f"\n⚡ [QA DEBUG] Running QA on: {page_url}")
+    class S:
+        pass
+    s = S()
+    s.text = text
+    s.question = question
+    s.enhanced_query = ""
+    s.docs = []
+    s.retrieved_docs = []
+    s.answer = ""
+    s.used_chunks = []
+    s.page_url = page_url
+
+    s = enhance_query_node(s)
+    s = retrieve_node(s)
+    s = answer_node(s)
+    print(f"⚡ [QA DEBUG] Finished QA on: {page_url}\n")
+    return PageQAResult(
+        url=page_url or "",
+        text=text,
+        answer=s.answer,
+        sources=s.used_chunks,
+        sufficient=None
+    )
+
+
+async def _is_sufficient(question: str, answer: str) -> bool:
     prompt = (
-        f"Question: {state['question']}\n"
-        f"Answer given: {state['answer']}\n\n"
+        f"Question: {question}\n"
+        f"Answer given: {answer}\n\n"
         "Based on the answer, is the user's question fully answered with clear and specific information? "
-        "Reply with only 'YES' if it is enough, or 'NO' if it is not clear/specific enough."
+        "Reply with only 'YES' or 'NO'"
     )
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0)
     result = llm.invoke([{"role": "user", "content": prompt}])
-    sufficient = "yes" in result.content.strip().lower()
-    state["sufficient"] = sufficient
-    return state
+    out = (result.content or "").strip().lower()
+    print(f"⚡ [SUFFICIENCY] {out}")
+    return "yes" in out
 
-def llm_select_relevant_links_node(state):
+def _same_domain(url: str, original_domain: str) -> bool:
     
+    return urlparse(url).netloc == original_domain
     
-    links = state["links"][:30]
-    prompt = (
-        f"Question: {state['question']}\n"
-        "Here are available links from the page:\n" +
-        "\n".join([f"- {l['text']} ({l['href']})" for l in links]) +
-        "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-        "Reply with a JSON array of up to 3 objects with 'text' and 'href'."
-    )
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    output = result.content.strip()
-    json_str = extract_json_from_text(output)
-    try:
-        if json_str is None:
-            raise ValueError("No JSON array found in LLM output")
-        selected_links = json.loads(json_str)
-        if not isinstance(selected_links, list):
-            raise ValueError
-        state["selected_links"] = selected_links[:3]
-    except Exception:
-        state["selected_links"] = []
-    print(f"Selected links: {state['selected_links']}")
-    return state
 
-def retrieve_and_answer_node(state: SmartHopState) -> SmartHopState:
-    s1 = enhance_query_node(state=type("S", (), dict(**state.dict()))())
-    s1 = retrieve_node(s1)
-    s1 = answer_node(s1)
-    state.answer = s1.answer
-    state.sources = s1.used_chunks
-    log(state.answer)
+async def smart_qa_runner(
+    init_state: SmartHopState,
+    *,
+    max_hops: int = DEFAULT_MAX_HOPS,
+    k_links: int = DEFAULT_K_LINKS,
+    max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
+    total_page_budget: int = DEFAULT_TOTAL_PAGE_BUDGET,
+) -> Dict[str, Any]:
+    question = init_state.question
+    original_domain = init_state.original_domain
+    if not original_domain:
+        original_domain = urlparse(init_state.page_url).netloc if init_state.page_url else ""
+    visited: Set[str] = set(init_state.visited_urls or [])
+    hops_used = init_state.hops or 0
 
-    return state
+    # BFS queue: list of dict nodes that hold page data
+    queue: List[Dict[str, Any]] = [{
+        "page_url": init_state.page_url,
+        "text": init_state.text,
+        "links": init_state.links or [],
+        "depth": 0
+    }]
 
-def check_sufficiency_node(state: SmartHopState) -> SmartHopState:
-    out = answer_sufficiency_llm_node({
-        "question": state.question,
-        "answer": state.answer
-    })
-    state.sufficient = out["sufficient"]
-    return state
+    best_partial: Optional[PageQAResult] = None
+    pages_seen = 0
 
-def pick_next_link_node(state: SmartHopState) -> SmartHopState:
-    from urllib.parse import urlparse
-    original_domain = state.original_domain or urlparse(state.page_url).netloc
-    unvisited_links = [
-        l for l in state.links
-        if l["href"] not in (state.visited_urls or [])
-        and urlparse(l["href"]).netloc == original_domain
-    ]
-    if not unvisited_links:
-        state.selected_link = None
-        return state
-    out = llm_select_relevant_links_node({
-        "question": state.question,
-        "links": unvisited_links,
-    })
-    next_links = out.get("selected_links", [])
-    state.selected_link = next_links[0] if next_links else None
-    return state
+    while queue:
+        node = queue.pop(0)
+        page_url = node["page_url"]
+        text = node["text"]
+        links = node["links"]
+        depth = node["depth"]
 
+        # if page_url and page_url in visited:
+        #     print(f"⚡ [SKIP] Already visited: {page_url}")
+        #     continue
+        if page_url:
+            visited.add(page_url)
 
-def _blocking_browser_scrape(url: str, headless: bool = True):
-    import sys
-    import asyncio
+        if pages_seen >= total_page_budget:
+            log("⚠️ Page budget exceeded. Stopping.")
+            break
+        pages_seen += 1
 
-    # Ensure correct policy ALSO inside the thread
-    if sys.platform.startswith("win"):
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        log(f"\n📄 [Depth {depth}] QA on: {page_url or '(initial page)'}")
+        print(f"🧪 This page had {len(links)} input links.")
 
-    async def _run():
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(url, timeout=12000)
-            try:
-                # await page.wait_for_load_state("networkidle", timeout=1000)
-                await page.wait_for_load_state("load", timeout=1000)
+        # 1) Run QA on this page
+        qa_result = await _run_page_qa_once(text=text, question=question, page_url=page_url)
+        sufficient = await _is_sufficient(question, qa_result.answer)
+        qa_result.sufficient = sufficient
 
-            except Exception:
-                pass
-            html = await page.content()
-            current_url = page.url
-            await browser.close()
-            return html, current_url
+        # Keep best partial (in case we never get a sufficient one)
+        if best_partial is None or (len(qa_result.answer) > len(best_partial.answer)):
+            best_partial = qa_result
 
-    return asyncio.run(_run())
-
-
-async def fetch_link_node(state: SmartHopState) -> SmartHopState:
-    if not state.selected_link:
-        return state
-
-    url = state.selected_link["href"]
-    state.visited_urls.append(url)
-
-    try:
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            html, final_url = await loop.run_in_executor(pool, _blocking_browser_scrape, url, False)
-
-        soup = BeautifulSoup(html, "html.parser")
-        state.text = soup.get_text(separator="\n", strip=True)
-        state.page_url = final_url
-
-        page_links = [
-            {
-                "text": a.get_text(strip=True),
-                "href": urljoin(final_url, a.get("href"))
+        log(f"🧪 Sufficient? {sufficient}")
+        if sufficient:
+            # Return immediately
+            return {
+                "answer": qa_result.answer,
+                "sources": qa_result.sources,
+                "visited_urls": list(visited),
+                "sufficient": True
             }
-            for a in soup.find_all("a", href=True)
-            if a.get("href", "").startswith(("http", "/"))
+
+        # 2) No? Then expand IF we still have budget/hops
+        if depth >= max_hops:
+            log(f"⛔ Max hops ({max_hops}) reached at depth {depth}. No expansion.")
+            continue
+
+        # Filter links (same domain, unvisited)
+        candidate_links = [
+            l for l in links
+            if l.get("href", "").startswith("http")
+            and l["href"] not in visited
+            and _same_domain(l["href"], original_domain)
         ]
-        state.links = [l for l in page_links if l["href"].startswith("http")]
-        state.hops += 1
-        log(f"Fetched and parsed: {final_url}")
+        print(f"🔍 Found {len(candidate_links)} candidate links:")
+        for l in candidate_links:
+            print(f"   - {l.get('text', '')[:40]} → {l.get('href')}")
 
-    except Exception as e:
-        print(f"[fetch_link_node] Failed: {e}")
-        state.selected_link = None
+        if not candidate_links:
+            log("🔚 No candidate links to expand from this page.")
+            continue
 
-    return state
+        # 3) Let the LLM select the top-k links (no scraping yet!)
+        selected_links = llm_select_relevant_links(
+            question=question,
+            links=candidate_links,
+            k=k_links
+        )
+        print(f"🧠 LLM selected links: {selected_links}")
 
-def hops_remaining(state: SmartHopState):
-    return state.hops < 5
+        if not selected_links:
+            log("🤷 LLM returned no useful follow-up links.")
+            continue
 
-graph = StateGraph(SmartHopState)
-graph.add_node("RetrieveAndAnswer", retrieve_and_answer_node)
-graph.add_node("CheckSufficiency", check_sufficiency_node)
-graph.add_node("PickNextLink", pick_next_link_node)
-graph.add_node("FetchLink", fetch_link_node)
-graph.add_edge("RetrieveAndAnswer", "CheckSufficiency")
-graph.add_conditional_edges(
-    "CheckSufficiency",
-    lambda s: "end" if s.sufficient or not hops_remaining(s) or not s.links else "pick",
-    {
-        "end": END,
-        "pick": "PickNextLink",
-    },
-)
-graph.add_conditional_edges(
-    "PickNextLink",
-    lambda s: "end" if s.selected_link is None else "fetch",
-    {
-        "end": END,
-        "fetch": "FetchLink",
-    },
-)
-graph.add_edge("FetchLink", "RetrieveAndAnswer")
-graph.set_entry_point("RetrieveAndAnswer")
-smart_qa_graph = graph.compile()
+        log(f"🔗 LLM selected {len(selected_links)} links to fetch in parallel (k={k_links}).")
+
+        # 4) Scrape + QA those links in parallel
+        child_results: List[PageQAResult] = await scrape_and_qa_many(
+            selected_links,
+            question=question,
+            max_concurrency=max_concurrency,
+            original_domain=original_domain,
+            log_fn=log
+        )
+
+        # 5) Check if any are sufficient → early stop
+        for cr in child_results:
+            if cr.url:
+                visited.add(cr.url)
+            if cr.sufficient:
+                log(f"✅ Found sufficient answer at: {cr.url}")
+                return {
+                    "answer": cr.answer,
+                    "sources": cr.sources,
+                    "visited_urls": list(visited),
+                    "sufficient": True
+                }
+
+        # 6) Otherwise, push children (insufficient ones) back into the queue (BFS)
+        for cr in child_results:
+            if cr.url:
+                visited.add(cr.url)
+            queue.append({
+                "page_url": cr.url,
+                "text": cr.text,
+                "links": cr.links,
+                "depth": depth + 1
+            })
+
+    # If we exit the loop without a sufficient answer:
+    log("❗ No sufficient answer found. Returning best partial.")
+    if best_partial:
+        return {
+            "answer": best_partial.answer,
+            "sources": best_partial.sources,
+            "visited_urls": list(visited),
+            "sufficient": False
+        }
+    else:
+        return {
+            "answer": "Sorry, I couldn't find a sufficient answer on the pages I visited.",
+            "sources": [],
+            "visited_urls": list(visited),
+            "sufficient": False
+        }
+
+# --- Compatibility wrapper for api.py ---
+class _SmartQAGraphCompat:
+    async def ainvoke(self, state: SmartHopState):
+        return await smart_qa_runner(state)
+
+smart_qa_graph = _SmartQAGraphCompat()
