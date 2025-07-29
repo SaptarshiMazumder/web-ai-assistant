@@ -71,6 +71,7 @@ async def _run_page_qa_once(
     s.answer = ""
     s.used_chunks = []
     s.page_url = page_url
+    s.sufficient = False
 
     s = enhance_query_node(s)
     s = retrieve_node(s)
@@ -81,25 +82,25 @@ async def _run_page_qa_once(
         text=text,
         answer=s.answer,
         sources=s.used_chunks,
-        sufficient=None
+        sufficient=s.sufficient
     )
 
 
-async def _is_sufficient(question: str, answer: str) -> bool:
-    prompt = (
-        f"Question: {question}\n"
-        f"Answer given: {answer}\n\n"
-        "Based on the answer, is the user's question fully answered with clear and specific information? "
-        "Reply with only 'YES' or 'NO'"
-    )
-    llm = ChatOpenAI(api_key=openai_api_key, 
-                    #  model="gpt-3.5-turbo", 
-                     model="gpt-4o", 
-                     temperature=0)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    out = (result.content or "").strip().lower()
-    print(f"⚡ [SUFFICIENCY] {out}")
-    return "yes" in out
+# async def _is_sufficient(question: str, answer: str) -> bool:
+#     prompt = (
+#         f"Question: {question}\n"
+#         f"Answer given: {answer}\n\n"
+#         "Based on the answer, is the user's question fully answered with clear and specific information? "
+#         "Reply with only 'YES' or 'NO'"
+#     )
+#     llm = ChatOpenAI(api_key=openai_api_key, 
+#                     #  model="gpt-3.5-turbo", 
+#                      model="gpt-4o", 
+#                      temperature=0)
+#     result = llm.invoke([{"role": "user", "content": prompt}])
+#     out = (result.content or "").strip().lower()
+#     print(f"⚡ [SUFFICIENCY] {out}")
+#     return "yes" in out
 
 def _same_domain(url: str, original_domain: str) -> bool:
     
@@ -155,8 +156,8 @@ async def smart_qa_runner(
 
         # 1) Run QA on this page
         qa_result = await _run_page_qa_once(text=text, question=question, page_url=page_url)
-        sufficient = await _is_sufficient(question, qa_result.answer)
-        qa_result.sufficient = sufficient
+        sufficient = qa_result.sufficient
+
 
         # Keep best partial (in case we never get a sufficient one)
         if best_partial is None or (len(qa_result.answer) > len(best_partial.answer)):

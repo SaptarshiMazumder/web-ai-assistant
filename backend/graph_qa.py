@@ -73,16 +73,16 @@ def retrieve_node(state: State) -> State:
     return state
 
 
+
 def answer_node(state: State) -> State:
     print("Came inside answer_node")
     question = state.question
     relevant_docs = state.retrieved_docs
-     # PRINT RETRIEVED CHUNKS HERE
     print("\n=== Retrieved Chunks ===")
     for i, d in enumerate(relevant_docs):
         url = d.metadata.get("url")
         print(f"[Chunk {i}] (url: {url})")
-        print(d.page_content)  # print first 500 chars for brevity
+        print(d.page_content)
         print("------")
     print("======================\n")
     def format_chunk(doc):
@@ -93,27 +93,39 @@ def answer_node(state: State) -> State:
         return chunk_text
 
     context = "\n\n---\n\n".join([format_chunk(d) for d in relevant_docs])
-    # context = "\n\n---\n\n".join([d.page_content for d in relevant_docs])
 
+    # New prompt: answer + sufficiency
     prompt = (
-    "You are an expert assistant. Using only the current webpage content below, answer the user's question as fully and helpfully as possible. "
-    "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
-    "If you use information from the current webpage content, include a relevant short excerpt from the source as a citation at the end of your answer in this format: (Source: <short excerpt>...) "
-    "If you cannot find a direct answer in the current webpage content, briefly summarize anything related or useful you did find, "
-    "and politely inform the user that the answer does not seem to be present on this page. "
-    "Say that they may navigate to a more relevant page on this website, or search online if necessary, "
-    "if they think that the information is not present on this page. "
-    "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
-    "If you cite information from a source, always include the full URL shown in the source."
-    "If you cannot find a direct answer, suggest a related page by URL if present in the current webpage content."
-    "Do not hallucinate. Always provide a helpful response.\n\n"
-    f"CONTENT:\n{context}\n\n"
-    f"USER QUESTION: {question}\n\n"
+        "You are an expert assistant. Using only the content below, answer the user's question as fully and helpfully as possible. "
+        "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
+        "If you use information from the content, include a relevant short excerpt from the source as a citation at the end of your answer in this format: (Source: <short excerpt>...) "
+        "If you cannot find a direct answer in the content, briefly summarize anything related or useful you did find, "
+        "and politely inform the user that the answer does not seem to be present on this page. "
+        "Say that they may navigate to a more relevant page on this website, or search online if necessary, "
+        "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
+        "If you cite information from a source, always include the full URL shown in the source."
+        "If you cannot find a direct answer, suggest a related page by URL if present in the content."
+        "Do not hallucinate."
+        "If you are confident the answer is specific and fully resolves the question, append the line 'SUFFICIENT: YES' at the end of your answer. "
+        "If not, append 'SUFFICIENT: NO'.\n\n"
+        f"CONTENT:\n{context}\n\n"
+        f"USER QUESTION: {question}\n\n"
     )
 
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0.2)
     result = llm.invoke([{"role": "user", "content": prompt}])
-    answer = result.content.strip()
+    answer_full = (result.content or "").strip()
+
+    if "\nSUFFICIENT: YES" in answer_full:
+        answer = answer_full.split("\nSUFFICIENT: YES")[0].strip()
+        sufficient = True
+    elif "\nSUFFICIENT: NO" in answer_full:
+        answer = answer_full.split("\nSUFFICIENT: NO")[0].strip()
+        sufficient = False
+    else:
+        answer = answer_full
+        sufficient = False
+
     def get_excerpt(doc):
         txt = doc.page_content.strip().replace('\n', ' ')
         return txt[:80] + "..." if len(txt) > 80 else txt
@@ -131,7 +143,10 @@ def answer_node(state: State) -> State:
         }
         for d in relevant_docs
     ]
+    # <-- Add this -->
+    state.sufficient = sufficient
     return state
+
 
 qa_builder = StateGraph(State)
 qa_builder.add_node("EnhanceQuery", enhance_query_node)

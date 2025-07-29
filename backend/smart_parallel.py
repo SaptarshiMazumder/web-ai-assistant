@@ -118,6 +118,7 @@ async def run_page_qa(
     s.answer = ""
     s.used_chunks = []
     s.page_url = page_url
+    s.sufficient = False
 
     s = enhance_query_node(s)
     s = retrieve_node(s)
@@ -126,19 +127,21 @@ async def run_page_qa(
         url=page_url,
         text=text,
         answer=s.answer,
-        sources=s.used_chunks
+        sources=s.used_chunks,
+        sufficient=s.sufficient
     )
 
-async def _is_sufficient(question: str, answer: str) -> bool:
-    prompt = (
-        f"Question: {question}\n"
-        f"Answer given: {answer}\n\n"
-        "Based on the answer, is the user's question fully answered with clear and specific information? "
-        "Reply with only 'YES' if it is enough, or 'NO' if it is not clear/specific enough."
-    )
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    return "yes" in (result.content or "").strip().lower()
+
+# async def _is_sufficient(question: str, answer: str) -> bool:
+#     prompt = (
+#         f"Question: {question}\n"
+#         f"Answer given: {answer}\n\n"
+#         "Based on the answer, is the user's question fully answered with clear and specific information? "
+#         "Reply with only 'YES' if it is enough, or 'NO' if it is not clear/specific enough."
+#     )
+#     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+#     result = llm.invoke([{"role": "user", "content": prompt}])
+#     return "yes" in (result.content or "").strip().lower()
 
 async def scrape_and_qa_many(
     selected_links: list,
@@ -164,9 +167,8 @@ async def scrape_and_qa_many(
                     text=scraped["text"],
                     question=question,
                     page_url=scraped["url"]
-                )
+        )
                 qa_res.links = scraped["links"]
-                qa_res.sufficient = await _is_sufficient(question, qa_res.answer)
                 if log_fn:
                     log_fn(f"   ↳ Done: {href} | sufficient={qa_res.sufficient}")
                 return qa_res
