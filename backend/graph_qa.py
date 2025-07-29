@@ -95,19 +95,34 @@ def answer_node(state: State) -> State:
     context = "\n\n---\n\n".join([format_chunk(d) for d in relevant_docs])
 
     # New prompt: answer + sufficiency
+    # prompt = (
+    #     "You are an expert assistant. Using only the content below, answer the user's question as fully and helpfully as possible. "
+    #     "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
+    #     "If you use information from the content, include a relevant short excerpt from the source as a citation at the end of your answer in this format: (Source: <short excerpt>...) "
+    #     "If you cannot find a direct answer in the content, briefly summarize anything related or useful you did find, "
+    #     "and politely inform the user that the answer does not seem to be present on this page. "
+    #     "Say that they may navigate to a more relevant page on this website, or search online if necessary, "
+    #     "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
+    #     "If you cite information from a source, always include the full URL shown in the source."
+    #     "If you cannot find a direct answer, suggest a related page by URL if present in the content."
+    #     "Do not hallucinate."
+    #     "If you are confident the answer is specific and fully resolves the question, append the line 'SUFFICIENT: YES' at the end of your answer. "
+    #     "If not, append 'SUFFICIENT: NO'.\n\n"
+    #     f"CONTENT:\n{context}\n\n"
+    #     f"USER QUESTION: {question}\n\n"
+    # )
+
     prompt = (
-        "You are an expert assistant. Using only the content below, answer the user's question as fully and helpfully as possible. "
-        "Use your understanding and reasoning, quote, paraphrase, or summarize as appropriate. "
-        "If you use information from the content, include a relevant short excerpt from the source as a citation at the end of your answer in this format: (Source: <short excerpt>...) "
-        "If you cannot find a direct answer in the content, briefly summarize anything related or useful you did find, "
-        "and politely inform the user that the answer does not seem to be present on this page. "
-        "Say that they may navigate to a more relevant page on this website, or search online if necessary, "
+        "You are an expert assistant. Using only the content below, answer the user's question as accurately and helpfully as possible. "
+        "If you find an exact passage, code block, or table that answers the question, quote it directly (preserving formatting). "
+        "If quoting alone is insufficient, paraphrase or summarize using your reasoning. "
+        "Always include a short excerpt and the full URL as a citation if you use content from a source. "
+        "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggesting a relevant page by URL if available. "
         "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible. "
         "If you cite information from a source, always include the full URL shown in the source."
         "If you cannot find a direct answer, suggest a related page by URL if present in the content."
         "Do not hallucinate."
-        "If you are confident the answer is specific and fully resolves the question, append the line 'SUFFICIENT: YES' at the end of your answer. "
-        "If not, append 'SUFFICIENT: NO'.\n\n"
+        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.\n\n"
         f"CONTENT:\n{context}\n\n"
         f"USER QUESTION: {question}\n\n"
     )

@@ -78,10 +78,43 @@ async def _scrape_with_playwright(url: str, timeout: int = 12000) -> tuple[str, 
     )
     return html, final_url
 
+def extract_tables_as_markdown(soup):
+    tables = []
+    for table in soup.find_all("table"):
+        md = []
+        # Headers
+        headers = []
+        for th in table.find_all("th"):
+            headers.append(th.get_text(strip=True))
+        # Rows
+        rows = []
+        for tr in table.find_all("tr"):
+            cells = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
+            if cells:
+                rows.append(cells)
+        # Markdown table formatting
+        if not headers and rows:
+            headers = rows[0]
+            rows = rows[1:]
+        if headers:
+            md.append("| " + " | ".join(headers) + " |")
+            md.append("| " + " | ".join("---" for _ in headers) + " |")
+        for row in rows:
+            md.append("| " + " | ".join(row) + " |")
+        tables.append("\n".join(md))
+    return tables
+
 
 def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[str, str]]]:
     soup = BeautifulSoup(html, "html.parser")
+    # Get main text as before
     text = soup.get_text(separator="\n", strip=True)
+    # Extract tables as Markdown
+    table_chunks = extract_tables_as_markdown(soup)
+    # Append all tables (as markdown) to the end of text (or you can choose to prepend)
+    if table_chunks:
+        text += "\n\n=== EXTRACTED TABLES ===\n" + "\n\n".join(table_chunks)
+    # Get links as before
     page_links = [
         {
             "text": a.get_text(strip=True),
@@ -92,6 +125,7 @@ def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[st
     ]
     page_links = [l for l in page_links if l["href"].startswith("http")]
     return text, page_links
+
 
 async def scrape_one(url: str) -> Dict[str, Any]:
     html, final_url = await _scrape_with_playwright(url)
