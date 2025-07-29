@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from langgraph.graph import StateGraph, END
+from urllib.parse import urlparse
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
