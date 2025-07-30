@@ -28,122 +28,23 @@ function ensureContentScript(tabId: number, cb: () => void) {
   });
 }
 
+function renderUsefulLinks(links: {text: string, href: string}[]) {
+    // Remove previous block if you want only one set of links at a time
+    const prev = document.getElementById('useful-links-block');
+    if (prev) prev.remove();
 
-function getActiveTabInfo(): Promise<{ url: string; domain: string; origin: string }> {
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const url = tabs[0]?.url || "";
-      try {
-        const urlObj = new URL(url);
-        resolve({
-          url,
-          domain: urlObj.hostname,
-          origin: urlObj.origin,
-        });
-      } catch {
-        resolve({ url, domain: "", origin: "" });
-      }
-    });
-  });
+    if (!links || !links.length) return;
+    const chatDiv = document.getElementById("chat")!;
+    const block = document.createElement('div');
+    block.id = 'useful-links-block';
+    block.className = 'system-message';
+    block.style.margin = '16px 0';
+    block.innerHTML = `<b>You may find these links useful:</b><ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
+        ${links.map(link => `<li><a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a></li>`).join('')}
+    </ul>`;
+    chatDiv.appendChild(block);
+    block.scrollIntoView({behavior: "smooth"});
 }
-// Code to crawl the entire site and store in chroma
-// window.addEventListener("DOMContentLoaded", () => {
-//   getActiveTabInfo().then(({ url, domain, origin }) => {
-//     if (!domain || domain.startsWith("chrome") || domain === "newtab") {
-//       debugLog("Not crawling: Not a website page.");
-//       return;
-//     }
-//     debugLog(`Loaded sidepanel. Hostname: ${domain}`);
-//     fetch(`${BACKEND_BASE_URL}/chroma_exists?domain=${domain}`)
-//       .then(resp => resp.json())
-//       .then(async ({ exists }) => {
-//         debugLog(`Chroma exists for ${domain}? ${exists}`);
-//         if (!exists) {
-//           debugLog("Starting crawl...");
-//           await crawlEntireSite(origin, domain, BACKEND_BASE_URL);
-//           debugLog("Crawling complete!");
-//         }
-//       }).catch(e => debugLog("Error checking chroma: " + e));
-//   });
-// });
-
-
-
-
-// Helper to extract all same-domain links from a page's HTML
-// Helper to extract all same-domain links from a page's HTML
-function extractSameDomainLinksFromHtml(html: string, baseUrl: string): { text: string; href: string }[] {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-  const baseUrlObject = new URL(baseUrl); // Create URL object for the base
-  const baseUrlOrigin = baseUrlObject.origin;
-
-  debugLog(`Extracting same-domain links from: ${baseUrlOrigin}`);
-
-  let allLinks = Array.from(doc.querySelectorAll("a"));
-
-  const sameDomainValidLinks = allLinks.filter(link => {
-    try {
-      // Resolve the link.href relative to the baseUrl
-      const linkUrl = new URL(link.href, baseUrl); // <--- THIS IS THE KEY CHANGE
-
-      // Ensure it's http/https scheme
-      if (!['http:', 'https:'].includes(linkUrl.protocol)) {
-        debugLog(`Skipping non-http/https link: ${link.href} (resolved to: ${linkUrl.href})`);
-        return false;
-      }
-
-      // Ensure it's the same origin
-      // Note: linkUrl.origin will now correctly resolve to pvp.co.jp if link.href was relative to it
-      if (linkUrl.origin !== baseUrlOrigin) {
-        debugLog(`Skipping cross-origin link: ${link.href} (resolved to: ${linkUrl.href}, Base Origin: ${baseUrlOrigin})`);
-        return false;
-      }
-
-      // If you want to avoid fragment identifiers (#hash), you can strip them
-      // linkUrl.hash = ''; // Optional: uncomment if you want to treat #links as the same page
-      // Or if you want to filter out links that are just fragments on the same page:
-      // if (linkUrl.href === baseUrlObject.href && link.href.startsWith('#')) return false;
-
-
-      return true;
-    } catch (e) {
-      debugLog(`Invalid URL in link href, skipping: ${link.href} - Error: ${e}`);
-      return false;
-    }
-  });
-
-  // Your iana.org logging (can remain or be removed, as it's separate from crawling)
-  // const ianaLinks = sameDomainValidLinks.filter(link => link.href.includes("iana.org"));
-  // ianaLinks.forEach(link => {
-  //   debugLog(`IANA Link (for debug): text="${link.text}", href="${link.href}"`);
-  // });
-
-  const uniqueLinksMap = new Map<string, { text: string; href: string }>();
-  sameDomainValidLinks.forEach(link => {
-    // Re-resolve the URL to store its absolute form consistently in the map/queue
-    // This is important because the 'href' property of the DOM element might still be relative
-    // if you didn't mutate it. By passing 'link.href' and 'baseUrl' to new URL(),
-    // you get the canonical, absolute URL.
-    const absoluteHref = new URL(link.href, baseUrl).href;
-    if (!uniqueLinksMap.has(absoluteHref)) {
-      uniqueLinksMap.set(absoluteHref, { text: link.text, href: absoluteHref });
-    }
-  });
-
-  return Array.from(uniqueLinksMap.values());
-}
-
-
-
-
-
-
-
-// crawl webpage end
-
-
-
 
 
 const chatDiv = document.getElementById("chat")!;
@@ -153,16 +54,56 @@ const questionInput = document.getElementById("question")! as HTMLInputElement;
 // --- SmartQA log streaming ---
 let smartqaLogSocket: WebSocket | null = null;
 
+function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[]) {
+    const prev = document.getElementById('llm-links-block');
+    if (prev) prev.remove();
+
+    const chatDiv = document.getElementById("chat")!;
+    const block = document.createElement('div');
+    block.id = 'llm-links-block';
+    block.className = 'system-message';
+    block.style.margin = '16px 0';
+    block.innerHTML = `
+        <div style="margin-bottom:6px;">${llmMessage}</div>
+        <ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
+            ${links.map(link => `<li><a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a></li>`).join('')}
+        </ul>`;
+    chatDiv.appendChild(block);
+    block.scrollIntoView({behavior: "smooth"});
+}
+
+
 function connectSmartQALogSocket(logContainer: HTMLElement) {
   if (smartqaLogSocket) {
     smartqaLogSocket.close();
   }
   smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
-  smartqaLogSocket.onmessage = (event) => {
+smartqaLogSocket.onmessage = (event) => {
+    // Try to parse as JSON for selected_links
+    let isJSON = false;
+    let msg: any;
+    try {
+        msg = JSON.parse(event.data);
+        isJSON = true;
+    } catch (e) {
+        // Not JSON
+    }
+     // --- New: Handle LLM links message ---
+    if (isJSON && msg && msg.type === "llm_links_message") {
+        renderLLMLinksMessage(msg.message, msg.links);
+        return;
+    }
+    if (isJSON && msg && msg.type === "selected_links") {
+        renderUsefulLinks(msg.links);
+        return;
+    }
+
+    // Otherwise treat as a log/thinking bubble (if you want logs in the chat area instead, see below)
     logContainer.style.display = "block";
     logContainer.innerText += event.data + "\n";
     logContainer.scrollTop = logContainer.scrollHeight;
-  };
+};
+
   smartqaLogSocket.onclose = () => {
     // Optionally reconnect or clear
   };
@@ -201,31 +142,6 @@ inputRow?.insertBefore(dropdown, smartBtn.nextSibling);
 
 
 
-// -- REMOVE the "site QA" button section completely --
-
-// Utility: get all same-domain links from the active tab
-// function getSameDomainLinksFromActiveTab(): Promise<string[]> {
-//   return new Promise((resolve) => {
-//     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-//       if (!tabs[0]?.id) {
-//         resolve([]);
-//         return;
-//       }
-//       chrome.tabs.sendMessage(
-//         tabs[0].id,
-//         { type: "GET_ALL_SAME_DOMAIN_LINKS" },
-//         (resp) => {
-//           if (chrome.runtime.lastError || !resp) {
-//             // Content script not loaded or tab not accessible
-//             resolve([]);
-//             return;
-//           }
-//           resolve(resp.links || []);
-//         }
-//       );
-//     });
-//   });
-// }
 
 // Existing: get current page data
 function getPageDataFromActiveTab(): Promise<{

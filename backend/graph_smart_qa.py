@@ -14,7 +14,7 @@ from smart_parallel import (
     PageQAResult,
 )
 from utils import extract_json_from_text
-import sys
+import sys, json as _json
 
 if sys.platform.startswith("win"):
     import asyncio
@@ -199,6 +199,18 @@ async def smart_qa_runner(
             links=candidate_links,
             k=k_links
         )
+        if selected_links:
+    # Spawn a background task to generate the LLM message and stream when ready
+            async def send_llm_links_message():
+                msg = await llm_links_message(question, selected_links)
+                log(_json.dumps({
+                    "type": "llm_links_message",
+                    "message": msg,
+                    "links": selected_links
+                }))
+            asyncio.create_task(send_llm_links_message())
+
+
         print(f"🧠 LLM selected links: {selected_links}")
 
         if not selected_links:
@@ -256,6 +268,26 @@ async def smart_qa_runner(
             "visited_urls": list(visited),
             "sufficient": False
         }
+
+async def llm_links_message(question: str, links: list[dict]) -> str:
+    if not links:
+        return ""
+    from langchain_openai import ChatOpenAI
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    # Compose a nice prompt
+    prompt = (
+        f"You are an assistant helping a user find answers on a website.\n"
+        f"User's question: {question}\n"
+        "You found the following links which might help answer the user's question:\n"
+        + "\n".join(f"- {l['text'] or l['href']}" for l in links[:5]) + "\n"
+        "Write a friendly, brief message to the user, explaining that you found these links and are now exploring them to find the answer. "
+        "Mention that you'll continue to look for the best information. "
+        "Keep it short, natural, and relevant to the question."
+    )
+    result = llm.invoke([{"role": "user", "content": prompt}])
+    return result.content.strip()
+
 
 # --- Compatibility wrapper for api.py ---
 class _SmartQAGraphCompat:
