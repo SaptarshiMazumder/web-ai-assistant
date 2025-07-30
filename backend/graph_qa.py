@@ -7,6 +7,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import Chroma
 from langgraph.graph import StateGraph, END
 from urllib.parse import urlparse
+from logging_relay import log, smartqa_log_relay
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 

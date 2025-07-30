@@ -15,6 +15,7 @@ from smart_parallel import (
 )
 from utils import extract_json_from_text
 import sys, json as _json
+from logging_relay import log, smartqa_log_relay
 
 if sys.platform.startswith("win"):
     import asyncio
@@ -24,30 +25,9 @@ openai_api_key = os.environ.get("OPENAI_API_KEY")
 
 # --- Log relay (keep for compatibility) ---
 from asyncio import Queue
-class SmartQALogRelay:
-    def __init__(self):
-        self.queues: List[Queue] = []
 
-    def register(self):
-        q = Queue()
-        self.queues.append(q)
-        return q
 
-    def unregister(self, q):
-        if q in self.queues:
-            self.queues.remove(q)
 
-    def log(self, msg: str):
-        print(msg)
-        for q in self.queues:
-            q.put_nowait(msg)
-
-    def clear(self):
-        self.queues.clear()
-smartqa_log_relay = SmartQALogRelay()
-
-def log(msg: str):
-    smartqa_log_relay.log(msg)
 
 DEFAULT_MAX_HOPS = 5
 DEFAULT_K_LINKS = 3
