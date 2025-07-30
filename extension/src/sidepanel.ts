@@ -90,16 +90,14 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
   }
   smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
 smartqaLogSocket.onmessage = (event) => {
-    // Try to parse as JSON for selected_links
     let isJSON = false;
     let msg: any;
     try {
         msg = JSON.parse(event.data);
         isJSON = true;
-    } catch (e) {
-        // Not JSON
-    }
-     // --- New: Handle LLM links message ---
+    } catch (e) {}
+
+    // 1. LLM links (unchanged)
     if (isJSON && msg && msg.type === "llm_links_message") {
         renderLLMLinksMessage(msg.message, msg.links);
         return;
@@ -109,11 +107,13 @@ smartqaLogSocket.onmessage = (event) => {
         return;
     }
 
-    // Otherwise treat as a log/thinking bubble (if you want logs in the chat area instead, see below)
-    logContainer.style.display = "block";
-    logContainer.innerText += event.data + "\n";
+    // 3. All other logs: append as a <div> (NOT with innerText)
+    const logLine = document.createElement("div");
+    logLine.textContent = event.data;
+    logContainer.appendChild(logLine);
     logContainer.scrollTop = logContainer.scrollHeight;
 };
+
 
   smartqaLogSocket.onclose = () => {
     // Optionally reconnect or clear

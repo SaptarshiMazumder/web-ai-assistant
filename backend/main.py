@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from graph_smart_qa import smartqa_log_relay
+from logging_relay import smartqa_log_relay
 
 from api import qa_router, site_qa_router, smart_qa_router, chroma_router
 

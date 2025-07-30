@@ -1,4 +1,4 @@
-import os
+import os, json
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
@@ -81,12 +81,23 @@ def answer_node(state: State) -> State:
     question = state.question
     relevant_docs = state.retrieved_docs
     print("\n=== Retrieved Chunks ===")
+    log("Retrieving relevant content from the page...")
     for i, d in enumerate(relevant_docs):
         url = d.metadata.get("url")
         print(f"[Chunk {i}] (url: {url})")
         print(d.page_content)
         print("------")
     print("======================\n")
+    log(json.dumps({
+        "type": "retrieved_chunks",
+        "chunks": [
+            {
+                "text": d.page_content,
+                "url": d.metadata.get("url")
+            }
+            for d in relevant_docs  # or whatever your retrieved doc variable is
+        ]
+    }))
     def format_chunk(doc):
         url = doc.metadata.get("url")
         chunk_text = doc.page_content
