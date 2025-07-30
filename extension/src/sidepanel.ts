@@ -66,11 +66,22 @@ function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: s
     block.innerHTML = `
         <div style="margin-bottom:6px;">${llmMessage}</div>
         <ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
-            ${links.map(link => `<li><a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a></li>`).join('')}
+            ${
+                links.map(link =>
+                    `<li>
+                        <a href="${link.href}" target="_blank" rel="noopener noreferrer">
+                            ${link.text || link.href}
+                        </a>
+                        <br>
+                        <small style="color:#888;">${link.href}</small>
+                    </li>`
+                ).join('')
+            }
         </ul>`;
     chatDiv.appendChild(block);
     block.scrollIntoView({behavior: "smooth"});
 }
+
 
 
 function connectSmartQALogSocket(logContainer: HTMLElement) {

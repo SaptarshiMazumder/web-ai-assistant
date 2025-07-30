@@ -273,17 +273,21 @@ async def llm_links_message(question: str, links: list[dict]) -> str:
     if not links:
         return ""
     from langchain_openai import ChatOpenAI
+    from urllib.parse import urlparse
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    # Extract website/domain from the first link
+    first_url = links[0].get("href", "") if links else ""
+    website = urlparse(first_url).netloc if first_url else "website"
     # Compose a nice prompt
     prompt = (
-        f"You are an assistant helping a user find answers on a website.\n"
+        f"You are a master of the {website}.\n"
         f"User's question: {question}\n"
         "You found the following links which might help answer the user's question:\n"
         + "\n".join(f"- {l['text'] or l['href']}" for l in links[:5]) + "\n"
-        "Write a friendly, brief message to the user, explaining that you found these links and are now exploring them to find the answer. "
-        "Mention that you'll continue to look for the best information. "
-        "Keep it short, natural, and relevant to the question."
+        "Write a friendly, brief message to the user, explaining that I found these pages where you can find <whatever query they have>"
+        "I'm currently browsing through them to see if I can find the info.... "
+        "No greetings or introductions needed. Just Make the tone sound like you are currently browsing"
     )
     result = llm.invoke([{"role": "user", "content": prompt}])
     return result.content.strip()
