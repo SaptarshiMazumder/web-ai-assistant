@@ -30,8 +30,8 @@ from asyncio import Queue
 
 
 DEFAULT_MAX_HOPS = 5
-DEFAULT_K_LINKS = 3
-DEFAULT_MAX_CONCURRENCY = 3
+DEFAULT_K_LINKS = 5
+DEFAULT_MAX_CONCURRENCY = 5
 DEFAULT_TOTAL_PAGE_BUDGET = 25  # safety
 
 async def _run_page_qa_once(

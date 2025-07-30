@@ -43,7 +43,7 @@ def llm_select_relevant_links(
         "\n\nWhich of these links are most likely to contain the answer or helpful information? "
         "Only select links that are highly likely to contain a direct, complete answer."
         "If you are not at least 80% confident that a link contains the answer, do not include it."
-        "Reply with a JSON array of up to 3 objects with 'text' and 'href'."
+        "Reply with a JSON array of up to max 5 objects with 'text' and 'href'."
 
     )
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
