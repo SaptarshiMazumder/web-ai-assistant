@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from langchain_openai import ChatOpenAI
 
-from graph_qa import enhance_query_node, retrieve_node, answer_node
+from graph_qa import answer_node, State
 from state import SmartHopState
 from smart_parallel import (
     llm_select_relevant_links,
@@ -39,29 +39,13 @@ async def _run_page_qa_once(
     question: str,
     page_url: str | None
 ) -> PageQAResult:
-    print(f"\n⚡ [QA DEBUG] Running QA on: {page_url}")
-    class S:
-        pass
-    s = S()
-    s.text = text
-    s.question = question
-    s.enhanced_query = ""
-    s.docs = []
-    s.retrieved_docs = []
-    s.answer = ""
-    s.used_chunks = []
-    s.page_url = page_url
-    s.sufficient = False
-
-    s = enhance_query_node(s)
-    s = retrieve_node(s)
+    s = State(text=text, question=question, page_url=page_url or "")
     s = answer_node(s)
-    print(f"⚡ [QA DEBUG] Finished QA on: {page_url}\n")
     return PageQAResult(
         url=page_url or "",
         text=text,
         answer=s.answer,
-        sources=s.used_chunks,
+        sources=[],  # No more chunk sources
         sufficient=s.sufficient
     )
 

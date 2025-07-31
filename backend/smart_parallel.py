@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 import sys
 import asyncio
 from markdownify import markdownify
-
+from urllib.parse import urlparse
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 
 from langchain_openai import ChatOpenAI
 
-from graph_qa import enhance_query_node, retrieve_node, answer_node
+from graph_qa import answer_node, State
 from utils import extract_json_from_text
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
@@ -126,10 +126,30 @@ def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[st
     return markdown, page_links
 
 
+# Helper functions
+
+
+import hashlib
+RAW_DIR = "raw_pages"
+os.makedirs(RAW_DIR, exist_ok=True)
+def safe_filename_from_url(url):
+    domain = urlparse(url).netloc.replace(":", "_")
+    # Hash the full URL for uniqueness
+    url_hash = hashlib.sha1(url.encode('utf-8')).hexdigest()[:8]
+    return f"{domain}_{url_hash}.txt"
+
+def save_raw_text(url, text):
+    fname = safe_filename_from_url(url)
+    fpath = os.path.join(RAW_DIR, fname)
+    with open(fpath, "w", encoding="utf-8") as f:
+        f.write(text)
+
 
 async def scrape_one(url: str) -> Dict[str, Any]:
     html, final_url = await _scrape_with_playwright(url)
     text, links = _extract_text_and_links(html, final_url)
+
+    save_raw_text(final_url, text)
     return {
         "url": final_url,
         "text": text,
@@ -141,30 +161,15 @@ async def run_page_qa(
     question: str,
     page_url: str
 ) -> PageQAResult:
-    class S:
-        pass
-    s = S()
-    s.text = text
-    s.question = question
-    s.enhanced_query = ""
-    s.docs = []
-    s.retrieved_docs = []
-    s.answer = ""
-    s.used_chunks = []
-    s.page_url = page_url
-    s.sufficient = False
-
-    s = enhance_query_node(s)
-    s = retrieve_node(s)
+    s = State(text=text, question=question, page_url=page_url)
     s = answer_node(s)
     return PageQAResult(
         url=page_url,
         text=text,
         answer=s.answer,
-        sources=s.used_chunks,
+        sources=[],  # No more chunk sources
         sufficient=s.sufficient
     )
-
 
 # async def _is_sufficient(question: str, answer: str) -> bool:
 #     prompt = (

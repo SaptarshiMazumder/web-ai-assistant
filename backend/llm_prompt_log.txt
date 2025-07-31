@@ -1,0 +1,2495 @@
+
+========================================
+[2025-07-31 12:43:34] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+Skip to content
+LangGraph Platform docs are moving! Find the LangGraph Platform docs at the new LangChain Docs site!
+ 
+Type to start searching
+ GitHub
+0.6.1
+16.5k
+2.8k
+Copy page
+▾
+LangGraph
+Get started
+Get started
+Quickstarts
+Quickstarts
+Start with a prebuilt agent
+Build a custom workflow
+Build a custom workflow
+Overview
+1. Build a basic chatbot
+2. Add tools
+3. Add memory
+4. Add human-in-the-loop
+5. Customize state
+6. Time travel
+Run a local server
+General concepts
+General concepts
+Workflows & agents
+Agent architectures
+Guides
+Reference
+Examples
+Additional resources
+Table of contents
+Learn LangGraph basics
+Overview¶
+
+LangGraph is built for developers who want to build powerful, adaptable AI agents. Developers choose LangGraph for:
+
+Reliability and controllability. Steer agent actions with moderation checks and human-in-the-loop approvals. LangGraph persists context for long-running workflows, keeping your agents on course.
+Low-level and extensible. Build custom agents with fully descriptive, low-level primitives free from rigid abstractions that limit customization. Design scalable multi-agent systems, with each agent serving a specific role tailored to your use case.
+First-class streaming support. With token-by-token streaming and streaming of intermediate steps, LangGraph gives users clear visibility into agent reasoning and actions as they unfold in real time.
+Learn LangGraph basics¶
+
+To get acquainted with LangGraph's key concepts and features, complete the following LangGraph basics tutorials series:
+
+Build a basic chatbot
+Add tools
+Add memory
+Add human-in-the-loop controls
+Customize state
+Time travel
+
+In completing this series of tutorials, you will build a support chatbot in LangGraph that can:
+
+✅ Answer common questions by searching the web
+✅ Maintain conversation state across calls
+✅ Route complex queries to a human for review
+✅ Use custom state to control its behavior
+✅ Rewind and explore alternative conversation paths
+ Back to top
+Previous
+Start with a prebuilt agent
+Next
+1. Build a basic chatbot
+Copyright © 2025 LangChain, Inc | Consent Preferences
+Made with Material for MkDocs
+
+USER QUESTION: how to add tools to llm
+(Page URL: https://langchain-ai.github.io/langgraph/concepts/why-langgraph/)
+----------------------------------------
+
+
+========================================
+[2025-07-31 12:43:46] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+Skip to content
+
+LangGraph Platform docs are moving! Find the LangGraph Platform docs at the new LangChain Docs site!
+
+![logo
+!logo]( "LangGraph")
+
+LangGraph
+
+2. Add tools
+
+Type to start searching
+
+GitHub
+
+* 0.6.2
+* 16.5k
+* 2.8k
+
+Copy page ▾
+
+Copy as Markdown for LLMs
+
+View LangGraph's llms.txt
+
+* Get started
+* Guides
+* Reference
+* Examples
+* Additional resources
+
+![logo
+!logo]( "LangGraph")
+LangGraph
+
+GitHub
+
+* 0.6.2
+* 16.5k
+* 2.8k
+
+* Get started
+
+  Get started
+  + Quickstarts
+
+    Quickstarts
+    - Start with a prebuilt agent
+    - Build a custom workflow
+
+      Build a custom workflow
+      * Overview
+      * 1. Build a basic chatbot
+      * 2. Add tools
+
+        2. Add tools
+
+        Table of contents
+        + Prerequisites
+        + 1. Install the search engine
+        + 2. Configure your environment
+        + 3. Define the tool
+        + 4. Define the graph
+        + 5. Create a function to run the tools
+        + 6. Define the conditional\_edges
+        + 7. Visualize the graph (optional)
+        + 8. Ask the bot questions
+        + 9. Use prebuilts
+        + Next steps
+      * 3. Add memory
+      * 4. Add human-in-the-loop
+      * 5. Customize state
+      * 6. Time travel
+    - Run a local server
+  + General concepts
+
+    General concepts
+    - Workflows & agents
+    - Agent architectures
+* Guides
+* Reference
+* Examples
+* Additional resources
+
+Table of contents
+
+* Prerequisites
+* 1. Install the search engine
+* 2. Configure your environment
+* 3. Define the tool
+* 4. Define the graph
+* 5. Create a function to run the tools
+* 6. Define the conditional\_edges
+* 7. Visualize the graph (optional)
+* 8. Ask the bot questions
+* 9. Use prebuilts
+* Next steps
+
+# Add tools¶
+
+To handle queries that your chatbot can't answer "from memory", integrate a web search tool. The chatbot can use this tool to find relevant information and provide better responses.
+
+Note
+
+This tutorial builds on Build a basic chatbot.
+
+## Prerequisites¶
+
+Before you start this tutorial, ensure you have the following:
+
+* An API key for the Tavily Search Engine.
+
+## 1. Install the search engine¶
+
+Install the requirements to use the Tavily Search Engine:
+
+```
+pip install -U langchain-tavily
+
+```
+
+## 2. Configure your environment¶
+
+Configure your environment with your search engine API key:
+
+```
+import os
+
+os.environ["TAVILY_API_KEY"] = "tvly-..."
+
+```
+
+## 3. Define the tool¶
+
+Define the web search tool:
+
+*API Reference: TavilySearch*
+
+```
+from langchain_tavily import TavilySearch
+
+tool = TavilySearch(max_results=2)
+tools = [tool]
+tool.invoke("What's a 'node' in LangGraph?")
+
+```
+
+The results are page summaries our chat bot can use to answer questions:
+
+```
+{'query': "What's a 'node' in LangGraph?",
+'follow_up_questions': None,
+'answer': None,
+'images': [],
+'results': [{'title': "Introduction to LangGraph: A Beginner's Guide - Medium",
+'url': '
+'content': 'Stateful Graph: LangGraph revolves around the concept of a stateful graph, where each node in the graph represents a step in your computation, and the graph maintains a state that is passed around and updated as the computation progresses. LangGraph supports conditional edges, allowing you to dynamically determine the next node to execute based on the current state of the graph. We define nodes for classifying the input, handling greetings, and handling search queries. def classify_input_node(state): LangGraph is a versatile tool for building complex, stateful applications with LLMs. By understanding its core concepts and working through simple examples, beginners can start to leverage its power for their projects. Remember to pay attention to state management, conditional edges, and ensuring there are no dead-end nodes in your graph.',
+'score': 0.7065353,
+'raw_content': None},
+{'title': 'LangGraph Tutorial: What Is LangGraph and How to Use It?',
+'url': '
+'content': 'LangGraph is a library within the LangChain ecosystem that provides a framework for defining, coordinating, and executing multiple LLM agents (or chains) in a structured and efficient manner. By managing the flow of data and the sequence of operations, LangGraph allows developers to focus on the high-level logic of their applications rather than the intricacies of agent coordination. Whether you need a chatbot that can handle various types of user requests or a multi-agent system that performs complex tasks, LangGraph provides the tools to build exactly what you need. LangGraph significantly simplifies the development of complex LLM applications by providing a structured framework for managing state and coordinating agent interactions.',
+'score': 0.5008063,
+'raw_content': None}],
+'response_time': 1.38}
+
+```
+
+## 4. Define the graph¶
+
+For the `StateGraph` you created in the first tutorial, add `bind_tools` on the LLM. This lets the LLM know the correct JSON format to use if it wants to use the search engine.
+
+Let's first select our LLM:
+
+[OpenAI](#__tabbed_1_1)[Anthropic](#__tabbed_1_2)[Azure](#__tabbed_1_3)[Google Gemini](#__tabbed_1_4)[AWS Bedrock](#__tabbed_1_5)
+
+```
+pip install -U "langchain[openai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+llm = init_chat_model("openai:gpt-4.1")
+
+```
+
+👉 Read the OpenAI integration docs
+
+```
+pip install -U "langchain[anthropic]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["ANTHROPIC_API_KEY"] = "sk-..."
+
+llm = init_chat_model("anthropic:claude-3-5-sonnet-latest")
+
+```
+
+👉 Read the Anthropic integration docs
+
+```
+pip install -U "langchain[openai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["AZURE_OPENAI_API_KEY"] = "..."
+os.environ["AZURE_OPENAI_ENDPOINT"] = "..."
+os.environ["OPENAI_API_VERSION"] = "2025-03-01-preview"
+
+llm = init_chat_model(
+    "azure_openai:gpt-4.1",
+    azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
+)
+
+```
+
+👉 Read the Azure integration docs
+
+```
+pip install -U "langchain[google-genai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["GOOGLE_API_KEY"] = "..."
+
+llm = init_chat_model("google_genai:gemini-2.0-flash")
+
+```
+
+👉 Read the Google GenAI integration docs
+
+```
+pip install -U "langchain[aws]"
+
+```
+
+```
+from langchain.chat_models import init_chat_model
+
+# Follow the steps here to configure your credentials:
+# 
+
+llm = init_chat_model(
+    "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    model_provider="bedrock_converse",
+)
+
+```
+
+👉 Read the AWS Bedrock integration docs
+
+We can now incorporate it into a `StateGraph`:
+
+*API Reference: StateGraph | START | END | add\_messages*
+
+```
+from typing import Annotated
+
+from typing_extensions import TypedDict
+
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+graph_builder = StateGraph(State)
+
+# Modification: tell the LLM which tools it can call
+llm_with_tools = llm.bind_tools(tools)
+
+def chatbot(state: State):
+    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+
+graph_builder.add_node("chatbot", chatbot)
+
+```
+
+## 5. Create a function to run the tools¶
+
+Now, create a function to run the tools if they are called. Do this by adding the tools to a new node called `BasicToolNode` that checks the most recent message in the state and calls tools if the message contains `tool_calls`. It relies on the LLM's `tool_calling` support, which is available in Anthropic, OpenAI, Google Gemini, and a number of other LLM providers.
+
+*API Reference: ToolMessage*
+
+```
+import json
+
+from langchain_core.messages import ToolMessage
+
+class BasicToolNode:
+    """A node that runs the tools requested in the last AIMessage."""
+
+    def __init__(self, tools: list) -> None:
+        self.tools_by_name = {tool.name: tool for tool in tools}
+
+    def __call__(self, inputs: dict):
+        if messages := inputs.get("messages", []):
+            message = messages[-1]
+        else:
+            raise ValueError("No message found in input")
+        outputs = []
+        for tool_call in message.tool_calls:
+            tool_result = self.tools_by_name[tool_call["name"]].invoke(
+                tool_call["args"]
+            )
+            outputs.append(
+                ToolMessage(
+                    content=json.dumps(tool_result),
+                    name=tool_call["name"],
+                    tool_call_id=tool_call["id"],
+                )
+            )
+        return {"messages": outputs}
+
+tool_node = BasicToolNode(tools=[tool])
+graph_builder.add_node("tools", tool_node)
+
+```
+
+Note
+
+If you do not want to build this yourself in the future, you can use LangGraph's prebuilt ToolNode.
+
+## 6. Define the `conditional_edges`¶
+
+With the tool node added, now you can define the `conditional_edges`.
+
+**Edges** route the control flow from one node to the next. **Conditional edges** start from a single node and usually contain "if" statements to route to different nodes depending on the current graph state. These functions receive the current graph `state` and return a string or list of strings indicating which node(s) to call next.
+
+Next, define a router function called `route_tools` that checks for `tool_calls` in the chatbot's output. Provide this function to the graph by calling `add_conditional_edges`, which tells the graph that whenever the `chatbot` node completes to check this function to see where to go next.
+
+The condition will route to `tools` if tool calls are present and `END` if not. Because the condition can return `END`, you do not need to explicitly set a `finish_point` this time.
+
+```
+def route_tools(
+    state: State,
+):
+    """
+    Use in the conditional_edge to route to the ToolNode if the last message
+    has tool calls. Otherwise, route to the end.
+    """
+    if isinstance(state, list):
+        ai_message = state[-1]
+    elif messages := state.get("messages", []):
+        ai_message = messages[-1]
+    else:
+        raise ValueError(f"No messages found in input state to tool_edge: {state}")
+    if hasattr(ai_message, "tool_calls") and len(ai_message.tool_calls) > 0:
+        return "tools"
+    return END
+
+# The `tools_condition` function returns "tools" if the chatbot asks to use a tool, and "END" if
+# it is fine directly responding. This conditional routing defines the main agent loop.
+graph_builder.add_conditional_edges(
+    "chatbot",
+    route_tools,
+    # The following dictionary lets you tell the graph to interpret the condition's outputs as a specific node
+    # It defaults to the identity function, but if you
+    # want to use a node named something else apart from "tools",
+    # You can update the value of the dictionary to something else
+    # e.g., "tools": "my_tools"
+    {"tools": "tools", END: END},
+)
+# Any time a tool is called, we return to the chatbot to decide the next step
+graph_builder.add_edge("tools", "chatbot")
+graph_builder.add_edge(START, "chatbot")
+graph = graph_builder.compile()
+
+```
+
+Note
+
+You can replace this with the prebuilt tools\_condition to be more concise.
+
+## 7. Visualize the graph (optional)¶
+
+You can visualize the graph using the `get_graph` method and one of the "draw" methods, like `draw_ascii` or `draw_png`. The `draw` methods each require additional dependencies.
+
+```
+from IPython.display import Image, display
+
+try:
+    display(Image(graph.get_graph().draw_mermaid_png()))
+except Exception:
+    # This requires some extra dependencies and is optional
+    pass
+
+```
+
+!chatbot-with-tools-diagram
+
+## 8. Ask the bot questions¶
+
+Now you can ask the chatbot questions outside its training data:
+
+```
+def stream_graph_updates(user_input: str):
+    for event in graph.stream({"messages": [{"role": "user", "content": user_input}]}):
+        for value in event.values():
+            print("Assistant:", value["messages"][-1].content)
+
+while True:
+    try:
+        user_input = input("User: ")
+        if user_input.lower() in ["quit", "exit", "q"]:
+            print("Goodbye!")
+            break
+
+        stream_graph_updates(user_input)
+    except:
+        # fallback if input() is not available
+        user_input = "What do you know about LangGraph?"
+        print("User: " + user_input)
+        stream_graph_updates(user_input)
+        break
+
+```
+
+```
+Assistant: [{'text': "To provide you with accurate and up-to-date information about LangGraph, I'll need to search for the latest details. Let me do that for you.", 'type': 'text'}, {'id': 'toolu_01Q588CszHaSvvP2MxRq9zRD', 'input': {'query': 'LangGraph AI tool information'}, 'name': 'tavily_search_results_json', 'type': 'tool_use'}]
+Assistant: [{"url": " "content": "LangGraph sets the foundation for how we can build and scale AI workloads \u2014 from conversational agents, complex task automation, to custom LLM-backed experiences that 'just work'. The next chapter in building complex production-ready features with LLMs is agentic, and with LangGraph and LangSmith, LangChain delivers an out-of-the-box solution ..."}, {"url": " "content": "Overview. LangGraph is a library for building stateful, multi-actor applications with LLMs, used to create agent and multi-agent workflows. Compared to other LLM frameworks, it offers these core benefits: cycles, controllability, and persistence. LangGraph allows you to define flows that involve cycles, essential for most agentic architectures ..."}]
+Assistant: Based on the search results, I can provide you with information about LangGraph:
+
+1. Purpose:
+   LangGraph is a library designed for building stateful, multi-actor applications with Large Language Models (LLMs). It's particularly useful for creating agent and multi-agent workflows.
+
+2. Developer:
+   LangGraph is developed by LangChain, a company known for its tools and frameworks in the AI and LLM space.
+
+3. Key Features:
+   - Cycles: LangGraph allows the definition of flows that involve cycles, which is essential for most agentic architectures.
+   - Controllability: It offers enhanced control over the application flow.
+   - Persistence: The library provides ways to maintain state and persistence in LLM-based applications.
+
+4. Use Cases:
+   LangGraph can be used for various applications, including:
+   - Conversational agents
+   - Complex task automation
+   - Custom LLM-backed experiences
+
+5. Integration:
+   LangGraph works in conjunction with LangSmith, another tool by LangChain, to provide an out-of-the-box solution for building complex, production-ready features with LLMs.
+
+6. Significance:
+...
+   LangGraph is noted to offer unique benefits compared to other LLM frameworks, particularly in its ability to handle cycles, provide controllability, and maintain persistence.
+
+LangGraph appears to be a significant tool in the evolving landscape of LLM-based application development, offering developers new ways to create more complex, stateful, and interactive AI systems.
+Goodbye!
+
+```
+
+## 9. Use prebuilts¶
+
+For ease of use, adjust your code to replace the following with LangGraph prebuilt components. These have built in functionality like parallel API execution.
+
+* `BasicToolNode` is replaced with the prebuilt ToolNode
+* `route_tools` is replaced with the prebuilt tools\_condition
+
+[OpenAI](#__tabbed_2_1)[Anthropic](#__tabbed_2_2)[Azure](#__tabbed_2_3)[Google Gemini](#__tabbed_2_4)[AWS Bedrock](#__tabbed_2_5)
+
+```
+pip install -U "langchain[openai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+llm = init_chat_model("openai:gpt-4.1")
+
+```
+
+👉 Read the OpenAI integration docs
+
+```
+pip install -U "langchain[anthropic]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["ANTHROPIC_API_KEY"] = "sk-..."
+
+llm = init_chat_model("anthropic:claude-3-5-sonnet-latest")
+
+```
+
+👉 Read the Anthropic integration docs
+
+```
+pip install -U "langchain[openai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["AZURE_OPENAI_API_KEY"] = "..."
+os.environ["AZURE_OPENAI_ENDPOINT"] = "..."
+os.environ["OPENAI_API_VERSION"] = "2025-03-01-preview"
+
+llm = init_chat_model(
+    "azure_openai:gpt-4.1",
+    azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
+)
+
+```
+
+👉 Read the Azure integration docs
+
+```
+pip install -U "langchain[google-genai]"
+
+```
+
+```
+import os
+from langchain.chat_models import init_chat_model
+
+os.environ["GOOGLE_API_KEY"] = "..."
+
+llm = init_chat_model("google_genai:gemini-2.0-flash")
+
+```
+
+👉 Read the Google GenAI integration docs
+
+```
+pip install -U "langchain[aws]"
+
+```
+
+```
+from langchain.chat_models import init_chat_model
+
+# Follow the steps here to configure your credentials:
+# 
+
+llm = init_chat_model(
+    "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    model_provider="bedrock_converse",
+)
+
+```
+
+👉 Read the AWS Bedrock integration docs
+
+```
+from typing import Annotated
+
+from langchain_tavily import TavilySearch
+from langchain_core.messages import BaseMessage
+from typing_extensions import TypedDict
+
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+graph_builder = StateGraph(State)
+
+tool = TavilySearch(max_results=2)
+tools = [tool]
+llm_with_tools = llm.bind_tools(tools)
+
+def chatbot(state: State):
+    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+
+graph_builder.add_node("chatbot", chatbot)
+
+tool_node = ToolNode(tools=[tool])
+graph_builder.add_node("tools", tool_node)
+
+graph_builder.add_conditional_edges(
+    "chatbot",
+    tools_condition,
+)
+# Any time a tool is called, we return to the chatbot to decide the next step
+graph_builder.add_edge("tools", "chatbot")
+graph_builder.add_edge(START, "chatbot")
+graph = graph_builder.compile()
+
+```
+
+**Congratulations!** You've created a conversational agent in LangGraph that can use a search engine to retrieve updated information when needed. Now it can handle a wider range of user queries.
+
+To inspect all the steps your agent just took, check out this LangSmith trace.
+
+## Next steps¶
+
+The chatbot cannot remember past interactions on its own, which limits its ability to have coherent, multi-turn conversations. In the next part, you will add **memory** to address this.
+
+Back to top
+
+Previous
+
+1. Build a basic chatbot
+Next
+
+3. Add memory
+
+Copyright © 2025 LangChain, Inc | Consent Preferences
+
+Made with
+Material for MkDocs
+
+USER QUESTION: how to add tools to llm
+(Page URL: https://langchain-ai.github.io/langgraph/tutorials/get-started/2-add-tools/)
+----------------------------------------
+
+
+========================================
+[2025-07-31 12:45:47] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+Skip to main content
+Plans
+Plans
+Watch & Tablet Plans
+Phones & devices
+Phones & devices
+Deals
+Deals
+Coverage
+Coverage
+Join Us
+Join Us
+Find a store
+Contact & support
+Contact & support
+Cart
+Search
+My account
+Login
+
+more from T-Mobile
+
+WIRELESS
+BUSINESS
+PREPAID
+INTERNET
+T-Satellite is here. 
+
+Never miss a message.
+
+We’re on a mission to end dead zones. Stay in touch almost anywhere you go with the only mobile + satellite network that works automatically with the phone in your pocket.
+
+Find out more
+
+Texting & select satellite-optimized apps with compatible device in most outdoor areas in the U.S. where you can see the sky. Satellite service, including text to 911, may be delayed, limited, or unavailable. Included with Experience Beyond plans or $10/mo.; auto renews monthly. Cancel anytime in T-Life App.
+
+Plus, we’ll pay off your current phone up to $800 a line.
+
+That’s right, we'll pay off your current phone via virtual prepaid Mastercard. You get to keep it. AND you can get a new iPhone 16 Pro on us. All on our new Experience Beyond—for up to 4 lines. It's never been easier to switch.
+
+Via 24 monthly bill credits when you port an eligible number and add a new line on Experience Beyond. If you cancel entire account before receiving 24 credits, credits stop and balance on required finance agreement is due; contact us. Bill credits end if you pay off device early. For well-qualified customers; plus tax & $10 device connection charge. Virtual prepaid card typically takes 15 days. 
+Get full terms
+
+ONLINE EXCLUSIVE
+
+Get up to $300 back when you sign up for T-Mobile 5G Home Internet.
+Via virtual prepaid Mastercard® when you sign up online and activate a qualifying new Home Internet line. Not available in retail. Allow 10 weeks. 
+Get full terms
+Shop our best deals.
+Digital exclusive
+SAMSUNG
+Get the new
+Galaxy Z Flip7 On Us.
+Plus, get a pair of Galaxy Buds3 Pro ($249.99 value) with your purchase. Via 24 monthly bill credits when you add a line on our Experience More or Experience Beyond plan. 
+Get full terms
+Digital exclusive
+SAMSUNG
+Get $1100 off the new Galaxy Z Fold7.
+No trade required. Plus, get a pair of Galaxy Buds3 Pro ($249.99 value) with your purchase. Via 24 monthly bill credits when you add a line on our Experience More or Experience Beyond plan. 
+Get full terms
+No trade required
+APPLE
+iPhone 14 On Us.
+Low down payments for all.
+Via 24 monthly bill credits when you port in an eligible number and add a line on a qualifying plan. 
+Get full terms
+Save on back-to-school
+FREE select smartphones.
+$0 down for all.
+Via 24 monthly bill credits when you add a new line on a qualifying plan. 
+Get full terms
+No trade required
+​​APPLE​
+iPhone 16e.
+On Us.
+Built for Apple Intelligence. Get one On Us via 24 monthly bill credits when you activate a new qualifying line and bring your number in from an eligible carrier. 
+Get full terms
+GOOGLE
+Pixel 9a and Pixel Buds A-Series On Us.
+Via 24 monthly bill credits and instant discount with a new line or eligible trade-in on most plans. 
+Get full terms
+SAVE ON BACK-TO-SCHOOL
+Hot tech at prices that make the grade.
+T-MOBILE 5G HOME INTERNET
+Get up to $300 back when you sign up online.
+Via virtual prepaid Mastercard® when you activate a qualifying new Home Internet Line. Not available in retail. Allow 10 weeks. 
+Get full terms
+
+If you cancel entire account before receiving 24 credits, credits stop and balance on required finance agreement is due; for phones, contact us. Bill credits end if you pay off device early. For well-qualified customers, plus tax & $35 device connection charge.
+
+Shop all deals
+Compare our most popular plans. 
+Essentials
+Experience More
+Experience Beyond
+Follow T-Mobile
+Instagram
+Facebook
+X
+You Tube
+English
+Español
+Even more plans
+International phone plans
+International passes
+Home Internet plans
+Phone and internet bundle package
+Hotspot data plans
+Smartwatch data plans
+Wireless business plans
+Shop cell phones by brand
+Apple iPhones
+Samsung Galaxy phones
+Google Pixel phones
+OnePlus phones
+T-Mobile Revvl phones
+Motorola Moto phones
+New featured cell phones
+New Samsung Galaxy S25
+New Samsung Galaxy S25 Plus
+New Samsung Galaxy S25 Ultra
+New Apple iPhone 16
+New Apple iPhone 16 Pro Max
+New Google Pixel 9 Pro
+New featured tablets, smartwatches & more
+Apple Watch Series 10 46mm
+Apple Watch Series 10 42mm
+Google Pixel Watch 3 (45mm)
+Google Pixel Watch 3 (41mm)
+T-Mobile SyncUP KIDS Watch 2
+Samsung Galaxy Watch Ultra 47MM
+Helpful consumer guides
+Dialed In
+Samsung Galaxy S25 vs. S24 Series
+Samsung Galaxy S25 vs. S25+ vs. S25 Ultra
+What is RCS & How is it Different
+Apple iPhone 16 vs. Plus vs. Pro vs. Pro Max
+T-Mobile customer benefits
+TV streaming deals
+T-Mobile Tuesdays
+In-flight wi-fi
+Refer-a-Friend
+Device protection plan
+Protection 360™ HomeTech
+Switch to T-Mobile
+How to switch to T-Mobile
+Try our 5G network
+Bring your own device
+Switch to T-Mobile from Verizon or AT&T
+Family freedom deal
+Cell phone trade-in
+Additional support
+View return policy
+Contact us
+Billing
+Emergency Broadband Benefit
+Free Internet for Students
+Redeem a rebate
+Domestic Violence Resources
+About T-Mobile
+Our Story
+T-Mobile careers
+Privacy Center
+Newsroom
+Corporate Responsibility
+About
+Investor relations
+Press
+Careers
+Deutsche Telekom
+Puerto Rico
+Privacy Notice
+Trust Center
+Privacy Center
+Consumer information
+Public safety/911
+Terms & conditions
+Terms of use
+Accessibility
+Open Internet
+Do Not Sell or Share My Personal Information
+Licenses & Patents
+Consumer Health Data Privacy Notice
+T-Mobile, the T logo, Magenta and the magenta color are registered trademarks of Deutsche Telekom AG.
+Instagram
+Facebook
+X
+You Tube
+
+© 2025 T‑Mobile USA, Inc.
+
+USER QUESTION: tell me about home internet plans and prices
+(Page URL: https://www.t-mobile.com/)
+----------------------------------------
+
+
+========================================
+[2025-07-31 12:45:57] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Log in
+
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+* [Plans](/home-internet/plans?INTNAV=tNav%3APlan)  Plans
+
+  + [Home Internet plans](/home-internet/plans?INTNAV=tNav%3APlans%3AHomeInternetPlan)
+  + [Home Internet ALL-IN plan](/home-internet/plans/all-in-unlimited-internet-plan?INTNAV=tNav%3APlans%3AHomeInternetAllinplan)
+  + Home Internet AWAY plan
+  + Home Internet Backup plan
+  + [Business Internet plan](/business/solutions/business-internet-services/small-business-internet?INTNAV=tNav%3APlans%3ASmallBusinessInternet)
+  + Prepaid Internet plan
+* [Internet Speed & Technology](/home-internet/how-5g-home-internet-works?INTNAV=tNav%3AHowItWorks)  Internet Speed & Technology
+
+  + [Industry Awards](/home-internet/awards?INTNAV=tNav%3AInternetSpeedAndTechnology%3AIndustryAwards)
+* [Internet deals](/home-internet/deals?INTNAV=tNav%3AInternetDeals)
+* [Support](/support/home-internet?INTNAV=tNav%3ASupport)  Support
+
+  + [Getting started](/support/home-internet?INTNAV=tNav%3ASupport%3AGettingStarted)
+  + [WiFi Gateway device](/support/home-internet/t-mobile-gateway?INTNAV=tNav%3ASupport%3AWiFiGatewayDevice)
+  + [Internet app](/support/home-internet/app?INTNAV=tNav%3ASupport%3AInternetApp)
+  + [Test Drive Worry-Free Trial](/support/home-internet/15-day-test-drive?INTNAV=tNav%3ASupport%3ATestDriveWorryFreeTrial)
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=tNav%3ASupport%3AHomeInternetFAQ)
+  + [Internet Troubleshooting](/home-internet/troubleshooting-support?INTNAV=tNav%3ASupport%3AInternetTroubleshooting)
+
+Contact & support  Contact & support
+
+* [Sales: 1-844-839-5057](tel:1-844-839-5057)
+* [Support: 1-844-275-9310](tel:1-844-275-9311)
+* [Check order status](/orders/order-status?INTNAV=tNav%3AContactAndSupport%3ACheckOrderStatus)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+My account
+ 
+ 
+
+[Log in](/signin?state=eyJpbnRlbnQiOiJMb2dpbiIsImJvb2ttYXJrVXJsIjoiaHR0cHM6Ly93d3cudC1tb2JpbGUuY29tL2hvbWUtaW50ZXJuZXQvY2hlY2stZWxpZ2liaWxpdHkifQ==&INTNAV=tNav:LogI) [Back to my account](/account/dashboard?INTNAV=tNav:BackToMyAccount)
+
+For Home Internet customers only
+
+* [Sign up for T-Mobile ID](/home-internet-signup?INTNAV=tNav%3AMyAccount%3ASignUpForTMobileID)
+
+* [Wireless](/?INTNAV=tNav%3AWireless)
+* Business
+* Prepaid
+* [Internet](/home-internet?INTNAV=tNav%3AInternet)
+
+[Skip to main content](#content-main)
+
+##
+
+# Join the provider ranked #1 in Customer Satisfaction by J.D. Power for National Home Wireless Internet Service.
+
+See what T-Mobile Home Internet plans are available at your address.
+
+Address
+
+ 
+
+Please enter your address Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+See available plans
+
+See plans
+
+Sticky See if Americas fastest growing 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Please enter your address Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+See available plans    See available plans
+
+I want 5G home internet service at:
+
+Edit   Edit
+
+See plans
+
+Existing T-Mobile Customer? Add 5G home internet can pay as little as $35/month with AutoPay and **ANY postpaid voice line**—but only while this offer lasts.
+
+Login to get started
+
+When you activate a qualifying new Home Internet line. Not available in retail. Get Full Terms
+
+* Looking for Internet for business?
+* Are you in Puerto Rico?
+
+T-Mobile received the highest score nationally among wireless internet providers in the J.D. Power 2024 U.S. Residential Internet Service Provider Satisfaction Study, which measures customers' satisfaction of service with their current internet provider. Visit jdpower.com/awards for more details.
+
+## It’s more than just Wi-Fi. It’s peace of mind.
+
+Our Rely, Amplified, and All-In plans include these great benefits:
+
+## 5-Year Price Guarantee
+
+We won’t raise your  
+ internet rate.
+
+Exclusions like taxes & fees apply.
+
+  Get full terms
+
+![](
+
+## 5-Year Price Guarantee
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Simple 15‑minute self‑install.
+
+Plus 24/7 support. If you need help, we’re here for you.
+
+!power-it-on-icon
+
+## Simple 15‑minute self‑install.
+
+## No monthly equipment fees or annual contracts.
+
+5G Gateway device included.
+
+!no-credit-check-icon
+
+## No monthly equipment fees or annual contracts.
+
+## Worry‑free 15‑day test drive.
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back.
+
+Get full terms
+
+!gateway-icon
+
+## Worry‑free 15‑day test drive.
+
+Cancel within 15 days of Home Internet service activation and submit redemption within 30 days of cancellation. Limited-time offer; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit; allow 2 bill cycles from completion of offer requirements. Max 1/account. May not be combinable with some offers or discounts.
+
+## Free 2-day shipping.
+
+Order today and get your gateway before you move.
+
+!shipping-icon
+
+## Free 2-day shipping.
+
+## Here’s what our customers have to say.
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+Travis F, Denver, CO
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+Cindy C, Harwood Heights, IL
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+Duane P, Oldsmar, FL
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+Janet D, Leoma, TN
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+## "Cut the cable and enjoy wifi."
+
+Ada G, Houston, TX
+
+## "Cut the cable and enjoy wifi."
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Susan V, Salem, OR
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Testimonials collected from actual satisfied T-Mobile Home Internet customers.
+
+**Home Internet Rely General Terms:** **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization**.Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be **slowed, suspended, terminated, or restricted** for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. See **Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+## Get $50 back when you switch to T-Mobile Home Internet via virtual Prepaid Mastercard® in 12 weeks.
+
+#### When you activate a new unlimited Home Internet line. Allow 12 weeks.
+
+$50 Back: Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Home Internet or Small Business Internet line. If you have cancelled Home Internet lines in past 90 days, you may need to reactivate them first. $50 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts.
+
+**$30/month price** with $20 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, voice line, and unlimited Home Internet line required. Existing customers must visit myT-Mobile.com. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$200 Back:** Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. $200 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months**. The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **Home Internet General Terms:** During congestion, Home Internet customers may notice speeds lower than other customers due to data prioritization. Not available in all areas. $35 assisted support or device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs (RPF) & Telco Recovery Fee (TRF) totaling $1.40 per data only line ($0.12 for RPF & $1.28 for TRF) apply; taxes/fees approx. 3-12% of bill. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. If canceling service, return gateway or pay up to $370. Video streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. AutoPay Pricing for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on 1st bill. Coverage not available in some areas. Network Management: Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. See Terms and Conditions (including arbitration provision) at www.T-Mobile.com for additional information.
+
+## This appears to be a business address.
+
+businessServiceAddress
+
+We'll redirect you to the T-Mobile for Business website to continue your journey.
+
+Continue
+
+[Check a different address](/home-internet/eligibility)
+
+## Hello! Want to stay logged in?
+
+To keep your accounts safe, you'll be automatically logged out in:
+
+#
+
+Yes, stay logged in
+
+No, log me out
+
+## Connect with T-Mobile Home Internet
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+* English
+* Español
+
+* ### Support
+
+   Support
+
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=fNav%3ASupport%3AHomeInternetFAQ)
+  + [Setup Wi-Fi Gateway](/home-internet/gateway?INTNAV=fNav%3ASupportSetupWiFiGateway)
+  + [Emergency Broadband Benefit](/customers/emergency-broadband-benefit?INTNAV=fNav%3ASupport%3AEmergencyBroadbandBenefit)
+* ### Get the app
+
+   Get the app
+
+  + [T-Life App](/home-internet/app?INTNAV=fNav%3AGetTheApp%3AT-LifeApp)
+* ### Consumer guides
+
+   Consumer guides
+
+  + [The Signal](/home-internet/the-signal?INTNAV=fNav%3AConsumerGuides%3ATheSignal)
+  + [Get Wi-Fi for less](/home-internet/the-signal/isp/how-to-get-wi-fi-for-less?INTNAV=fNav%3AConsumerGuides%3AHomeInternetGetWifIForLess)
+  + [Wi-Fi security essentials](/home-internet/the-signal/speed/wi-fi-security-essential-protections?INTNAV=fNav%3AConsumerGuides%3AWiFiSecurityEssentials)
+  + [Gaming internet speeds](/home-internet/the-signal/speed/the-internet-speed-you-need-for-gaming?INTNAV=fNav%3AConsumerGuides%3AGamingInternetSpeeds)
+
+[![T-Mobile](/content/dam/t-mobile/ntm/branding/logos/corporate/tmo-logo-white-v3.svg)](/?INTNAV=fNav:Home)
+
+* About
+* Investor relations
+* Press
+* Careers
+* Deutsche Telekom
+* Puerto Rico
+
+* Privacy Notice
+* Trust Center
+* Privacy Center
+* Consumer information
+* Public safety/911
+* Terms & conditions
+* Terms of use
+* Accessibility
+* Open Internet
+* Do Not Sell or Share My Personal Information
+* Licenses & Patents
+* Consumer Health Data Privacy Notice
+* T-Mobile, the T logo, Magenta and the magenta color are registered trademarks of Deutsche Telekom AG.
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+© 2025 T‑Mobile USA, Inc.
+
+## 5-Year Price Guarantee
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Simple 15‑minute self‑install.
+
+## No monthly equipment fees or annual contracts.
+
+## Worry‑free 15‑day test drive.
+
+Cancel within 15 days of Home Internet service activation and submit redemption within 30 days of cancellation. Limited-time offer; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit; allow 2 bill cycles from completion of offer requirements. Max 1/account. May not be combinable with some offers or discounts.
+
+## Free 2-day shipping.
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+## "Cut the cable and enjoy wifi."
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+USER QUESTION: tell me about home internet plans and prices
+(Page URL: https://www.t-mobile.com/home-internet/eligibility?icid=HEIS_ISW_C_24HMENET_5E132E168196F61040756)
+----------------------------------------
+
+
+========================================
+[2025-07-31 12:46:00] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+[Skip to main content](#content-main)
+
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Log in
+
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+* [Plans](/home-internet/plans?INTNAV=tNav%3APlan)  Plans
+
+  + [Home Internet plans](/home-internet/plans?INTNAV=tNav%3APlans%3AHomeInternetPlan)
+  + [Home Internet ALL-IN plan](/home-internet/plans/all-in-unlimited-internet-plan?INTNAV=tNav%3APlans%3AHomeInternetAllinplan)
+  + Home Internet AWAY plan
+  + Home Internet Backup plan
+  + [Business Internet plan](/business/solutions/business-internet-services/small-business-internet?INTNAV=tNav%3APlans%3ASmallBusinessInternet)
+  + Prepaid Internet plan
+* [Internet Speed & Technology](/home-internet/how-5g-home-internet-works?INTNAV=tNav%3AHowItWorks)  Internet Speed & Technology
+
+  + [Industry Awards](/home-internet/awards?INTNAV=tNav%3AInternetSpeedAndTechnology%3AIndustryAwards)
+* [Internet deals](/home-internet/deals?INTNAV=tNav%3AInternetDeals)
+* [Support](/support/home-internet?INTNAV=tNav%3ASupport)  Support
+
+  + [Getting started](/support/home-internet?INTNAV=tNav%3ASupport%3AGettingStarted)
+  + [WiFi Gateway device](/support/home-internet/t-mobile-gateway?INTNAV=tNav%3ASupport%3AWiFiGatewayDevice)
+  + [Internet app](/support/home-internet/app?INTNAV=tNav%3ASupport%3AInternetApp)
+  + [Test Drive Worry-Free Trial](/support/home-internet/15-day-test-drive?INTNAV=tNav%3ASupport%3ATestDriveWorryFreeTrial)
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=tNav%3ASupport%3AHomeInternetFAQ)
+  + [Internet Troubleshooting](/home-internet/troubleshooting-support?INTNAV=tNav%3ASupport%3AInternetTroubleshooting)
+
+Contact   Contact
+
+* [Sales: 1-844-839-5057](tel:1-844-839-5057)
+* [Support: 1-844-275-9310](tel:1-844-275-9311)
+* [Check order status](/orders/order-status?INTNAV=tNav%3AContactAndSupport%3ACheckOrderStatus)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+[Check availability](/home-internet/eligibility?INTNAV=tNav:CheckAvailability)
+
+My account
+ 
+ 
+
+[Log in](/signin?state= [Back to my account](/account/dashboard?INTNAV=tNav:BackToMyAccount)
+
+For Home Internet customers only
+
+* [Sign up for T-Mobile ID](/home-internet-signup?INTNAV=tNav%3AMyAccount%3ASignUpForTMobileID)
+
+* [Wireless](/?INTNAV=tNav%3AWireless)
+* Business
+* Prepaid
+* [Internet](/home-internet?INTNAV=tNav%3AInternet)
+
+##
+
+Limited-time; subject to change. May not be combined with some offers and discounts. **$15 monthly savings** via bill credit. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 2/account. **20% off**: Qualifying internet line, port-in to a new voice line & new account or existing internet-only account required; discount on voice lines available while you maintain qualifying Internet and regular-rate voice plans. Port-in within 14 days of registering code. Max 12 lines. Allow 2 bill cycles for discount to appear; applied after any AutoPay discount. Max 1 Account. May not be combined with some offers and discounts (e.g. discounted plans). Not transferable.
+
+Find out if T-Mobile 5G Home Internet is available at your address.
+
+We’re expanding every day, so check back often!
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+Check availability
+
+See plans
+
+Find out if T-Mobile 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Check availability    Check availability
+
+Edit   Edit
+
+See plans
+
+## We’re going to be fast friends. We’re going to be fast friends.
+
+Get reliable 5G Home Internet with our fast speeds for just $35/month with AutoPay and any T-Mobile phone plan.
+
+**That’s a $15/month savings when you bundle!** Plus, enjoy all the great benefits that come with being a customer.
+
+Check availability
+
+**5-Year Price Guarantee exclusions like taxes & fees apply.** Delivered via cellular network; speeds vary due to factors affecting cellular networks.   Get full terms
+
+!Starting at 35 dollars per month with AutoPay and any postpaid voice line. Exclusions like taxes & fees apply. 5-Year Price Guarantee included.
+
+## We’re going to be fast friends.
+
+**Savings**with $15 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 2/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that. **Home Internet Rely General Terms:** **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management**: Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+!5-Year Price Guarantee included.
+
+## A great price, guaranteed for 5 years. A great price, guaranteed for 5 years.
+
+With 5-Year Price Guarantee, we won’t raise your internet rate.
+
+**​​Exclusions like taxes & fees apply.**   Get full terms
+
+## A great price, guaranteed for 5 years.
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+!Get up to 300 dollars back.
+
+LIMITED-TIME ONLY
+
+## Get up to $300 back when you sign up for T‑Mobile 5G Home Internet. Get up to $300 back when you sign up for T‑Mobile 5G Home Internet.
+
+Via virtual prepaid Mastercard® when you sign up online and activate a qualifying new Home Internet line. Allow 14 weeks from rebate submission.   Get full terms
+
+## Get up to $300 back when you sign up for T‑Mobile 5G Home Internet.
+
+Limited-time; subject to change. Available for digital activations (**$200:**Rely plan; **$300:** All-In or Amplified plan), not available in retail. Register code within 30 days of activating qualifying new Home Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. Up to $300 via virtual prepaid Mastercard; use online or in-store via accepted mobile payment apps;**no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers, discounts, or promotions.
+
+## Find out if T-Mobile 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+Check availability
+
+See plans
+
+Sticky See if Americas fastest growing 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Check availability    Check availability
+
+I want 5G home internet service at:
+
+Edit   Edit
+
+See plans
+
+**Choose the one that fits you.**
+
+Savings with $15 monthly bill credit. Limited-time; subject to change. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 2/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans.
+
+Savings with $15 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans.** Limit 2/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans.
+
+Savings with $15 monthly bill credit. Limited-time; subject to change. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans.** Limit 2/account. May not be combined with some offers or discounts.
+
+## Save $15/month by bundling with a phone plan.
+
+Get full terms
+
+Get 200 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## RELY RELY RELY
+
+Reliable, affordable home internet with fast speeds.
+
+Shop now
+
+Get full terms
+
+!35 dollars per month with AutoPay and any postpaid voice line. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply.
+
+## RELY
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+Get 300 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## AMPLIFIED AMPLIFIED AMPLIFIED
+
+Fast speeds with Advanced Cyber Security included.
+
+Shop now
+
+Get full terms
+
+!45 dollars per month with AutoPay and any postpaid voice line. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply.
+
+## AMPLIFIED
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+Our best value—over $385/year in included benefits!
+
+Get 300 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## ALL-IN ALL-IN ALL-IN
+
+Enjoy fast speeds in more places, plus Advanced Cyber Security, 24/7 tech support, and streaming perks.
+
+Shop now
+
+Get full terms
+
+!55 dollars per month with AutoPay and any postpaid voice line. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply. Hulu and Paramount+ included.
+
+## ALL-IN
+
+Value included compared to prices for alternative product add-ons, services and subscriptions with comparable features. **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Tech Support** provided by Assurant® Personal TechPro. Terms and conditions apply. **Hulu:** Offer subject to change. Receive Hulu (With Ads) while you maintain a qualifying All-In Internet line in good standing. One Hulu offer per eligible T-Mobile Internet line. Max 2 redemptions per eligible T-Mobile account; requires eligible e-mail address per redemption. Offer available to new and returning Hulu subscribers only. Use of the Hulu service is subject to the Hulu Subscriber Agreement. Any Hulu plan switch after redemption of this offer will result in offer forfeiture. **Paramount+:** As a T-Mobile All-In Home Internet customer in good standing, get Paramount+ on us when you subscribe to a Paramount+ Essential Monthly Plan as a new or former Paramount+ subscriber. One claim per eligible line and max of two per account. Open to residents in the 50 United States. Cancel any time, effective at end of billing period. 18+. Your subscription to Paramount+ will be subject to the Paramount+ Subscription Terms (< and the Paramount Global Privacy Policy ( Like all plans, features may change or be discontinued at any time; see T-Mobile Terms and Conditions for details. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Our 5G Home Internet plans are packed with value.
+
+Get 200 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## RELY RELY RELY
+
+Reliable, affordable home internet with fast speeds.
+
+Shop now
+
+Get full terms
+
+!50 dollars per month with AutoPay. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply.
+
+## RELY
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+Get 300 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## AMPLIFIED AMPLIFIED AMPLIFIED
+
+Fast speeds with Advanced Cyber Security included.
+
+Shop now
+
+Get full terms
+
+!60 dollars per month with AutoPay. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply.
+
+## AMPLIFIED
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return each device undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+Our best value—over $385/year in included benefits!
+
+Get 300 dollars back via virtual prepaid card within 14 weeks of rebate submission.
+
+## ALL-IN ALL-IN ALL-IN
+
+Enjoy fast speeds in more places, plus Advanced Cyber Security, 24/7 tech support, and streaming perks.
+
+Shop now
+
+Get full terms
+
+!70 dollars per month with AutoPay. 5-Year Price Guarantee included. Guarantee exclusions like taxes and fees apply. Hulu and Paramount+ included.
+
+## ALL-IN
+
+Value included compared to prices for alternative product add-ons, services and subscriptions with comparable features. **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return each device undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill.**Tech Support** provided by Assurant® Personal TechPro. Terms and conditions apply. **Hulu:**Offer subject to change. Receive Hulu (With Ads) while you maintain a qualifying All-In Internet line in good standing. One Hulu offer per eligible T-Mobile Internet line. Max 2 redemptions per eligible T-Mobile account; requires eligible e-mail address per redemption. Offer available to new and returning Hulu subscribers only. Use of the Hulu service is subject to the Hulu Subscriber Agreement. Any Hulu plan switch after redemption of this offer will result in offer forfeiture.**Paramount+:** As a T-Mobile All-In Home Internet customer in good standing, get Paramount+ on us when you subscribe to a Paramount+ Essential Monthly Plan as a new or former Paramount+ subscriber. One claim per eligible line and max of two per account. Open to residents in the 50 United States. Cancel any time, effective at end of billing period. 18+. Your subscription to Paramount+ will be subject to the Paramount+ Subscription Terms ( and the Paramount Global Privacy Policy (< Like all plans, features may change or be discontinued at any time; see T-Mobile Terms and Conditions for details.**Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+Delivered via 5G cellular network; speeds vary due to factors affecting cellular networks, including data prioritization.
+
+## Discover more ways to save.
+
+!A TV icon shows the logos for hulu and Paramount Plus.
+
+WITH OUR ALL‑IN PLAN
+
+**Get $17.98/month in streaming perks on us.**
+
+Hulu (with Ads) and Paramount+ Essential Plan included with All‑In Home Internet. Get full terms
+
+!no-contracts-icon
+
+CONTRACT FREEDOM
+
+**Break free from Big Cable contracts.**
+
+Switch to T-Mobile 5G Home Internet and we’ll pay off your early termination fees—up to $750 via virtual prepaid card to you. **How to submit your claim**
+
+Allow 14 weeks from rebate submission. Get full terms
+
+**Savings** with $25 in monthly bill credits. Limited-time; subject to change. Available for activations via call or chat; not available in digital or retail. Qualifying credit, new account, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans.** Limit 1/account. May not be combined with some offers or discounts.
+
+**Here’s how to submit your T-Mobile Internet Contract Freedom Claim**
+
+We'll reimburse your previous internet service provider's early termination fees when you join T-Mobile Home Internet or Small Business Internet—up to $750 via virtual prepaid card to you.
+
+**Step 1:** Get a new device and a qualifying plan.
+
+**Step 2:** Cancel your old internet service.
+
+**Step 3:** Pay your old Internet Service Provider's (ISP's) final bill.
+
+**Step 4:** Prepare your reimbursement request within 60 days of activation of your T-Mobile internet service. (Activation occurs either at time of purchase or when the gateway is shipped to you).
+
+You'll need to submit a screen shot or photo of your final bill showing the early termination fee (ETF). The name or address on the bill must match your T‑Mobile Account billing information. See FAQs for details before you log in.
+
+**Allow 14 weeks from rebate submission.**Get full terms
+
+Limited-time; subject to change. Qualifying credit, Internet Service Provider Early Termination Fee, and new Home or Business Internet service required. ISP's ETF, up to $750, paid via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** Submit proof of ETF & 90+ days in good standing w/ ISP within 60 days of new Internet service activation and be active and in good standing for 60 days. **We might ask for more information.** One offer per eligible address; max 5/account. T-Mobile Virtual Prepaid Mastercard is a rebate for the new service; for any tax implications, consult a tax advisor. Cards issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. May not be combinable with some offers or discounts.
+
+**Hulu:**Offer subject to change. Receive Hulu (With Ads) while you maintain a qualifying All-In Internet line in good standing. One Hulu offer per eligible T-Mobile Internet line. Max 2 redemptions per eligible T-Mobile account; requires eligible e-mail address per redemption. Offer available to new and returning Hulu subscribers only. Use of the Hulu service is subject to the Hulu Subscriber Agreement. Any Hulu plan switch after redemption of this offer will result in offer forfeiture. **Paramount+:** As a T-Mobile All-In Home Internet customer in good standing, get Paramount+ on us when you subscribe to a Paramount+ Essential Monthly Plan as a new or former Paramount+ subscriber. One claim per eligible line and max of two per account. Open to residents in the 50 United States. Cancel any time, effective at end of billing period. 18+. Your subscription to Paramount+ will be subject to the Paramount+ Subscription Terms ( and the Paramount Global Privacy Policy ( Like all plans, features may change or be discontinued at any time; see T-Mobile Terms and Conditions for details.
+
+## When it’s meant to be, it’s easy.
+
+!power-it-on-icon
+
+**Simple 15‑minute self‑install.**
+
+If you need help, we’re here for you. Connect with us.
+
+!no-credit-check-icon
+
+**No monthly equipment fees or annual contracts.**
+
+5G Gateway device included.
+
+!gateway-icon
+
+**Worry‑free 15‑day test drive.**
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back. Get full terms
+
+!shipping-icon
+
+**Free 2-day shipping.**
+
+Order today and get your gateway before you move.
+
+Cancel within 15 days of Home Internet service activation and submit redemption within 30 days of cancellation. Limited-time; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit; allow 2 bill cycles from completion of offer requirements. Max 1/account. May not be combinable with some offers or discounts.
+
+T-Mobile received the highest score nationally among wireless internet providers in the J.D. Power 2024 U.S. Residential Internet Service Provider Satisfaction Study, which measures customers' satisfaction of service with their current internet provider. Visit jdpower.com/awards for more details.
+
+!JD Power Trophy.
+
+T-Mobile: #1 in Customer Satisfaction by J.D. Power
+
+**For National Home Wireless Internet Service.**Get full terms
+
+### Got Questions?
+
+* ### What is T-Mobile 5G Home Internet?
+
+  + It’s affordable internet service with national availability that lets you do it all with taxes and fees included for qualified accounts, no annual contract, and no equipment fees.
+  + T-Mobile Internet service is powered by America’s largest 5G network in locations we determine will receive a great internet experience.
+  + You receive service through a 5G Gateway device (which combines the capabilities of a router and a modem), the Gateway device then converts the 5G signal to Wi-Fi, and provides a Wi-Fi signal.
+  + The T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™ plans have our 5-year price guarantee so you won’t have to worry about exploding bills and price hikes (exclusions like taxes and fees apply).
+  + Go from box to browsing in 15 minutes or less with an easy, self-installation process.
+* ### How fast is 5G home internet (in Mbps) compared to cable?
+
+  T-Mobile All-In or Amplified Home Internet customers delivering typical speeds between 134 mbps – 415 mbps. Typical upload speeds are between 12 – 55 Mbps. 25% of our customers see speeds below and 25% see speeds above these ranges.
+
+  Keep in mind that speeds can vary depending on location, time of day, signal strength and availability, and other factors. Click here for more info.
+
+  While we can’t directly compare speeds for T-Mobile 5G Home Internet vs. Xfinity, Spectrum, Comcast, Cox, etc., you can check your current speeds here and see for yourself. Best of all, you have nothing to lose, since you can try out T-Mobile Home Internet first to make sure you find a plan that works for you.
+* ### Do these plans come with 5-Year price guarantee?
+
+  Yes, new and upgrading customers on the T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™ plans are covered by our 5- year price guarantee. 5-year price guarantee means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+* ### What is the T-Mobile Rely Internet Plan?
+
+  Rely Home Internet provides all the essentials for reliable 5G internet at a low monthly rate of $35/month with AutoPay and any T-Mobile voice line. Plus, with 5-year price guarantee we won’t raise your rate on internet for at least 5 years from your initial activation (exclusions like taxes and fees apply). It comes with unlimited data, a 5G gateway, and taxes & fees included for qualifying accounts. It delivers reliable Wi-Fi with speed that will keep you streaming, working, and playing.
+* ### What is the T-Mobile Amplified Internet Plan?
+
+  With T-Mobile Amplified internet, households enjoy the benefits from the Rely plan, plus T-Mobile’s latest 5G gateway for faster speeds that seamlessly support more people and devices. This comes on top of additional benefits like Advanced Cyber Security for added digital peace of mind.
+
+  Beyond the standard security protections included for all 5G Internet users, with Advanced Cyber Security, customers get things like Safe Browsing to help block malicious links along with Anomaly Detection to help protect connected devices from cybercriminals — all of which is easily managed through the T-Life app.
+* ### What is the T-Mobile All-In Internet Plan?
+
+  This plan is ideal for larger families or those with more devices looking to get the most out of their Home Internet. It includes nearly $300/year in value with benefits like:
+
+  + Faster speeds and more powerful performance in more places with our latest 5G Gateway and a mesh unit to boost Wi-Fi performance in those hard-to-reach places.
+  + Advanced Cyber Security to keep your devices digitally secure and protected.
+  + 24/7 Interactive Live Assistance with Video Support from Assurant Personal TechPro for any Wi-Fi connected smart devices in the home– helping people stay free from tech stress with setup, troubleshooting and maintenance support.
+  + Hulu on Us to stream full seasons of exclusive series, plus current episodes, Hulu Originals, hit movies, and more.
+  + Paramount+ on Us to stream over 40,000 episodes and hit movies, plus exclusive originals, live sports & more with Paramount+!
+* ### What is the difference between T-Mobile Home Internet and T-Mobile Fiber?
+
+  T-Mobile Home Internet is our fixed wireless internet service, which runs on our 4G LTE and 5G networks and is available to 70 million households across the country. T-Mobile Fiber delivers home internet over fiber-optic lines and is currently available in select locations across the U.S.
+* ### Can I choose between T-Mobile Home Internet and T-Mobile Fiber? Can I switch between the two?
+
+  Yes! Customers eligible for both T-Mobile Home Internet and T-Mobile Fiber can choose the home broadband option that best suits their needs. T-Mobile 5G Home Internet and T-Mobile Fiber have no annual contracts, so you can switch at any time.
+* ### When will T‑Mobile Fiber internet be available in my area?
+
+  Our service is currently available in select cities and regions in the United States. You can check your eligibility to find out if T-Mobile Fiber is available at your address. We're working to expand our service to more locations. Join our waitlist and we’ll reach out as soon as we're available at your address. You can also check to see if you are eligible for our 5G Home Internet service at <
+
+​Limited-time; subject to change. Qualifying credit, AutoPay with bank account or debit card and Internet line (e.g. Rely – $50/mo.) required. Restore lines canceled in past 90 days before adding qualifying line. Must be active and in good standing to receive bill credit (Rely: $50; Amplified: $60; All-In: $70); allow 2-3 bill cycles from fulfillment of offer requirements. Credit reduced by any applicable voice bundle discount. Max 1/account. May not be combined with some offers or discounts.
+
+T-Mobile received the highest score nationally among wireless internet providers in the J.D. Power 2024 U.S. Residential Internet Service Provider Satisfaction Study, which measures customers' satisfaction of service with their current internet provider. Visit jdpower.com/awards for more details.
+
+Savings via $30 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, nationally-available postpaid voice line, and new unlimited Internet line required. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$150 Back:** Limited-time offer; subject to change. Register code within 30 days of activating new unlimited Home Internet line. If you have cancelled Internet lines in the past 90 days, you may need to reactivate them first. $150 via virtual prepaid Mastercard; requires 60 days service before validation; use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 1 week from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **5G Home Internet General Terms:** **During congestion, Home Internet customers may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. We guarantee that accounts with qualifying service can keep their regular monthly rate plan price for new lines of fixed-wireless internet data; excludes taxes/fees, select limited-time promotions, per-use charges, third-party services, devices and network management practices. T-Mobile will pay your final monthly recurring service charge if we raise your rate and you tell us you are leaving within 60 days. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+Limited-time offer; subject to change. Savings with $30 monthly bill credit. Qualifying credit, voice line, and new Internet line required. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$150 Back:** Register code within 30 days of activating new unlimited Home Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. $150 via virtual prepaid Mastercard; requires 60 days service before validation; use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months**. The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 1 week from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **TV**: Limited-time offer; subject to change. Activate qualifying new Home Internet line between 11/21/24 and 1/15/25. Register for redemption code with T-Mobile ID within 30 days of activating; requires 60 days service before validation; allow 1 week from fulfillment of offer requirements to receive code. If you have cancelled lines in past 90 days, you may need to reactivate them first. Max 1/account. Redeem code at Amazon.com; Amazon terms apply. May not be combinable with other offers. **Home Internet General Terms: During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus, taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+### Redeem your YouTube TV subscription offer.
+
+**Step 1**  
+ Check availability for T-Mobile Home Internet in your area.  
+ Starting 5/10/22, visit   
+   
+ **Step 2**  
+ Choose the “Home Internet 50% Off YouTube TV” option.  
+   
+ **Step 3**  
+ Log in and fill in your personal information.  
+   
+ **Step 4**  
+ Review offer and accept the terms & conditions.  
+   
+ **Step 5**  
+ Redemption instructions will appear in the web flow immediately after your information is submitted, along with a code that can be redeemed directly with YouTube TV.  
+   
+ **Note:**  
+ Redemption instructions will appear in the web flow immediately after your information is submitted, along with a code that can be redeemed directly with YouTube TV.  
+   
+ **OFFER REQUIREMENTS:**  
+ • You must remain an active T-Mobile postpaid consumer voice wireless and Home Internet customer.  
+ • Promotion is not combinable with the $10/month discount on YouTube TV offer, but is stackable with YouTube Premium free trial offer.  
+ • Prepaid, Mobile Internet and Business are not eligible for this offer.  
+ • You may cancel your YouTube TV or YouTube Premium subscription anytime.  
+ • YouTube TV subscription automatically renews at $64.99/mo. after 12 months.  
+ • YouTube Premium subscription automatically renews at $11.99/mo. after 3 months.
+
+**Standard free trial + 50% off for 12 months.**Limited-time offer; subject to change. Promotion open to participants subscribing to both T-Mobile Home Internet and Magenta MAX voice service. Offer redeemable where YouTube TV is available. Standard free trial available for new YouTube TV subscribers who have never participated in a YouTube TV trial. Discount offer available for all eligible T-Mobile customers, regardless if user has enrolled in YouTube TV in the past. Local channel availability may vary. Promotional value of subscription(s) nontransferable, not for resale, and not redeemable for cash. Valid payment form req’d at sign-up. User will receive standard free trial, if eligible, and then be charged discounted price of $32.49 per month for 12 months before being charged price of $64.99/month or then current monthly subscription price. Cancel any time before standard free trial is over at no charge. No refunds for partial billing periods are available. Must be 18 years or older and in the 50 United States. Excludes T-Mobile for Business customers. Google account required. YouTube reserves the right to change or cancel the offer at any time. Full terms here:  © 2022 T-Mobile USA, Inc.
+
+### Here’s how to redeem your $50 Virtual Prepaid Mastercard®:
+
+**Step 1**  
+ Check availability for T-Mobile Home Internet in your area. Starting 5/10/22: Go to www.t-mobile.com/rebates within 30 days from date of streaming device purchase.  
+   
+ **Step 2**  
+ Enter all required information:  
+ **a.** Use rebate code: **2022Streaming**  
+ **b.** You will need to upload a copy of your receipt, which should include the name of your streaming device, the amount paid, as well as the name of the retailer you purchased it from.  
+   
+ **Step 3**  
+ At least one active Home Internet and Voice Line are required.  
+   
+ **Step 4**  
+ Please allow 6 to 8 weeks from the date of offer requirement fulfillment to receive your Virtual Prepaid Mastercard.  
+   
+ **OFFER REQUIREMENTS:**  
+ • All streaming devices are eligible.  
+ • You can purchase your streaming device from any retailer, as long as you are able to receive a receipt showing the item description to submit for the rebate.  
+ • Must purchase streaming device within promo window beginning 5/10/22.  
+ • Limit of 1 rebate per account.
+
+### 15-day Test Drive.
+
+New and existing T-Mobile customers activating internet on a qualifying plan are eligible to receive their money back via a one-time bill credit if they choose to schedule cancellation of service within the first 15 days of activation.
+
+See FAQs
+
+Looking for T-Mobile Voice Test Drive?
+
+Cancel within 15 days of Home Internet service activation. Limited-time offer; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit. Max 1/account. May not be combinable with some offers or discounts.
+
+#### Get $50 back when you switch to T-Mobile Home Internet via Virtual Prepaid Mastercard® in 12 weeks.
+
+#### Autopay discount requires eligible payment method. Allow 12 weeks for virtual prepaid card.
+
+$50 Back: Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Home Internet or Small Business Internet line. If you have cancelled Home Internet lines in past 90 days, you may need to reactivate them first. $50 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts.
+
+**$30/month** price with $20 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, voice line, and unlimited Home Internet line required. Existing customers must visit myT-Mobile.com. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans.** Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$200 Back:** Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. $200 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **Home Internet General Terms:** During congestion, Home Internet customers may notice speeds lower than other customers due to data prioritization. Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs (RPF) & Telco Recovery Fee (TRF) totaling $1.40 per data only line ($0.12 for RPF & $1.28 for TRF) apply; taxes/fees approx. 3-12% of bill. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. If canceling service, return gateway or pay up to $370. Video streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. AutoPay Pricing for lines 1-8 on account. Without AutoPay, $5 more. May not be reflected on 1st bill. Coverage not available in some areas. Network Management: Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. See Terms and Conditions (including arbitration provision) at www.T-Mobile.com for additional information.
+
+Savings via $20 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, voice line, and unlimited Home Internet line required. Existing customers must visit myT-Mobile.com. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans.** Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$150 Back:** Limited-time offer; subject to change. Register code within 30 days of activating new unlimited Home Internet line. If you have cancelled Internet lines in the past 90 days, you may need to reactivate them first. $150 via virtual prepaid Mastercard; requires 60 days service before validation; use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 1 week from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **5G Home Internet General Terms:** During congestion, Home Internet customers may notice speeds lower than other customers due to data prioritization. Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs (RPF) & Telco Recovery Fee (TRF) totaling $1.40 per data only line ($0.12 for RPF & $1.28 for TRF) apply; taxes/fees approx. 3-12% of bill. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. If canceling service, return gateway or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account using eligible payment method. Without AutoPay, $5 more/line/mo; debit or bank acct req'd. May not be reflected on 1st bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+## See if Americas fastest growing 5G Home Internet is available at your address
+
+## How to redeem your FREE Amazon Fire TV 40-inch 2-Series:
+
+[![](/content/dam/digx/tmobile/us/en/branding/buttons/TMO_QRCode_NetworkPass.png)](
+
+1. Scan the QR code or visit  within 30 days of your qualifying transaction.
+2. Log in with your T-Mobile online account credentials to redeem. 
+   * For help with your T-Mobile online account credentials, visit <
+3. Select the phone number from the drop-down for this promotion.
+   * Home Internet only accounts – Your billing phone number can be found on your bill under “Connected Devices.”
+4. Enter all required information, including:
+   * Transaction date
+   * The channel of your transaction
+   * Your transaction type
+5. Select the promotion you would like to redeem based on the list you are eligible for. **Remember, you can only submit for ONE promotion per line!**
+6. Once selected, finish the redemption process by hitting Continue on the terms & conditions page.
+7. Receive a redemption code with instructions for placing your TV order within 10 weeks.
+
+Limited-time offer; subject to change. Available for digital activations, not available in retail. **Activate qualifying new Home Internet line (Amplified, All-In, or Away) between 1/16/25 and 2/5/25.** Register for redemption code with T-Mobile ID within 30 days of activating; requires 60 days service before validation; allow 1 week from fulfillment of offer requirements to receive code. If you have cancelled lines in past 90 days, you may need to reactivate them first. Max 1/account. Redeem code at Amazon.com; Amazon terms apply. May not be combinable with other offers.
+
+## See what T-Mobile Home Internet plans are available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+See available plans
+
+See plans
+
+Sticky See if Americas fastest growing 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+See available plans    See available plans
+
+I want 5G home internet service at:
+
+Edit   Edit
+
+See plans
+
+**Already a T-Mobile customer?** Please log in to see the best pricing and offers for you.
+
+Log in to continue
+
+## Find out if T-Mobile 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+Check availability
+
+See plans
+
+Sticky See if Americas fastest growing 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Address should select from dropdown Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Check availability    Check availability
+
+I want 5G home internet service at:
+
+Edit   Edit
+
+See plans
+
+## This appears to be a business address.
+
+businessServiceAddress
+
+We'll redirect you to the T-Mobile for Business website to continue your journey.
+
+Continue
+
+[Check a different address](/home-internet/eligibility)
+
+## Hello! Want to stay logged in?
+
+To keep your accounts safe, you'll be automatically logged out in:
+
+#
+
+Yes, stay logged in
+
+No, log me out
+
+## Connect with T-Mobile Home Internet
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+* English
+* Español
+
+* ### Support
+
+   Support
+
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=fNav%3ASupport%3AHomeInternetFAQ)
+  + [Setup Wi-Fi Gateway](/home-internet/gateway?INTNAV=fNav%3ASupportSetupWiFiGateway)
+  + [Emergency Broadband Benefit](/customers/emergency-broadband-benefit?INTNAV=fNav%3ASupport%3AEmergencyBroadbandBenefit)
+* ### Get the app
+
+   Get the app
+
+  + [T-Life App](/home-internet/app?INTNAV=fNav%3AGetTheApp%3AT-LifeApp)
+* ### Consumer guides
+
+   Consumer guides
+
+  + [The Signal](/home-internet/the-signal?INTNAV=fNav%3AConsumerGuides%3ATheSignal)
+  + [Get Wi-Fi for less](/home-internet/the-signal/isp/how-to-get-wi-fi-for-less?INTNAV=fNav%3AConsumerGuides%3AHomeInternetGetWifIForLess)
+  + [Wi-Fi security essentials](/home-internet/the-signal/speed/wi-fi-security-essential-protections?INTNAV=fNav%3AConsumerGuides%3AWiFiSecurityEssentials)
+  + [Gaming internet speeds](/home-internet/the-signal/speed/the-internet-speed-you-need-for-gaming?INTNAV=fNav%3AConsumerGuides%3AGamingInternetSpeeds)
+
+[![T-Mobile](/content/dam/t-mobile/ntm/branding/logos/corporate/tmo-logo-white-v3.svg)](/?INTNAV=fNav:Home)
+
+* About
+* Investor relations
+* Press
+* Careers
+* Deutsche Telekom
+* Puerto Rico
+
+* Privacy Notice
+* Trust Center
+* Privacy Center
+* Consumer information
+* Public safety/911
+* Terms & conditions
+* Terms of use
+* Accessibility
+* Open Internet
+* Do Not Sell or Share My Personal Information
+* Licenses & Patents
+* Consumer Health Data Privacy Notice
+* T-Mobile, the T logo, Magenta and the magenta color are registered trademarks of Deutsche Telekom AG.
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+© 2025 T‑Mobile USA, Inc.
+
+## We’re going to be fast friends.
+
+**Savings**with $15 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, postpaid voice line, and Internet line required. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 2/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that. **Home Internet Rely General Terms:** **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management**: Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+## A great price, guaranteed for 5 years.
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Get up to $300 back when you sign up for T‑Mobile 5G Home Internet.
+
+Limited-time; subject to change. Available for digital activations (**$200:**Rely plan; **$300:** All-In or Amplified plan), not available in retail. Register code within 30 days of activating qualifying new Home Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. Up to $300 via virtual prepaid Mastercard; use online or in-store via accepted mobile payment apps;**no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers, discounts, or promotions.
+
+## RELY
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## AMPLIFIED
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## ALL-IN
+
+Value included compared to prices for alternative product add-ons, services and subscriptions with comparable features. **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.** Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Tech Support** provided by Assurant® Personal TechPro. Terms and conditions apply. **Hulu:** Offer subject to change. Receive Hulu (With Ads) while you maintain a qualifying All-In Internet line in good standing. One Hulu offer per eligible T-Mobile Internet line. Max 2 redemptions per eligible T-Mobile account; requires eligible e-mail address per redemption. Offer available to new and returning Hulu subscribers only. Use of the Hulu service is subject to the Hulu Subscriber Agreement. Any Hulu plan switch after redemption of this offer will result in offer forfeiture. **Paramount+:** As a T-Mobile All-In Home Internet customer in good standing, get Paramount+ on us when you subscribe to a Paramount+ Essential Monthly Plan as a new or former Paramount+ subscriber. One claim per eligible line and max of two per account. Open to residents in the 50 United States. Cancel any time, effective at end of billing period. 18+. Your subscription to Paramount+ will be subject to the Paramount+ Subscription Terms (< and the Paramount Global Privacy Policy ( Like all plans, features may change or be discontinued at any time; see T-Mobile Terms and Conditions for details. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## RELY
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## AMPLIFIED
+
+**During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return each device undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## ALL-IN
+
+Value included compared to prices for alternative product add-ons, services and subscriptions with comparable features. **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization.**Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return each device undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing**for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill.**Tech Support** provided by Assurant® Personal TechPro. Terms and conditions apply. **Hulu:**Offer subject to change. Receive Hulu (With Ads) while you maintain a qualifying All-In Internet line in good standing. One Hulu offer per eligible T-Mobile Internet line. Max 2 redemptions per eligible T-Mobile account; requires eligible e-mail address per redemption. Offer available to new and returning Hulu subscribers only. Use of the Hulu service is subject to the Hulu Subscriber Agreement. Any Hulu plan switch after redemption of this offer will result in offer forfeiture.**Paramount+:** As a T-Mobile All-In Home Internet customer in good standing, get Paramount+ on us when you subscribe to a Paramount+ Essential Monthly Plan as a new or former Paramount+ subscriber. One claim per eligible line and max of two per account. Open to residents in the 50 United States. Cancel any time, effective at end of billing period. 18+. Your subscription to Paramount+ will be subject to the Paramount+ Subscription Terms ( and the Paramount Global Privacy Policy (< Like all plans, features may change or be discontinued at any time; see T-Mobile Terms and Conditions for details.**Network Management:** Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. **See Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information. **5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+USER QUESTION: tell me about home internet plans and prices
+(Page URL: https://www.t-mobile.com/home-internet?INTNAV=tNav%3AInternet)
+----------------------------------------
+
+
+========================================
+[2025-07-31 12:46:07] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.
+
+CONTENT:
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Log in
+
+[![5G Home Internet](/content/dam/digx/tmobile/us/en/branding/logos/T_Badge_5G_Home_Internet_TMO_Horiz_PRI_EL_RGB_on-W_2025-05-20.png)](/home-internet?INTNAV=tNav:HomeInternet)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+* [Plans](/home-internet/plans?INTNAV=tNav%3APlan)  Plans
+
+  + [Home Internet plans](/home-internet/plans?INTNAV=tNav%3APlans%3AHomeInternetPlan)
+  + [Home Internet ALL-IN plan](/home-internet/plans/all-in-unlimited-internet-plan?INTNAV=tNav%3APlans%3AHomeInternetAllinplan)
+  + Home Internet AWAY plan
+  + Home Internet Backup plan
+  + [Business Internet plan](/business/solutions/business-internet-services/small-business-internet?INTNAV=tNav%3APlans%3ASmallBusinessInternet)
+  + Prepaid Internet plan
+  + [Fiber Internet](/home-internet/fiber-product-overview)
+* [Internet Speed & Technology](/home-internet/how-5g-home-internet-works?INTNAV=tNav%3AHowItWorks)  Internet Speed & Technology
+
+  + [Industry Awards](/home-internet/awards?INTNAV=tNav%3AInternetSpeedAndTechnology%3AIndustryAwards)
+* [Internet deals](/home-internet/deals?INTNAV=tNav%3AInternetDeals)
+* [Support](/support/home-internet?INTNAV=tNav%3ASupport)  Support
+
+  + [Getting started](/support/home-internet?INTNAV=tNav%3ASupport%3AGettingStarted)
+  + [WiFi Gateway device](/support/home-internet/t-mobile-gateway?INTNAV=tNav%3ASupport%3AWiFiGatewayDevice)
+  + [Internet app](/support/home-internet/app?INTNAV=tNav%3ASupport%3AInternetApp)
+  + [Test Drive Worry-Free Trial](/support/home-internet/15-day-test-drive?INTNAV=tNav%3ASupport%3ATestDriveWorryFreeTrial)
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=tNav%3ASupport%3AHomeInternetFAQ)
+  + [Internet Troubleshooting](/home-internet/troubleshooting-support?INTNAV=tNav%3ASupport%3AInternetTroubleshooting)
+
+[Sales 1-844-839-5057](tel:18448395057)
+
+Contact & support  Contact & support
+
+* [Sales: 1-844-839-5057](tel:1-844-839-5057)
+* [Support: 1-844-275-9310](tel:1-844-275-9311)
+* [Check order status](/orders/order-status?INTNAV=tNav%3AContactAndSupport%3ACheckOrderStatus)
+
+Search 
+
+Search  
+ 
+ Submit search query  
+ 
+ Close out of search 
+
+RECENT SEARCH
+
+0 recent searches
+
+POPULAR
+
+0 popular search suggestions
+
+undefined
+
+Categories
+
+undefined categories
+
+Suggestions
+
+0 search suggestions
+
+TOP SUGGESTIONS
+
+* ![]()
+
+undefined top suggestions
+
+My account
+ 
+ 
+
+[Log in](/signin?state=eyJpbnRlbnQiOiJMb2dpbiIsImJvb2ttYXJrVXJsIjoiaHR0cHM6Ly93d3cudC1tb2JpbGUuY29tL2hvbWUtaW50ZXJuZXQvY2hlY2stZWxpZ2liaWxpdHkifQ==&INTNAV=tNav:LogI) [Back to my account](/account/dashboard?INTNAV=tNav:BackToMyAccount)
+
+For Home Internet customers only
+
+* [Sign up for T-Mobile ID](/home-internet-signup?INTNAV=tNav%3AMyAccount%3ASignUpForTMobileID)
+
+* [Wireless](/?INTNAV=tNav%3AWireless)
+* Business
+* Prepaid
+* [Internet](/home-internet?INTNAV=tNav%3AInternet)
+
+[Skip to main content](#content-main)
+
+##
+
+# Join the provider ranked #1 in Customer Satisfaction by J.D. Power for National Home Wireless Internet Service.
+
+See what T-Mobile Home Internet plans are available at your address.
+
+Address
+
+ 
+
+Please enter your address Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+Edit
+
+See available plans
+
+See plans
+
+Sticky See if Americas fastest growing 5G Home Internet is available at your address.
+
+Address
+
+ 
+
+Please enter your address Please choose an address from the list
+
+unit #
+
+Please enter unit field
+
+See available plans    See available plans
+
+I want 5G home internet service at:
+
+Edit   Edit
+
+See plans
+
+Existing T-Mobile Customer? Add 5G home internet can pay as little as $35/month with AutoPay and **ANY postpaid voice line**—but only while this offer lasts.
+
+Login to get started
+
+When you activate a qualifying new Home Internet line. Not available in retail. Get Full Terms
+
+* Looking for Internet for business?
+* Are you in Puerto Rico?
+
+T-Mobile received the highest score nationally among wireless internet providers in the J.D. Power 2024 U.S. Residential Internet Service Provider Satisfaction Study, which measures customers' satisfaction of service with their current internet provider. Visit jdpower.com/awards for more details.
+
+## It’s more than just Wi-Fi. It’s peace of mind.
+
+Our Rely, Amplified, and All-In plans include these great benefits:
+
+## 5-Year Price Guarantee
+
+We won’t raise your  
+ internet rate.
+
+Exclusions like taxes & fees apply.
+
+  Get full terms
+
+![](
+
+## 5-Year Price Guarantee
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Simple 15‑minute self‑install.
+
+Plus 24/7 support. If you need help, we’re here for you.
+
+!power-it-on-icon
+
+## Simple 15‑minute self‑install.
+
+## No monthly equipment fees or annual contracts.
+
+5G Gateway device included.
+
+!no-credit-check-icon
+
+## No monthly equipment fees or annual contracts.
+
+## Worry‑free 15‑day test drive.
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back.
+
+Get full terms
+
+!gateway-icon
+
+## Worry‑free 15‑day test drive.
+
+Cancel within 15 days of Home Internet service activation and submit redemption within 30 days of cancellation. Limited-time offer; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit; allow 2 bill cycles from completion of offer requirements. Max 1/account. May not be combinable with some offers or discounts.
+
+## Free 2-day shipping.
+
+Order today and get your gateway before you move.
+
+!shipping-icon
+
+## Free 2-day shipping.
+
+## Here’s what our customers have to say.
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+Travis F, Denver, CO
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+Cindy C, Harwood Heights, IL
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+Duane P, Oldsmar, FL
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+Janet D, Leoma, TN
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+## "Cut the cable and enjoy wifi."
+
+Ada G, Houston, TX
+
+## "Cut the cable and enjoy wifi."
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Susan V, Salem, OR
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Testimonials collected from actual satisfied T-Mobile Home Internet customers.
+
+**Home Internet Rely General Terms:** **During congestion, customers on this plan may notice speeds lower than other customers and further reduction if using >1.2TB/mo., due to data prioritization**.Not available in all areas. $35 device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs & Telco Recovery Fees totaling up to $1.60 per line, and federal and local surcharges apply. See Broadband Facts at T-Mobile.com. Credit approval required. For use only with select T-Mobile Gateways for in-home use at location provided at activation; service restricted away from approved address. Return gateway undamaged or pay up to $370. **Video** streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. **AutoPay Pricing** for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on first bill. **Network Management:** Service may be **slowed, suspended, terminated, or restricted** for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. See **Terms and Conditions (including arbitration provision)** at www.T-Mobile.com for additional information.
+
+## Get $50 back when you switch to T-Mobile Home Internet via virtual Prepaid Mastercard® in 12 weeks.
+
+#### When you activate a new unlimited Home Internet line. Allow 12 weeks.
+
+$50 Back: Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Home Internet or Small Business Internet line. If you have cancelled Home Internet lines in past 90 days, you may need to reactivate them first. $50 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months.** The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts.
+
+**$30/month price** with $20 monthly bill credit. Limited-time offer; subject to change. Qualifying credit, voice line, and unlimited Home Internet line required. Existing customers must visit myT-Mobile.com. Credits may take up to 2 bill cycles; **credits will stop if you cancel any lines or change plans**. Limit 1/account. May not be combined with some offers or discounts (e.g., Price Lock); see FAQs at T-Mobile.com/plans. **$200 Back:** Limited-time offer; subject to change. Register code within 30 days of activating qualifying new Internet line. If you have cancelled Internet lines in past 90 days, you may need to reactivate them first. $200 via virtual prepaid Mastercard, which you can use online or in-store via accepted mobile payment apps; **no cash access & expires in 6 months**. The Virtual Prepaid Mastercard is issued by Sunrise Banks N.A., Member FDIC, pursuant to a license from Mastercard International Incorporated. Mastercard is a registered trademark, and the circles design is a trademark of Mastercard International Incorporated. This card may be used everywhere Debit Mastercard is accepted. Registration, activation, acceptance, or use of this card constitutes acceptance of the terms and conditions stated in the Prepaid Card Agreement. This promotion is not associated, sponsored, or endorsed by Mastercard or Sunrise Banks N.A. Allow 12 weeks from fulfilment of offer requirements. Lines must be active and in good standing when card is issued. Max 1/account. May not be combined with some offers or discounts. **Home Internet General Terms:** During congestion, Home Internet customers may notice speeds lower than other customers due to data prioritization. Not available in all areas. $35 assisted support or device connection charge due at sale. Plus taxes & fees for accounts currently paying for a T-Mobile wireless line with additional taxes & fees: Monthly Regulatory Programs (RPF) & Telco Recovery Fee (TRF) totaling $1.40 per data only line ($0.12 for RPF & $1.28 for TRF) apply; taxes/fees approx. 3-12% of bill. Credit approval required. For use only with T-Mobile Gateway for in-home use at location provided at activation. If canceling service, return gateway or pay up to $370. Video streaming resolution depends on available speeds. For best performance, leave video streaming applications at their default resolution setting. Not compatible with some live TV streaming services. AutoPay Pricing for lines 1-8 on account. AutoPay discount requires bank account or debit card, otherwise $5 more/line/mo. May not be reflected on 1st bill. Coverage not available in some areas. Network Management: Service may be slowed, suspended, terminated, or restricted for misuse, abnormal use, interference with our network or ability to provide quality service to other users. See T-Mobile.com/OpenInternet for details. See Terms and Conditions (including arbitration provision) at www.T-Mobile.com for additional information.
+
+## This appears to be a business address.
+
+businessServiceAddress
+
+We'll redirect you to the T-Mobile for Business website to continue your journey.
+
+Continue
+
+[Check a different address](/home-internet/eligibility)
+
+## Hello! Want to stay logged in?
+
+To keep your accounts safe, you'll be automatically logged out in:
+
+#
+
+Yes, stay logged in
+
+No, log me out
+
+## Connect with T-Mobile Home Internet
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+* English
+* Español
+
+* ### Support
+
+   Support
+
+  + [Home Internet FAQ](/home-internet/faq?INTNAV=fNav%3ASupport%3AHomeInternetFAQ)
+  + [Setup Wi-Fi Gateway](/home-internet/gateway?INTNAV=fNav%3ASupportSetupWiFiGateway)
+  + [Emergency Broadband Benefit](/customers/emergency-broadband-benefit?INTNAV=fNav%3ASupport%3AEmergencyBroadbandBenefit)
+* ### Get the app
+
+   Get the app
+
+  + [T-Life App](/home-internet/app?INTNAV=fNav%3AGetTheApp%3AT-LifeApp)
+* ### Consumer guides
+
+   Consumer guides
+
+  + [The Signal](/home-internet/the-signal?INTNAV=fNav%3AConsumerGuides%3ATheSignal)
+  + [Get Wi-Fi for less](/home-internet/the-signal/isp/how-to-get-wi-fi-for-less?INTNAV=fNav%3AConsumerGuides%3AHomeInternetGetWifIForLess)
+  + [Wi-Fi security essentials](/home-internet/the-signal/speed/wi-fi-security-essential-protections?INTNAV=fNav%3AConsumerGuides%3AWiFiSecurityEssentials)
+  + [Gaming internet speeds](/home-internet/the-signal/speed/the-internet-speed-you-need-for-gaming?INTNAV=fNav%3AConsumerGuides%3AGamingInternetSpeeds)
+
+[![T-Mobile](/content/dam/t-mobile/ntm/branding/logos/corporate/tmo-logo-white-v3.svg)](/?INTNAV=fNav:Home)
+
+* About
+* Investor relations
+* Press
+* Careers
+* Deutsche Telekom
+* Puerto Rico
+
+* Privacy Notice
+* Trust Center
+* Privacy Center
+* Consumer information
+* Public safety/911
+* Terms & conditions
+* Terms of use
+* Accessibility
+* Open Internet
+* Do Not Sell or Share My Personal Information
+* Licenses & Patents
+* Consumer Health Data Privacy Notice
+* T-Mobile, the T logo, Magenta and the magenta color are registered trademarks of Deutsche Telekom AG.
+
+* Instagram
+* Facebook
+* X
+* You Tube
+
+© 2025 T‑Mobile USA, Inc.
+
+## 5-Year Price Guarantee
+
+**5-Year Price Guarantee** means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+
+## Simple 15‑minute self‑install.
+
+## No monthly equipment fees or annual contracts.
+
+## Worry‑free 15‑day test drive.
+
+Cancel within 15 days of Home Internet service activation and submit redemption within 30 days of cancellation. Limited-time offer; subject to change. Qualifying new Home Internet line and timely gateway return required. Refund via one-time bill credit; allow 2 bill cycles from completion of offer requirements. Max 1/account. May not be combinable with some offers or discounts.
+
+## Free 2-day shipping.
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+## "Cut the cable and enjoy wifi."
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+USER QUESTION: tell me about home internet plans and prices
+(Page URL: https://www.t-mobile.com/home-internet/eligibility?icid=HEIS_ISW_C_24HMENET_5E132E168196F61040756)
+----------------------------------------
+
