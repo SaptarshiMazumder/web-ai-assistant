@@ -150,6 +150,9 @@ async def smart_qa_runner(
             and _same_domain(l["href"], original_domain)
         ]
         print(f"🔍 Found {len(candidate_links)} candidate links:")
+        # Limit to first 100 candidate links
+        print("limiting to first 100 candidate links:")
+        candidate_links = candidate_links[:100]
         for l in candidate_links:
             print(f"   - {l.get('text', '')[:40]} → {l.get('href')}")
 

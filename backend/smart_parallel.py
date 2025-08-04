@@ -30,24 +30,40 @@ class PageQAResult(BaseModel):
     sufficient: Optional[bool] = None
     links: List[Dict[str, str]] = []
 
+import datetime
+
+def save_llm_prompt(prompt: str, filename: str = "llm-prompt.txt"):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(filename, "a", encoding="utf-8") as f:
+        f.write("\n" + "="*40 + "\n")
+        f.write(f"[{now}] LLM PROMPT\n")
+        f.write("="*40 + "\n")
+        f.write(prompt)
+        f.write("\n" + "-"*40 + "\n\n")
+
+
 def llm_select_relevant_links(
     question: str,
     links: List[Dict[str, str]],
     k: int = 3
 ) -> List[Dict[str, str]]:
-    subset = links[:30]
+    # subset = links[:30]
     prompt = (
-        f"Question: {question}\n"
-        "Here are available links from the page:\n" +
-        "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in subset]) +
+        f"The user is on the website {urlparse(links[0].get('href', '')).netloc} and their question is: {question}\n"
+        "These are all the links on the page:\n" +
+        "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in links]) +
         "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-        "Only select links that are highly likely to contain a direct, complete answer."
-        "If you are not at least 80% confident that a link contains the answer, do not include it."
+        "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
+        "Only select links that are highly likely to contain an answer, or links to lead to the answer."
+        # "If you are not at least 80% confident that a link contains the answer, do not include it."
         "Reply with a JSON array of up to max 5 objects with 'text' and 'href'."
 
     )
+    # === LOG PROMPT ===
+    save_llm_prompt(prompt)
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
     result = llm.invoke([{"role": "user", "content": prompt}])
+    print(f"LLM SELECT LINKS RESULT: {result}")
     output = (result.content or "").strip()
 
     json_str = extract_json_from_text(output)
@@ -108,11 +124,43 @@ def extract_tables_as_markdown(soup):
         tables.append("\n".join(md))
     return tables
 
+def extract_main_content(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Remove scripts, styles, etc.
+    for tag in soup(["script", "style", "noscript", "iframe"]):
+        tag.decompose()
+
+    # Remove navbars, footers, headers, menus, popups, sidebars, etc.
+    noisy_selectors = [
+        "nav", "footer", "aside", "form", "header",
+        "[role=navigation]", "[role=contentinfo]", "[role=banner]", "[role=alert]", "[role=dialog]",
+        "[class*=nav]", "[class*=footer]", "[class*=header]", "[class*=menu]", "[class*=sidebar]", "[class*=popup]", "[class*=cookie]",
+        "[id*=nav]", "[id*=footer]", "[id*=header]", "[id*=menu]", "[id*=sidebar]", "[id*=popup]", "[id*=cookie]",
+    ]
+    for selector in noisy_selectors:
+        for tag in soup.select(selector):
+            tag.decompose()
+
+    # Try to extract just the main content
+    main = soup.find("main")
+    if not main:
+        main = soup.find(attrs={"role": "main"})
+    if not main:
+        main = soup.find("article")
+    if not main:
+        divs = soup.find_all("div")
+        if divs:
+            main = max(divs, key=lambda d: len(d.get_text()))
+    if main:
+        return str(main)
+    return str(soup.body) if soup.body else str(soup)
 
 def _extract_text_and_links(html: str, base_url: str) -> tuple[str, List[Dict[str, str]]]:
+    clean_html = extract_main_content(html)
+    markdown = markdownify(clean_html, heading_style="ATX")
+    
     soup = BeautifulSoup(html, "html.parser")
-    # Convert to Markdown while preserving structure (headings, lists, tables, code, links, etc.)
-    markdown = markdownify(str(soup.body), heading_style="ATX") if soup.body else markdownify(str(soup))
     # Links extraction (unchanged)
     page_links = [
         {
