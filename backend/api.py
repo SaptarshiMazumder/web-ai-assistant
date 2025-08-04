@@ -70,6 +70,7 @@ async def ask_smart(request: SmartQARequest):
         "sources": result["sources"],
         "visited_urls": result["visited_urls"],
         "sufficient": result["sufficient"],
+        "multi_page": result.get("multi_page", False)  # ✅ default to False
     }
 
 # --- Chroma debug API ---

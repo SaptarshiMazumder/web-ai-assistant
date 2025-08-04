@@ -1,0 +1,127 @@
+**Important:**
+
+* For new event features and experiences, try [switching to Teams town halls](/en-us/office/switch-from-microsoft-teams-live-events-to-town-halls-c71bf6e2-ece1-4809-900e-51271f39ac72).​​​​​​​
+* For more information, please read [this blog post](https://techcommunity.microsoft.com/t5/microsoft-teams-blog/updates-for-town-hall-in-microsoft-teams-and-teams-live-events/ba-p/4148352) for more information.
+
+Live event attendees can view live captions and subtitles in up to six languages in addition to the language being spoken. Event organizers can select the languages from a list of over 50.
+
+## In this article
+
+* [Set up live captions](#bkmk_organizers)
+* [Download transcripts](#bkmk_download)
+* [Use live captions](#bkmk_produce)
+
+**Note:**Captions and subtitles aren't yet available for some government clouds.
+
+## Set up live captions and subtitles
+
+Organizers can enable live captions and subtitles for an event and choose the languages they'll be available in. To set up live captions and subtitles for your event, select the **Captions** box when you're scheduling your event.
+
+**Note:**Live captions and subtitles are only available for live events produced using Teams.
+
+Use the **Translate to** menu to add up to six languages attendees can choose to see captions and subtitles in, in addition to the language being spoken. For example, if the spoken language is English, but you know there’s an office in the Netherlands tuning in, select **Dutch (Netherlands)** so they can get captions in Dutch.
+
+![Available languages menu](/images/en-us/3f7acd18-fa01-4641-aeef-6219143aae30)
+
+**Notes:**
+
+* Supported spoken languages for this feature include English, Chinese, Dutch, French, German, Hindi, Italian, Japanese, Korean, Portuguese, Russian, Spanish, and Swedish.
+* Supported translation languages include Afrikaans, Arabic, Bosnian, Bulgarian, Catalan, Chinese (Simplified, PRC), Creole, Czech, Danish, Dutch, English, Estonian, Filipino, Finnish, French, German, Greek, Hebrew, Hindi, Hmong, Hungarian, Indonesian, Italian, Japanese, Klingon, Korean, Latvian, Lithuanian, Malagasy, Malay, Maltese, Norwegian, Persian, Polish, Portuguese, Queretaro Otomi, Romanian, Russian, Samoan, Serbian (Latin), Serbian Cyrillic, Slovak, Slovenian, Spanish, Swahili, Swedish, Tahitian, Thai, Tongan, Turkish, Ukrainian, Urdu, Vietnamese, Welsh, and Yucatec Maya.
+* If **Captions** isn’t there, contact your IT admin to turn this feature on.
+
+### Get the most out of captions and subtitles
+
+* Speak clearly, slowly, and directly into the mic.
+* Avoid locations with background noise.
+* Avoid having multiple people speaking at the same time.
+* Use the highest quality [Teams-certified equipment](https://go.microsoft.com/fwlink/?linkid=2086056) available to you.
+
+**Note:**Curse words will be starred out.
+
+### Download transcripts
+
+After the live event has finished, click **Calendar** ![Meetings button](/images/en-us/f788fe72-7168-45df-98c8-58ceac0a9aac) in Teams and look up the live event. Under **Live event resources**, you’ll find **Transcripts**. You should see a transcript for each of the languages you selected for captions and subtitles. Select **Download** ![Download](/images/en-us/c2abeabb-1a79-4db5-b1b5-51b90e4516cf) to download them.
+
+For best results, open the files with Microsoft Word.
+
+![Download transcript button](/images/en-us/fc4243e4-1bb9-4018-8f12-4c374032d452)
+
+## Use live captions and subtitles
+
+### Producer experience
+
+Producers can control their own live captions and subtitles for the event from **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce).
+
+To turn your own live captions and subtitles on and off, select **My live captions**.
+
+To enable or disable attendee live captions and subtitles, select **Attendee live captions**. Attendees will get a notification when you make a change to this setting.
+
+### Attendee experience
+
+To turn on live captions and subtitles, select **Captions**/**Subtitles On**![Closed captions button](/images/en-us/93503963-900a-4b49-9b31-667cf0b74565) in your video controls.
+
+To change the caption language, select **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce) > **Captions / Subtitles**, and choose the language you want.
+
+![Captions settings menu](/images/en-us/63895b04-e63a-4ea9-abc8-8b11372bdb36)
+
+**Note:**The available languages are set by the live event organizer.
+
+## Want to know more?
+
+[Live events overview](/en-us/office/get-started-with-microsoft-teams-live-events-d077fec2-a058-483e-9ab5-1494afda578a)
+
+[Schedule a live event](/en-us/office/schedule-a-live-event-in-microsoft-teams-7a9ce97c-e1cd-470f-acaf-e6dfc179a0e2)
+
+[Produce a live event](/en-us/office/produce-a-live-event-in-microsoft-teams-591bd694-121d-405c-b26d-730315e45a22)
+
+[Present in a live event](/en-us/office/present-in-a-live-event-in-microsoft-teams-d58fc9db-ff5b-4633-afb3-b4b2ddef6c0a)
+
+[Attend a live event](/en-us/office/attend-a-live-event-in-microsoft-teams-a1c7b989-ebb1-4479-b750-c86c9bc98d84)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-live-captions-in-a-live-event-in-microsoft-teams-1d6778d4-6c65-4189-ab13-e2d77beb9e2a "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-live-captions-in-a-live-event-in-microsoft-teams-1d6778d4-6c65-4189-ab13-e2d77beb9e2a&title=Use%20live%20captions%20in%20a%20live%20event%20in%20Microsoft%20Teams "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Use%20live%20captions%20in%20a%20live%20event%20in%20Microsoft%20Teams&body=Use%20live%20captions%20in%20a%20live%20event%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-live-captions-in-a-live-event-in-microsoft-teams-1d6778d4-6c65-4189-ab13-e2d77beb9e2a "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

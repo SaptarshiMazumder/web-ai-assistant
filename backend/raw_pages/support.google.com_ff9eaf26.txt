@@ -1,0 +1,43 @@
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* [Delete or unsubscribe from a calendar](https://support.google.com/calendar/answer/37188)
+* [View your day, week, or month](https://support.google.com/calendar/answer/37189)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true

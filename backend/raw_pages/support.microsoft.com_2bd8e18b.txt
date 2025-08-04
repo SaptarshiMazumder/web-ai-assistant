@@ -1,0 +1,200 @@
+Communicate clearly and efficiently during multilingual meetings and conferences with language interpretation in Microsoft Teams.
+
+Language interpretation allows professional interpreters to convert what the speaker says into another language in real-time, without disrupting the speaker's original flow of delivery. This simultaneous interpretation will lead to more inclusive meetings, where participants who speak different languages can fully collaborate with each other.
+
+**Notes:**
+
+* Language interpretation is not currently available in [end-to-end encrypted (E2EE) Teams meetings](/en-us/office/use-end-to-end-encryption-for-teams-meetings-a8326d15-d187-49c4-ac99-14c17dbd617c).
+* If you turn on [spatial audio](/en-us/office/spatial-audio-in-microsoft-teams-meetings-547b5f81-1825-4ee1-a1cf-f02e12db4fdb) in a meeting with live interpretation, you'll hear the original and translated audio at the same volume. Turn off spatial audio and rejoin the meeting to hear the interpreter's voice clearly with reduced original voice.
+
+## In this article:
+
+[Organize a meeting with language interpretation](#bkmk_organize_meeting_li)
+
+[Designate an interpreter during a meeting](#bkmk_designate_interpreter)
+
+[Make an interpreter an attendee](#bkmk_make_interpreter_attendee)
+
+[Change interpretation language and volume](#bkmk_change_language_channel)
+
+[Interpreter experience](#bkmk_interpreter_experience)
+
+[FAQ](#bkmk_faq)
+
+### Organize a meeting with language interpretation
+
+Language interpretation can be added to any meeting. You must enable language interpretation and invite your organization's interpreters before starting the meeting, either during or after the meeting creation.
+
+To create a meeting with language interpretation:
+
+New calendarClassic calendar
+
+1. [Create a meeting in Teams](/en-us/office/schedule-a-meeting-in-microsoft-teams-943507a9-8583-4c58-b5d2-8ec8265e04e5).
+2. Add attendees in the **Invite attendees** ![Add people icon](/images/en-us/db146a01-d257-4d05-b926-cc1ab719b6ea) field.
+3. In **Event**, select **Meeting options** ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321).
+4. In **Roles** ![People or Show Participants button](/images/en-us/f74af4a7-4e65-4174-a12a-ae68fa7f00a5), turn on the **Enable language interpretation toggle**.  
+     
+   ![Screenshot showing language interpretation settings in meeting options.](/images/en-us/91f10020-39bc-4790-81eb-ac93a8255db6)
+
+   1. In the **Search for interpreters** dropdown, search for and select interpreters. They must be added to the **Invite attendees** ![Add people icon](/images/en-us/db146a01-d257-4d05-b926-cc1ab719b6ea) field to appear here.
+   2. In the **Language** dropdown menus, designate the interpreter’s spoken and target languages. Interpreters can switch between interpreting one language into the other.
+
+      **Note:**To assign external or guest interpreters, you need to [designate an interpreter during the meeting](#bkmk_designate_interpreter).​​​​​​​​​​​
+5. Select **Add more interpreters** if your meeting needs additional language channels.
+6. Select **Save**.
+
+1. [Create a meeting in Teams](/en-us/office/schedule-a-meeting-in-microsoft-teams-943507a9-8583-4c58-b5d2-8ec8265e04e5).
+2. Add attendees in the **Add required attendees** field.
+3. In **Details**, open the **Options** ![Chat info pane icon.](/images/en-us/6d21be16-bbdc-4109-ac53-4197561f119f) pane.
+4. Select **More options**.  
+     
+   ​​​​​​​ ![Screenshot showing More options highlighted when scheduling a meeting in Teams.](/images/en-us/fe38fb3c-1bb5-4302-aba9-eda354be0610)
+5. In **Roles** ![People or Show Participants button](/images/en-us/f74af4a7-4e65-4174-a12a-ae68fa7f00a5), turn on the **Enable language interpretation** toggle.
+
+   1. In **Interpreters**, search for and select an interpreter in the dropdown menu.
+   2. In the **Language** dropdown menus, designate the interpreter’s spoken and target languages. Interpreters can switch between interpreting one language into the other.
+
+      **Note:**To assign external or guest interpreters, you need to [designate an interpreter during the meeting](#bkmk_designate_interpreter).​​​​​​​​​​​
+6. Select **Add more interpreters** if your meeting needs additional language channels.
+7. Select **Save**
+
+### Designate an interpreter during a meeting
+
+To make someone an interpreter during a meeting:
+
+1. In your meeting, select **People** ![People or Show Participants button](/images/en-us/f74af4a7-4e65-4174-a12a-ae68fa7f00a5).
+2. Hover over the person you want to make an interpreter and select **More options** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Make an interpreter** ![Teams translate message icon](/images/en-us/cd790ad6-179b-45d0-a467-15cfdc70709d).
+
+   **Note:**This option is only available in meetings scheduled with language interpretation enabled.
+3. In the **Language** dropdown menus, designate the interpreter’s spoken and target languages. Interpreters can switch between interpreting one language into the other.
+4. Select **Confirm**.
+
+### Make an interpreter an attendee
+
+1. In your meeting, select **People** ![People or Show Participants button](/images/en-us/f74af4a7-4e65-4174-a12a-ae68fa7f00a5).
+2. Hover over the person you want to make an interpreter and select **More options** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Make an attendee**.
+
+### Change interpretation language and volume
+
+When you join a meeting with language interpretation, you can choose which language you want to hear the meeting in. You can also balance the interpretation volume to change how loud or quiet the original and interpreted audios sound against each other.
+
+**Note:**If you turn on [spatial audio](/en-us/office/spatial-audio-in-microsoft-teams-meetings-547b5f81-1825-4ee1-a1cf-f02e12db4fdb) in a meeting with live interpretation, you'll hear the original and translated audio at the same volume. Turn off spatial audio and rejoin the meeting to hear the interpreter's voice clearly with reduced original voice.
+
+To change interpretation language and volume:
+
+1. Select **Choose interpretation language** when you join the meeting.  
+     
+   ![Screenshot of selecting Choose interpretation language button in Microsoft Teams](/images/en-us/2474c923-5d5e-451d-822e-508b21076027)
+2. In the **Listen to the meeting in** dropdown menu, select the language you want to hear the meeting in.  
+     
+   ![Screenshot showing the Choose interpretation language dropdown menu in Microsoft Teams.](/images/en-us/4ffad4d4-c258-42d0-bdfb-6afd2cc2fba0)
+
+   **Note:**To hear the meeting in the spoken language only, keep **Original audio** selected and select **Save**.
+3. Adjust the **Balance volume** slider to your desired volume levels. Your overall meeting volume won’t be affected.  
+     
+   ![Screenshot of the interpretation language balance volume control in Microsoft Teams](/images/en-us/067d92ba-4a8d-46d3-b730-72baad329347)
+4. Select **Save** to apply changes immediately.
+
+To change these settings during the meeting:
+
+1. Select **More actions** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Language and speech** ![Teams language and speech setting](/images/en-us/62414311-a1ca-414e-b3be-7a0cc3a8acce) > **Language interpretation** ![Teams language and speech setting](/images/en-us/62414311-a1ca-414e-b3be-7a0cc3a8acce)​​​​​​​ in the meeting controls.
+2. Make your desired changes.
+3. Select **Save**.
+
+## Interpreter experience
+
+Interpreters can hear all speakers and start interpreting immediately after they join a meeting. Once they join, they won't be able to switch rooms themselves.
+
+Interpreters can also switch their translation direction during a Teams meeting by selecting the language they’re currently translating into at the bottom of the meeting window. The language they’re translating into will appear highlighted.
+
+![Screenshot highlighting the interpreter experience in Microsoft Teams](/images/en-us/51b272e5-69de-4256-b60f-3b905aa99ff1)
+
+## FAQ
+
+### Does Microsoft provide interpreters?
+
+Microsoft does not provide interpreters. Organizations will need to hire their own interpreters to support their interpretation needs.
+
+### Can interpreters join on web?
+
+Language interpretation isn't currently supported for interpreters or attendees joining on Teams for web.
+
+### What information does the interpreter have access to?
+
+Interpreters will have the same permissions as attendees. They'll be able to see the meeting chat, meeting roster, etc.
+
+### How many interpreters can I add to a meeting?
+
+You can add up to 16 different language pairs (for example, translating French to Spanish counts as one language pair). You can assign as many interpreters to the 16 language pairs as needed.
+
+Note: An interpreter can't be an organizer or co-organizer of the meeting.
+
+### What types of meetings does this feature work with?
+
+Language interpretation is supported for regular scheduled meetings, channel meetings, meetings with up to 1000 participants, and webinars.
+
+Breakout rooms are not currently supported. In meetings with breakout rooms, the main meeting can be interpreted, but interpretation will stop when the breakout rooms start.
+
+Language interpretation is not currently available in end-to-end encrypted (E2EE) Teams meetings.
+
+### Can I turn on captions for a meeting with interpretation?
+
+Captions in a meeting with language interpretation will only caption the main speaker, not the interpreter. If the language of the main speaker changes, the meeting's organizer will need to switch the live captions' spoken language to the correct language for captioning to work.
+
+### Will meeting recordings have both original and translated audio?
+
+Meeting recordings in a meeting with language interpretation only capture the audio of the main channel, or original speaker. The interpreter's audio will not be present on the recording.
+
+Compliance recording is not currently supported in meetings with language interpretation.
+
+### What kind of set up do interpreters need?
+
+Interpreters must join meetings on Teams for desktop. Language selection isn't available on Teams for web or mobile.
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-language-interpretation-in-microsoft-teams-meetings-b9fdde0f-1896-48ba-8540-efc99f5f4b2e "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-language-interpretation-in-microsoft-teams-meetings-b9fdde0f-1896-48ba-8540-efc99f5f4b2e&title=Use%20language%20interpretation%20in%20Microsoft%20Teams%20meetings "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Use%20language%20interpretation%20in%20Microsoft%20Teams%20meetings&body=Use%20language%20interpretation%20in%20Microsoft%20Teams%20meetings%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-language-interpretation-in-microsoft-teams-meetings-b9fdde0f-1896-48ba-8540-efc99f5f4b2e "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

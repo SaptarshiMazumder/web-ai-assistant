@@ -1,0 +1,439 @@
+## File tree
+
+Expand file treeCollapse file tree
+
+## 29 files changed
+
++8800
+
+-3
+
+lines changed
+
+Top
+
+Filter options
+
+* [PROGRESSIVE\_CRAWLING.md](#diff-6d3e2a814bd4911afc70e52d9fa00e1910a1ad0f6adfb0cd197a4b1b49388f71)
+* crawl4ai
+
+  + [\_\_init\_\_.py](#diff-971a84279bce52e50201ca5f98c572d7b52ae287657f0adc6e5cf3583dadc292)
+  + [adaptive\_crawler copy.py](#diff-95a3248e827cf322a19d70b4e3cbe9afad2a7278fa8c80c92bf7c4d6b48d64d9)
+  + [adaptive\_crawler.py](#diff-15c05c6118c01adb0f954b69630e036304f7a5ed8a4404185963b51ee6a0564b)
+  + [utils.py](#diff-5594c12ce00dda01bb3d7f98c5f9654b99c00953a76a2f909bbc9726dd783e18)
+* docs
+
+  + examples/adaptive\_crawling
+
+    - [README.md](#diff-a4481d530babdcd8d755f27d1f5cb7f7dd537848c2bb1c1697b5051589c67813)
+    - [advanced\_configuration.py](#diff-db05c1d523d7c568cef4f2baa3f5bb01aa0384f5488b01ea112d9ffba5f4abee)
+    - [basic\_usage.py](#diff-1403e90145af36b538529015a264ce3fc2889e8f873c7edd415d16c8f55aacaa)
+    - [custom\_strategies.py](#diff-aba686bd46b1b0bf14b2bc4d6875c660ed7647664d0cc8936f60869598d6c097)
+    - [embedding\_configuration.py](#diff-7823145b76b938de3ffa01eab3abd0ff1275704dc1d1115d6ca3cac4c520baa3)
+    - [embedding\_strategy.py](#diff-a65e20f16bce9ce339864113bcce699624fca4d6c0f31af507e39b55cb22d565)
+    - [embedding\_vs\_statistical.py](#diff-19b1418b21a2d1335a0ba5025039008de7adf5a7d8b9f8f8d7ee9e5919732686)
+    - [export\_import\_kb.py](#diff-89993963c9d186ef6fd71563b92f31250fe8ff9998f0520f9884d3e98cda1747)
+  + md\_v2
+
+    - advanced
+
+      * [adaptive-strategies.md](#diff-81b59b0cb9d015aa3824de14f85ef0f7091507ef4eb416346a8c391446f57aa0)
+    - api
+
+      * [adaptive-crawler.md](#diff-c3d3f3b9db1f0641b1c614b24fad31162f52658b9d5d0f486e5aeff542313a8e)
+      * [digest.md](#diff-505994a04912eefb51c9a99e3ee37b8585e56edf016558fadc83940f3da114d7)
+    - blog
+
+      * articles
+
+        + [adaptive-crawling-revolution.md](#diff-d76a02f4a85622904bcecac0b18eb611c91f17bf45b822482c54064c26fc1b37)
+      * [index.md](#diff-564fd7809107b623b0aaacc0c666c3c319ddad2e6a86b984494941622ced9c0f)
+    - core
+
+      * [adaptive-crawling.md](#diff-e5e25ba6635a407a04205b95ed53553b4127ab0df4d8ddd4ca183cd47040da80)
+      * [examples.md](#diff-2340a7c1439c1ef93bf2ccfc362c33912921be3a0d5d92b9567331fa2e30c624)
+      * [quickstart.md](#diff-c6a76f8cb1a810c0ac5e5bc72ff1e7a61416a13976de0b2471cdf238a19d623e)
+    - [index.md](#diff-14eef6a5e4116cbf01161876f36e3fd5889dfc01668c144f74617e9b949f3b15)
+* [pyproject.toml](#diff-50c86b7ed8ac2cf95bd48334961bf0530cdc77b5a56f852c5c61b89d735fd711)
+* [requirements.txt](#diff-4d7c51b1efe9043e44439a949dfd92e5827321b34082903477fd04876edb7552)
+* tests/adaptive
+
+  + [compare\_performance.py](#diff-16ad000aa44ade33e44d7ab7355ae311f20c6f9a484a8f94350dc35ba34a8721)
+  + [test\_adaptive\_crawler.py](#diff-56ffcc4f39d31d7bd212aa91d4166fdd9f3aee31392d9f4b59ef8e28595b520c)
+  + [test\_confidence\_debug.py](#diff-f10e13be3355cf524b078187eeb6f82839015a140880056860073531d41b4372)
+  + [test\_embedding\_performance.py](#diff-149a722102a17f930565c41e663a42d275e0fd2eca271d35030076c31f947fa4)
+  + [test\_embedding\_strategy.py](#diff-ade8ccb92145a43fcc30958bcf9aaac60437712814600c8a8d5c28bd65358c49)
+
+Expand file treeCollapse file tree
+
+## 29 files changed
+
++8800
+
+-3
+
+lines changed
+
+Top
+
+| Original file line number | Diff line number | Diff line change |
+| --- | --- | --- |
+| `@@ -0,0 +1,320 @@` | | | |
+|  | `1` | `+ # Progressive Web Crawling with Adaptive Information Foraging` |
+|  | `2` | `+` |
+|  | `3` | `+ ## Abstract` |
+|  | `4` | `+` |
+|  | `5` | `+ This paper presents a novel approach to web crawling that adaptively determines when sufficient information has been gathered to answer a given query. Unlike traditional exhaustive crawling methods, our Progressive Information Sufficiency (PIS) framework uses statistical measures to balance information completeness against crawling efficiency. We introduce a multi-strategy architecture supporting pure statistical, embedding-enhanced, and LLM-assisted approaches, with theoretical guarantees on convergence and practical evaluation methods using synthetic datasets.` |
+|  | `6` | `+` |
+|  | `7` | `+ ## 1. Introduction` |
+|  | `8` | `+` |
+|  | `9` | `+ Traditional web crawling approaches follow predetermined patterns (breadth-first, depth-first) without consideration for information sufficiency. This work addresses the fundamental question: *"When do we have enough information to answer a query and similar queries in its domain?"*` |
+|  | `10` | `+` |
+|  | `11` | `+ We formalize this as an optimal stopping problem in information foraging, introducing metrics for coverage, consistency, and saturation that enable crawlers to make intelligent decisions about when to stop crawling and which links to follow.` |
+|  | `12` | `+` |
+|  | `13` | `+ ## 2. Problem Formulation` |
+|  | `14` | `+` |
+|  | `15` | `+ ### 2.1 Definitions` |
+|  | `16` | `+` |
+|  | `17` | `+ Let:` |
+|  | `18` | `+ - **K** = {d₁, d₂, ..., dₙ} be the current knowledge base (crawled documents)` |
+|  | `19` | `+ - **Q** be the user query` |
+|  | `20` | `+ - **L** = {l₁, l₂, ..., lₘ} be available links with preview metadata` |
+|  | `21` | `+ - **θ** be the confidence threshold for information sufficiency` |
+|  | `22` | `+` |
+|  | `23` | `+ ### 2.2 Objectives` |
+|  | `24` | `+` |
+|  | `25` | `+ 1. **Minimize** |K| (number of crawled pages)` |
+|  | `26` | `+ 2. **Maximize** P(answers(Q) | K) (probability of answering Q given K)` |
+|  | `27` | `+ 3. **Ensure** coverage of Q's domain (similar queries)` |
+|  | `28` | `+` |
+|  | `29` | `+ ## 3. Mathematical Framework` |
+|  | `30` | `+` |
+|  | `31` | `+ ### 3.1 Information Sufficiency Metric` |
+|  | `32` | `+` |
+|  | `33` | `+ We define Information Sufficiency as:` |
+|  | `34` | `+` |
+|  | `35` | `+ ```` |
+|  | `36` | `+ IS(K, Q) = min(Coverage(K, Q), Consistency(K, Q), 1 - Redundancy(K)) × DomainCoverage(K, Q)` |
+|  | `37` | `+ ```` |
+|  | `38` | `+` |
+|  | `39` | `+ ### 3.2 Coverage Score` |
+|  | `40` | `+` |
+|  | `41` | `+ Coverage measures how well current knowledge covers query terms and related concepts:` |
+|  | `42` | `+` |
+|  | `43` | `+ ```` |
+|  | `44` | `+ Coverage(K, Q) = Σ(t ∈ Q) log(df(t, K) + 1) × idf(t) / |Q|` |
+|  | `45` | `+ ```` |
+|  | `46` | `+` |
+|  | `47` | `+ Where:` |
+|  | `48` | `+ - df(t, K) = document frequency of term t in knowledge base K` |
+|  | `49` | `+ - idf(t) = inverse document frequency weight` |
+|  | `50` | `+` |
+|  | `51` | `+ ### 3.3 Consistency Score` |
+|  | `52` | `+` |
+|  | `53` | `+ Consistency measures information coherence across documents:` |
+|  | `54` | `+` |
+|  | `55` | `+ ```` |
+|  | `56` | `+ Consistency(K, Q) = 1 - Var(answers from random subsets of K)` |
+|  | `57` | `+ ```` |
+|  | `58` | `+` |
+|  | `59` | `+ This captures the principle that sufficient knowledge should provide stable answers regardless of document subset.` |
+|  | `60` | `+` |
+|  | `61` | `+ ### 3.4 Saturation Score` |
+|  | `62` | `+` |
+|  | `63` | `+ Saturation detects diminishing returns:` |
+|  | `64` | `+` |
+|  | `65` | `+ ```` |
+|  | `66` | `+ Saturation(K) = 1 - (ΔInfo(Kₙ) / ΔInfo(K₁))` |
+|  | `67` | `+ ```` |
+|  | `68` | `+` |
+|  | `69` | `+ Where ΔInfo represents marginal information gain from the nth crawl.` |
+|  | `70` | `+` |
+|  | `71` | `+ ### 3.5 Link Value Prediction` |
+|  | `72` | `+` |
+|  | `73` | `+ Expected information gain from uncrawled links:` |
+|  | `74` | `+` |
+|  | `75` | `+ ```` |
+|  | `76` | `+ ExpectedGain(l) = Relevance(l, Q) × Novelty(l, K) × Authority(l)` |
+|  | `77` | `+ ```` |
+|  | `78` | `+` |
+|  | `79` | `+ Components:` |
+|  | `80` | `+ - **Relevance**: BM25(preview_text, Q)` |
+|  | `81` | `+ - **Novelty**: 1 - max_similarity(preview, K)` |
+|  | `82` | `+ - **Authority**: f(url_structure, domain_metrics)` |
+|  | `83` | `+` |
+|  | `84` | `+ ## 4. Algorithmic Approach` |
+|  | `85` | `+` |
+|  | `86` | `+ ### 4.1 Progressive Crawling Algorithm` |
+|  | `87` | `+` |
+|  | `88` | `+ ```` |
+|  | `89` | `+ Algorithm: ProgressiveCrawl(start_url, query, θ)` |
+|  | `90` | `+ K ← ∅` |
+|  | `91` | `+ crawled ← {start_url}` |
+|  | `92` | `+ pending ← extract_links(crawl(start_url))` |
+|  | `93` | `+` |
+|  | `94` | `+ while IS(K, Q) < θ and |crawled| < max_pages:` |
+|  | `95` | `+ candidates ← rank_by_expected_gain(pending, Q, K)` |
+|  | `96` | `+ if max(ExpectedGain(candidates)) < min_gain:` |
+|  | `97` | `+ break // Diminishing returns` |
+|  | `98` | `+` |
+|  | `99` | `+ to_crawl ← top_k(candidates)` |
+|  | `100` | `+ new_docs ← parallel_crawl(to_crawl)` |
+|  | `101` | `+ K ← K ∪ new_docs` |
+|  | `102` | `+ crawled ← crawled ∪ to_crawl` |
+|  | `103` | `+ pending ← extract_new_links(new_docs) - crawled` |
+|  | `104` | `+` |
+|  | `105` | `+ return K` |
+|  | `106` | `+ ```` |
+|  | `107` | `+` |
+|  | `108` | `+ ### 4.2 Stopping Criteria` |
+|  | `109` | `+` |
+|  | `110` | `+ Crawling terminates when:` |
+|  | `111` | `+ 1. IS(K, Q) ≥ θ (sufficient information)` |
+|  | `112` | `+ 2. d(IS)/d(crawls) < ε (plateau reached)` |
+|  | `113` | `+ 3. |crawled| ≥ max_pages (resource limit)` |
+|  | `114` | `+ 4. max(ExpectedGain) < min_gain (no promising links)` |
+|  | `115` | `+` |
+|  | `116` | `+ ## 5. Multi-Strategy Architecture` |
+|  | `117` | `+` |
+|  | `118` | `+ ### 5.1 Strategy Pattern Design` |
+|  | `119` | `+` |
+|  | `120` | `+ ```` |
+|  | `121` | `+ AbstractStrategy` |
+|  | `122` | `+ ├── StatisticalStrategy (no LLM, no embeddings)` |
+|  | `123` | `+ ├── EmbeddingStrategy (with semantic similarity)` |
+|  | `124` | `+ └── LLMStrategy (with language model assistance)` |
+|  | `125` | `+ ```` |
+|  | `126` | `+` |
+|  | `127` | `+ ### 5.2 Statistical Strategy` |
+|  | `128` | `+` |
+|  | `129` | `+ Pure statistical approach using:` |
+|  | `130` | `+ - BM25 for relevance scoring` |
+|  | `131` | `+ - Term frequency analysis for coverage` |
+|  | `132` | `+ - Graph structure for authority` |
+|  | `133` | `+ - No external models required` |
+|  | `134` | `+` |
+|  | `135` | `+ **Advantages**: Fast, no API costs, works offline` |
+|  | `136` | `+ **Best for**: Technical documentation, specific terminology` |
+|  | `137` | `+` |
+|  | `138` | `+ ### 5.3 Embedding Strategy (Implemented)` |
+|  | `139` | `+` |
+|  | `140` | `+ Semantic understanding through embeddings:` |
+|  | `141` | `+ - Query expansion into semantic variations` |
+|  | `142` | `+ - Coverage mapping in embedding space` |
+|  | `143` | `+ - Gap-driven link selection` |
+|  | `144` | `+ - Validation-based stopping criteria` |
+|  | `145` | `+` |
+|  | `146` | `+ **Mathematical Framework**:` |
+|  | `147` | `+ ```` |
+|  | `148` | `+ Coverage(K, Q) = mean(max_similarity(q, K) for q in Q_expanded)` |
+|  | `149` | `+ Gap(q) = 1 - max_similarity(q, K)` |
+|  | `150` | `+ LinkScore(l) = Σ(Gap(q) × relevance(l, q)) × (1 - redundancy(l, K))` |
+|  | `151` | `+ ```` |
+|  | `152` | `+` |
+|  | `153` | `+ **Key Parameters**:` |
+|  | `154` | `+ - `embedding_k_exp`: Exponential decay factor for distance-to-score mapping` |
+|  | `155` | `+ - `embedding_coverage_radius`: Distance threshold for query coverage` |
+|  | `156` | `+ - `embedding_min_confidence_threshold`: Minimum relevance threshold` |
+|  | `157` | `+` |
+|  | `158` | `+ **Advantages**: Semantic understanding, handles ambiguity, detects irrelevance` |
+|  | `159` | `+ **Best for**: Research queries, conceptual topics, diverse content` |
+|  | `160` | `+` |
+|  | `161` | `+ ### 5.4 Progressive Enhancement Path` |
+|  | `162` | `+` |
+|  | `163` | `+ 1. **Level 0**: Statistical only (implemented)` |
+|  | `164` | `+ 2. **Level 1**: + Embeddings for semantic similarity (implemented)` |
+|  | `165` | `+ 3. **Level 2**: + LLM for query understanding (future)` |
+|  | `166` | `+` |
+|  | `167` | `+ ## 6. Evaluation Methodology` |
+|  | `168` | `+` |
+|  | `169` | `+ ### 6.1 Synthetic Dataset Generation` |
+|  | `170` | `+` |
+|  | `171` | `+ Using LLM to create evaluation data:` |
+|  | `172` | `+` |
+|  | `173` | `+ ```python` |
+|  | `174` | `+ def generate_synthetic_dataset(domain_url):` |
+|  | `175` | `+ # 1. Fully crawl domain` |
+|  | `176` | `+ full_knowledge = exhaustive_crawl(domain_url)` |
+|  | `177` | `+` |
+|  | `178` | `+ # 2. Generate answerable queries` |
+|  | `179` | `+ queries = llm_generate_queries(full_knowledge)` |
+|  | `180` | `+` |
+|  | `181` | `+ # 3. Create query variations` |
+|  | `182` | `+ for q in queries:` |
+|  | `183` | `+ variations = generate_variations(q) # synonyms, sub/super queries` |
+|  | `184` | `+` |
+|  | `185` | `+ return queries, variations, full_knowledge` |
+|  | `186` | `+ ```` |
+|  | `187` | `+` |
+|  | `188` | `+ ### 6.2 Evaluation Metrics` |
+|  | `189` | `+` |
+|  | `190` | `+ 1. **Efficiency**: Information gained / Pages crawled` |
+|  | `191` | `+ 2. **Completeness**: Answerable queries / Total queries` |
+|  | `192` | `+ 3. **Redundancy**: 1 - (Unique information / Total information)` |
+|  | `193` | `+ 4. **Convergence Rate**: Pages to 95% completeness` |
+|  | `194` | `+` |
+|  | `195` | `+ ### 6.3 Ablation Studies` |
+|  | `196` | `+` |
+|  | `197` | `+ - Impact of each score component (coverage, consistency, saturation)` |
+|  | `198` | `+ - Sensitivity to threshold parameters` |
+|  | `199` | `+ - Performance across different domain types` |
+|  | `200` | `+` |
+|  | `201` | `+ ## 7. Theoretical Properties` |
+|  | `202` | `+` |
+|  | `203` | `+ ### 7.1 Convergence Guarantee` |
+|  | `204` | `+` |
+|  | `205` | `+ **Theorem**: For finite websites, ProgressiveCrawl converges to IS(K, Q) ≥ θ or exhausts all reachable pages.` |
+|  | `206` | `+` |
+|  | `207` | `+ **Proof sketch**: IS(K, Q) is monotonically non-decreasing with each crawl, bounded above by 1.` |
+|  | `208` | `+` |
+|  | `209` | `+ ### 7.2 Optimality` |
+|  | `210` | `+` |
+|  | `211` | `+ Under certain assumptions about link preview accuracy:` |
+|  | `212` | `+ - Expected crawls ≤ 2 × optimal_crawls` |
+|  | `213` | `+ - Approximation ratio improves with preview quality` |
+|  | `214` | `+` |
+|  | `215` | `+ ## 8. Implementation Design` |
+|  | `216` | `+` |
+|  | `217` | `+ ### 8.1 Core Components` |
+|  | `218` | `+` |
+|  | `219` | `+ 1. **CrawlState**: Maintains crawl history and metrics` |
+|  | `220` | `+ 2. **AdaptiveConfig**: Configuration parameters` |
+|  | `221` | `+ 3. **CrawlStrategy**: Pluggable strategy interface` |
+|  | `222` | `+ 4. **AdaptiveCrawler**: Main orchestrator` |
+|  | `223` | `+` |
+|  | `224` | `+ ### 8.2 Integration with Crawl4AI` |
+|  | `225` | `+` |
+|  | `226` | `+ - Wraps existing AsyncWebCrawler` |
+|  | `227` | `+ - Leverages link preview functionality` |
+|  | `228` | `+ - Maintains backward compatibility` |
+|  | `229` | `+` |
+|  | `230` | `+ ### 8.3 Persistence` |
+|  | `231` | `+` |
+|  | `232` | `+ Knowledge base serialization for:` |
+|  | `233` | `+ - Resumable crawls` |
+|  | `234` | `+ - Knowledge sharing` |
+|  | `235` | `+ - Offline analysis` |
+|  | `236` | `+` |
+|  | `237` | `+ ## 9. Future Directions` |
+|  | `238` | `+` |
+|  | `239` | `+ ### 9.1 Advanced Scoring` |
+|  | `240` | `+` |
+|  | `241` | `+ - Temporal information value` |
+|  | `242` | `+ - Multi-query optimization` |
+|  | `243` | `+ - Active learning from user feedback` |
+|  | `244` | `+` |
+|  | `245` | `+ ### 9.2 Distributed Crawling` |
+|  | `246` | `+` |
+|  | `247` | `+ - Collaborative knowledge building` |
+|  | `248` | `+ - Federated information sufficiency` |
+|  | `249` | `+` |
+|  | `250` | `+ ### 9.3 Domain Adaptation` |
+|  | `251` | `+` |
+|  | `252` | `+ - Transfer learning across domains` |
+|  | `253` | `+ - Meta-learning for threshold selection` |
+|  | `254` | `+` |
+|  | `255` | `+ ## 10. Conclusion` |
+|  | `256` | `+` |
+|  | `257` | `+ Progressive crawling with adaptive information foraging provides a principled approach to efficient web information extraction. By combining coverage, consistency, and saturation metrics, we can determine information sufficiency without ground truth labels. The multi-strategy architecture allows graceful enhancement from pure statistical to LLM-assisted approaches based on requirements and resources.` |
+|  | `258` | `+` |
+|  | `259` | `+ ## References` |
+|  | `260` | `+` |
+|  | `261` | `+ 1. Manning, C. D., Raghavan, P., & Schütze, H. (2008). Introduction to Information Retrieval. Cambridge University Press.` |
+|  | `262` | `+` |
+|  | `263` | `+ 2. Robertson, S., & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and Beyond. Foundations and Trends in Information Retrieval.` |
+|  | `264` | `+` |
+|  | `265` | `+ 3. Pirolli, P., & Card, S. (1999). Information Foraging. Psychological Review, 106(4), 643-675.` |
+|  | `266` | `+` |
+|  | `267` | `+ 4. Dasgupta, S. (2005). Analysis of a greedy active learning strategy. Advances in Neural Information Processing Systems.` |
+|  | `268` | `+` |
+|  | `269` | `+ ## Appendix A: Implementation Pseudocode` |
+|  | `270` | `+` |
+|  | `271` | `+ ```python` |
+|  | `272` | `+ class StatisticalStrategy:` |
+|  | `273` | `+ def calculate_confidence(self, state):` |
+|  | `274` | `+ coverage = self.calculate_coverage(state)` |
+|  | `275` | `+ consistency = self.calculate_consistency(state)` |
+|  | `276` | `+ saturation = self.calculate_saturation(state)` |
+|  | `277` | `+ return min(coverage, consistency, saturation)` |
+|  | `278` | `+` |
+|  | `279` | `+ def calculate_coverage(self, state):` |
+|  | `280` | `+ # BM25-based term coverage` |
+|  | `281` | `+ term_scores = []` |
+|  | `282` | `+ for term in state.query.split():` |
+|  | `283` | `+ df = state.document_frequencies.get(term, 0)` |
+|  | `284` | `+ idf = self.idf_cache.get(term, 1.0)` |
+|  | `285` | `+ term_scores.append(log(df + 1) * idf)` |
+|  | `286` | `+ return mean(term_scores) / max_possible_score` |
+|  | `287` | `+` |
+|  | `288` | `+ def rank_links(self, state):` |
+|  | `289` | `+ scored_links = []` |
+|  | `290` | `+ for link in state.pending_links:` |
+|  | `291` | `+ relevance = self.bm25_score(link.preview_text, state.query)` |
+|  | `292` | `+ novelty = self.calculate_novelty(link, state.knowledge_base)` |
+|  | `293` | `+ authority = self.url_authority(link.href)` |
+|  | `294` | `+ score = relevance * novelty * authority` |
+|  | `295` | `+ scored_links.append((link, score))` |
+|  | `296` | `+ return sorted(scored_links, key=lambda x: x[1], reverse=True)` |
+|  | `297` | `+ ```` |
+|  | `298` | `+` |
+|  | `299` | `+ ## Appendix B: Evaluation Protocol` |
+|  | `300` | `+` |
+|  | `301` | `+ 1. **Dataset Creation**:` |
+|  | `302` | `+ - Select diverse domains (documentation, blogs, e-commerce)` |
+|  | `303` | `+ - Generate 100 queries per domain using LLM` |
+|  | `304` | `+ - Create query variations (5-10 per query)` |
+|  | `305` | `+` |
+|  | `306` | `+ 2. **Baseline Comparisons**:` |
+|  | `307` | `+ - BFS crawler (depth-limited)` |
+|  | `308` | `+ - DFS crawler (depth-limited)` |
+|  | `309` | `+ - Random crawler` |
+|  | `310` | `+ - Oracle (knows relevant pages)` |
+|  | `311` | `+` |
+|  | `312` | `+ 3. **Metrics Collection**:` |
+|  | `313` | `+ - Pages crawled vs query answerability` |
+|  | `314` | `+ - Time to sufficient confidence` |
+|  | `315` | `+ - False positive/negative rates` |
+|  | `316` | `+` |
+|  | `317` | `+ 4. **Statistical Analysis**:` |
+|  | `318` | `+ - ANOVA for strategy comparison` |
+|  | `319` | `+ - Regression for parameter sensitivity` |
+|  | `320` | `+ - Bootstrap for confidence intervals` |
+
+| Original file line number | Diff line number | Diff line change |
+| --- | --- | --- |
+| `@@ -69,6 +69,14 @@` | | | |
+| `69` | `69` | `)` |
+| `70` | `70` | `# NEW: Import AsyncUrlSeeder` |
+| `71` | `71` | `from .async_url_seeder import AsyncUrlSeeder` |
+|  | `72` | `+ # Adaptive Crawler` |
+|  | `73` | `+ from .adaptive_crawler import (` |
+|  | `74` | `+ AdaptiveCrawler,` |
+|  | `75` | `+ AdaptiveConfig,` |
+|  | `76` | `+ CrawlState,` |
+|  | `77` | `+ CrawlStrategy,` |
+|  | `78` | `+ StatisticalStrategy` |
+|  | `79` | `+ )` |
+| `72` | `80` |  |
+| `73` | `81` | `# C4A Script Language Support` |
+| `74` | `82` | `from .script import (` |
+| `@@ -97,6 +105,12 @@` | | | |
+| `97` | `105` | `"VirtualScrollConfig",` |
+| `98` | `106` | `# NEW: Add AsyncUrlSeeder` |
+| `99` | `107` | `"AsyncUrlSeeder",` |
+|  | `108` | `+ # Adaptive Crawler` |
+|  | `109` | `+ "AdaptiveCrawler",` |
+|  | `110` | `+ "AdaptiveConfig",` |
+|  | `111` | `+ "CrawlState",` |
+|  | `112` | `+ "CrawlStrategy",` |
+|  | `113` | `+ "StatisticalStrategy",` |
+| `100` | `114` | `"DeepCrawlStrategy",` |
+| `101` | `115` | `"BFSDeepCrawlStrategy",` |
+| `102` | `116` | `"BestFirstCrawlingStrategy",` |
+|  | | | |
+
+## 0 commit comments
+
+Comments
+
+0 (0)

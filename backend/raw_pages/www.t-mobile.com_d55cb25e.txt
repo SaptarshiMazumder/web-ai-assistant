@@ -1,0 +1,233 @@
+[Return to T-Mobile Home Internet page](https://www.t-mobile.com/home-internet)
+
+# Frequently Asked Questions
+
+Answers to popular questions about T-Mobile home internet speed, costs, setting up and ways to get help. If you need more info, here are ways to reach us.
+
+[Sales 1-844-839-5057](tel:%2018448395057)
+
+[Support 1-844-275-9310](tel:%2018442759310)
+
+[Online Support](https://www.t-mobile.com/isp/home-internet-troubleshooting-support?icid=HEIS_ISW_U_21HMEINT_0G71DUSY4YWNOHABT27079)
+
+* ## What is T-Mobile 5G Home Internet?
+
+  + It’s affordable internet service with national availability that lets you do it all with taxes and fees included for qualified accounts, no annual contract, and no equipment fees.
+  + T-Mobile Internet service is powered by America’s largest 5G network in locations we determine will receive a great internet experience.
+  + You receive service through a 5G Gateway device (which combines the capabilities of a router and a modem), the Gateway device then converts the 5G signal to Wi-Fi, and provides a Wi-Fi signal.
+  + The [T-Mobile Rely Internet](https://www.t-mobile.com/home-internet/plans), [T-Mobile Amplified Internet](https://www.t-mobile.com/home-internet/plans), [T-Mobile All-In Internet](https://www.t-mobile.com/home-internet/plans/5g-home-internet-plus) and [AWAY™](https://www.t-mobile.com/home-internet/plans/rv-camper-internet-plans) plans have our 5-year price guarantee so you won’t have to worry about exploding bills and price hikes (exclusions like taxes and fees apply).
+  + Go from box to browsing in 15 minutes or less with an easy, self-installation process.
+* ## Who is eligible for T-Mobile 5G Home Internet?
+
+  Eligibility is determined by the home service address. Address eligibility is based off network capacity, which is always expanding, but can also change as more customers join T-Mobile. New and existing T-Mobile customers can check availability [here](https://www.t-mobile.com/home-internet?&cmpid=HEIS_PB_P_HMEINTRNET_43700080241009159_706011857228&gad_source=1&gclid=CjwKCAiAl4a6BhBqEiwAqvrquhiadH_v4vFOBBWucoa3MHxP6VLc0my5gOfsTi0isHtPHSjMdURhtBoC9SQQAvD_BwE&gclsrc=aw.ds).
+
+  + T-Mobile Rely Internet, T-Mobile Amplified Internet and T-Mobile All-In Internet must have a home service address that is eligible for unlimited service. These plans are eligible for use at only the approved home address and may be restricted away from the approved address.
+  + Home Internet Lite must have a service address eligible for Lite plans. Home Internet Lite plans activated starting May 9, 2024 may only be used at the approved address and may be restricted away from the approved address.
+  + AWAY™ customers must have an eligible physical address to get started. Once activated, AWAY™ plans may be used nationwide across T-Mobile's network, but should not be used primarily in a single location.
+* ## Do these plans come with 5-Year price guarantee?
+
+  Yes, new and upgrading customers on the [T-Mobile Rely Internet](https://www.t-mobile.com/home-internet/plans), [T-Mobile Amplified Internet](https://www.t-mobile.com/home-internet/plans), [T-Mobile All-In Internet](https://www.t-mobile.com/home-internet/plans/5g-home-internet-plus) and [AWAY™](https://www.t-mobile.com/home-internet/plans/rv-camper-internet-plans) plans are covered by our 5- year price guarantee. 5-year price guarantee means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+* ## Can I get a discount for having both T-Mobile phone and Internet services?
+
+  Yes, you can get a discount when you bundle T-Mobile Rely Internet, T-Mobile Amplified Internet, or T-Mobile All-In Internet with T-Mobile voice service. For more information on our plans and discounts, visit our Home Internet Plans page.
+* ## Can I purchase higher-speed service?
+
+  We don’t offer tiered pricing based on speeds at this time. Customers receive the best speeds available from the service at their location. As better speeds are available, customers will automatically experience them, at no additional cost. During congestion, Internet customers may notice speeds slower than customers using other T-Mobile services and further reduction if using >1.2TB/mo., due to data prioritization.
+* ## Can I get T-Mobile 5G Internet for my business?
+
+  Great news! T-Mobile has the Internet access solutions that you need to keep your business and employees connected and productive. Visit your T-Mobile store to find the best internet option for your business - <https://www.t-mobile.com/stores/locator>.
+* ## Are there ways I cannot use T-Mobile 5G Home Internet?
+
+  You can use your Home Internet for all your everyday activities such as homework, streaming and video conferencing! But to ensure that our network is available for all customers, there are some restrictions on activities that can damage or disproportionately congest the network. For example, Home Internet is not intended for unattended use, automatic data feeds, automated machine-to-machine connections, or uses that automatically consume unreasonable amounts of available network capacity. In addition, many T-Mobile Internet products are intended to be used in a fixed location and use at a location other than the one we’ve approved is not permitted and may be restricted. Please see [T-Mobile's Terms and Conditions](https://www.t-mobile.com/responsibility/consumer-info/policies/internet-service) for prohibited uses.
+* ## Can I transfer my T-Mobile 5G Internet service when I move homes?
+
+  Yes, give us a call at 1-877-373-0347 prior to moving to confirm that your new address is eligible for service and set up a change of address.
+* ## Can I get an employee discount on these plans?
+
+  Yes! Call 1-800-937-8997 or 611 from your Device or visit a T-Mobile Store to sign up or upgrade your plan.
+
+* ## What speed can I expect from Amplified or All-In Home Internet?
+
+  All our gateways are designed to provide a great experience to customers, whether streaming video, surfing the web, working from home or enjoying most types of online gaming.
+
+  Customers on the Amplified and All-In Internet plans can experience faster speeds with T-Mobile’s latest 5G gateway, delivering typical download speeds of 133 mbps – 415 mbps. Typical upload speeds are between 12 – 55 Mbps. 25% of our customers see speeds below and 25% see speeds above these ranges.
+
+  T-Mobile 5G Home Internet is delivered via 5G cellular network and speeds vary due to factors affecting cellular networks. Our speed projections are based on our analysis of internal and third-party data for eligible customers. See [T-Mobile.com/OpenInternet](https://www.t-mobile.com/responsibility/consumer-info/policies/internet-service) for more information.
+* ## What is Assurant® Personal TechPro?
+
+  Personal TechPro provides unlimited live U.S.-based tech support and assistance for a variety of smart connected devices in the home — from setup to computer virus removal, to everyday usage, T-Mobile 5G Home Internet Plus customers get 24/7 access to Personal TechPro through the PocketGeek® Home app.
+
+  Download Android App [here](https://install.pocketgeek.com/?utm_campaign=app_registration&utm_medium=email&app_branding=tmobile_high_speed_internet&platform=android)
+
+  Download iOS App [here](https://install.pocketgeek.com/?utm_campaign=app_registration&utm_medium=email&app_branding=tmobile_high_speed_internet&platform=iOS)
+
+  + **Get help across various device setup stages and types of everyday tech usage challenges** - Personal TechPro will help with set up, sync, troubleshooting, PC virus removal, backup photos, streaming app account setup, and more
+  + **Available for a large range of smart devices in your home -** wide range of device support coverage, including thousands of device-specific self-help tips, covering a variety of brands, models and product categories (TVs, gaming consoles, washing machines, doorbells, thermostats, indoor cameras, small appliances, computers etc.)
+  + **Unlimited access, any time you want it -** 24 hours a day, 7 days a week support hours, 363 days a year (closed on Christmas and Thanksgiving only)
+  + **Get support in a way that result in faster solutions, in a way that you prefer to communicate in -** Tap to call and tap to chat with a real person, with optional screen and camera sharing support
+  + **Highly skilled experts that provide fast and proven service –** Personal TechProhas over 98% resolution rate, calls answered in 15 seconds or less and tech challenges solved in an average of 15 minutes or less, with greater than 97% customer satisfaction rate
+* ## What is the AWAY™ plan?
+
+  + AWAY™ is beyond the home Wi-Fi designed to give you powerful and flexible internet that can be used on the go, nationwide across T-Mobile’s network. Perfect for long term RVers, seasonal travelers, digital nomads and other frequent travelers. For Small Business owners, like food trucks, mobile kiosks and local trucking companies, we also have the Small Business Internet Away plan that is perfect for their needs.
+  + It comes with a 5G Gateway included, and unlimited data is available so you get the freedom and flexibility of Wi-Fi on the go without equipment charges. Set up is easy with self-installation, so you can go from box to browsing in 15 minutes or less.
+* ## What are the Home Internet Lite plans?
+
+  T-Mobile Home Internet Lite provides home internet connectivity for millions of homes that aren’t yet eligible for our unlimited 5G Home Internet service. Starting at 100GB of data per month, Home Internet Lite provides many of the same great benefits as our unlimited Home Internet plan – including no annual contracts or extra equipment fees, and simple setup in under 15 minutes. Because Home Internet Lite uses the same 5G Gateway, once your address is approved for our unlimited Home Internet plan, you can seamlessly upgrade to unlimited. That is what we call a win-win.
+* ## What happens if I go over my Lite or AWAY™ data cap?
+
+  Once you use your monthly allotment of data, you will experience reduced speeds (128kbps) for the remainder of your billing cycle. You can add more data at any time via the myTMO app, online at myTMO.com, or calling customer Care (1-800-937-8997).
+* ## What speeds can I expect from AWAY™?
+
+  AWAY™ internet can be used nationwide across T-Mobile’s network so speeds can vary depending on your location.
+* ## Can I carry over my unused Lite or AWAY™ data to the next month?
+
+  No, monthly data cannot be carried over.
+* ## What is the T-Mobile Rely Internet Plan?
+
+  Rely Home Internet provides all the essentials for reliable 5G internet at a low monthly rate of $35/month with AutoPay and any T-Mobile voice line. Plus, with 5-year price guarantee we won’t raise your rate on internet for at least 5 years from your initial activation (exclusions like taxes and fees apply). It comes with unlimited data, a 5G gateway, and taxes & fees included for qualifying accounts. It delivers reliable Wi-Fi with speed that will keep you streaming, working, and playing.
+* ## What is the T-Mobile Amplified Internet Plan?
+
+  With T-Mobile Amplified internet, households enjoy the benefits from the Rely plan, plus T-Mobile’s latest 5G gateway for faster speeds that seamlessly support more people and devices. This comes on top of additional benefits like Advanced Cyber Security for added digital peace of mind.  
+     
+   Beyond the standard security protections included for all 5G Internet users, with Advanced Cyber Security, customers get things like Safe Browsing to help block malicious links along with Anomaly Detection to help protect connected devices from cybercriminals — all of which is easily managed through the [T-Life app](https://www.t-mobile.com/apps).
+* ## What is the T-Mobile All-In Internet Plan?
+
+  This plan is ideal for larger families or those with more devices looking to get the most out of their Home Internet. It includes nearly $300/year in value with benefits like:
+
+  + Faster speeds and more powerful performance in more places with our latest 5G Gateway and a mesh unit to boost Wi-Fi performance in those hard-to-reach places
+  + Advanced Cyber Security to keep your devices digitally secure and protected
+  + 24/7 Interactive Live Assistance with Video Support from Assurant Personal TechPro for any Wi-Fi connected smart devices in the home– helping people stay free from tech stress with setup, troubleshooting and maintenance support
+  + Hulu on Us to stream full seasons of exclusive series, plus current episodes, Hulu Originals, hit movies, and more.
+  + Paramount+ on Us to stream over 40,000 episodes and hit movies, plus exclusive originals, live sports & more with Paramount+!
+* ## Are these plans available for Puerto Rico or Metro by T-Mobile?
+
+  The Rely, Amplified and All-In Internet plans are available in Puerto Rico. Paramount+ is not available in Puerto Rico.
+
+  Please see our [plans page](https://www.metrobyt-mobile.com/plans/home-internet) for our latest offerings for Metro by T-Mobile.
+* ## What is the New York Affordable Broadband Act and do you have any rate plans for me if I qualify?
+
+  :   The New York Affordable Broadband Act is a program that helps eligible families and households located in the state of New York get access to a lower priced internet plan. T-Mobile is offering eligible customers a new $15 Home Internet rate plan at addresses that qualify for 5G Home Internet service. **[Visit this page](https://www.t-mobile.com/home-internet/eligibility/new-york-broadband)** to check eligibility and learn more about how to sign up!
+
+* ### What is the difference between T-Mobile Home Internet and T-Mobile Fiber?
+
+  T-Mobile Home Internet is our fixed wireless internet service, which runs on our 4G LTE and 5G networks and is available to 70 million households across the country. T-Mobile Fiber delivers home internet over fiber-optic lines and is currently available in select locations across the U.S.
+* ### Can I choose between T-Mobile Home Internet and T-Mobile Fiber? Can I switch between the two?
+
+  Yes! Customers eligible for both T-Mobile Home Internet and T-Mobile Fiber can choose the home broadband option that best suits their needs. T-Mobile 5G Home Internet and T-Mobile Fiber have no annual contracts, so you can switch at any time.
+* ### When will T‑Mobile Fiber internet be available in my area?
+
+  Our service is currently available in select cities and regions in the United States. You can check your eligibility to find out if T-Mobile Fiber is available at your address. We're working to expand our service to more locations. [Join our waitlist](https://t-mobilefiber.com/waitlist) and we’ll reach out as soon as we're available at your address. You can also check to see if you are eligible for our 5G Home Internet service at <https://www.t-mobile.com/home-internet>.
+
+* ## What is Test Drive, and who is eligible?
+
+  New and existing T-Mobile customers activating Home Internet on a qualifying plan are eligible to receive their money back via a onetime bill credit if they choose to schedule cancellation of service within the first 15 days of activation.
+* ## When does my 15 days start for Test Drive?
+
+  Your 15 Days starts the day you activate and bring home your device from a retail store or once you receive a notification that your 5G gateway has shipped.
+* ## How can I try Test Drive?
+
+  Any customer who activates T-Mobile Home Internet or Small Business Internet on a qualifying plan within the promotional window and schedules cancellation of service within the first 15 days of activation will qualify for Test Drive.
+* ## Do I need to return any equipment that was sent to me if I cancel service?
+
+  Yes, you will need to return the gateway after you cancel your service, or you will be charged a non-return fee to your bill that is not eligible for any money back adjustment. Equipment Non-Return Fees are not part of Test Drive. These will be handled in the same way they would without Test Drive and are not eligible for a money back adjustment.
+* ## How can I get my money back if I do not wish to continue with T-Mobile Internet?
+
+  At the time cancellation is scheduled, a one time bill credit will be applied to your account to zero out any T-Mobile Internet service charges on your bill. If there is a credit balance on the account because a payment was made before the one time bill credit was applied, the credit balance will be proactively paid out after 30 days via a Prepaid MasterCard from North Lane to the billing address on file.
+* ## What is the difference between T-Mobile 30 day Network Test Drive, and the 15 day Internet Test drive?
+
+  The T-Mobile Network Test Drive allows non-T-Mobile customers to try T-Mobile's network for up to 30 days with their own phone, phone number and apps from another carrier. While the T-Mobile Internet Test drive allows Non-T-Mobile customers and existing T-Mobile customers to try out T-Mobile Home Internet or Small Business Internet service for 15 days after activation worry-free. If T-Mobile Internet is not right for you, cancel within the first 15 days for a full refund.
+
+* ## How do I get signed up for T-Mobile Home Internet or AWAY™?
+
+  + Check availability for 5G Home Internet or 5G Home Internet Plus at your address at [www.t-mobile.com/isp](http://www.t-mobile.com/isp) and choose the best plan for you to sign up.
+  + Check availability for AWAY™ at <https://www.t-mobile.com/home-internet/internet/away-plan>.
+* ## When do you expect to roll out more markets?
+
+  We are working aggressively to expand T-Mobile 5G Home Internet to more people, but don't have specific dates by location. If you are on our waiting list, we will let you know as soon as the service is available to you!
+* ## I received an invitation to sign-up for T-Mobile Home Internet, but when I go to the website and put in my information, I get a message that says "You're on the Waiting List".
+
+  + Sometimes, if you're the primary account holder on an existing T-Mobile account, we'll send you an invitation when another location on your account is eligible. In this situation, you might get a "waiting list" message if you try to check availability for your own address.
+  + T-Mobile Home Internet invitations for existing T-Mobile accounts are tied to a specific phone number, so if the correct phone number is not entered on the form, you'll get that response even if you received an invite.
+  + You can re-try using a different phone number on your account or call our dedicated Customer Care team at [1-844-468-4521](tel:+18444684521) to help.
+* ## How can I check the status of my order?
+
+  If you have placed an order for a device and have not received it yet, you can check your order status [here](https://www.t-mobile.com/order-status).
+* ## Why do I want a T-Mobile ID?
+
+  A T-Mobile ID is a credential that links the services you use with T-Mobile, including Internet. With a T-Mobile ID and password, you can log into My T-Mobile via the myTMO app, online at myTMO.com to pay your bill, set up and manage AutoPay, and more easily, all from one place.  
+   Home Internet customers can create a T-Mobile ID by signing up [here](https://www.t-mobile.com/home-internet-signup) using the email address you used at time of sale.  
+   Note: Home Internet customers that did not provide an email address for service notifications and receive a paper bill will need to call 844-468-4521 to provide their email address in order to register for T-Mobile ID.
+* ## I'm on the waiting list for T-Mobile Home Internet. What does it mean?
+
+  We're working to expand T-Mobile Home Internet service to more people over time-we appreciate your patience! As soon as we're ready for you, we'll let you know!
+* ## Where can I find information on T-Mobile Fiber?
+
+  T-Mobile Fiber delivers home broadband service over fiber-optic lines to select locations, using fiber providers’ fiber-optic networks. For more information on T-Mobile Fiber, visit [T-MobileFiber.com](https://t-mobilefiber.com/).
+* ## What offers or promotions are available with T-Mobile Fiber?
+
+  We’re excited to bring our T-Mobile customers in select locations another option for home broadband. When you preorder today we are offering 30 days on us for new 1 GB T-Mobile Fiber customers. For more information on T-Mobile Fiber, visit [T-MobileFiber.com](https://t-mobilefiber.com/).
+* ## What is the difference between 5G Home Internet and Home Internet Lite?
+
+  Home Internet Lite are plans with data buckets of either 100 GB or 150GB per month while 5G Home Internet is an unlimited plan. If you start on a Lite plan, simply signup for the Waitlist to be notified once your address qualifies for the unlimited 5G Home Internet plan.
+* ## Will I be notified when unlimited becomes available if I sign up for Lite?
+
+  If you start on a Lite plan, simply signup for the Waitlist to be notified once your address qualifies for the unlimited 5G Home Internet plan.
+
+* ## What is Home Internet Backup?
+
+  T-Mobile’s Home Internet Backup plan is an affordable, reliable solution to keep cable or fiber customers connected during outages from their primary internet service provider. It comes with 130GB of data a month - enough to keep a typical household connected with Wi-Fi for up to 7 days in case your primary internet service goes down.
+* ## Who is eligible for Home Internet Backup?
+
+  Home Internet Backup is for people with an existing primary internet provider who need a backup connectivity solution for when their primary internet provider has an outage or connectivity goes down.
+* ## How do I use Home Internet Backup when my primary internet service provider has an outage?
+
+  Home Internet Backup comes with a 5G Gateway included and takes just minutes to install. Keep your gateway plugged in and when your primary internet connection goes out, simply switch your devices over to your Home Internet Backup Wi-Fi connection to stay online until your primary provider is back up and running.
+* ## What is included in the Home Internet Backup Plan?
+
+  Home Internet Backup gives 130 GB of data – enough to keep a typical household connected for up to 7 days a month – and a 5G gateway included for $20 per month with AutoPay.
+* ## What happens if I use all my Home Internet Backup full speed data?
+
+  Once you use your 130 GB of monthly full speed data, you’ll stay connected at speeds of up to 600 kbps until your plan resets on the first day of your next billing cycle. Home Internet Backup is intended for use only as a backup in the event of a separate, primary internet provider outage.
+* ## How do I monitor my data usage?
+
+  You can check your data usage at any time in your MyT-Mobile Account.
+* ## Can I carry over unused data month to month?
+
+  No, unused data can’t be carried over to the next month.
+* ## Will I be notified if I hit my data limit?
+
+  You will receive notifications to your Internet gateway at 80% and 100% of full-speed data usage. You can also easily check your data usage any time in your MyT-Mobile Account.  
+     
+   If you’re an Internet only customer, a second notification will be sent via email, so we recommend having an email attached to your account to receive data usage notifications.  
+     
+   Additionally, if you have a T-Mobile Voice line, you’ll also receive an SMS message letting you know how much data you’ve used for the month.
+* ## What if I need more data, can I upgrade my Home Internet Backup plan?
+
+  You can upgrade your Home Internet Backup plan to a T-Mobile 5G Home Internet plan by calling Customer Care. Check to see if T-Mobile 5G Home Internet is available at your home here - <https://www.t-mobile.com/home-internet/eligibility>
+* ## When does my full speed data replenish?
+
+  Your data will reset on the first day of your new billing cycle.
+* ## What if the gateway is turned on, but no data is used?
+
+  No problem! The gateway can stay plugged in and on, and data will only be used if devices are connected to the Home Internet Backup Wi-Fi, so check to make sure you have disconnected them until an outage occurs. Home Internet Backup is intended for use only as a backup in the event of a separate, primary internet provider outage.
+* ## **How long will 130GB of data last?**
+
+  It depends on several factors, including your household's usage behavior, the number of devices connected, and the type of activities you engage in online. However, 130GB of data is enough to keep a typical household connected for 7 days.
+
+* ### I bought T-Mobile 5G Home Internet online or with a Chat Agent. How do I redeem my Virtual Prepaid Mastercard?
+
+  1. Once you receive your Home Internet Gateway device, go to <https://promotions.t-mobile.com/> within 30 days of activation and enter all required information including your T-Mobile ID and password to log in.  
+   2. Select the phone number from the drop-down for this promotion.
+
+  + Home Internet only accounts – Your billing phone number can be found on your bill under “Connected Devices.”
+
+  3. Enter all required information, including:
+
+  + Transaction date
+  + The channel of your transaction – [T-Mobile.com](https://www.t-mobile.com/)
+  + Your transaction type – Internet Router
+
+  4. Select the promotion you would like to redeem based on the list you are eligible for. Remember, you can only submit for ONE promotion per line!  
+   5. Once selected, finish the redemption process by hitting Continue on the terms & conditions page.
+
+[Return to T-Mobile Home Internet page](https://www.t-mobile.com/home-internet)

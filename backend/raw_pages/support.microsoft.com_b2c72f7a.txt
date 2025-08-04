@@ -1,0 +1,185 @@
+Enable attendance reports to view and download important attendance details, like who attended and what time people joined and left, during and after your meeting. Only organizers and co-organizers can view and download attendance reports.
+
+DesktopMobile
+
+## Turn attendance reports on or off
+
+Organizers can turn attendance reports on or off in meetings they create.
+
+### Before a meeting
+
+To turn attendance reports on or off before a meeting, first select the Teams calendar version you’re using. To learn more, see [Get started with the new calendar in Microsoft Teams](/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5).
+
+### New calendar
+
+To turn attendance reports on or off:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select an event and select **Edit** ![Edit icon](/images/en-us/073d9d9a-0d84-402f-acdb-5765e790261f) > **More options**.
+3. In **Event**, select **Meeting options** ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321).
+4. In **Participation** ![Icon for Participation in Microsoft Teams](/images/en-us/e56db9d7-f31f-4025-a075-69f9d96b1c85), turn the **Allow attendance report** toggle on or off.
+5. Select **Save**.
+
+For more help managing meeting attendance reports, contact your IT admin.
+
+### Classic calendar
+
+To turn attendance reports on or off:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select a meeting or event.
+3. Select **Edit**.
+4. In the meeting description, press and hold **Ctrl** and select **Meeting options**.
+5. In **Participation** ![Icon for Participation in Microsoft Teams](/images/en-us/e56db9d7-f31f-4025-a075-69f9d96b1c85), turn the **Allow attendance report** toggle on or off.
+6. Select **Save**.
+
+For more help managing meeting attendance reports, contact your IT admin.
+
+### During a meeting
+
+To turn attendance reports on or off during a meeting:
+
+1. Start a Teams meeting.
+2. Select **More actions** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e) > **Meeting options** ![Meeting options icon](/images/en-us/f788f885-730d-4417-99a6-6e08972affce) in your meeting controls.
+3. In **Engagement**  ![Teams Chat Tab icon](/images/en-us/3c2a24f3-7e8f-4419-8c78-16c5a795d45f) turn the **Allow attendance report** toggle on or off.
+4. Select **Save.**
+
+## View and download attendance reports
+
+View and download Teams attendance reports directly in Teams after an event ends. Reports are stored along with the organizer’s other data, like emails and contacts.
+
+Organizers and co-organizers can view and download attendance reports in the event chat about five minutes after the event ends. Recurring meetings will have a unique attendance report for each instance of the series.
+
+To view and download an attendance report:
+
+1. Select **Chat** ![Teams Chat Tab icon](/images/en-us/3c2a24f3-7e8f-4419-8c78-16c5a795d45f) in Teams.
+2. Open the past meeting or event chat.
+3. Select the **Attendance** tab.
+4. Select **Download** ![Teams download arrow icon](/images/en-us/4c7c01c7-af0f-49f5-aa24-4222f9ce9298) to download the attendance report as a .csv file.
+
+You can also download an attendance report during a meeting by selecting **People** ![People or Show Participants button](/images/en-us/f74af4a7-4e65-4174-a12a-ae68fa7f00a5) in your meeting controls and selecting **More actions** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Download attendance list** ![Teams download arrow icon](/images/en-us/4c7c01c7-af0f-49f5-aa24-4222f9ce9298) in the **Participants** pane.
+
+**Notes:**
+
+* If the event organizer leaves the org, reports are permanently deleted and can’t be retrieved.
+* Co-organizers can only view and download reports from events scheduled in Teams, not Outlook.
+
+## Hide identity in attendance reports
+
+You can decide whether you want your identity shown in attendance reports.
+
+To hide your identity in attendance reports:
+
+1. Go to **Settings and more**  ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Settings**  ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e) in Teams.
+2. Select **Privacy**  ![Privacy settings button](/images/en-us/eadf610d-4172-45d7-8216-7ca723931b30).
+3. Turn the **Identify me in attendance reports** toggle on or off.
+
+## Engagement information
+
+Organizers with Teams Premium can view and download meeting engagement data such as total reactions, raised hands, cameras turned on, and more in the **Attendance** tab after a scheduled meeting or webinar.
+
+![Engagement information available in the Attendance tab of a meeting.](/images/en-us/e14dd3b9-9b3d-4795-a426-42d44e26635e)
+
+## Known issues and limitations
+
+* In meetings with more than 120 participants, the attendance report available during the meeting will only include some attendees. The post-meeting report will contain all attendees.
+* The report doesn't include insights from deleted breakout rooms.
+* The report doesn't currently include view-only attendees.
+* If a channel meeting is in progress and someone starts a second meeting within the same channel conversation, an attendance report will be available only for the second meeting.
+* If someone waits in the lobby and doesn't get admitted to the meeting, they won't be included in the report.
+* When a participant is on hold in a meeting, their info is still included for this period of time in the attendance report.
+* Attendance reports aren't supported for instant channel meetings.
+* Engagement reports limit how many actions are logged for each attendee (hand raises, mutes/unmutes, etc.).
+* Co-organizers can't access attendance reports for channel meetings.
+
+View attendance reports directly in the [Microsoft Teams mobile app](https://www.microsoft.com/microsoft-teams/download-app#office-CustomSpacingTemplate-uoh60pc) to gain insight into your meetings and webinars. See webinar registration data, times that attendees joined and left meetings, and much more.
+
+**Note:**To see all attendance report data, view the report on Teams for [desktop](https://www.microsoft.com/microsoft-teams/download-app#desktopAppDownloadregion) or [web](https://www.microsoft.com/microsoft-teams/log-in).
+
+## Turn attendance reports on or off
+
+To turn attendance reports on or off before your meeting:
+
+1. Tap **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Tap a meeting.
+3. In **Details**, tap **See more** > **Meeting options**.
+4. In **Participation** ![Icon for Participation in Microsoft Teams](/images/en-us/e56db9d7-f31f-4025-a075-69f9d96b1c85), turn the **Allow attendance report** toggle on or off.
+5. Tap **Save**.
+
+Participants can decide if they want to show or hide their information in attendance reports.
+
+To change your attendance report privacy settings:
+
+1. Tap your profile picture in Teams.
+2. Tap **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e) > **Privacy** ![Privacy settings button](/images/en-us/eadf610d-4172-45d7-8216-7ca723931b30).
+3. Tap **Attendance report data**.
+4. Turn the **Identify me in attendance reports** toggle on or off.
+
+For more help managing your meeting attendance report settings, contact your IT admin.
+
+## Open an attendance report
+
+To open an attendance report:
+
+1. Tap **Chat** ![Teams Chat Tab icon](/images/en-us/3c2a24f3-7e8f-4419-8c78-16c5a795d45f)​​​​​​​ in Teams.
+2. Open the past meeting chat history.
+3. In the **Meeting ended** message, tap **Attendance** ![Attendance icon in Microsoft Teams](/images/en-us/4d6b980a-87b2-485c-a900-ee50cc3ee800)​​​​​​​.
+
+## Share an attendance report
+
+To open an attendance report:
+
+1. Open an attendance report.
+
+   * If you're using an iOS device, tap **Share**​​​​​​​ ![Teams iOS share icon](/images/en-us/e9c64b10-80d0-4b68-9fc8-b47eac70baf4).
+   * If you're using an Android device, tap **Share**​​​​​​​  ![Android share button](/images/en-us/a80f048e-f3dd-4505-92b6-056eb16d1571).
+2. Choose how you want to share the report.
+3. Send the report.
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-meeting-attendance-reports-in-microsoft-teams-ae7cf170-530c-47d3-84c1-3aedac74d310 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-meeting-attendance-reports-in-microsoft-teams-ae7cf170-530c-47d3-84c1-3aedac74d310&title=Manage%20meeting%20attendance%20reports%20in%20Microsoft%20Teams "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20meeting%20attendance%20reports%20in%20Microsoft%20Teams&body=Manage%20meeting%20attendance%20reports%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-meeting-attendance-reports-in-microsoft-teams-ae7cf170-530c-47d3-84c1-3aedac74d310 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

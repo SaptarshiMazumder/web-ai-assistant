@@ -1,0 +1,34 @@
+## Collapse file tree
+
+## Files
+
+Search this repository
+
+/
+
+# deep\_crawling
+
+/
+
+Copy path
+
+## Latest commit
+
+## History
+
+[History](/unclecode/crawl4ai/commits/main/crawl4ai/deep_crawling)
+
+## Folders and files
+
+| Name | | Name | Last commit message | Last commit date |
+| --- | --- | --- | --- | --- |
+| parent directory [..](/unclecode/crawl4ai/tree/main/crawl4ai) | | |
+| [\_\_init\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/__init__.py "__init__.py") | | [\_\_init\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/__init__.py "__init__.py") |  |  |
+| [base\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/base_strategy.py "base_strategy.py") | | [base\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/base_strategy.py "base_strategy.py") |  |  |
+| [bff\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/bff_strategy.py "bff_strategy.py") | | [bff\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/bff_strategy.py "bff_strategy.py") |  |  |
+| [bfs\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/bfs_strategy.py "bfs_strategy.py") | | [bfs\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/bfs_strategy.py "bfs_strategy.py") |  |  |
+| [crazy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/crazy.py "crazy.py") | | [crazy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/crazy.py "crazy.py") |  |  |
+| [dfs\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/dfs_strategy.py "dfs_strategy.py") | | [dfs\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/dfs_strategy.py "dfs_strategy.py") |  |  |
+| [filters.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/filters.py "filters.py") | | [filters.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/filters.py "filters.py") |  |  |
+| [scorers.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/scorers.py "scorers.py") | | [scorers.py](/unclecode/crawl4ai/blob/main/crawl4ai/deep_crawling/scorers.py "scorers.py") |  |  |
+| View all files | | |

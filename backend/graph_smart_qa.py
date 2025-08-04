@@ -16,6 +16,7 @@ from smart_parallel import (
 from utils import extract_json_from_text
 import sys, json as _json
 from logging_relay import log, smartqa_log_relay
+from smart_parallel import llm_select_relevant_links_parallel
 
 if sys.platform.startswith("win"):
     import asyncio
@@ -74,19 +75,15 @@ def _same_domain(url: str, original_domain: str) -> bool:
 async def smart_qa_runner(
     init_state: SmartHopState,
     *,
-    max_hops: int = DEFAULT_MAX_HOPS,
-    k_links: int = DEFAULT_K_LINKS,
-    max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
-    total_page_budget: int = DEFAULT_TOTAL_PAGE_BUDGET,
+    max_hops: int = 3,
+    k_links: int = 5,
+    max_concurrency: int = 5,
+    total_page_budget: int = 25,
 ) -> Dict[str, Any]:
     question = init_state.question
-    original_domain = init_state.original_domain
-    if not original_domain:
-        original_domain = urlparse(init_state.page_url).netloc if init_state.page_url else ""
+    original_domain = init_state.original_domain or urlparse(init_state.page_url).netloc
     visited: Set[str] = set(init_state.visited_urls or [])
-    hops_used = init_state.hops or 0
 
-    # BFS queue: list of dict nodes that hold page data
     queue: List[Dict[str, Any]] = [{
         "page_url": init_state.page_url,
         "text": init_state.text,
@@ -94,8 +91,8 @@ async def smart_qa_runner(
         "depth": 0
     }]
 
-    best_partial: Optional[PageQAResult] = None
     pages_seen = 0
+    best_partial: Optional[PageQAResult] = None
 
     while queue:
         node = queue.pop(0)
@@ -104,9 +101,6 @@ async def smart_qa_runner(
         links = node["links"]
         depth = node["depth"]
 
-        # if page_url and page_url in visited:
-        #     print(f"⚡ [SKIP] Already visited: {page_url}")
-        #     continue
         if page_url:
             visited.add(page_url)
 
@@ -115,34 +109,31 @@ async def smart_qa_runner(
             break
         pages_seen += 1
 
-        log(f"\n📄 [Depth {depth}] QA on: {page_url or '(initial page)'}")
+        log(f"\n📄 [Depth {depth}] QA on: {page_url}")
         log(f"🧪 This page had {len(links)} input links.")
 
-        # 1) Run QA on this page
+        # Run QA on current page
         qa_result = await _run_page_qa_once(text=text, question=question, page_url=page_url)
-        sufficient = qa_result.sufficient
+        log(f"🧪 Sufficient? {qa_result.sufficient} | confidence={qa_result.confidence}%")
 
-
-        # Keep best partial (in case we never get a sufficient one)
         if best_partial is None or (len(qa_result.answer) > len(best_partial.answer)):
             best_partial = qa_result
 
-        log(f"🧪 Sufficient? {sufficient}")
-        if sufficient:
-            # Return immediately
+        if qa_result.sufficient:
             return {
                 "answer": qa_result.answer,
                 "sources": qa_result.sources,
                 "visited_urls": list(visited),
-                "sufficient": True
+                "sufficient": True,
+                "multi_page": False
             }
 
-        # 2) No? Then expand IF we still have budget/hops
+        # Stop if depth reached
         if depth >= max_hops:
             log(f"⛔ Max hops ({max_hops}) reached at depth {depth}. No expansion.")
             continue
 
-        # Filter links (same domain, unvisited)
+        # Filter and expand links
         candidate_links = [
             l for l in links
             if l.get("href", "").startswith("http")
@@ -150,9 +141,6 @@ async def smart_qa_runner(
             and _same_domain(l["href"], original_domain)
         ]
         log(f"🔍 Found {len(candidate_links)} valid domain links:")
-        # Limit to first 100 candidate links
-        # print("limiting to first 100 candidate links:")
-        # candidate_links = candidate_links[:100]
         for l in candidate_links:
             print(f"   - {l.get('text', '')[:40]} → {l.get('href')}")
 
@@ -160,23 +148,15 @@ async def smart_qa_runner(
             log("🔚 No candidate links to expand from this page.")
             continue
 
-        # 3) Let the LLM select the top-k links (no scraping yet!)
-        # selected_links = llm_select_relevant_links(
-        #     question=question,
-        #     links=candidate_links,
-        #     k=k_links
-        # )
-
-        from smart_parallel import llm_select_relevant_links_parallel
+        # LLM link selection
         selected_links = await llm_select_relevant_links_parallel(
             question=question,
             links=candidate_links,
             k=k_links,
             log_fn=log,
-        )   
+        )
 
         if selected_links:
-    # Spawn a background task to generate the LLM message and stream when ready
             async def send_llm_links_message():
                 msg = await llm_links_message(question, selected_links)
                 log(_json.dumps({
@@ -186,16 +166,13 @@ async def smart_qa_runner(
                 }))
             asyncio.create_task(send_llm_links_message())
 
-
-        print(f"🧠 LLM selected links: {selected_links}")
-
         if not selected_links:
             log("🤷 LLM returned no useful follow-up links.")
             continue
 
         log(f"🔗 LLM selected {len(selected_links)} links to fetch in parallel (k={k_links}).")
 
-        # 4) Scrape + QA those links in parallel
+        # Scrape and QA all in parallel
         child_results: List[PageQAResult] = await scrape_and_qa_many(
             selected_links,
             question=question,
@@ -204,23 +181,18 @@ async def smart_qa_runner(
             log_fn=log
         )
 
-        # 5) Check if any are sufficient → early stop
-        for cr in child_results:
-            if cr.url:
-                visited.add(cr.url)
-            if cr.sufficient:
-                log(f"✅ Found sufficient answer at: {cr.url}")
-                return {
-                    "answer": cr.answer,
-                    "sources": cr.sources,
-                    "visited_urls": list(visited),
-                    "sufficient": True
-                }
+        # ✅ If any sufficient at this depth → combine & stop
+        sufficient_at_this_depth = [r for r in child_results if r.sufficient]
+        for r in child_results:
+            if r.url:
+                visited.add(r.url)
 
-        # 6) Otherwise, push children (insufficient ones) back into the queue (BFS)
+        if sufficient_at_this_depth:
+            log(f"✅ Sufficient answers found at depth {depth}, combining and stopping.")
+            return await synthesize_final_answer(sufficient_at_this_depth, list(visited))
+
+        # ❌ Otherwise push next hop into queue
         for cr in child_results:
-            if cr.url:
-                visited.add(cr.url)
             queue.append({
                 "page_url": cr.url,
                 "text": cr.text,
@@ -228,22 +200,57 @@ async def smart_qa_runner(
                 "depth": depth + 1
             })
 
-    # If we exit the loop without a sufficient answer:
-    log("❗ No sufficient answer found. Returning best partial.")
+    # fallback
     if best_partial:
         return {
             "answer": best_partial.answer,
             "sources": best_partial.sources,
             "visited_urls": list(visited),
-            "sufficient": False
+            "sufficient": False,
+            "multi_page": False
         }
-    else:
+
+    return {
+        "answer": "Sorry, I couldn't find a sufficient answer on the pages I visited.",
+        "sources": [],
+        "visited_urls": list(visited),
+        "sufficient": False,
+        "multi_page": False
+    }
+
+
+async def synthesize_final_answer(results: List[PageQAResult], visited_urls: List[str]) -> Dict[str, Any]:
+    if len(results) == 1:
         return {
-            "answer": "Sorry, I couldn't find a sufficient answer on the pages I visited.",
-            "sources": [],
-            "visited_urls": list(visited),
-            "sufficient": False
+            "answer": results[0].answer,
+            "sources": results[0].sources,
+            "visited_urls": visited_urls,
+            "sufficient": True,
+            "multi_page": False
         }
+
+    combined_text = "\n\n---\n\n".join(
+        f"[{res.url}]\n{res.answer}" for res in results if res.answer.strip()
+    )
+
+    prompt = (
+        "Using the following answers from different pages, synthesize a complete, helpful, and well-formatted response to the user's question. "
+        "Each answer is from a separate page and may contain partial or overlapping information. Combine all relevant parts. "
+        "Do NOT invent anything that isn't in the text.\n\n"
+        f"{combined_text}"
+    )
+
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    result = llm.invoke([{"role": "user", "content": prompt}])
+
+    return {
+        "answer": result.content.strip(),
+        "sources": [{"url": r.url} for r in results],
+        "visited_urls": visited_urls,
+        "sufficient": True,
+        "multi_page": True
+    }
+
 
 async def llm_links_message(question: str, links: list[dict]) -> str:
     if not links:

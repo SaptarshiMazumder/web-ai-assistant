@@ -29,6 +29,8 @@ class PageQAResult(BaseModel):
     sources: List[Dict[str, Any]]
     sufficient: Optional[bool] = None
     links: List[Dict[str, str]] = []
+    confidence: Optional[int] = None  # new field
+
 
 import datetime
 
@@ -273,7 +275,8 @@ async def run_page_qa(
         text=text,
         answer=s.answer,
         sources=[],  # No more chunk sources
-        sufficient=s.sufficient
+        sufficient=s.sufficient,
+        confidence=s.confidence
     )
 
 # async def _is_sufficient(question: str, answer: str) -> bool:
@@ -314,7 +317,8 @@ async def scrape_and_qa_many(
         )
                 qa_res.links = scraped["links"]
                 if log_fn:
-                    log_fn(f"   ↳ Done: {href} | sufficient={qa_res.sufficient}")
+                    log_fn(f"   ↳ Done: {href} | sufficient={qa_res.sufficient} | confidence={qa_res.confidence}%")
+
                 return qa_res
             except Exception as e:
                 if log_fn:

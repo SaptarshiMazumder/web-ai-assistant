@@ -1,0 +1,138 @@
+## Featured posts
+
+[View all featured posts](/calendar/threads?hl=en&thread_filter=(pinned:true))
+
+[New embedded calendar view is missing Calendar List & Scrolling          The old embedded calendar view displayed a drop-down calendar list to filter the calendars in the li… 
+
+0 Updates  0 Recommended Answers   25 Replies 429 Upvotes](/calendar/thread/302224362/new-embedded-calendar-view-is-missing-calendar-list-scrolling?hl=en)
+
+[Troubleshoot birthdays on calendar          You can keep track of upcoming birthdays using Google Calendar. You can create, hide, or change the … 
+
+0 Updates  0 Recommended Answers   0 Replies 123 Upvotes](/calendar/community-guide/328551194/troubleshoot-birthdays-on-calendar?hl=en)
+
+[[Update] How to enable non-Google accounts in Google Calendar  Announcement         You can view and manage events from different accounts, including non-Google accounts in the Google … 
+
+0 Updates  0 Recommended Answers   0 Replies 886 Upvotes](/calendar/thread/260804396/update-how-to-enable-non-google-accounts-in-google-calendar?hl=en)
+
+[Want to become a Product Expert?](https://productexperts.withgoogle.com/)[About the Community](/calendar/community/about?hl=en)[Community Overview](/communities/answer/7424249)[Content Policy](/communities/answer/7425194)
+
+[Want to become a Product Expert?](https://productexperts.withgoogle.com/)[About the Community](/calendar/community/about?hl=en)[Community Overview](/communities/answer/7424249)[Content Policy](/communities/answer/7425194)
+
+**Not what you're looking for?** Try posting to the public help community
+
+ [Post a question](/calendar/thread/new?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+## Videos
+
+[View all videos](/calendar/threads?hl=en&thread_filter=(purpose:ugc_video))
+
+[![Outlook or iCloud events not showing in the Google Calendar iOS mobile app?](https://i.ytimg.com/vi/_vMLcgHV-bQ/mqdefault.jpg)  
+ 01:01  Outlook or iCloud events not showing in the Google Calendar iOS mobile app?](/calendar/community-video/238538173/outlook-or-icloud-events-not-showing-in-the-google-calendar-ios-mobile-app?hl=en)
+
+[![Setting up an Appointment Schedule on Google Calendar](https://i.ytimg.com/vi/StIpQKAHML8/mqdefault.jpg)  
+ 15:23  Setting up an Appointment Schedule on Google Calendar](/calendar/community-video/280125076/setting-up-an-appointment-schedule-on-google-calendar?hl=en)
+
+[![How to create a repeat event every two weeks in Google Calendar](https://i.ytimg.com/vi/vFsNtVmxASU/mqdefault.jpg)  
+ 00:31  How to create a repeat event every two weeks in Google Calendar](/calendar/community-video/291005530/how-to-create-a-repeat-event-every-two-weeks-in-google-calendar?hl=en)
+
+## Community Guides
+
+[View all guides](/calendar/threads?hl=en&thread_filter=(purpose:ugc_guide))
+
+[Birthdays from Contacts no longer showing in Google Calendar          If you're based in Germany you may have recently noticed that you are no longer able to see the birt… 
+
+0 Updates  0 Recommended Answers   1 Reply 287 Upvotes](/calendar/community-guide/302081881/birthdays-from-contacts-no-longer-showing-in-google-calendar?hl=en)
+
+[How to share a calendar outside your organisation when you're using Google Workspace          Have you ever tried to share a calendar with someone outside your organisation and only been able to… 
+
+0 Updates  0 Recommended Answers   0 Replies 54 Upvotes](/calendar/community-guide/242132494/how-to-share-a-calendar-outside-your-organisation-when-you-re-using-google-workspace?hl=en)
+
+[Troubleshoot birthdays on calendar          You can keep track of upcoming birthdays using Google Calendar. You can create, hide, or change the … 
+
+0 Updates  0 Recommended Answers   0 Replies 123 Upvotes](/calendar/community-guide/328551194/troubleshoot-birthdays-on-calendar?hl=en)
+
+## Categories
+
+[View all posts](/calendar/threads?hl=en)
+
+### Syncing my calendar
+
+[Imported Outlook calendar not syncing with Google Calendar in browser](/calendar/thread/212527463/imported-outlook-calendar-not-syncing-with-google-calendar-in-browser?hl=en)
+
+[Wrong timezone when adding Outlook Calender to Google Calender](/calendar/thread/229201681/wrong-timezone-when-adding-outlook-calender-to-google-calender?hl=en)
+
+[How do you sync an outlook calendar to google calendar on an android phone?](/calendar/thread/228933623/how-do-you-sync-an-outlook-calendar-to-google-calendar-on-an-android-phone?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:cal_sync))
+
+### Manage events
+
+[adding recurring meeting (weekly) to google calendar](/calendar/thread/234744115/adding-recurring-meeting-weekly-to-google-calendar?hl=en)
+
+[Workspace individual, problems with programs of appointments](/calendar/thread/233357977/workspace-individual-problems-with-programs-of-appointments?hl=en)
+
+[Self scheduling appointments](/calendar/thread/229277162/self-scheduling-appointments?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:manage_events))
+
+### Calendar performance
+
+[calendar does not list each day item, just "two more" for example](/calendar/thread/362291130/calendar-does-not-list-each-day-item-just-two-more-for-example?hl=en)
+
+[Gmail and Calendar is the worst of all, and haven't seen an update the last 15 years](/calendar/thread/360967017/gmail-and-calendar-is-the-worst-of-all-and-haven-t-seen-an-update-the-last-15-years?hl=en)
+
+[Event Color Changes](/calendar/thread/361578255/event-color-changes?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:cal_performance))
+
+### Appointment Schedules
+
+[I can't find my existing appointment schedule on google calendar](/calendar/thread/361261348/i-can-t-find-my-existing-appointment-schedule-on-google-calendar?hl=en)
+
+[Where is America Chicago Time Zone selection?](/calendar/thread/362047658/where-is-america-chicago-time-zone-selection?hl=en)
+
+[Calendar Schedule Edit Issue](/calendar/thread/361795574/calendar-schedule-edit-issue?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:appointment_schedules))
+
+### Birthdays and holidays
+
+[Birthdays from Contacts Flash and Disappear in Google Calendar on PC, but Work on iPhone](/calendar/thread/359509182/birthdays-from-contacts-flash-and-disappear-in-google-calendar-on-pc-but-work-on-iphone?hl=en)
+
+[Birthdays from Google Contacts no longer showing in Google Calendar](/calendar/thread/359135546/birthdays-from-google-contacts-no-longer-showing-in-google-calendar?hl=en)
+
+[Birthdays from Google Contacts not showing in Birthday Calendar - all settings are correct](/calendar/thread/359446241/birthdays-from-google-contacts-not-showing-in-birthday-calendar-all-settings-are-correct?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:birthdays_holidays))
+
+### Notifications
+
+[How do I turn off notifications from a calendar that has been shared with me and I can edit?](/calendar/thread/237449481/how-do-i-turn-off-notifications-from-a-calendar-that-has-been-shared-with-me-and-i-can-edit?hl=en)
+
+[change default notification for new event](/calendar/thread/237210031/change-default-notification-for-new-event?hl=en)
+
+[Professional Email Setup Needed for Coaching Calendar](/calendar/thread/236941490/professional-email-setup-needed-for-coaching-calendar?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:cal_notifications))
+
+### Google Tasks
+
+[Tasks Disappearing After Selecting Complete](/calendar/thread/231983755/tasks-disappearing-after-selecting-complete?hl=en)
+
+[Google Tasks Notifications not consistent iPhone](/calendar/thread/226387480/google-tasks-notifications-not-consistent-iphone?hl=en)
+
+[IOS 17 Bug: No buttons except “Event” work](/calendar/thread/234069683/ios-17-bug-no-buttons-except-%E2%80%9Cevent%E2%80%9D-work?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:google_tasks))
+
+### Events from Gmail
+
+[Flight tickets are no longer getting added as events in Google Calender](/calendar/thread/237246746/flight-tickets-are-no-longer-getting-added-as-events-in-google-calender?hl=en)
+
+[Delete Calendar "special day"](/calendar/thread/237649784/delete-calendar-special-day?hl=en)
+
+[How do i attach a picture to a calendar item, like a pic of invitation?](/calendar/thread/237218874/how-do-i-attach-a-picture-to-a-calendar-item-like-a-pic-of-invitation?hl=en)
+
+[View all](/calendar/threads?hl=en&thread_filter=(category:cal_events_from_gmail))
+
+false

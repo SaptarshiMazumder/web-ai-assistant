@@ -1,0 +1,97 @@
+# T-Mobile Internet in T-Life app
+
+T-Life allows you to access your gateway, adjust your settings, check your usage, and more!
+
+## T-Life app
+
+The T-Life app is the easiest way to set up your Internet service. It also provides access to other T-Mobile perks such as T-Mobile Tuesdays, and innovations like the ability to manage your gateway anytime, anywhere.
+
+* You can view and change gateway settings and Wi-Fi network management options. The gateway must be connected to the T-Mobile Network and able to receive data.
+* Customers with a Mesh Access Point must use the T-Life app.
+* Customers with the Askey LTE Gateway can manage their settings from within the T-Life app using a web wrapped [Askey Web GUI](https://www.t-mobile.com/support/home-internet/askey-lte-gateway#gui) experience.
+
+[![](/etc.clientlibs/digx/experience/clientlibs/clientlib-experience-main/resources/badges/app-store-apple.svg)](https://apps.apple.com/us/app/t-life-t-mobile-tuesdays/id1111876388)   [![](/etc.clientlibs/digx/experience/clientlibs/clientlib-experience-main/resources/badges/app-store-google.svg)](https://play.google.com/store/apps/details?id=com.tmobile.tuesdays&hl=en_US&gl=US)
+
+### Log in to the T-Life app to get started
+
+1. Go to the T-Life app.
+2. Sign in with your [T-Mobile ID](https://www.t-mobile.com/support/account/set-up-and-manage-your-t-mobile-id) to manage all settings in the app. Business Internet customers should not sign in with a T-Mobile ID.
+3. From the **T-Life Home** screen, select **Locate > Things > Manage**.
+
+### View and manage your settings in the T-Life app
+
+[Tutorials for iOS](https://www.t-mobile.com/support/tutorials/device/app/ios/topic/t-mobile-home-internet-app-in-t-life)
+
+[Tutorials for Android](https://www.t-mobile.com/support/tutorials/device/app/android/topic/t-mobile-home-internet-app-in-t-life)
+
+* ### Change your network password
+
+  1. Open T-Life and select **Location > Manage.**
+  2. Select **My Wi-Fi** at the top of the page.
+  3. Select **>** next to network name under My Networks.
+  4. If changing network name (SSID) type new network name in **Wi-Fi network name (SSID)** field.
+  5. If changing network password (key) type new password in **Wi-Fi network password  
+      (key)** field.
+  6. Once completed select now MAGENTA **Save** option at the bottom of the screen.
+* ### Check firmware version
+
+  1. From the **My Wi-Fi** screen, select the device.
+  2. Scroll down to **General Info** to review the **Firmware version**.
+* ### Create a new network / Band Steering
+
+  You can create up to four additional Wi-Fi networks and have them appear on the Network screen. To disable band steering, you must separate the 2.4 and 5 GHz Wi-Fi bands by creating a separate Wi-Fi network for each with a unique name.
+
+  1. From the **My Wi-Fi** screen, select **+ Add Network**.
+  2. You can then manage the following settings:
+     + Wi-Fi Network Name (SSID)
+     + Wi-Fi Network Password (key)
+     + Frequency band
+     + WPA Version
+     + WPA Encryption Mode
+* ### Identify your Internet line number
+
+  Your Internet plan will have an associated line number. To find this number:
+
+  1. Go to the **More** screen.
+  2. View the line number under**Internet line number.**
+* ### Replacing a gateway
+
+  1. Go to **Locate** section in T-Life > **Things.** It will show the old gateway offline.
+  2. Select the offline gateway. Do not select Add.
+  3. Select **overview.**
+  4. Select **Add new gateway.**
+  5. Complete gateway setup as normal using using the tutorials.
+  6. If needed, unpair and pair mesh access point depending on your setup.
+* ### Restart your gateway
+
+  1. Go to the **More** screen.
+  2. Verify your gateway is online and select **Restart your gateway**.
+  3. Wait for the device to restart.
+* ### View connection info
+
+  Use these steps to view connection, signal strength, and device details for your gateway.
+
+  1. View the Wi-Fi connection strength next to a device on the **My Wi-Fi** screen.
+  2. Select a specific device to view details only for that device.
+* ### Askey Web GUI
+
+  Askey customers can manage their Askey LTE Gateway settings from within the T-Life app using a web wrapped Askey Web GUI experience.
+
+  + Customers will see a message: *This gateway isn’t supported by the T-Life app*.
+  + Select **Manage with web tool**.
+  + A new screen titled **LTE Wi-Fi Gateway** shows.
+  + Enter account information and select**Log in.**
+
+## Need help?
+
+Our Troubleshooting guides can help fix the most common T-Mobile Internet issues, right from the comfort of your home!
+
+[T-Mobile Internet Troubleshooting guides](https://www.t-mobile.com/support/home-internet/customer-support)
+
+## Looking for something else?
+
+[Return to T-Mobile Internet Support](https://www.t-mobile.com/support/home-internet)
+
+**Was this helpful?**
+
+Survey Link

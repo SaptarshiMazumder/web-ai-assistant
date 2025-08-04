@@ -1,0 +1,19 @@
+## Collapse file tree
+
+## Files
+
+Search this repository
+
+/
+
+# adaptive\_crawler.py
+
+Copy path
+
+## Latest commit
+
+## History
+
+[History](/unclecode/crawl4ai/commits/main/crawl4ai/adaptive_crawler.py)
+
+1861 lines (1495 loc) · 82.5 KB
