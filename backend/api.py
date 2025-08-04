@@ -57,13 +57,13 @@ async def ask_smart(request: SmartQARequest):
     )
 
     # Clean print for backend log/debugging
-    log("\n\n===== SMART QA TRACE =====")
+    # log("\n\n===== SMART QA TRACE =====")
     log(f"✅ Sufficient: {result['sufficient']}")
     log(f"🔗 Visited URLs ({len(result['visited_urls'])}):")
     for url in result['visited_urls']:
         log(f"   - {url}")
-    log(f"\n🧠 Final Answer (excerpt):\n{result['answer'][:500]}...\n")
-    log("===== END OF TRACE =====\n")
+    print(f"\n🧠 Final Answer (excerpt):\n{result['answer'][:500]}...\n")
+    # log("===== END OF TRACE =====\n")
 
     return {
         "answer": result["answer"],

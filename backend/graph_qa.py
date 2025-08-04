@@ -58,7 +58,7 @@ def answer_node(state: State) -> State:
         "If you cite information from a source, always include the full URL shown in the source."
         "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. "
         "Do not hallucinate."
-        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not.\n\n"
+        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%' \n\n"
         f"CONTENT:\n{clean_text}\n\n"
         f"USER QUESTION: {question}\n"
         f"(Page URL: {page_url})"

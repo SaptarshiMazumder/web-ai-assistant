@@ -1,0 +1,369 @@
+[Microsoft Teams](/en-us/teams)
+
+[Meetings](meetings-1f8862a1-48f2-4869-863d-564123343d38)
+
+[Meetings](meetings-1f8862a1-48f2-4869-863d-564123343d38)
+
+Recap in Microsoft Teams
+
+Quickly review Teams event recordings with recap. View an event's recording, shared content, and more without switching screens or apps.
+
+DesktopMobile
+
+Quickly review event recordings, transcripts, and more with Teams recaps. Check out a past event’s materials, including its files, shared content, and more, without switching screens or apps.
+
+## Recap
+
+Recaps are available after Teams events, including meetings, town halls, webinars, and calls, that were recorded or transcribed. In a recap, you can find the event recording, transcript, shared files, notes, agenda, and follow-up tasks.  
+  
+​​​​​​ ![View of the Recap tab in Teams](/images/en-us/eb982f70-c6fb-4649-9fb1-ea65c1d2391a)
+
+## In this article
+
+[View recap](#bkmk_view_recap)
+
+[Speaker markers (Teams Premium)](#bkmk_speaker_markers)
+
+[Share recap](#bkmk_share_recap)
+
+[Recaps and transcripts](#bkmk_recaps_transcripts)
+
+[Intelligent recap (Teams Premium)](#bkmk_intelligent_meeting_recap)
+
+[Topics and chapters](#bkmk_topics-chapters)
+
+[Timeline markers (Teams Premium)](#bkmk_timeline_markers)
+
+[Copilot](#bkmk_copilot)
+
+[AI notes (Teams Premium)](#bkmk_ai_notes)
+
+[FAQ](#bkmk_faq)
+
+## View recap
+
+To view an event recap:
+
+* Select **View recap** in the event thumbnail from the event chat.   
+  ​​​​​​​  
+   ![Screenshot of where to view a recap in a meeting chat.](/images/en-us/4bd06d64-e073-4dc8-b281-f47c3a6180d2)
+* Select **Recap** in the event chat after the event ends.  
+    
+  ![Screenshot highlighting the Recap tab in a meeting chat.](/images/en-us/24eed5e1-720a-48aa-873e-e1b6bd3b8072)
+* To view the recap in a separate window, select **Open meeting recap in new window** ![Help Pop out button](/images/en-us/0e95c00c-5073-4969-a5b8-7a95b905b288).
+* In recurring events, easily view recaps from any occurrence. Open the recap and select an occurrence from the dropdown menu. If you don't see the occurrence you're looking for, select **Load more meetings**.   
+  ​​​​​​​  
+   ![View of meeting recap in Teams](/images/en-us/30f5a7f0-e51a-4fe5-ab9a-3e1b2424a76b)
+
+**Notes:**
+
+* Recap doesn’t currently support PSTN calls in Teams.
+* Recap notifications, notes, and content aren’t currently available for ad-hoc events and calls.
+
+## Share recap
+
+Share the link to a recap with anyone in your org for easier reference to past content. There are a couple ways to find and copy the recap link:
+
+* Find the recap thumbnail in the event chat and select **Share** ![OD share icon](/images/en-us/fd2fa2f3-5f89-4f89-b258-3b641dd53c4b) > **Copy link** ![Copy link icon](/images/en-us/7330585a-4674-4aec-a42f-b28a9ba7643f). Paste the copied link in a chat or channel to share.
+* Open the past event from your Teams calendar and select the **Recap** tab. Then, select **Share** ![OD share icon](/images/en-us/fd2fa2f3-5f89-4f89-b258-3b641dd53c4b) > **Copy link** ![Copy link icon](/images/en-us/7330585a-4674-4aec-a42f-b28a9ba7643f). Paste the copied link in a chat or channel to share.
+
+People will need access to the recording and transcript before they can access the recap. If they don’t already have access, they can request it when you share the recap with them.
+
+## Intelligent recap
+
+Get a more personalized rundown of your events with intelligent recap. Save time reviewing with AI-powered features that take you right to the moments you’re looking for. Intelligent recaps for webinars and town halls can be accessed by event organizers, co-organizers, and presenters.
+
+**Notes:**
+
+* Intelligent recap experiences are available as part of [Teams Premium](/en-us/office/overview-of-microsoft-teams-premium-4b34cd18-fa16-4797-bae0-b96b13a54f52), an add-on license that provides additional features to make Teams events more personalized, intelligent, and secure. To get access to Teams Premium, contact your IT admin.
+* Intelligent recap experiences are also available as part of the Microsoft 365 Copilot license.
+
+### Supported languages
+
+English, Chinese (Simplified, China), French, German, Italian, Japanese, Spanish, Portuguese, Dutch, Swedish, Danish, Finnish, Russian, Norwegian (Bokmal), Korean, Chinese (Traditional, Taiwan), Polish, Turkish, Arabic, Hebrew, Portuguese (Portugal), Czech, Hungarian, Ukranian, and Thai.
+
+For more info, see [Supported languages for Microsoft 365 Copilot](/en-us/office/supported-languages-for-microsoft-365-copilot-94518d61-644b-4118-9492-617eea4801d8). If your event's spoken and transcribed languages are supported, all AI features will be available in Teams Premium.
+
+**Important:**AI-generated content is based on the event transcript and is powered by GPT and other AI models. Some AI-generated content might be inaccurate, incomplete, or inappropriate. Microsoft constantly works to improve the technology that reduces these cases.
+
+## Timeline markers
+
+Timeline markers appear along a recording’s progress bar and show the parts most relevant to you. View timeline markers by hovering over an event recording. Select one to go right to that part of the recording.  
+  
+![View of meeting recap in Teams](/images/en-us/49a02028-a7b2-4c5e-a19f-42c04d755c1e)  
+  
+Timeline markers include:  
+  
+**Name mention markers**  
+Go right to a part of a recording when someone said your name with name mention timeline markers. When you play an event recording, you can see if your name was mentioned by hovering over the timeline.
+
+If your name was mentioned, you’ll see the **@** icon. Select the **@** icon to jump right to that part of the recording. You can also view a transcription of what was said and who said it by opening the transcript pane. Only you can see your own name mention markers.
+
+![View of meeting recap in Teams](/images/en-us/81e9184e-bba0-4a88-9e92-42637941737f)
+
+**Notes:**
+
+* To use name mention markers, your event must be recorded or transcribed.
+* Name mentions only work if someone's name in the transcription matches their display name.
+
+**Join and leave markers**
+  
+Join and leave markers show when you joined and left an event. When you play an event recording, hover over the timeline to see when you joined or left. Select the **Join**  ![Teams add member to chat](/images/en-us/e8aab209-8f29-48c1-a23c-35d2547933df) or **Leave**  ![Teams leave chat icon](/images/en-us/5c7325f0-edb3-4edb-936e-0e6de7ec48ee) marker to go to that part of the recording. Only you can see your own join and leave markers.
+
+**Screen share markers**
+
+Review presentations or other shared content with screen share markers. Screen share markers ![Teams share screen icon](/images/en-us/8f5e42a7-b0ef-4a42-9651-d09d6160f525) show when someone shared their screen.
+
+Hover over the recording timeline to see screen share markers.  Select the marker to go to that part of the recording.
+
+## AI summary
+
+View AI-generated notes and follow-up tasks from an event by selecting **AI summary**. AI summaries are available for events transcribed in a supported language. The event must also be five minutes or longer in duration.
+
+![View of meeting recap in Teams](/images/en-us/9ba52e54-3c98-49e1-9141-81f99b7df272)
+
+You might not be able to copy an AI summary if the event's sensitivity label prevents it.
+
+**Notes:**
+
+* To use this feature, the event must be at least transcribed. For the best recap experience, record and transcribe the event.
+* AI summaries might look different based on the event's transcription language. This is due to differences in AI language models. We're continuing to improve these features.
+
+### Share AI summary
+
+Share AI summaries from intelligent recap with participants, including those outside your org, by generating an Outlook email right from the event recap. The email will draft automatically and include a meeting summary and follow-up tasks.
+
+To send a recap email:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Open the past event details.
+3. Select **Recap**.
+4. Select **Share** ![OD share icon](/images/en-us/fd2fa2f3-5f89-4f89-b258-3b641dd53c4b) > **Share to Outlook** ![Teams get mail address icon](/images/en-us/f97fd681-f826-4dc9-b98a-b0fe1398fbdf).
+5. Edit the drafted email for accuracy.
+
+   * The email recipients will be people invited to the event. Add or remove recipients in the **To** field before sending.
+6. When the email is ready, select **Send**.
+
+The email will send from the email address of the person who initiated it. Meeting organizers, co-organizers, and presenters can initiate recap emails in Teams.
+
+**Important:**
+
+* Sharing AI summaries isn't available if:
+* The sensitivity label of the meeting is set to **Confidential Recipients Only** or **Highly Confidential Recipients Only**.
+* Recording and transcription are unavailable for the meeting.
+* Recording and transcript access are limited to either **Organizers and co-organizers** or **Specific people**.
+* To learn more, see [Customize access to meeting recordings or transcripts in Microsoft Teams](/en-us/office/customize-who-can-access-a-recording-or-transcript-in-microsoft-teams-65869725-a7d7-407c-91d4-8b7b8c8d0d0b) and [Sensitivity labels for Teams meetings](/en-us/office/sensitivity-labels-for-teams-meetings-2b244d1d-72d0-471e-8e58-c41079e190fb).​​​​​​​
+
+## Speaker markers
+
+The AI-powered **Speakers** view helps you find specific speakers and review their main points in an event recording. Select **Speakers** to see who spoke and when. Select someone’s speaker bar to watch when they spoke.  
+  
+![View of speaker markers in a Microsoft Teams recap.](/images/en-us/ffbef582-d748-402e-ab6b-c9268a63dbd0)
+
+**Note:**To use this feature, the event must be recorded and transcribed.
+
+## Recaps and transcripts
+
+To learn more about how recordings, transcriptions, and other data that power this experience are stored, see [View, edit, and manage video transcripts and captions](/en-us/office/view-edit-and-manage-video-transcripts-and-captions-3cb9acb6-05b2-4f59-a50d-7df61123aa20) and [Intelligent recap data, privacy, and security](https://learn.microsoft.com/MicrosoftTeams/privacy/intelligent-recap).
+
+## Topics and chapters
+
+Chapters and topics divide an event into sections using keywords from the transcript, content shared with PowerPoint Live, and more.
+
+![Screenshot showing topics highlighted in meeting recap](/images/en-us/4e420f2a-cfdd-4359-8b59-5cd8427c24f9)
+
+**Note:**To use this feature, the event must be recorded and transcribed.
+
+Learn more about [auto-generated chapters in Teams videos](/en-us/office/auto-generated-chapters-on-teams-meeting-videos-7af781d3-ed33-4aae-bb66-0abd4c6c4c98) and [in PowerPoint Live recordings](/en-us/office/auto-generate-powerpoint-live-chapters-from-your-teams-meeting-recording-9720aba3-2039-4678-9d55-26cbefd2fe8b).
+
+## Copilot
+
+Use Copilot in Recap to summarize key points from an event, generate follow-up tasks, and more. To learn more, see [Get started with Copilot in Microsoft Teams](/en-us/office/use-copilot-in-microsoft-teams-meetings-0bf9dd3c-96f7-44e2-8bb8-790bedf066b1).
+
+![Screenshot showing copilot functionality in Teams meeting recap](/images/en-us/4d0f673b-8855-4c3f-9ec1-79d183a89a21)
+
+## FAQ
+
+### What data does Teams use to provide Intelligent recap?
+
+Teams uses the event transcript, attendance data, and PPT Live data to provide AI-powered features in Intelligent Recap.
+
+### Does Teams store any event data?
+
+Teams stores event data but Microsoft doesn’t have access to it. How it’s stored depends on policies set by your IT admin. Your event data is stored in the [geographic region associated with your organization](https://learn.microsoft.com/microsoftteams/location-of-data-in-teams). Recordings are stored in OneDrive and SharePoint, in accordance with the [Microsoft Purview policy](https://learn.microsoft.com/microsoft-365/compliance/dlp-learn-about-dlp?view=o365-worldwide). Learn more about managing your SharePoint governance [here](https://learn.microsoft.com/sharepoint/governance-overview).
+
+### Do AI-generated notes and AI-generated tasks expire?
+
+AI-generated notes and AI-generated tasks will expire according to your org’s policies. For more information, contact your IT admin.
+
+### Who can access an events' intelligent recap?
+
+People in your org can access an event's intelligent recap if they were invited to the event. Anyone who wasn't invited or isn't in your org won't have access, even if they have the recording link or Teams Premium.
+
+## Related topics
+
+[Record a meeting in Teams](/en-us/office/record-a-meeting-in-microsoft-teams-34dfbe7f-b07d-4a27-b4c6-de62f1348c24)
+
+[Take meeting notes in Teams](/en-us/office/take-meeting-notes-in-microsoft-teams-3eadf032-0ef8-4d60-9e21-0691d317d103)
+
+[View live transcription in a Teams meeting](/en-us/office/view-live-transcription-in-microsoft-teams-meetings-dc1a8f23-2e20-4684-885e-2152e06a4a8b)
+
+Quickly review event recordings, transcripts, and more with Teams recaps. Check out a past event’s materials, including its files, shared content, and more, without switching screens or apps.
+
+## Recap
+
+Recaps are available after Teams events, including meetings, town halls, webinars, and calls, that were recorded or transcribed. In a recap, you can find the event recording, transcript, shared files, notes, agenda, and follow-up tasks.
+
+## View recap
+
+After a transcribed or recorded event ends, you can access its recap from the event chat or Teams calendar event.
+
+To access a recap from chat, open the event chat and tap **Apps** > **Recap**. You can also open the recap by tapping the recording or transcript thumbnail.
+
+To view the recap in other events within a series, tap the series invite in your Teams calendar and tap **Apps** > **Recap**. Then, tap the date and time of the event you want to review.
+
+**Notes:**
+
+* Recap doesn’t currently support PSTN calls in Teams.
+* Recap notifications, notes, and content aren’t currently available for ad-hoc events and calls.
+
+## Intelligent recap
+
+Get a more personalized rundown of your events with intelligent recap. Save time reviewing with AI-powered features that take you right to the moments you’re looking for. Intelligent recaps for webinars and town halls can be accessed by event organizers, co-organizers, and presenters.
+
+**Notes:**
+
+* Intelligent recap is available as part of [Teams Premium](/en-us/office/overview-of-microsoft-teams-premium-4b34cd18-fa16-4797-bae0-b96b13a54f52), an add-on license that provides additional features to make Teams events more personalized, intelligent, and secure. To get access to Teams Premium, contact your IT admin.
+* Intelligent recap is also available as part of the Microsoft 365 Copilot license.
+
+### Supported languages
+
+Many languages are supported in intelligent recap. For more info, see [Supported languages for Microsoft 365 Copilot](/en-us/office/supported-languages-for-microsoft-365-copilot-94518d61-644b-4118-9492-617eea4801d8). If your event's spoken and transcribed languages are supported, all AI features will be available in Teams Premium.
+
+**Important:**AI-generated content is based on the event transcript and is powered by GPT and other AI models. The AI-generated content may occasionally be inaccurate, incomplete, or inappropriate. Microsoft constantly works to improve the technology in reducing these cases.
+
+## Recording
+
+If you record an event, the recording will be available in the event recap after the event ends. You can tap between tabs to review different elements of the recording.
+
+Tap the full screen icon for a more immersive viewing experience.
+
+![Tap the full screen icon to display a meeting recording across your whole screen.](/images/en-us/2dcd9535-9c60-45eb-8012-633bd2cd620c)
+
+## AI notes
+
+View manual and AI-generated notes and follow-up tasks from an event by selecting AI notes. AI notes are available for events that lasted longer than five minutes and were transcribed in English.
+
+To see AI notes in a recap, tap **AI notes**.
+
+![View AI generated notes in Teams meeting recap.](/images/en-us/2b989f23-cb58-4a41-a6f8-c066c4a64d07)
+
+**Notes:**
+
+* To use this feature, the event must be transcribed.
+* Due to differences in AI language models, AI notes might be formatted differently, depending on event transcription language. We are continuing to improve these features.
+
+## Mentions
+
+Mentions are parts of an event when your name was mentioned by someone else.
+
+To see mentions of your name in an event recap, tap **@ Mentions**. You'll see all the instances when your name was spoken, as well as a timestamp of when the mention occurred.
+
+![View name mentions in Teams meeting recap.](/images/en-us/65989995-6e82-496f-a233-b9a6836d2dfd)
+
+**Notes:**
+
+* To use name mention markers, the event must be transcribed.
+* Name mentions only work if someone's name in the transcription matches their display name.
+
+## Content
+
+In an event recap, tap **Content** to see all files from the event. You'll be able to view files that were attached to the event, shared in chat, or related to the event.
+
+![View shared content in Teams meeting recap.](/images/en-us/6ee2fac3-b6d9-4356-ae1b-56867c9b52fa)
+
+## Speakers
+
+The **Speakers** view is an AI-powered feature that helps you quickly find specific speakers and their main points in an event recording. Tap **Speakers** to see who spoke and when. Tap someone’s speaker bar to watch when they spoke during the event.
+
+![View speakers in the Teams meeting recap.](/images/en-us/1d1f7d92-76ba-476b-98e0-05f2edc3c793)
+
+**Note:**To use this feature, the event must be transcribed.
+
+## Copilot
+
+If you use Copilot in Teams, you can access copilot functionality in **Recap**. To learn more, see [Get started with Copilot in Microsoft Teams meetings](/en-us/office/use-copilot-in-microsoft-teams-meetings-0bf9dd3c-96f7-44e2-8bb8-790bedf066b1).
+
+## FAQ
+
+### What data does Teams use to provide Intelligent recap?
+
+Teams uses the event transcript, attendance data, and PPT Live data to provide AI-powered features in Intelligent Recap.
+
+### Does Teams store any event data?
+
+Teams stores event data but Microsoft doesn’t have access to it. How it’s stored depends on policies set by your IT admin. Your event data is stored in the [geographic region associated with your organization](https://learn.microsoft.com/microsoftteams/location-of-data-in-teams). Recordings are stored in OneDrive and SharePoint, in accordance with the [Microsoft Purview policy](https://learn.microsoft.com/microsoft-365/compliance/dlp-learn-about-dlp?view=o365-worldwide). Learn more about managing your SharePoint governance [here](https://learn.microsoft.com/sharepoint/governance-overview).
+
+### Do AI-generated notes and AI-generated tasks expire?
+
+AI-generated notes and AI-generated tasks will expire according to your org’s policies. For more information, contact your IT admin.
+
+### Who can access an events' intelligent recap?
+
+People in your org can access an event's intelligent recap if they were invited to the event. Anyone who wasn't invited or isn't in your org won't have access, even if they have the recording link or Teams Premium.
+
+## Related topics
+
+[Record a meeting in Teams](/en-us/office/record-a-meeting-in-microsoft-teams-34dfbe7f-b07d-4a27-b4c6-de62f1348c24)
+
+[Take meeting notes in Teams](/en-us/office/take-meeting-notes-in-microsoft-teams-3eadf032-0ef8-4d60-9e21-0691d317d103)
+
+[View live transcription in a Teams meeting](/en-us/office/view-live-transcription-in-microsoft-teams-meetings-dc1a8f23-2e20-4684-885e-2152e06a4a8b)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Frecap-in-microsoft-teams-c2e3a0fe-504f-4b2c-bf85-504938f110ef "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Frecap-in-microsoft-teams-c2e3a0fe-504f-4b2c-bf85-504938f110ef&title=Recap%20in%20Microsoft%20Teams "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Recap%20in%20Microsoft%20Teams&body=Recap%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Frecap-in-microsoft-teams-c2e3a0fe-504f-4b2c-bf85-504938f110ef "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

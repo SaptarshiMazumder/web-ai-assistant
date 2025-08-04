@@ -1,0 +1,68 @@
+## Collapse file tree
+
+## Files
+
+Search this repository
+
+/
+
+# crawl4ai
+
+/
+
+Copy path
+
+## Latest commit
+
+## History
+
+[History](/unclecode/crawl4ai/commits/main/crawl4ai)
+
+## Folders and files
+
+| Name | | Name | Last commit message | Last commit date |
+| --- | --- | --- | --- | --- |
+| parent directory [..](/unclecode/crawl4ai/tree/main) | | |
+| [components](/unclecode/crawl4ai/tree/main/crawl4ai/components "components") | | [components](/unclecode/crawl4ai/tree/main/crawl4ai/components "components") |  |  |
+| [crawlers](/unclecode/crawl4ai/tree/main/crawl4ai/crawlers "crawlers") | | [crawlers](/unclecode/crawl4ai/tree/main/crawl4ai/crawlers "crawlers") |  |  |
+| [deep\_crawling](/unclecode/crawl4ai/tree/main/crawl4ai/deep_crawling "deep_crawling") | | [deep\_crawling](/unclecode/crawl4ai/tree/main/crawl4ai/deep_crawling "deep_crawling") |  |  |
+| [html2text](/unclecode/crawl4ai/tree/main/crawl4ai/html2text "html2text") | | [html2text](/unclecode/crawl4ai/tree/main/crawl4ai/html2text "html2text") |  |  |
+| [js\_snippet](/unclecode/crawl4ai/tree/main/crawl4ai/js_snippet "js_snippet") | | [js\_snippet](/unclecode/crawl4ai/tree/main/crawl4ai/js_snippet "js_snippet") |  |  |
+| [legacy](/unclecode/crawl4ai/tree/main/crawl4ai/legacy "legacy") | | [legacy](/unclecode/crawl4ai/tree/main/crawl4ai/legacy "legacy") |  |  |
+| [processors/pdf](/unclecode/crawl4ai/tree/main/crawl4ai/processors/pdf "This path skips through empty directories") | | [processors/pdf](/unclecode/crawl4ai/tree/main/crawl4ai/processors/pdf "This path skips through empty directories") |  |  |
+| [script](/unclecode/crawl4ai/tree/main/crawl4ai/script "script") | | [script](/unclecode/crawl4ai/tree/main/crawl4ai/script "script") |  |  |
+| [\_\_init\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/__init__.py "__init__.py") | | [\_\_init\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/__init__.py "__init__.py") |  |  |
+| [\_\_version\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/__version__.py "__version__.py") | | [\_\_version\_\_.py](/unclecode/crawl4ai/blob/main/crawl4ai/__version__.py "__version__.py") |  |  |
+| [adaptive\_crawler copy.py](/unclecode/crawl4ai/blob/main/crawl4ai/adaptive_crawler%20copy.py "adaptive_crawler copy.py") | | [adaptive\_crawler copy.py](/unclecode/crawl4ai/blob/main/crawl4ai/adaptive_crawler%20copy.py "adaptive_crawler copy.py") |  |  |
+| [adaptive\_crawler.py](/unclecode/crawl4ai/blob/main/crawl4ai/adaptive_crawler.py "adaptive_crawler.py") | | [adaptive\_crawler.py](/unclecode/crawl4ai/blob/main/crawl4ai/adaptive_crawler.py "adaptive_crawler.py") |  |  |
+| [async\_configs.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_configs.py "async_configs.py") | | [async\_configs.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_configs.py "async_configs.py") |  |  |
+| [async\_crawler\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_crawler_strategy.py "async_crawler_strategy.py") | | [async\_crawler\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_crawler_strategy.py "async_crawler_strategy.py") |  |  |
+| [async\_database.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_database.py "async_database.py") | | [async\_database.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_database.py "async_database.py") |  |  |
+| [async\_dispatcher.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_dispatcher.py "async_dispatcher.py") | | [async\_dispatcher.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_dispatcher.py "async_dispatcher.py") |  |  |
+| [async\_logger.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_logger.py "async_logger.py") | | [async\_logger.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_logger.py "async_logger.py") |  |  |
+| [async\_url\_seeder.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_url_seeder.py "async_url_seeder.py") | | [async\_url\_seeder.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_url_seeder.py "async_url_seeder.py") |  |  |
+| [async\_webcrawler.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_webcrawler.py "async_webcrawler.py") | | [async\_webcrawler.py](/unclecode/crawl4ai/blob/main/crawl4ai/async_webcrawler.py "async_webcrawler.py") |  |  |
+| [browser\_manager.py](/unclecode/crawl4ai/blob/main/crawl4ai/browser_manager.py "browser_manager.py") | | [browser\_manager.py](/unclecode/crawl4ai/blob/main/crawl4ai/browser_manager.py "browser_manager.py") |  |  |
+| [browser\_profiler.py](/unclecode/crawl4ai/blob/main/crawl4ai/browser_profiler.py "browser_profiler.py") | | [browser\_profiler.py](/unclecode/crawl4ai/blob/main/crawl4ai/browser_profiler.py "browser_profiler.py") |  |  |
+| [cache\_context.py](/unclecode/crawl4ai/blob/main/crawl4ai/cache_context.py "cache_context.py") | | [cache\_context.py](/unclecode/crawl4ai/blob/main/crawl4ai/cache_context.py "cache_context.py") |  |  |
+| [chunking\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/chunking_strategy.py "chunking_strategy.py") | | [chunking\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/chunking_strategy.py "chunking_strategy.py") |  |  |
+| [cli.py](/unclecode/crawl4ai/blob/main/crawl4ai/cli.py "cli.py") | | [cli.py](/unclecode/crawl4ai/blob/main/crawl4ai/cli.py "cli.py") |  |  |
+| [config.py](/unclecode/crawl4ai/blob/main/crawl4ai/config.py "config.py") | | [config.py](/unclecode/crawl4ai/blob/main/crawl4ai/config.py "config.py") |  |  |
+| [content\_filter\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/content_filter_strategy.py "content_filter_strategy.py") | | [content\_filter\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/content_filter_strategy.py "content_filter_strategy.py") |  |  |
+| [content\_scraping\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/content_scraping_strategy.py "content_scraping_strategy.py") | | [content\_scraping\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/content_scraping_strategy.py "content_scraping_strategy.py") |  |  |
+| [docker\_client.py](/unclecode/crawl4ai/blob/main/crawl4ai/docker_client.py "docker_client.py") | | [docker\_client.py](/unclecode/crawl4ai/blob/main/crawl4ai/docker_client.py "docker_client.py") |  |  |
+| [extraction\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/extraction_strategy.py "extraction_strategy.py") | | [extraction\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/extraction_strategy.py "extraction_strategy.py") |  |  |
+| [hub.py](/unclecode/crawl4ai/blob/main/crawl4ai/hub.py "hub.py") | | [hub.py](/unclecode/crawl4ai/blob/main/crawl4ai/hub.py "hub.py") |  |  |
+| [install.py](/unclecode/crawl4ai/blob/main/crawl4ai/install.py "install.py") | | [install.py](/unclecode/crawl4ai/blob/main/crawl4ai/install.py "install.py") |  |  |
+| [link\_preview.py](/unclecode/crawl4ai/blob/main/crawl4ai/link_preview.py "link_preview.py") | | [link\_preview.py](/unclecode/crawl4ai/blob/main/crawl4ai/link_preview.py "link_preview.py") |  |  |
+| [markdown\_generation\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/markdown_generation_strategy.py "markdown_generation_strategy.py") | | [markdown\_generation\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/markdown_generation_strategy.py "markdown_generation_strategy.py") |  |  |
+| [migrations.py](/unclecode/crawl4ai/blob/main/crawl4ai/migrations.py "migrations.py") | | [migrations.py](/unclecode/crawl4ai/blob/main/crawl4ai/migrations.py "migrations.py") |  |  |
+| [model\_loader.py](/unclecode/crawl4ai/blob/main/crawl4ai/model_loader.py "model_loader.py") | | [model\_loader.py](/unclecode/crawl4ai/blob/main/crawl4ai/model_loader.py "model_loader.py") |  |  |
+| [models.py](/unclecode/crawl4ai/blob/main/crawl4ai/models.py "models.py") | | [models.py](/unclecode/crawl4ai/blob/main/crawl4ai/models.py "models.py") |  |  |
+| [prompts.py](/unclecode/crawl4ai/blob/main/crawl4ai/prompts.py "prompts.py") | | [prompts.py](/unclecode/crawl4ai/blob/main/crawl4ai/prompts.py "prompts.py") |  |  |
+| [proxy\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/proxy_strategy.py "proxy_strategy.py") | | [proxy\_strategy.py](/unclecode/crawl4ai/blob/main/crawl4ai/proxy_strategy.py "proxy_strategy.py") |  |  |
+| [ssl\_certificate.py](/unclecode/crawl4ai/blob/main/crawl4ai/ssl_certificate.py "ssl_certificate.py") | | [ssl\_certificate.py](/unclecode/crawl4ai/blob/main/crawl4ai/ssl_certificate.py "ssl_certificate.py") |  |  |
+| [types.py](/unclecode/crawl4ai/blob/main/crawl4ai/types.py "types.py") | | [types.py](/unclecode/crawl4ai/blob/main/crawl4ai/types.py "types.py") |  |  |
+| [user\_agent\_generator.py](/unclecode/crawl4ai/blob/main/crawl4ai/user_agent_generator.py "user_agent_generator.py") | | [user\_agent\_generator.py](/unclecode/crawl4ai/blob/main/crawl4ai/user_agent_generator.py "user_agent_generator.py") |  |  |
+| [utils.py](/unclecode/crawl4ai/blob/main/crawl4ai/utils.py "utils.py") | | [utils.py](/unclecode/crawl4ai/blob/main/crawl4ai/utils.py "utils.py") |  |  |
+| View all files | | |
