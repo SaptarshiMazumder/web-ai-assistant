@@ -6,6 +6,7 @@ from graph_site_qa import ask_site_handler
 from graph_smart_qa import smart_qa_graph
 from state import SmartHopState, SmartQARequest
 import os
+from logging_relay import log, smartqa_log_relay
 
 # --- Page QA API ---
 class QARequest(BaseModel):
@@ -56,13 +57,13 @@ async def ask_smart(request: SmartQARequest):
     )
 
     # Clean print for backend log/debugging
-    print("\n\n===== SMART QA TRACE =====")
-    print(f"✅ Sufficient: {result['sufficient']}")
-    print(f"🔗 Visited URLs ({len(result['visited_urls'])}):")
+    log("\n\n===== SMART QA TRACE =====")
+    log(f"✅ Sufficient: {result['sufficient']}")
+    log(f"🔗 Visited URLs ({len(result['visited_urls'])}):")
     for url in result['visited_urls']:
-        print(f"   - {url}")
-    print(f"\n🧠 Final Answer:\n{result['answer'][:500]}...\n")
-    print("===== END OF TRACE =====\n")
+        log(f"   - {url}")
+    log(f"\n🧠 Final Answer (excerpt):\n{result['answer'][:500]}...\n")
+    log("===== END OF TRACE =====\n")
 
     return {
         "answer": result["answer"],

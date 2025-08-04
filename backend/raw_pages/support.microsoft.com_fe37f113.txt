@@ -1,0 +1,107 @@
+## New to Microsoft Teams?
+
+Start here with the first things to know about the essential Microsoft Teams features.
+
+[Meetings](/en-us/office/first-things-to-know-about-meetings-in-microsoft-teams-526e6020-8985-4f81-84b3-04f9255751d5)
+
+[Chat](/en-us/office/first-things-to-know-about-chats-in-microsoft-teams-88ed0a06-6b59-43a3-8cf7-40c01f2f92f2)
+
+[Notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Teams](/en-us/office/first-things-to-know-about-teams-in-microsoft-teams-5e4fd702-85f5-48d7-ae14-98821a1f90d3)
+
+[Channels](/en-us/office/first-things-to-know-about-channels-in-microsoft-teams-8e7b8f6f-0f0d-41c2-9883-3dc0bd5d4cda)
+
+[Calls](/en-us/office/first-things-to-know-about-calls-in-microsoft-teams-2b883a81-dd15-41bd-a6ba-39deef141027)
+
+![Start here with Teams basics](/images/en-us/1966f017-c609-407a-9029-48624089e9b5)
+
+![Your browser does not support video. Install Microsoft Silverlight, Adobe Flash Player, or Internet Explorer 9.](/images/en-us/4873755a-8b1e-497e-bc54-101d1e75d3e7)
+
+## Meet Microsoft 365 Copilot
+
+Copilot works alongside you to catch you up on chats, create meeting agendas, and much more.
+
+[Learn about Copilot in Teams](https://support.microsoft.com/copilot-teams)
+
+[Where can I get Copilot?](/en-us/topic/where-can-i-get-microsoft-copilot-40a622db-6d25-4266-b008-4bbcb55cf52f)
+
+## Immersive spaces in Teams
+
+Connect like never before in a 3D immersive space, helping virtual meetings and events feel more like face-to-face connections.
+
+[Make it immersive](/en-us/office/get-started-with-immersive-spaces-in-microsoft-teams-4a6182f8-0f43-4c24-bb66-ef229fa221d8)
+
+![When to use immersive space](/images/en-us/8bf4fa58-b4b1-4faa-bbaf-373dcb595db4)
+
+![Tips from the experts on using Microsoft Teams](/images/en-us/3e38af2d-40e4-433c-8a21-01d5057ac90e)
+
+## Dive deeper into Teams​
+
+A productivity guide full of tips, tricks, and answers when using Microsoft Teams at work.
+
+[Get tips from the experts](/en-us/office/welcome-to-teams-tips-from-the-experts-7e65d55e-e9b4-42c4-8acc-d1dd321d033a)
+
+## Learn through videos​
+
+Browse the basics or explore more with these training courses consisting of short how-to videos.
+
+[Explore more training videos](/en-us/office/microsoft-teams-video-training-4f108e54-240b-4351-8084-b1089f0d21d7)
+
+![Your browser does not support video. Install Microsoft Silverlight, Adobe Flash Player, or Internet Explorer 9.](/images/en-us/4873755a-8b1e-497e-bc54-101d1e75d3e7)
+
+## Featured topics
+
+[Sign in to Teams](/en-us/office/how-to-log-in-to-microsoft-teams-ea4b1443-d11b-4791-8ae1-9977e7723055)
+
+[What's new in Teams](/en-us/office/what-s-new-in-microsoft-teams-d7092a6d-c896-424c-b362-a472d5f105de)
+
+[Record a meeting](/en-us/office/record-a-meeting-in-microsoft-teams-34dfbe7f-b07d-4a27-b4c6-de62f1348c24)
+
+[Delete a chat](/en-us/office/hide-a-chat-remove-chat-history-or-leave-a-chat-thread-in-microsoft-teams-6d2358d2-8d5b-48d3-b529-c685574f579d)
+
+[Find and join a team](/en-us/office/find-and-join-a-team-in-microsoft-teams-9f284981-39a1-486d-b43d-ab2dcc4c1e0f)
+
+[Change your status](/en-us/office/change-your-status-in-microsoft-teams-ce36ed14-6bc9-4775-a33e-6629ba4ff78e)
+
+[Manage your notifications](/en-us/office/manage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d)
+
+[Change your meeting background](/en-us/office/change-your-background-in-microsoft-teams-meetings-f77a2381-443a-499d-825e-509a140f4780)
+
+[Reduce background noise in a meeting](/en-us/office/reduce-background-noise-in-microsoft-teams-meetings-1a9c6819-137d-4b3b-a1c8-4ab20b234c0d)
+
+## More resources
+
+**About Teams**
+
+[Get Teams Premium](https://www.microsoft.com/microsoft-teams/premium)​​​​​​
+
+[Use Teams for free](/en-us/office/microsoft-teams-free-help-08fd2b61-1c3e-47e2-821b-d312709b933d)
+
+[Accessibility in Teams](/en-us/office/screen-reader-support-for-microsoft-teams-d12ee53f-d15f-445e-be8d-f0ba2c5ee68f)
+
+[Teams features by platform](/en-us/office/microsoft-teams-features-by-platform-debe7ff4-7db4-4138-b7d0-fcc276f392d3)
+
+[Feature release roadmap](https://www.microsoft.com/microsoft-365/roadmap?filters=Microsoft%20Teams)​​​​​​
+
+**Connect and learn**
+
+[Community forum](https://answers.microsoft.com/lang/msteams/forum)​​​​​​
+
+[Tech community blog](https://techcommunity.microsoft.com/t5/microsoft-teams-blog/bg-p/MicrosoftTeamsBlog)​​​​​​
+
+[Instructor-led training](https://learn.microsoft.com/MicrosoftTeams/instructor-led-training-teams-landing-page)​​​​​​
+
+[For admins and IT pros](https://learn.microsoft.com/microsoftteams/)​​​​​​
+
+**Apps and services**
+
+[Find apps](/en-us/office/find-teams-and-personal-apps-in-microsoft-teams-dca531fb-3885-428d-ba1a-f3c17032e07e)
+
+[Add apps](/en-us/office/add-an-app-to-microsoft-teams-b2217706-f7ed-4e64-8e96-c413afd02f77)
+
+[Manage your apps](/en-us/office/manage-your-apps-in-microsoft-teams-ff207d1f-e071-40a3-8388-0c3d5a3b456a)
+
+[Use LinkedIn in Teams](/en-us/office/use-linkedin-in-microsoft-teams-119fc53f-3eeb-4e94-a70f-fb68ff9c380c)
+
+[View more App and service topics](/en-us/office/apps-and-services-in-microsoft-teams-cc1fba57-9900-4634-8306-2360a40c665b)

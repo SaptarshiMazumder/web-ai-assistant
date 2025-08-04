@@ -1,0 +1,131 @@
+## Get started
+
+[![A stopwatch symbol](/images/en-us/3c27d6df-207e-4c11-9ace-972dbb223179)](/en-us/office/video-what-is-microsoft-teams-422bf3aa-9ae8-46f1-83a2-e65720e1a34d?wt.mc_id=otc_microsoft_teams#)
+
+**[Quick start](/en-us/office/video-what-is-microsoft-teams-422bf3aa-9ae8-46f1-83a2-e65720e1a34d?wt.mc_id=otc_microsoft_teams#)**
+
+[![Three people symbols with a table symbol](/images/en-us/9a52b278-5b7e-4656-a922-0a8b39091fb1)](/en-us/office/get-started-with-microsoft-teams-b98d533f-118e-4bae-bf44-3df2470c2b12?wt.mc_id=otc_microsoft_teams#)
+
+**[Intro to Microsoft Teams](/en-us/office/get-started-with-microsoft-teams-b98d533f-118e-4bae-bf44-3df2470c2b12?wt.mc_id=otc_microsoft_teams#)**
+
+[![A checklist symbol](/images/en-us/7de249ea-e07d-4bc1-ada8-44469d51790c)](/en-us/office/create-a-team-with-team-templates-702a2977-e662-4038-bef5-bdf8ee47b17b?wt.mc_id=otc_microsoft_teams#)
+
+**[Set up and customize your team](/en-us/office/create-a-team-with-team-templates-702a2977-e662-4038-bef5-bdf8ee47b17b?wt.mc_id=otc_microsoft_teams#)**
+
+[![A collaboration symbol.](/images/en-us/ea742c72-3f2f-4152-9b8b-8f9446007833)](/en-us/office/overview-of-teams-and-channels-c3d63c10-77d5-4204-a566-53ddcf723b46?wt.mc_id=otc_microsoft_teams#)
+
+**[Collaborate in teams and channels](/en-us/office/overview-of-teams-and-channels-c3d63c10-77d5-4204-a566-53ddcf723b46?wt.mc_id=otc_microsoft_teams#)**
+
+[![Symbol of a message post](/images/en-us/6e395d1a-3f80-4900-b8fd-e567c9ca2f36)](/en-us/office/create-and-format-a-post-e66777da-636b-49eb-9408-b0d88b212885?wt.mc_id=otc_microsoft_teams#)
+
+**[Work with posts and messages](/en-us/office/post-a-message-to-multiple-channels-398008c8-f197-452f-9793-86fbf43ee35a)**
+
+## Discover more
+
+[![Manage meetings thumbnail](/images/en-us/9bdf541c-0580-49dd-92be-ef78ee756994)](/en-us/office/join-a-teams-meeting-078e9868-f1aa-4414-8bb9-ee88e9236ee4)
+
+**[Manage meetings](/en-us/office/join-a-teams-meeting-078e9868-f1aa-4414-8bb9-ee88e9236ee4)**
+
+[![Landing page thumbnail for live events](/images/en-us/e42c2a20-8925-4c09-9262-da62f8665e5f)](/en-us/office/plan-and-schedule-a-live-event-f92363a0-6d98-46d2-bdd9-f2248075e502)
+
+**[Set up and attend live events](/en-us/office/plan-and-schedule-a-live-event-f92363a0-6d98-46d2-bdd9-f2248075e502)**
+
+[![Landing page thumbnail for Microsoft Teams](/images/en-us/2a590eea-9431-49ce-9f44-85e1e16dedc0)](/en-us/office/upload-and-share-files-57b669db-678e-424e-b0a0-15d19215cb12?wt.mc_id=otc_microsoft_teams#)
+
+**[Search and find files and more](/en-us/office/upload-and-share-files-57b669db-678e-424e-b0a0-15d19215cb12)**
+
+[![Four squares, one tilted, to show more apps](/images/en-us/251b85b4-cca6-49bd-bde0-f48f4adf5162)](/en-us/office/find-and-use-apps-6e22a734-c002-4da0-ba63-681f155b142d?wt.mc_id=otc_microsoft_teams#)
+
+**[Explore apps and tools](/en-us/office/find-and-use-apps-6e22a734-c002-4da0-ba63-681f155b142d)**
+
+## Frontline worker scenarios
+
+[![Image of a checkmark](/images/en-us/27140f82-e1b5-43f4-9729-aa149c8508fc)](/en-us/office/what-is-approvals-a9a01c95-e0bf-4d20-9ada-f7be3fc283d3?wt.mc_id=otc_microsoft_teams#)
+
+**[Create approvals](/en-us/office/what-is-approvals-a9a01c95-e0bf-4d20-9ada-f7be3fc283d3?wt.mc_id=otc_microsoft_teams#)**
+
+[![Landing page thumbnail for Shifts](/images/en-us/e4be944d-b800-4987-b18c-49a6a82f7963)](/en-us/office/what-is-shifts-f8efe6e4-ddb3-4d23-b81b-bb812296b821)
+
+**[Manage team schedules with Shifts](/en-us/office/what-is-shifts-f8efe6e4-ddb3-4d23-b81b-bb812296b821)**
+
+[![Click to go to Virtual Appointments training content](/images/en-us/ab76f2f3-9016-4c1b-8522-3c1437f0df2f)](/en-us/office/what-are-virtual-appointments-22df0079-e6d9-4225-bc65-22747fb2cb5f)
+
+**[Virtual Appointments](/en-us/office/what-are-virtual-appointments-22df0079-e6d9-4225-bc65-22747fb2cb5f)**
+
+## More resources
+
+## Training
+
+[Tips for better meetings](/en-us/office/tips-for-better-meetings-80640ac4-b009-42ea-abcb-660e729e63e5)
+
+[Free instructor-led training](https://docs.microsoft.com/MicrosoftTeams/instructor-led-training-teams-landing-page)
+
+[Teams on-demand training](https://www.youtube.com/playlist?list=PLXPr7gfUMmKzR7_jXN5s886apYoHNC3Xk)
+
+## Help
+
+[Teams downloadable guide](http://download.microsoft.com/download/D/9/F/D9FE8B9E-22F5-47BF-A1AB-09539C41FCD0/Teams%20QS.pdf)
+
+[Teams help](https://support.office.com/en-us/teams?wt.mc_id=otc_microsoft_teams)
+
+[Troubleshooting](/en-us/office/troubleshoot-in-microsoft-teams-6fa7c08a-6fd4-47a0-b275-90a5f60f1df9?wt.mc_id=otc_microsoft_teams#)
+
+[Download Teams](https://www.microsoft.com/microsoft-teams/group-chat-software?ocid=cmm5vrf0q50)
+
+## Featured topics
+
+[What is Shifts?](/en-us/office/what-is-shifts-f8efe6e4-ddb3-4d23-b81b-bb812296b821)
+
+[Plan and schedule a live event](/en-us/office/plan-and-schedule-a-live-event-f92363a0-6d98-46d2-bdd9-f2248075e502)
+
+[Fun stuff for chats](/en-us/office/chat-in-microsoft-teams-f3a917cb-1a83-42b2-a097-0678298703bb?wt.mc_id=otc_microsoft_teams#)
+
+[Video Conferencing](https://www.microsoft.com/microsoft-teams/video-conferencing?ocid=cmmwcxwazuz)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmicrosoft-teams-video-training-4f108e54-240b-4351-8084-b1089f0d21d7 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmicrosoft-teams-video-training-4f108e54-240b-4351-8084-b1089f0d21d7&title=Microsoft%20Teams%20video%20training "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Microsoft%20Teams%20video%20training&body=Microsoft%20Teams%20video%20training%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmicrosoft-teams-video-training-4f108e54-240b-4351-8084-b1089f0d21d7 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

@@ -54,9 +54,10 @@ def llm_select_relevant_links(
         "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in links]) +
         "\n\nWhich of these links are most likely to contain the answer or helpful information? "
         "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
-        "Only select links that are highly likely to contain an answer, or links to lead to the answer."
-        # "If you are not at least 80% confident that a link contains the answer, do not include it."
-        "Reply with a JSON array of up to max 5 objects with 'text' and 'href'."
+        "Only select links that you are 90% confident to contain an answer, or links to lead to the answer."
+        "If you are not at least 90% confident that a link contains the answer, do not include it."
+        "Do not include links that are not relevant to the question, or that you are not confident about.\n"
+        "Reply with a JSON array of up to 0-5 objects (max 5, min 0) with 'text' and 'href'."
 
     )
     # === LOG PROMPT ===
@@ -72,6 +73,62 @@ def llm_select_relevant_links(
     if isinstance(data, list):
         return data[:k]
     return []
+
+async def llm_select_relevant_links_parallel(
+    question: str,
+    links: List[Dict[str, str]],
+    k: int = 3,
+    chunk_size: int = 200,
+    max_concurrency: int = 5,
+    log_fn: Optional[Callable[[str], None]] = None
+) -> List[Dict[str, str]]:
+    from langchain_openai import ChatOpenAI
+    from utils import extract_json_from_text
+    import asyncio
+
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    semaphore = asyncio.Semaphore(max_concurrency)
+
+    async def run_on_chunk(chunk: List[Dict[str, str]], chunk_id: int):
+        log_fn(f"🧵 Thread {chunk_id} starting with {len(chunk)} available links.")
+        prompt = (
+            f"The user is on the website {urlparse(chunk[0].get('href', '')).netloc} and their question is: {question}\n"
+            "These are the links on part of the page:\n" +
+            "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
+            "\n\nWhich of these links are most likely to contain the answer or helpful information? "
+            "Reply with a JSON array of up to 5 objects with 'text' and 'href'."
+        )
+
+        async with semaphore:
+            result = await llm.ainvoke([{"role": "user", "content": prompt}])
+            output = (result.content or "").strip()
+            json_str = extract_json_from_text(output)
+            try:
+                links_selected = json.loads(json_str) if json_str else []
+                log_fn(f"✅ Thread {chunk_id} found {len(links_selected)} possible links")
+                return links_selected
+            except Exception as e:
+                log_fn(f"❌ Thread {chunk_id} failed to parse JSON: {e}")
+                return []
+
+    # Split links into chunks
+    chunks = [links[i:i + chunk_size] for i in range(0, len(links), chunk_size)]
+    log_fn(f"🌐 Total chunks (threads): {len(chunks)}")
+    coros = [run_on_chunk(chunk, idx + 1) for idx, chunk in enumerate(chunks)]
+    results = await asyncio.gather(*coros)
+
+    # Flatten and deduplicate
+    seen = set()
+    combined = []
+    for sublist in results:
+        for link in sublist:
+            href = link.get("href")
+            if href and href not in seen:
+                combined.append(link)
+                seen.add(href)
+
+    return combined[:k]
+
 
 def scrape_with_sync_playwright(url, timeout=12000):
     try:

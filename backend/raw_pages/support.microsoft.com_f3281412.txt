@@ -1,0 +1,326 @@
+[Microsoft Teams](/en-us/teams)
+
+[Meetings](meetings-1f8862a1-48f2-4869-863d-564123343d38)
+
+[Meetings](meetings-1f8862a1-48f2-4869-863d-564123343d38)
+
+Manage town hall recordings in Microsoft Teams
+
+## In this article
+
+[Record a town hall](#bkmk_record_town_hall)
+
+[Publish a town hall recording](#bkmk_publish_town_hall_recording)
+
+[Stop recording a town hall](#bkmk_stop_recording_town_hall)
+
+[View a town hall recording](#bkmk_view_town_hall_recording)
+
+[Download a town hall recording](#bkmk_download_town_hall_recording)
+
+[Share a town hall recording](#bkmk_share_town_hall_recording)
+
+[Download town hall transcripts](#bkmk_download_town_hall_transcript)
+
+[Remove a town hall recording](#bkmk_remove_th_recording)
+
+[Download translated town hall transcripts](#bkmk_download_translated_th_transcript)
+
+## Record a town hall
+
+Town halls will record automatically when the event starts. To learn more, see [Host a town hall in Microsoft Teams](/en-us/office/host-a-town-hall-in-microsoft-teams-3cb4f0a6-d574-494d-b1f7-105a6f6af71f#bkmk_start_town_hall).
+
+### Turn off automatic recording
+
+If you want to record a town hall manually, or if you don't want to record it at all, turn off automatic recording in the town hall settings before the event starts.
+
+To turn off automatic recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click an upcoming town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Details**, select **Meeting options** ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321) > **Recording and transcription** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e).
+5. Turn the **Record and transcribe automatically** toggle off.
+6. Select **Apply**.
+7. Select **Save** ![Save icon](/images/en-us/90f4cc4c-cbbd-4372-b5ac-74a9ca9af337).
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click an upcoming town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Details**, select **Meeting options** ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321) > **Recording and transcription** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e)​​​​​​​.
+5. Turn the **Record and transcribe automatically** toggle off.
+6. Select **Apply**.
+7. Select **Save** ![Save icon](/images/en-us/90f4cc4c-cbbd-4372-b5ac-74a9ca9af337).
+
+**Note:**If you turn off automatic recording, you can manage who can start a recording. Open the event details in your Teams calendar. Go to **Details** > **Meeting options**  ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321)> **Recording and transcription** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e)​​​​​​​. Meeting roles, your org's license, and admin policies also determine who can record and transcribe.
+
+### Record a town hall manually
+
+If you want to record a town hall manually, first [turn off automatic recording.](#bkmk_turn_off_auto_record) Then:
+
+1. Select **More actions** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) in your meeting controls.
+2. Select **Record and transcribe** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e)> **Start recording** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e).  
+     
+   ![Start recording a town hall.](/images/en-us/543154e2-311b-45ad-9b08-bbe7bbea1927)  
+     
+   When you select **Start recording** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e), the meeting transcription will start automatically.
+
+## Stop recording a town hall
+
+To stop recording during a town hall:
+
+1. Select **More actions** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) in your meeting controls.
+2. Select **Record and transcribe** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e) > **Stop recording** ![Record and transcribe icon](/images/en-us/225d74a7-b38f-4e2e-a237-c6bfb5242a5e).  
+     
+   ![Screenshot highlighting how to stop recording during a town hall](/images/en-us/55732a24-de15-497c-adaf-299f1f72131f)
+3. Select **Stop**.
+
+When you stop recording, the meeting transcription will also stop.
+
+## Download a town hall recording
+
+Organizers can download a town hall recording from Teams while it's not published. This allows you to edit the recording and publish it from OneDrive.
+
+To download a town hall:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click an upcoming town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, find the recording you want to download.
+5. Select **Download** ![Download button](/images/en-us/7743d0ca-6cdf-4ad4-b737-5d1f2f1cb636).
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click an upcoming town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, find the recording you want to download.
+5. Select **Download** ![Download button](/images/en-us/7743d0ca-6cdf-4ad4-b737-5d1f2f1cb636).​​​​​​​
+
+## Download town hall transcripts
+
+After a town hall ends, download the transcripts to save and review them later. If you stopped and restarted the transcription during the event, there will be multiple transcripts.
+
+To download town hall transcripts:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings**.
+5. Select **Download transcripts** ![Teams download arrow icon](/images/en-us/4c7c01c7-af0f-49f5-aa24-4222f9ce9298)​​​​​​​.
+
+   * If there are multiple transcripts, they’ll be downloaded as separate files.
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings**.
+5. Select **Download transcripts** ![Teams download arrow icon](/images/en-us/4c7c01c7-af0f-49f5-aa24-4222f9ce9298)​​​​​​​.
+
+   * If there are multiple transcripts, they’ll be downloaded as separate files.
+
+Transcripts will download in both .docx and .vtt file types.
+
+## Download translated town hall transcripts
+
+After a town hall, translate and download the town hall transcript in one of over 100 supported languages. To learn more about setting up post-event transcript translation through Microsoft Syntex, see [Microsoft Syntex pay-as-you-go transcript translations in Stream for SharePoint](/en-us/office/microsoft-syntex-pay-as-you-go-transcript-translations-in-stream-for-sharepoint-2e34ad1b-e213-47ed-a806-5cc0d88751de#bkmk_setupsyntex).
+
+**Note:**If you’re having trouble translating or downloading town hall transcripts, please contact your IT admin.
+
+To translate a town hall transcript:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recap**.
+5. Select **Open in Clipchamp** ![View town hall insights icon](/images/en-us/8873addb-8733-4843-bffd-35d83a534f40).
+6. In Clipchamp, select **Video settings** ![Stream video settings button](/images/en-us/b35e2738-f872-44d5-b57e-9003f7df8a18).
+7. Select **Transcript and captions**  ![Start transcription button](/images/en-us/81a296ad-5fa8-4f84-9fc4-4f2515fe8341) > **Translate**.
+8. Select the language you’d like to translate the transcript into.
+9. Select **Translate**.
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recap**.
+5. Select **Open in Clipchamp** ![View town hall insights icon](/images/en-us/8873addb-8733-4843-bffd-35d83a534f40).
+6. In Clipchamp, select **Video settings** ![Stream video settings button](/images/en-us/b35e2738-f872-44d5-b57e-9003f7df8a18).
+7. Select **Transcript and captions**  ![Start transcription button](/images/en-us/81a296ad-5fa8-4f84-9fc4-4f2515fe8341) > **Translate**.
+8. Select the language you’d like to translate the transcript into.
+9. Select **Translate**.​​​​​​​​​​​​​​
+
+The translated transcript will appear in the **Transcript and captions** ![Start transcription button](/images/en-us/81a296ad-5fa8-4f84-9fc4-4f2515fe8341) menu.
+
+To download a translated transcript, select **Options**  ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Download** next to the transcript and choose the file type you want to download in.
+
+![Screenshot of how to download a translated transcript in Clipchamp.](/images/en-us/486874a5-9587-46a5-b94c-2077915b3ba6)
+
+## Publish a town hall recording
+
+After recording a town hall, publish the recording to make it available to attendees.
+
+To publish a town hall recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings** and choose the recording you want to publish.
+5. Select **Publish**.
+
+   * If your recording is saved in OneDrive, select **Publish from OneDrive**.
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings** and choose the recording you want to publish.
+5. Select **Publish**.
+
+   * If your recording is saved in OneDrive, select **Publish from OneDrive**.
+
+Only one recording can be published at a time. After you publish a recording, attendees will be notified by email. External presenters won't receive an email notification.
+
+### Extend town hall recording access
+
+Published town hall recordings expire, but you can extend how long they're available. To extend a town hall recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings**.
+5. Next to the published recording, select **Extend for 60 days** > **Extend**.
+
+​​​​​​​
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. Select **Recordings**.
+5. Next to the published recording, select **Extend for 60 days** > **Extend**.
+
+If a recording expires after you have extended it, republish it to make it available again for attendees.​​​​​​​
+
+## View a town hall recording
+
+To view a town hall recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, select the recording you want to view.
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, select the recording you want to view.
+
+Attendees can view a town hall recording after you publish it. When it's published, they'll receive an email with a link to the recording.
+
+You can also find town hall recordings and transcripts by selecting the past town hall in your Teams calendar and selecting the **Recap** tab. From there, you can watch the recording, search the transcript, and more. To learn more, see [Recap in Microsoft Teams](/en-us/office/recap-in-microsoft-teams-c2e3a0fe-504f-4b2c-bf85-504938f110ef).
+
+## Share a town hall recording
+
+To share a town hall recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, find the recording you want to share.
+5. Select **Copy link**.
+6. Share the link in a chat or post.
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, find the recording you want to share.
+5. Select **Copy link**.
+6. Share the link in a chat or post.​​​​​​​​​​​​​​
+
+Anyone with event access can view the shared recording. To learn more about event access, see [Schedule a town hall in Microsoft Teams](/en-us/office/schedule-a-town-hall-in-microsoft-teams-d493b5cc-9f61-4dac-8027-d837dafb7a4c).
+
+## Remove a town hall recording
+
+Remove a published recording to prevent attendees from viewing it. You can republish recordings after removing them.
+
+To remove a town hall recording:
+
+New calendarClassic calendar
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click a past town hall.
+3. Select **Edit** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, choose the recording you want to remove.
+5. Select **Remove**.
+
+​​​​​​​
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)​​​​​​​in Teams.
+2. Right-click a past town hall.
+3. Select **Manage event** ![Edit icon](/images/en-us/abd9e992-dddb-4721-8141-1ad2ed800d09).
+4. In **Recordings**, choose the recording you want to remove.
+5. Select **Remove**.
+
+## What's next?
+
+[Cancel a town hall](/en-us/office/cancel-a-town-hall-in-microsoft-teams-0be88477-3ef5-4f01-88fd-96194f74300c)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-town-hall-recordings-in-microsoft-teams-88ac3af7-db67-4556-a202-b73a1d6c2e46 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-town-hall-recordings-in-microsoft-teams-88ac3af7-db67-4556-a202-b73a1d6c2e46&title=Manage%20town%20hall%20recordings%20in%20Microsoft%20Teams "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20town%20hall%20recordings%20in%20Microsoft%20Teams&body=Manage%20town%20hall%20recordings%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-town-hall-recordings-in-microsoft-teams-88ac3af7-db67-4556-a202-b73a1d6c2e46 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

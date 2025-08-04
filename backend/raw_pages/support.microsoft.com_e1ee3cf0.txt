@@ -1,0 +1,111 @@
+## Trending topics
+
+**About Microsoft 365**
+
+[Microsoft 365 overview](/en-us/office/microsoft-365-personal-and-family-subscription-benefits-41cc5189-6ff4-41ef-bdd3-04ac49d2706f)
+
+[Compare Microsoft 365 and Office 2024](/en-us/office/what-s-the-difference-between-microsoft-365-and-office-2024-ed447ebf-6060-46f9-9e90-a239bd27eb96)
+
+[Microsoft 365 FAQ](https://www.microsoft.com/microsoft-365/microsoft-365-for-home-and-school-faq?ocid=cmmzb259zys)
+
+[How does Microsoft storage work?](/en-us/office/microsoft-storage-2a261b34-421c-4a47-9901-74ef5bd0c426)
+
+**Download and install**
+
+[Install Office apps on your PC or Mac](/en-us/office/download-install-or-reinstall-microsoft-365-or-office-2024-on-a-pc-or-mac-4414eaaf-0478-48be-9c42-23adc4716658)
+
+[Where to enter your product key](/en-us/office/where-to-enter-your-office-product-key-0a82e5ae-739e-4b92-a6f4-2ec780c185db)
+
+[Activate Office](/en-us/office/activate-office-for-windows-5bd38f38-db92-448b-a982-ad170b1e187e)
+
+[Set up mobile devices](/en-us/office/set-up-office-apps-and-email-on-a-mobile-device-7dabb6cb-0046-40b6-81fe-767e0b1f014f)
+
+**Payment and Management**
+
+[Manage payment and billing](/en-us/office/manage-payment-and-billing-for-microsoft-365-a898e0bc-c4dd-4d24-b9bb-f9e1b9b35a54)
+
+[Turn recurring billing on or off](/en-us/account-billing/turn-recurring-billing-on-or-off-for-a-microsoft-subscription-66f40aee-2317-f74b-40f9-2be7e92f0167)
+
+[Cancel a subscription](/en-us/office/cancel-a-microsoft-365-subscription-46e2634c-c64b-4c65-94b9-2cc9c960e91b)
+
+[Pay for a past due balance](/en-us/account-billing/pay-for-a-past-due-microsoft-subscription-669cfde5-833d-463c-2db3-0520dcb90ba0)
+
+**Troubleshoot**
+
+[Forgot username or password](/en-us/office/i-forgot-the-account-i-use-with-microsoft-365-eba0b4a2-c0ae-472c-99f6-bc63ee2425a8)
+
+[Windows end of support and Microsoft 365](/en-us/office/what-windows-end-of-support-means-for-office-and-microsoft-365-34e28be4-1e4f-4928-b210-3f45d8215595)
+
+[Known issues with Office apps and Windows 10](/en-us/office/known-issues-with-office-and-windows-10-28d56d84-c16c-4763-8eac-e51e05a37a16)
+
+[Fixes or workarounds for Office Installation or activation issues](/en-us/office/fixes-or-workarounds-for-recent-office-installation-or-activation-issues-30453145-72e9-4061-a88c-cd74884f292f)
+
+![Microsoft 365 Copilot app](/images/en-us/a825a9ff-decd-4053-9e87-2827f96a003c)
+
+## Your everyday productivity app
+
+Find and edit files, scan documents, and create content on the go with access to Copilot Chat, productivity apps, and more — all in one place.
+
+[Get started with Microsoft 365 Copilot Chat](/en-us/topic/get-started-with-microsoft-365-copilot-chat-5b00a52d-7296-48ee-b938-b95b7209f737)
+
+[Analyst agent in Microsoft 365 Copilot](/en-us/topic/get-started-with-analyst-in-microsoft-365-copilot-ff505b9c-a06c-4be9-b855-69d89b1d25d2)
+
+[Download the Microsoft 365 Copilot app](https://www.microsoft.com/microsoft-365/copilot/download-copilot-app?ocid=cmm233lzfue)
+
+![Man looking at his Surface and phone](/images/en-us/7456f054-ab18-4b4d-a1da-a0b1d7093489)
+
+### Microsoft 365 Basic just got better
+
+Microsoft 365 Basic now comes with 100GB of cloud storage, secure photo and file storage, secure ad-free email, and technical support.
+
+[Explore frequently asked questions about Microsoft 365 Basic](/en-us/account-billing/frequently-asked-questions-about-microsoft-365-basic-4f39a693-4dc6-47bc-82b6-c2ef5f3afa38)
+
+![Welcome back template on a blue background](/images/en-us/f49f167b-e135-4ee2-8d8c-d72feab37fac)
+
+### Find the perfect template
+
+Microsoft Create has professionally designed, fully customizable templates to help you get things done. Find templates for Word, Excel, PowerPoint, and Forms.
+
+[Get customizable templates to take your project to the next level](https://go.microsoft.com/fwlink/?linkid=2226813)
+
+![Illustration of a safe and files](/images/en-us/99dd4fee-5da1-41ea-bbb0-e83ba57ee69a)
+
+### Protect what's important
+
+Protect your most important files, like your passport, driver’s license, or insurance information with OneDrive Personal Vault.
+
+[Set up your personal vault, upload files, and explore commonly asked questions](/en-us/office/protect-your-onedrive-files-in-personal-vault-6540ef37-e9bf-4121-a773-56f98dce78c4)
+
+![The Microsoft Defender icon.](/images/en-us/2cc7e5e6-5e57-4eca-a927-8be4a9d83873)
+
+### Meet Microsoft Defender
+
+Protect your digital life and all of your devices - Windows, Mac, iOS, or Android - so you and your family can have more peace of mind.
+
+[Get started with Microsoft Defender for malware, web protection, and other security tips](/en-us/topic/getting-started-with-microsoft-defender-9df0cb0f-4866-4433-9cbc-f83e5cf77693)
+
+## Explore more
+
+[![illustration of a small business](/images/en-us/91d46d2f-85a6-4a53-a5ff-803db8386fbd)](
+                                            https://support.microsoft.com/smallbusiness
+                                        )
+
+[Find ways to help your small business grow and succeed with Microsoft 365](https://support.microsoft.com/smallbusiness)
+
+[![illustration of IT PRo tools](/images/en-us/6399cdfb-3d05-40d4-be7f-c139ff222086)](
+                                            https://learn.microsoft.com/microsoft-365/enterprise/
+                                        )
+
+[Explore Microsoft 365 for enterprise deployment guidance, features, and services](https://learn.microsoft.com/microsoft-365/enterprise/)
+
+[![illustration of devceloper tools.](/images/en-us/45544708-56f8-449c-a254-5cd211f4ae96)](
+                                            https://learn.microsoft.com
+                                        )
+
+[Get the most from Microsoft products with documentation, hands-on-training, and certifications](https://learn.microsoft.com)
+
+[![Illustration of a graduation cap icon connected to text, video, writing, and checklist icons, representing educational resources](/images/en-us/8e7d0263-fb6a-450f-ad0e-743dafd1d880)](
+                                            https://learn.microsoft.com/education
+                                        )
+
+[Discover a simple and safe experience in a single, affordable solution with Microsoft 365 Education](https://learn.microsoft.com/education)

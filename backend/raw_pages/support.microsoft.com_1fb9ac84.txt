@@ -1,0 +1,110 @@
+Keep in touch and stay productive with Teams and Microsoft 365, even when you're working remotely.
+
+[Learn more](https://aka.ms/remote-work)
+
+[Show expanded list of products](#!)
+[Hide expanded list of products](#!)
+
+### Microsoft 365
+
+* [![Access](/ems/content/images/appicons/access.64x64.svg)
+
+  Access](#)
+* [![Excel](/ems/content/images/appicons/excel.64x64.svg)
+
+  Excel](#)
+* [![OneDrive](/ems/content/images/appicons/onedrive.64x64.svg)
+
+  OneDrive](#)
+* [![OneNote](/ems/content/images/appicons/onenote.64x64.svg)
+
+  OneNote](#)
+* [![Outlook](/ems/content/images/appicons/outlook.64x64.svg)
+
+  Outlook](#)
+* [![PowerPoint](/ems/content/images/appicons/powerpoint.64x64.svg)
+
+  PowerPoint](#)
+* [![SharePoint](/ems/content/images/appicons/sharepoint.64x64.svg)
+
+  SharePoint](#)
+* [![Skype](/ems/content/images/appicons/skype.64x64.svg)
+
+  Skype](#)
+* [![Teams](/ems/content/images/appicons/teams.64x64.svg)
+
+  Teams](#)
+* [![Word](/ems/content/images/appicons/word.64x64.svg)
+
+  Word](#)
+
+### Devices
+
+* [![Azure Kinect DS](/ems/content/images/appicons/appsgeneric.64x64x32.png)
+
+  Azure Kinect DS](#)
+* [![HoloLens](/ems/content/images/appicons/appsgeneric.64x64x32.png)
+
+  HoloLens](#)
+
+### Server products
+
+* [![Windows Server](/ems/content/images/appicons/windows.64x64x32.png)
+
+  Windows Server](https://support.serviceshub.microsoft.com/supportforbusiness/create)
+* [![SQL Server](/ems/content/images/appicons/bizTalk_Sql.64x64x32.png)
+
+  SQL Server](https://support.serviceshub.microsoft.com/supportforbusiness/create)
+* [![SharePoint Server](/ems/content/images/appicons/sharepoint.64x64.svg)
+
+  SharePoint Server](https://support.serviceshub.microsoft.com/supportforbusiness/create)
+* [![BizTalk Server](/ems/content/images/appicons/bizTalk_Sql.64x64x32.png)
+
+  BizTalk Server](https://support.serviceshub.microsoft.com/supportforbusiness/create)
+* [![Exchange Server](/ems/content/images/appicons/exchange.64x64x32.png)
+
+  Exchange Server](https://support.serviceshub.microsoft.com/supportforbusiness/create)
+
+Can't find your product?
+
+[Get help and support](https://support.microsoft.com/en-us/home/contact?SourceApp=smc2&ContactUsExperienceEntryPointAssetId=S.HP.outlook)
+
+## More support options
+
+[Business Assist](https://admin.microsoft.com/Adminportal/Home?culture=en-us&amp;ocid=PROD_Support_COMM_Amplify_UPS_Support_ContactusBizAssist1&amp;ref=/homepage/:/getbusinessassist)
+
+Subscribe to Business Assist to get expert advice from small-business specialists. Already a subscriber? [sign in now](https://support.microsoft.com/ems/auth/login?ru=%2Fcontactus%3FContactUsExperienceEntryPointAssetId%3DS.HP.outlook&prompt=select_account&mkt=en-US)
+
+[Help for admins of small businesses](https://admin.microsoft.com/Adminportal/Home?culture=en-us#/support)
+
+Open a service request in the Microsoft 365 admin center. This service is free.
+
+![ProdcutLineLogo]()
+
+Let's get you the right support
+
+Home
+
+* Personal & family accounts
+
+Get support in your browser
+
+[Get Home support](https://support.microsoft.com/en-us/home/contact?SourceApp=smc2&ContactUsExperienceEntryPointAssetId=S.HP.outlook)
+
+[Get support in the Get Help Windows app](#!)
+
+Business
+
+* Small & medium businesses
+* Enterprise businesses
+* Education accounts
+
+Get support in the Microsoft 365 admin center. You must be a Microsoft 365 admin.
+
+[Get Business support](https://admin.microsoft.com/Adminportal/Home?culture=en-us#/support)
+
+Non-admin user of a business account?
+
+[Get self-help support](https://support.microsoft.com/en-us/home/contact?SourceApp=smc2)
+
+[×](javascript:)

@@ -116,7 +116,7 @@ async def smart_qa_runner(
         pages_seen += 1
 
         log(f"\n📄 [Depth {depth}] QA on: {page_url or '(initial page)'}")
-        print(f"🧪 This page had {len(links)} input links.")
+        log(f"🧪 This page had {len(links)} input links.")
 
         # 1) Run QA on this page
         qa_result = await _run_page_qa_once(text=text, question=question, page_url=page_url)
@@ -149,10 +149,10 @@ async def smart_qa_runner(
             and l["href"] not in visited
             and _same_domain(l["href"], original_domain)
         ]
-        print(f"🔍 Found {len(candidate_links)} candidate links:")
+        log(f"🔍 Found {len(candidate_links)} valid domain links:")
         # Limit to first 100 candidate links
-        print("limiting to first 100 candidate links:")
-        candidate_links = candidate_links[:100]
+        # print("limiting to first 100 candidate links:")
+        # candidate_links = candidate_links[:100]
         for l in candidate_links:
             print(f"   - {l.get('text', '')[:40]} → {l.get('href')}")
 
@@ -161,11 +161,20 @@ async def smart_qa_runner(
             continue
 
         # 3) Let the LLM select the top-k links (no scraping yet!)
-        selected_links = llm_select_relevant_links(
+        # selected_links = llm_select_relevant_links(
+        #     question=question,
+        #     links=candidate_links,
+        #     k=k_links
+        # )
+
+        from smart_parallel import llm_select_relevant_links_parallel
+        selected_links = await llm_select_relevant_links_parallel(
             question=question,
             links=candidate_links,
-            k=k_links
-        )
+            k=k_links,
+            log_fn=log,
+        )   
+
         if selected_links:
     # Spawn a background task to generate the LLM message and stream when ready
             async def send_llm_links_message():

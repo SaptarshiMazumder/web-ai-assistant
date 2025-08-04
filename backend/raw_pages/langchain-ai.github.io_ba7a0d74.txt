@@ -1,0 +1,44 @@
+# Reference
+
+Welcome to the LangGraph reference docs! These pages detail the core interfaces you will use when building with LangGraph. Each section covers a different part of the ecosystem.
+
+Tip
+
+If you are just getting started, see [LangGraph basics](https://langchain-ai.github.io/langgraph/concepts/why-langgraph/) for an introduction to the main concepts and usage patterns.
+
+## LangGraph
+
+The core APIs for the LangGraph open source library.
+
+* [Graphs](https://langchain-ai.github.io/langgraph/reference/graphs/): Main graph abstraction and usage.
+* [Functional API](https://langchain-ai.github.io/langgraph/reference/func/): Functional programming interface for graphs.
+* [Pregel](https://langchain-ai.github.io/langgraph/reference/pregel/): Pregel-inspired computation model.
+* [Checkpointing](https://langchain-ai.github.io/langgraph/reference/checkpoints/): Saving and restoring graph state.
+* [Storage](https://langchain-ai.github.io/langgraph/reference/store/): Storage backends and options.
+* [Caching](https://langchain-ai.github.io/langgraph/reference/cache/): Caching mechanisms for performance.
+* [Types](https://langchain-ai.github.io/langgraph/reference/types/): Type definitions for graph components.
+* [Config](https://langchain-ai.github.io/langgraph/reference/config/): Configuration options.
+* [Errors](https://langchain-ai.github.io/langgraph/reference/errors/): Error types and handling.
+* [Constants](https://langchain-ai.github.io/langgraph/reference/constants/): Global constants.
+* [Channels](https://langchain-ai.github.io/langgraph/reference/channels/): Message passing and channels.
+
+## Prebuilt components
+
+Higher-level abstractions for common workflows, agents, and other patterns.
+
+* [Agents](https://langchain-ai.github.io/langgraph/reference/agents/): Built-in agent patterns.
+* [Supervisor](https://langchain-ai.github.io/langgraph/reference/supervisor/): Orchestration and delegation.
+* [Swarm](https://langchain-ai.github.io/langgraph/reference/swarm/): Multi-agent collaboration.
+* [MCP Adapters](https://langchain-ai.github.io/langgraph/reference/mcp/): Integrations with external systems.
+
+## LangGraph Platform
+
+Tools for deploying and connecting to the LangGraph Platform.
+
+* [SDK (Python)](https://langchain-ai.github.io/langgraph/cloud/reference/sdk/python_sdk_ref/): Python SDK for interacting with instances of the LangGraph Server.
+* [SDK (JS/TS)](https://langchain-ai.github.io/langgraph/cloud/reference/sdk/js_ts_sdk_ref/): JavaScript/TypeScript SDK for interacting with instances of the LangGraph Server.
+* [RemoteGraph](https://langchain-ai.github.io/langgraph/reference/remote_graph/): `Pregel` abstraction for connecting to LangGraph Server instances.
+
+See the [LangGraph Platform reference](https://docs.langchain.com/langgraph-platform/reference-overview?__hstc=5909356.e5beeee6994839339060d87b91ff69a7.1754295069176.1754295069176.1754295069176.1&__hssc=5909356.1.1754295069176&__hsfp=2950059372) for more reference documentation.
+
+Back to top
