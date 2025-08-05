@@ -15256,3 +15256,2306 @@ USER QUESTION: how to change calendar language from japanese to En
 (Page URL: https://support.google.com/calendar/?hl=en#topic=10509740)
 ----------------------------------------
 
+
+========================================
+[2025-08-05 16:30:16] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Microsoft
+Support
+Microsoft 365 Office Teams support Topics More Buy Microsoft 365
+All Microsoft
+Sign in to your account
+Teams meeting topics
+Teams login
+Join a meeting
+Schedule a meeting
+Manage your calendar
+Participate in meetings
+Immersive experiences
+Teams Premium
+Meeting options
+Change your background
+Meeting themes
+Audio settings
+Manage attendee audio and video
+Manage what attendees see
+Use the green room
+Use RTMP-In
+Reduce background noise
+Voice isolation in Teams
+Mute notifications
+Manage breakout rooms
+Live transcription
+Language interpretation
+Q&A
+Live captions
+Real-Time Text
+End-to-end encryption
+Watermark
+Sensitive content detection
+Meeting attendance reports
+Using the lobby
+Meeting options
+Recording options
+Live events
+Webinars
+Town halls
+Troubleshooting
+Change your background in Microsoft Teams meetings
+
+Keep your background private during Teams meetings by blurring or changing your background. Upload your own images, or choose from background images already in Teams.
+
+In Teams Premium, apply branded logos or images to your background.
+
+Note: Blurring or replacing your background may not prevent sensitive information from being visible to other people in the call or meeting.
+
+Desktop
+Mobile
+Change your background
+Before a meeting
+
+Go to your Teams calendar.
+
+Select a meeting and select Join.
+
+From the pre-join screen, select Video effects .
+
+To blur your background, select the dropdown arrow next to Blur and choose Standard blur or Portrait blur.
+
+​​​​​​​ 
+
+​​​​​​​Select a Teams background to apply it to your video feed, or upload and apply your own.
+
+To use an image of your own, select More video effects > Add new  and then select one to upload from your computer. Make sure it's a .JPG, .PNG, or .BMP file.
+
+To turn off background effects, select None . Your background will persist in all your meetings and calls until you change it again.
+
+Note: If you don't see this option in the menu, the feature might not be available on your device.
+
+During a meeting
+
+Join a Teams meeting.
+
+In your meeting controls, select More actions  > Video effects and settings .
+
+Select Video effects.
+
+To blur your background, select the dropdown arrow next to Blur and choose Standard blur or Portrait blur.
+
+​​​​​​​Select a Teams background to apply it to your video feed.
+
+Select Add new  to upload and use an image from your computer. Make sure it's a .JPG, .PNG, or .BMP file.
+
+Select Preview to view the background before you apply it.
+
+Select Apply.
+
+Notes: 
+
+Linux users aren't able to use this feature.
+
+Background effects aren't available if you're using Teams through optimized virtual desktop infrastructure (VDI).
+
+Use AI to decorate your background in a meeting
+
+Take advantage of the new AI-generated Decorate effect in Teams to further personalize your backgrounds. There are five options to choose from:
+
+Clean up: Tidies up your surroundings, removing clutter and creating a more streamlined and minimalistic aesthetic.
+
+Fancy: Incorporates lavish and elegant decorative elements, like wallpaper, candles, and chandeliers.
+
+Greenhouse: Adds plants and greenery into your space.
+
+Celebration: Includes festive decorations like balloons, streamers, and lighting.
+
+Surprise me: Cycles through a variety of styles and themes to transform your space, including 2D animation, underwater, a block-style design reminiscent of Minecraft, and a space shuttle theme.
+
+To turn on this feature, follow the same steps as noted above to change your background either before or during the meeting.
+
+Once in the video effects menu, select Decorate.
+
+If your camera is currently on, it'll turn off while you choose a new background. Select Start when prompted to turn off the camera and see your options.
+
+Once you've chosen a theme, select Generate to preview options.
+
+Select Generate more for more choices. You can also select a different theme before generating more. Your previously generated option will still remain available.
+
+Select Apply and turn on video to apply a background.
+
+You might also like...  
+
+If you enjoy custom backgrounds in Teams, you may also like customizing your desktop with a new image every day from the Bing Wallpaper app. This app automatically updates your desktop background with the Bing image of the day, showcasing stunning photographs from around the world. Each image comes with a brief description, allowing you to learn more about the location or subject featured in the photo. The Bing Wallpaper app is easy to install and use, providing a seamless way to keep your desktop visually engaging and informative. 
+
+  
+SUBSCRIBE RSS FEEDS
+Need more help?
+Want more options?
+Discover
+Community
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+Microsoft 365 subscription benefits
+
+Microsoft 365 training
+
+Microsoft security
+
+Accessibility center
+
+Our free trial of Microsoft 365 is waiting for you
+Unlock now
+Was this information helpful? Yes No
+What's new
+Surface Pro
+Surface Laptop
+Surface Laptop Studio 2
+Surface Laptop Go 3
+Microsoft Copilot
+AI in Windows
+Explore Microsoft products
+Windows 11 apps
+Microsoft Store
+Account profile
+Download Center
+Microsoft Store support
+Returns
+Order tracking
+Certified Refurbished
+Microsoft Store Promise
+Flexible Payments
+Education
+Microsoft in education
+Devices for education
+Microsoft Teams for Education
+Microsoft 365 Education
+How to buy for your school
+Educator training and development
+Deals for students and parents
+AI for education
+Business
+Microsoft Cloud
+Microsoft Security
+Dynamics 365
+Microsoft 365
+Microsoft Power Platform
+Microsoft Teams
+Microsoft 365 Copilot
+Small Business
+Developer & IT
+Azure
+Microsoft Developer
+Microsoft Learn
+Support for AI marketplace apps
+Microsoft Tech Community
+Azure Marketplace
+AppSource
+Visual Studio
+Company
+Careers
+About Microsoft
+Company news
+Privacy at Microsoft
+Investors
+Diversity and inclusion
+Accessibility
+Sustainability
+English (United States)
+Your Privacy Choices
+Consumer Health Privacy
+Sitemap Contact Microsoft Privacy Terms of use Trademarks Safety & eco Recycling About our ads © Microsoft 2025
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/change-your-background-in-microsoft-teams-meetings-f77a2381-443a-499d-825e-509a140f4780)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:28] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+**Note:**These experiences are available in the new Teams calendar. To get started, [switch to the new calendar now](/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5#bkmk_switch_to_new_calendar).
+
+Customize your calendar view in the new Teams calendar for a tailored approach to managing your schedule.
+
+## In this article
+
+|  |  |
+| --- | --- |
+| [Change your calendar view](#bkmk_change_cal_view) | [Save a calendar view](#bkmk_save_cal_view) |
+| [Apply calendar filters](#bkmk_apply_cal_filters) | [Delete a calendar view](#bkmk_delete_cal_view) |
+| [View different time scales](#bkmk_view_time_scales) |  |
+
+### Change your calendar view
+
+Your Teams calendar will display your work week schedule by default, but you can choose to view your schedule for the entire week or specific days only. Select your current view at the top of your calendar to choose a different view.
+
+![Screenshot highlighting the work week view in the new Teams calendar.](/images/en-us/d02a779d-3043-417b-ae28-cdd8f8c36238)
+
+## Apply calendar filters
+
+At the top of your calendar or in **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a), select **Filter** ![Avatar filter button](/images/en-us/457f5397-a356-4df6-9d11-f35c077296c0)​​​​​​​. Deselect specific types of events to remove them from view.
+
+## View different time scales
+
+Change your time scale in the new calendar to adjust the amount of space for meeting details.
+
+To change your calendar’s time scale:
+
+1. Select your calendar view (e.g., **Work week**, **Week**, etc.).
+2. Select **Time scale**. Choose the time scale you want to view your calendar in.
+
+![Screenshot showing time scales in the new Teams calendar](/images/en-us/008362bb-bdac-4378-8caf-05c65f420bd3)
+
+When you choose a time scale, the change will be applied immediately.
+
+**Tips:**
+
+* Increase the time scale to see more of your schedule at once, but with fewer details.
+* Decrease the time scale to see your schedule close-up, with more details.
+
+## Save a calendar view
+
+When you’ve set the specific filters, [calendar groups](/en-us/office/view-multiple-calendars-in-microsoft-teams-09328758-97f0-43f0-ad74-2ef1a3416f7e#bkmk_manage_calendar_groups), and other presets you want to see in your calendar, save the view to return to it later.
+
+To save a calendar view:
+
+1. Select your calendar view.
+2. From the dropdown menu, select **Saved views** ![Save icon](/images/en-us/90f4cc4c-cbbd-4372-b5ac-74a9ca9af337) > **Save current view**.
+3. Name the view and select **Save**.
+
+To apply a saved view:
+
+1. Select your calendar view.
+2. From the dropdown menu, select **Saved views**  ![Save icon](/images/en-us/90f4cc4c-cbbd-4372-b5ac-74a9ca9af337).
+3. Select the view you want to apply.
+
+## Delete a calendar view
+
+To delete a saved calendar view:
+
+1. Select your calendar view.
+2. From the dropdown menu, select **Saved views** ![Save icon](/images/en-us/90f4cc4c-cbbd-4372-b5ac-74a9ca9af337).
+3. Next to the view you want to delete, select **>** **Delete** ![Delete button trashcan icon](/images/en-us/740cca7d-8011-4b73-b162-3d93b9d31ac6).
+
+## Related topics
+
+[Get started with the new calendar in Microsoft Teams](/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5)
+
+[View multiple calendars in Microsoft Teams](/en-us/office/view-multiple-calendars-in-microsoft-teams-09328758-97f0-43f0-ad74-2ef1a3416f7e)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Customize%20your%20calendar%20in%20Microsoft%20Teams&body=Customize%20your%20calendar%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fcustomize-your-calendar-in-microsoft-teams-b0a6db4c-aec7-4c90-9f5e-b7f69a1cbf06 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/customize-your-calendar-in-microsoft-teams-b0a6db4c-aec7-4c90-9f5e-b7f69a1cbf06)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:34] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Organize and plan your work schedule effectively by managing your Teams calendar. Stay on track by RSVPing to meetings and events and choosing a calendar view that suits you.
+
+**Note:**Some experiences might look different in the new Teams calendar. To learn more, see [Get started with the new calendar in Microsoft Teams](/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5).
+
+## RSVP to a meeting
+
+Let meeting organizers know whether or not you'll be attending by RSVPing to their meetings ahead of time.
+
+To RSVP to a meeting:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Double-click the meeting you want to RSVP to.
+
+   **Note:**On Mac, right-click the meeting from your calendar to RSVP. If you want to RSVP with a message, select the meeting to expand it.
+3. Select **RSVP**.
+4. If the meeting is recurring, select:
+
+   1. **Respond to occurrence** to only RSVP to the individual meeting you selected.
+   2. **Respond to series** to apply your RSVP response to the selected meeting and all future meetings in the series.
+5. Choose your [organizer notification preferences](#bkmk_notifyorganizer).
+6. Choose your RSVP response. When you RSVP, the meeting will stay on your calendar if you accept the invitation, or disappear if you decline.
+
+### Notify the organizer
+
+By default, when you RSVP, the organizer will be notified of your response via email.
+
+To RSVP without notifying the organizer:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click the meeting you want to RSVP to.
+3. Select **RSVP**.
+4. Select **Respond to occurrence** or **Respond to series**.
+5. Turn off the **Notify organizer** toggle.
+6. Add an optional message in the **Write an email (optional)** field.
+7. Select your RSVP response: **Accept**, **Tentative**, or **Decline**.
+
+## Change the calendar view
+
+By default, your Teams calendar will display your work week.
+
+* Select **Work week** at the top-right of your calendar to see the dropdown menu of different views.  
+    
+  ![Screenshot of dropdown menu showing different calendar views in Teams.](/images/en-us/8ce5d2ea-42b0-4af4-96e5-53e8d76525d3)
+* **Day** gives you an agenda view focused on one day at a time.
+* **Work week** shows you Monday through Friday.
+* **Week** shows you the entire week.
+* **Agenda** shows you a scrollable list of your upcoming meetings in chronological order.
+
+## View different dates
+
+In the top left corner you'll find the month and year.
+
+![Change month and year in top left of page](/images/en-us/89fe5bf8-f141-45c7-abd3-faf411f22a92)
+
+* To change your calendar view to any date—past or future—select the month.
+* To scroll by day or week (depending on your calendar view), select the right and left arrows next to the month.
+* Select **Today** to return to the current date.
+
+**Note:**The calendar shows you everything that was scheduled in Teams, Exchange, and Outlook.
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20your%20calendar%20in%20Microsoft%20Teams&body=Manage%20your%20calendar%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-your-calendar-in-microsoft-teams-46ef12a4-0aaf-45ae-91a8-b3315d69f64d "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/manage-your-calendar-in-microsoft-teams-46ef12a4-0aaf-45ae-91a8-b3315d69f64d)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:39] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+WindowsMaciOSAndroid
+
+Microsoft Teams offers different ways to access, receive, and manage notifications. These settings include how, when, and where your notifications appear, custom settings for channels and chat, appearance and sounds, and turning off specific messages.
+
+To manage your notifications, select **Settings and more** ![Teams settings and more icon.](/images/en-us/af1f543b-1ada-448a-8d33-75af60959bef) > **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce) > **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+
+## In this article
+
+[General notifications](#bkmk_general_notifications)
+
+[App notifications](#bkmk_app_notifications)
+
+[Chat and channel notifications](#bkmk_chat_channel_notifications)
+
+[Specific channel notifications](#bkmk_channel_notifications)
+
+[Meeting notifications](#bkmk_meeting_notifications)
+
+[Thread notifications](#bkmk_thread_notifications)
+
+[Presence notifications](#bkmk_presence_notifications)
+
+[Activity notifications](#bkmk_custothernotif)
+
+[Calendar notifications](#bkmk_calendar_notifications)
+
+## General notifications
+
+Change Teams notifications to receive reminders for messages, meetings, and other activity that are most helpful to you.
+
+To change general notification settings:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+3. In **General**, customize sounds and change when you want notifications to display. Your options include:
+
+* **Mute all notifications (except for calls and meetings)**: Turn this setting on or off. Available on Windows only.
+* **Play sounds with notifications**: Every notification will include a system sound to alert you.
+* **Play sounds with urgent and priority contact notifications**: Differentiate messages market Urgent and notifications from priority contacts.
+* **Play sound with incoming calls, requests to join, and meeting start notifications**: Only incoming calls, requests to join meetings, and meeting start notifications will include a system sound to alert you.
+* **Show message and content previews in notifications**: A short preview of the message or content will be included in the notification.
+* **Show notifications during calls and meetings**: Notifications will be shown even if you're in a call or meeting.
+
+### Change sound notifications
+
+Assign different sounds to different kinds of notifications to prioritize tasks and reduce distractions. Mute notifications when you're busy or in a meeting.
+
+To change sound notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Sound**.
+3. Select the types of notifications you want to hear sounds for and choose a sound type in each dropdown menu.
+4. Select **Play** ![Play button](/images/en-us/a03390d5-e20f-47ab-ab49-5d6324e8a4e6) to preview the sound.
+
+**Note:**Custom sounds are currently available only on Teams for Windows and web.
+
+### Notifications display
+
+To change how your notifications appear on-screen:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Display** ![Hide objects button](/images/en-us/0ecb47bf-f197-4faa-9e5b-75976b6cc5a1).
+
+* Choose to **Show message and content previews in notifications** for more or less detailed information.
+* You can also choose to **Show notifications during calls and meetings**​​​​​​​or turn off this setting for fewer interruptions.
+* Choose where you'd like notifications to appear on your screen under **Position on the screen**. Select **Bottom right**, **Top right**, **Bottom left** or **Top left**. Change this setting at any time for the most seamless Teams experience.
+* Change the size of your message and content previews. Choose **Comfy** or **Compact**.
+
+### Manage activity emails
+
+Set the frequency of summary emails that detail your missed activity or turn them off altogether.
+
+To manage activity emails:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Missed activity emails**  ![Windows email and accounts icon](/images/en-us/510caaf0-9977-405d-bb26-144174fd23e4).
+3. Choose the frequency you want to receive activity emails from the dropdown menu.
+
+## Chat and channel notifications
+
+Customize chat and channel notifications to your personal work style.
+
+To change chat and channel notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Chats and channels**.
+3. Next to each notification type, select the dropdown menu to choose where you want the notifications to appear or select **Off** to turn that notification type off.
+
+To learn more, see [Customize channel notifications.](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)​​​​​​​
+
+## Meeting notifications
+
+Easily configure how notifications are shown for meetings about to start, and meeting chats.
+
+To manage your meeting notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Meetings**.
+
+* **Meeting start notifications** can be turned on or off using the toggle.
+* Choose to **Show meeting join bar**.
+* Select your preference in the **Meeting chat notifications for meetings I’ve accepted** dropdown menu. This setting is on by default.
+* Select your preference in the **Meeting chat notifications for meetings marked as tentative or no response** dropdown menu. This is set to **Mute until I join or send a message** by default.
+* Turn on or off **Meet now start notifications**.
+
+## Presence notifications
+
+Receive notifications that update you about your co-workers' statuses. See when people you work with are available or offline.
+
+To change presence notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Presence**.
+3. Select **Manage notifications**, then enter the name or names of the contacts you want to keep track of.
+
+* Select the correct contact(s) from the list.
+* You'll see those contacts appear below the text box. To stop tracking their status, select **Turn off** next to their name.
+
+## Calendar notifications
+
+Manage your calendar notifications to customize when you're alerted about meeting invites, updates, cancellations, and when meetings you organized have been forwarded to others.
+
+To manage calendar notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Calendar**.
+3. Next to each notification type, select the dropdown menu to choose where you want to see the notifications, or select **Off** to turn them off.
+
+## App notifications
+
+Individual apps (such as Power BI, Loop, and more) can be added to channels. Notifications can be managed and configured for each of these apps.
+
+* Use the toggle next to the app name to turn the notifications on or off.
+* Additionally, some apps may have additional options to allow you to show notifications in Activity, in Activity and banner, or to turn these notifications off.
+
+![apps notifications](/images/en-us/f2ba1393-7d4c-4504-9d01-f17a1ec70852)
+
+**Note:**The Apps section won't display until individual apps have been added to Teams, and you have received your first app notification.
+
+## Channel notifications
+
+Turn on notifications for specific channels to get the latest updates on new discussions and activity that are most relevant to you.
+
+Hover on a channel and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a)  > **Channel notifications**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+
+From here, you can turn on or off notifications for all new messages or posts (depending on layout). You can also choose to show notifications in **Activity and banner**, or only in **Activity**.
+
+For channels in the Threads layout:
+
+Choose to **Include thread replies** if you want to be notified when other people reply to a post or message.
+
+Choose to **Follow all new threads** if you want to see new replies in **Followed threads**​​​at the top of your list of chats and channels. This setting won't notify you in Activity.
+
+## Thread notifications
+
+Stay on top of important threads with thread notifications. To view notifications for threads you follow, select **Followed threads** at the top of your chat and channels list.
+
+You'll automatically follow a thread if you replied in the thread, if you're @mentioned in the thread, or if someone else starts a thread from your original message.
+
+To manually follow a thread:
+
+* Hover over existing replies on a thread and select **Follow**.
+* Hover over a message in the thread and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) >**Follow thread**.
+* From the side pane thread view, select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Follow thread** in the header.
+
+For a particularly important channel, configure your settings to automatically follow all new threads in that channel.
+
+To automatically follow all new threads in a channel:
+
+1. Hover over a channel name and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Channel notifications**.
+2. Turn on the **Follow all new threads** toggle.
+3. Select **Include replies** to receive notifications for thread replies.
+4. Select **Save**.
+
+## Activity notifications
+
+To manage activity notifications:
+
+1. Select **Activity**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+2. Select **More options**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) > **Notification settings**  ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e).
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+Microsoft Teams notifications on MacOS provide a seamless experience for calls, meetings, chats, channels, mentions, and apps within Teams.
+
+## Overview
+
+* Chats, Channels, Mentions, Apps: Teams leverages the MacOS notifications system for these notifications and you'll need to enable notifications on the OS level first.
+* Calls, Requests to Join, and Meeting Start Notifications: These notifications are not dependent on the OS-level settings, including **Focus** and **Do Not Disturb**.
+
+## Enabling OS Notifications for Microsoft Teams
+
+Check the settings in this section to adjust your experience based on your preferences.
+
+1. Open MacOS System Settings (System Preferences for MacOS 12).
+2. Go to **Notifications**.
+3. Under **Application Notifications**, select **Microsoft Teams**.
+4. Use the toggle next to **Allow notifications** to turn on notifications.  
+   ![Mac system settings allow Microsoft Teams notifications](/images/en-us/91a9e0cd-205a-4424-9217-66a08083f3c1)
+
+To learn more about how MacOS notifications work and how to change notifications settings, refer to the MacOS user guide section Change Notifications settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+## Notifications when mirroring or sharing a display
+
+When you connect your Mac to an external display or dock station, by default all notifications will land in the Mac Notifications center only. If you want to receive Teams banner notifications:
+
+1. Open MacOS System Settings (System Preferences in MacOS 12).
+2. Go to **Notifications**.
+3. Turn on the toggle next to **Allow notifications when mirroring or sharing the display** to receive banner notifications.
+
+To learn more about pausing or allowing notifications when you mirror or share the display (for example, when playing a presentation), refer to MacOS user guide section Extend or mirror your Mac desktop across multiple displays. Make sure to select your OS version from the dropdown menu.
+
+## Teams notifications while Focus Mode is on
+
+If you want to receive Teams notifications even when **Do Not Disturb** is active, add Teams to Allowed Apps. Please note that you need to take this step individually for each Focus scenario.
+
+1. Open **M****acOS System Settings** (System Preferences in MacOS 12).
+2. Go to **Focus** > **Focus list.**
+3. Select the **Focus scenario** you would like to modify.
+4. Select the dropdown arrow next to **Allowed Apps**, then select **Teams**.![Mac system settings for Focus time and Do not disturb notifications](/images/en-us/9ca58b50-7270-4253-b770-3527228b75ff)
+5. If you want to receive all notifications (not just from Teams), select the dropdown arrow next to **Set a schedule** and turn off your focus settings.
+
+For more details on Focus options in MacOS, refer to the MacOS user guide section Change Focus settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once notifications are allowed and configured at the operating system level, you can fine-tune Teams notification settings directly within the app to receive the notifications you need.
+
+1. In the Teams app, go to **Settings and more** ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) next to your profile picture, and select **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce).
+2. Select **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) and adjust the settings depending on your preferences.
+
+## Manage sound notifications
+
+To receive Teams sound notifications, make sure your OS settings match your preferences and check the following OS settings:
+
+* Open MacOS System Settings (System Preferences in MacOS 12)
+* Go to **Notifications** and search for **Microsoft Teams**.
+* Turn on the toggle next to **Play sound for notification**.
+
+### Adjust the volume of sound notifications
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* Adjust the slider next to **Alert volume** to match your preferences.![Mac setting play Teams sounds](/images/en-us/51c05eb2-49ae-466e-80b5-5298159209cb)
+
+### ​​​​​​​Check device volume settings
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* In the dropdown menu next to **Play sounds effects through**, select the device you'd like to use.
+* In **Output and Input**, select your preferred device from the list and adjust **Output volume**. Make sure the **Mute** checkbox is not selected.![Mac system settings sound effects](/images/en-us/4b1afefd-5cac-4d36-953e-384a1bb30a42)
+
+**Tip:**If you’re using multiple speakers, headphones or a headset, make sure to check volume settings for each device.
+
+For more information about sound output settings in MacOS, please refer to the MacOS user guide Change the sound output settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once your OS settings are configured, you can check which Teams notifications will play a sound directly in Teams app:
+
+* Select **Settings and more**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5)at the top right of Teams, then select **Settings**  ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce)> **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).​​​​​​​
+* If you prefer to hear the Teams sound, select the checkbox next to **Use Teams sound for notifications instead of the MacOS alert sound** and you’re all set.
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20notifications%20in%20Microsoft%20Teams&body=Manage%20notifications%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/manage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:43] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Organize and plan your work schedule effectively by managing your Teams calendar. Stay on track by RSVPing to meetings and events and choosing a calendar view that suits you.
+
+**Note:**Some experiences might look different in the new Teams calendar. To learn more, see [Get started with the new calendar in Microsoft Teams](/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5).
+
+## RSVP to a meeting
+
+Let meeting organizers know whether or not you'll be attending by RSVPing to their meetings ahead of time.
+
+To RSVP to a meeting:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Double-click the meeting you want to RSVP to.
+
+   **Note:**On Mac, right-click the meeting from your calendar to RSVP. If you want to RSVP with a message, select the meeting to expand it.
+3. Select **RSVP**.
+4. If the meeting is recurring, select:
+
+   1. **Respond to occurrence** to only RSVP to the individual meeting you selected.
+   2. **Respond to series** to apply your RSVP response to the selected meeting and all future meetings in the series.
+5. Choose your [organizer notification preferences](#bkmk_notifyorganizer).
+6. Choose your RSVP response. When you RSVP, the meeting will stay on your calendar if you accept the invitation, or disappear if you decline.
+
+### Notify the organizer
+
+By default, when you RSVP, the organizer will be notified of your response via email.
+
+To RSVP without notifying the organizer:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams.
+2. Double-click the meeting you want to RSVP to.
+3. Select **RSVP**.
+4. Select **Respond to occurrence** or **Respond to series**.
+5. Turn off the **Notify organizer** toggle.
+6. Add an optional message in the **Write an email (optional)** field.
+7. Select your RSVP response: **Accept**, **Tentative**, or **Decline**.
+
+## Change the calendar view
+
+By default, your Teams calendar will display your work week.
+
+* Select **Work week** at the top-right of your calendar to see the dropdown menu of different views.  
+    
+  ![Screenshot of dropdown menu showing different calendar views in Teams.](/images/en-us/8ce5d2ea-42b0-4af4-96e5-53e8d76525d3)
+* **Day** gives you an agenda view focused on one day at a time.
+* **Work week** shows you Monday through Friday.
+* **Week** shows you the entire week.
+* **Agenda** shows you a scrollable list of your upcoming meetings in chronological order.
+
+## View different dates
+
+In the top left corner you'll find the month and year.
+
+![Change month and year in top left of page](/images/en-us/89fe5bf8-f141-45c7-abd3-faf411f22a92)
+
+* To change your calendar view to any date—past or future—select the month.
+* To scroll by day or week (depending on your calendar view), select the right and left arrows next to the month.
+* Select **Today** to return to the current date.
+
+**Note:**The calendar shows you everything that was scheduled in Teams, Exchange, and Outlook.
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20your%20calendar%20in%20Microsoft%20Teams&body=Manage%20your%20calendar%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-your-calendar-in-microsoft-teams-46ef12a4-0aaf-45ae-91a8-b3315d69f64d "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/manage-your-calendar-in-microsoft-teams-46ef12a4-0aaf-45ae-91a8-b3315d69f64d)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:52] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+**Note:**The following experiences are only available in the new Teams calendar.
+
+Start using the new calendar in Microsoft Teams for more streamlined scheduling, customizable calendar views, and much more.
+
+![Screenshot showing the combined view in the new Teams calendar.](/images/en-us/5f739056-3a82-4265-ac48-61a33a53a41d)
+
+## In this article
+
+|  |  |
+| --- | --- |
+| [Start using the new calendar](#bkmk_use_new_calendar) | [Find the right place to meet](#bkmk_find_place_meet) |
+| [Change your calendar view](#bkmk_change_calendar_view) | [Share your calendar](#bkmk_share_calendar) |
+| [View other calendars](#bkmk_view_other_calendars) | [Print your calendar](#bkmk_print_calendar) |
+| [Schedule and start meetings and events](#bkmk_schedule_meetings) | [Quickly access past meeting details](#bkmk_access_past_meeting_details) |
+
+## Start using the new calendar
+
+The new calendar experience will be available by default. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49)in Teams to get started.
+
+Want to switch back to the classic calendar? In the top-right corner, or in **More options** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c), turn off the **New Calendar** toggle.
+
+## Change your calendar view
+
+Your Teams calendar will display your work week schedule by default, but you can choose to view your schedule for the entire week or specific days only. Select your current view at the top of your calendar to choose a different view.
+
+![Screenshot highlighting the work week view in the new Teams calendar.](/images/en-us/d02a779d-3043-417b-ae28-cdd8f8c36238)
+
+You can also:
+
+* Open the left pane to see the mini-month view, view other people’s calendars, create calendar groups, and more.
+* Change the time scale to adjust space for meeting details.
+* Save calendar views to access specific layouts later.
+* Select **Filter** to customize the types of events that appear on your calendar.
+* Select **More options** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c) > **Calendar settings** ![Settings icon](/images/en-us/e2a1f329-d95b-7d5e-181c-7c3e12fd9321) to change your calendar appearance, adjust event and meeting settings, and more.
+
+To learn more, see [Customize your calendar in Microsoft Teams](/en-us/office/customize-your-calendar-in-microsoft-teams-b0a6db4c-aec7-4c90-9f5e-b7f69a1cbf06).
+
+**Note:**The **Agenda** view isn't supported in the new calendar. Alternately, try the **Month** view or switch back to the classic calendar for **Agenda** view.
+
+## View other calendars
+
+In the new calendar, view multiple calendars at the same time for seamless coordination and event planning. Look at different people’s calendars, calendars that highlight birthdays or holidays, and more.
+
+* In the top left corner, select **Show navigation pane** ![Close pane image](/images/en-us/631a72b8-d79b-41d7-b119-b114234e98ca).
+* Under **My calendars**, create and select calendar groups to quickly bring up views of specific calendars later.
+* Switch between split and combined views to see other calendars side-by-side or integrated into one.
+
+To learn more, see [View other calendars in Microsoft Teams](/en-us/office/view-multiple-calendars-in-microsoft-teams-09328758-97f0-43f0-ad74-2ef1a3416f7e).
+
+## Schedule and start meetings and events
+
+Easily schedule meetings and events of all types from the new calendar.
+
+To schedule a new meeting or event:
+
+1. Select **Calendar**  ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select **New event** or a timeslot in your calendar.
+
+   1. Select the dropdown arrow next to **New event** to choose from different types of event templates. Select **View all** to see all event types and their details.
+3. Select **Scheduling Assistant** to find a time that works best for everyone.
+4. Enter meeting or event details.
+5. Select **Save**.
+
+To join a meeting or event:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select a meeting or event.
+3. Select **Join**.
+
+To learn more about joining a Teams meeting, see [Join a meeting in Microsoft Teams](/en-us/office/join-a-meeting-in-microsoft-teams-1613bb53-f3fa-431e-85a9-d6a91e3468c9).
+
+In the new Teams calendar:
+
+* Categorize meetings for easy organization.
+* Add [sensitivity labels](/en-us/topic/abd9f361-6a18-4256-ae46-5d429bc16ba6) or make events and meetings private for added protection.
+* Start an instant Teams meeting by selecting **Meet now**. Choose the dropdown arrow next to **Meet now** to **Join with an ID**.
+
+## Find the right place to meet
+
+When choosing a room or location for your meeting, you’ll see more details about available rooms, like capacity and technical specs. You’ll also see the option to **Browse with Places Finder**.
+
+To learn more, see [Get started with Microsoft Places](/en-us/office/get-started-with-microsoft-places-49b7ea21-b9e1-4ccd-acd6-c600f3da633c).
+
+## Share your calendar
+
+Share your calendar with others to give them insight into your schedule and availability.
+
+To share your calendar with someone specific:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select **More options** ![Microsoft Teams more options icon](/images/en-us/cd070cfd-ed96-4162-8b99-a4f89bb3226c)> **Share**.
+3. Enter the email address or contact you want to share with.
+4. Next to their name, select the dropdown menu to choose their permissions.
+5. Select **Share**.
+
+Depending on policies set by your IT admin, you can also manage permissions for other people in your organization in the dropdown menu below.
+
+To learn more, see [Share your calendar in Microsoft Teams](/en-us/office/share-your-calendar-in-microsoft-teams-04d43e79-0646-4492-a4bb-9154716e4522).
+
+## Print your calendar
+
+Print out your calendar to distribute physical copies of it or keep it on-hand for markups and easy access.
+
+To learn more, see [Share your calendar in Microsoft Teams](/en-us/office/share-your-calendar-in-microsoft-teams-04d43e79-0646-4492-a4bb-9154716e4522#bkmk_print-your-calendar).
+
+## Quickly access past meeting details
+
+Go right to a past meeting’s recap, chat, and other details in the new Teams calendar.
+
+To access:
+
+1. Select **Calendar** ![Teams Calendar tab icon](/images/en-us/2975b9cc-8d8c-4cec-8585-63cadfca9b49) in Teams.
+2. Select a past recorded meeting.
+3. Select **View recap** to view the meeting recap.
+4. Select **Chat** ![Teams Chat Tab icon](/images/en-us/3c2a24f3-7e8f-4419-8c78-16c5a795d45f)​​​​​​​ to open the meeting chat.
+
+To learn more about recap in Teams, see [Meeting recap in Microsoft Teams](/en-us/office/recap-in-microsoft-teams-c2e3a0fe-504f-4b2c-bf85-504938f110ef#bkmk_intelligent_meeting_recap).
+
+## Related topics
+
+[Customize your calendar in Microsoft Teams](/en-us/office/customize-your-calendar-in-microsoft-teams-b0a6db4c-aec7-4c90-9f5e-b7f69a1cbf06)
+
+[View multiple calendars in Microsoft Teams](/en-us/office/view-multiple-calendars-in-microsoft-teams-09328758-97f0-43f0-ad74-2ef1a3416f7e)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Get%20started%20with%20the%20new%20calendar%20in%20Microsoft%20Teams&body=Get%20started%20with%20the%20new%20calendar%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fget-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/get-started-with-the-new-calendar-in-microsoft-teams-98f3b637-5da2-43e2-91b3-f312ab3e4dc5)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:30:57] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+WindowsMaciOSAndroid
+
+Microsoft Teams offers different ways to access, receive, and manage notifications. These settings include how, when, and where your notifications appear, custom settings for channels and chat, appearance and sounds, and turning off specific messages.
+
+To manage your notifications, select **Settings and more** ![Teams settings and more icon.](/images/en-us/af1f543b-1ada-448a-8d33-75af60959bef) > **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce) > **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+
+## In this article
+
+[General notifications](#bkmk_general_notifications)
+
+[App notifications](#bkmk_app_notifications)
+
+[Chat and channel notifications](#bkmk_chat_channel_notifications)
+
+[Specific channel notifications](#bkmk_channel_notifications)
+
+[Meeting notifications](#bkmk_meeting_notifications)
+
+[Thread notifications](#bkmk_thread_notifications)
+
+[Presence notifications](#bkmk_presence_notifications)
+
+[Activity notifications](#bkmk_custothernotif)
+
+[Calendar notifications](#bkmk_calendar_notifications)
+
+## General notifications
+
+Change Teams notifications to receive reminders for messages, meetings, and other activity that are most helpful to you.
+
+To change general notification settings:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+3. In **General**, customize sounds and change when you want notifications to display. Your options include:
+
+* **Mute all notifications (except for calls and meetings)**: Turn this setting on or off. Available on Windows only.
+* **Play sounds with notifications**: Every notification will include a system sound to alert you.
+* **Play sounds with urgent and priority contact notifications**: Differentiate messages market Urgent and notifications from priority contacts.
+* **Play sound with incoming calls, requests to join, and meeting start notifications**: Only incoming calls, requests to join meetings, and meeting start notifications will include a system sound to alert you.
+* **Show message and content previews in notifications**: A short preview of the message or content will be included in the notification.
+* **Show notifications during calls and meetings**: Notifications will be shown even if you're in a call or meeting.
+
+### Change sound notifications
+
+Assign different sounds to different kinds of notifications to prioritize tasks and reduce distractions. Mute notifications when you're busy or in a meeting.
+
+To change sound notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Sound**.
+3. Select the types of notifications you want to hear sounds for and choose a sound type in each dropdown menu.
+4. Select **Play** ![Play button](/images/en-us/a03390d5-e20f-47ab-ab49-5d6324e8a4e6) to preview the sound.
+
+**Note:**Custom sounds are currently available only on Teams for Windows and web.
+
+### Notifications display
+
+To change how your notifications appear on-screen:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Display** ![Hide objects button](/images/en-us/0ecb47bf-f197-4faa-9e5b-75976b6cc5a1).
+
+* Choose to **Show message and content previews in notifications** for more or less detailed information.
+* You can also choose to **Show notifications during calls and meetings**​​​​​​​or turn off this setting for fewer interruptions.
+* Choose where you'd like notifications to appear on your screen under **Position on the screen**. Select **Bottom right**, **Top right**, **Bottom left** or **Top left**. Change this setting at any time for the most seamless Teams experience.
+* Change the size of your message and content previews. Choose **Comfy** or **Compact**.
+
+### Manage activity emails
+
+Set the frequency of summary emails that detail your missed activity or turn them off altogether.
+
+To manage activity emails:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Missed activity emails**  ![Windows email and accounts icon](/images/en-us/510caaf0-9977-405d-bb26-144174fd23e4).
+3. Choose the frequency you want to receive activity emails from the dropdown menu.
+
+## Chat and channel notifications
+
+Customize chat and channel notifications to your personal work style.
+
+To change chat and channel notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Chats and channels**.
+3. Next to each notification type, select the dropdown menu to choose where you want the notifications to appear or select **Off** to turn that notification type off.
+
+To learn more, see [Customize channel notifications.](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)​​​​​​​
+
+## Meeting notifications
+
+Easily configure how notifications are shown for meetings about to start, and meeting chats.
+
+To manage your meeting notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Meetings**.
+
+* **Meeting start notifications** can be turned on or off using the toggle.
+* Choose to **Show meeting join bar**.
+* Select your preference in the **Meeting chat notifications for meetings I’ve accepted** dropdown menu. This setting is on by default.
+* Select your preference in the **Meeting chat notifications for meetings marked as tentative or no response** dropdown menu. This is set to **Mute until I join or send a message** by default.
+* Turn on or off **Meet now start notifications**.
+
+## Presence notifications
+
+Receive notifications that update you about your co-workers' statuses. See when people you work with are available or offline.
+
+To change presence notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Presence**.
+3. Select **Manage notifications**, then enter the name or names of the contacts you want to keep track of.
+
+* Select the correct contact(s) from the list.
+* You'll see those contacts appear below the text box. To stop tracking their status, select **Turn off** next to their name.
+
+## Calendar notifications
+
+Manage your calendar notifications to customize when you're alerted about meeting invites, updates, cancellations, and when meetings you organized have been forwarded to others.
+
+To manage calendar notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Calendar**.
+3. Next to each notification type, select the dropdown menu to choose where you want to see the notifications, or select **Off** to turn them off.
+
+## App notifications
+
+Individual apps (such as Power BI, Loop, and more) can be added to channels. Notifications can be managed and configured for each of these apps.
+
+* Use the toggle next to the app name to turn the notifications on or off.
+* Additionally, some apps may have additional options to allow you to show notifications in Activity, in Activity and banner, or to turn these notifications off.
+
+![apps notifications](/images/en-us/f2ba1393-7d4c-4504-9d01-f17a1ec70852)
+
+**Note:**The Apps section won't display until individual apps have been added to Teams, and you have received your first app notification.
+
+## Channel notifications
+
+Turn on notifications for specific channels to get the latest updates on new discussions and activity that are most relevant to you.
+
+Hover on a channel and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a)  > **Channel notifications**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+
+From here, you can turn on or off notifications for all new messages or posts (depending on layout). You can also choose to show notifications in **Activity and banner**, or only in **Activity**.
+
+For channels in the Threads layout:
+
+Choose to **Include thread replies** if you want to be notified when other people reply to a post or message.
+
+Choose to **Follow all new threads** if you want to see new replies in **Followed threads**​​​at the top of your list of chats and channels. This setting won't notify you in Activity.
+
+## Thread notifications
+
+Stay on top of important threads with thread notifications. To view notifications for threads you follow, select **Followed threads** at the top of your chat and channels list.
+
+You'll automatically follow a thread if you replied in the thread, if you're @mentioned in the thread, or if someone else starts a thread from your original message.
+
+To manually follow a thread:
+
+* Hover over existing replies on a thread and select **Follow**.
+* Hover over a message in the thread and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) >**Follow thread**.
+* From the side pane thread view, select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Follow thread** in the header.
+
+For a particularly important channel, configure your settings to automatically follow all new threads in that channel.
+
+To automatically follow all new threads in a channel:
+
+1. Hover over a channel name and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Channel notifications**.
+2. Turn on the **Follow all new threads** toggle.
+3. Select **Include replies** to receive notifications for thread replies.
+4. Select **Save**.
+
+## Activity notifications
+
+To manage activity notifications:
+
+1. Select **Activity**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+2. Select **More options**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) > **Notification settings**  ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e).
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+Microsoft Teams notifications on MacOS provide a seamless experience for calls, meetings, chats, channels, mentions, and apps within Teams.
+
+## Overview
+
+* Chats, Channels, Mentions, Apps: Teams leverages the MacOS notifications system for these notifications and you'll need to enable notifications on the OS level first.
+* Calls, Requests to Join, and Meeting Start Notifications: These notifications are not dependent on the OS-level settings, including **Focus** and **Do Not Disturb**.
+
+## Enabling OS Notifications for Microsoft Teams
+
+Check the settings in this section to adjust your experience based on your preferences.
+
+1. Open MacOS System Settings (System Preferences for MacOS 12).
+2. Go to **Notifications**.
+3. Under **Application Notifications**, select **Microsoft Teams**.
+4. Use the toggle next to **Allow notifications** to turn on notifications.  
+   ![Mac system settings allow Microsoft Teams notifications](/images/en-us/91a9e0cd-205a-4424-9217-66a08083f3c1)
+
+To learn more about how MacOS notifications work and how to change notifications settings, refer to the MacOS user guide section Change Notifications settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+## Notifications when mirroring or sharing a display
+
+When you connect your Mac to an external display or dock station, by default all notifications will land in the Mac Notifications center only. If you want to receive Teams banner notifications:
+
+1. Open MacOS System Settings (System Preferences in MacOS 12).
+2. Go to **Notifications**.
+3. Turn on the toggle next to **Allow notifications when mirroring or sharing the display** to receive banner notifications.
+
+To learn more about pausing or allowing notifications when you mirror or share the display (for example, when playing a presentation), refer to MacOS user guide section Extend or mirror your Mac desktop across multiple displays. Make sure to select your OS version from the dropdown menu.
+
+## Teams notifications while Focus Mode is on
+
+If you want to receive Teams notifications even when **Do Not Disturb** is active, add Teams to Allowed Apps. Please note that you need to take this step individually for each Focus scenario.
+
+1. Open **M****acOS System Settings** (System Preferences in MacOS 12).
+2. Go to **Focus** > **Focus list.**
+3. Select the **Focus scenario** you would like to modify.
+4. Select the dropdown arrow next to **Allowed Apps**, then select **Teams**.![Mac system settings for Focus time and Do not disturb notifications](/images/en-us/9ca58b50-7270-4253-b770-3527228b75ff)
+5. If you want to receive all notifications (not just from Teams), select the dropdown arrow next to **Set a schedule** and turn off your focus settings.
+
+For more details on Focus options in MacOS, refer to the MacOS user guide section Change Focus settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once notifications are allowed and configured at the operating system level, you can fine-tune Teams notification settings directly within the app to receive the notifications you need.
+
+1. In the Teams app, go to **Settings and more** ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) next to your profile picture, and select **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce).
+2. Select **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) and adjust the settings depending on your preferences.
+
+## Manage sound notifications
+
+To receive Teams sound notifications, make sure your OS settings match your preferences and check the following OS settings:
+
+* Open MacOS System Settings (System Preferences in MacOS 12)
+* Go to **Notifications** and search for **Microsoft Teams**.
+* Turn on the toggle next to **Play sound for notification**.
+
+### Adjust the volume of sound notifications
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* Adjust the slider next to **Alert volume** to match your preferences.![Mac setting play Teams sounds](/images/en-us/51c05eb2-49ae-466e-80b5-5298159209cb)
+
+### ​​​​​​​Check device volume settings
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* In the dropdown menu next to **Play sounds effects through**, select the device you'd like to use.
+* In **Output and Input**, select your preferred device from the list and adjust **Output volume**. Make sure the **Mute** checkbox is not selected.![Mac system settings sound effects](/images/en-us/4b1afefd-5cac-4d36-953e-384a1bb30a42)
+
+**Tip:**If you’re using multiple speakers, headphones or a headset, make sure to check volume settings for each device.
+
+For more information about sound output settings in MacOS, please refer to the MacOS user guide Change the sound output settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once your OS settings are configured, you can check which Teams notifications will play a sound directly in Teams app:
+
+* Select **Settings and more**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5)at the top right of Teams, then select **Settings**  ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce)> **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).​​​​​​​
+* If you prefer to hear the Teams sound, select the checkbox next to **Use Teams sound for notifications instead of the MacOS alert sound** and you’re all set.
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20notifications%20in%20Microsoft%20Teams&body=Manage%20notifications%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/manage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:31:03] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+WindowsMaciOSAndroid
+
+Microsoft Teams offers different ways to access, receive, and manage notifications. These settings include how, when, and where your notifications appear, custom settings for channels and chat, appearance and sounds, and turning off specific messages.
+
+To manage your notifications, select **Settings and more** ![Teams settings and more icon.](/images/en-us/af1f543b-1ada-448a-8d33-75af60959bef) > **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce) > **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+
+## In this article
+
+[General notifications](#bkmk_general_notifications)
+
+[App notifications](#bkmk_app_notifications)
+
+[Chat and channel notifications](#bkmk_chat_channel_notifications)
+
+[Specific channel notifications](#bkmk_channel_notifications)
+
+[Meeting notifications](#bkmk_meeting_notifications)
+
+[Thread notifications](#bkmk_thread_notifications)
+
+[Presence notifications](#bkmk_presence_notifications)
+
+[Activity notifications](#bkmk_custothernotif)
+
+[Calendar notifications](#bkmk_calendar_notifications)
+
+## General notifications
+
+Change Teams notifications to receive reminders for messages, meetings, and other activity that are most helpful to you.
+
+To change general notification settings:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+3. In **General**, customize sounds and change when you want notifications to display. Your options include:
+
+* **Mute all notifications (except for calls and meetings)**: Turn this setting on or off. Available on Windows only.
+* **Play sounds with notifications**: Every notification will include a system sound to alert you.
+* **Play sounds with urgent and priority contact notifications**: Differentiate messages market Urgent and notifications from priority contacts.
+* **Play sound with incoming calls, requests to join, and meeting start notifications**: Only incoming calls, requests to join meetings, and meeting start notifications will include a system sound to alert you.
+* **Show message and content previews in notifications**: A short preview of the message or content will be included in the notification.
+* **Show notifications during calls and meetings**: Notifications will be shown even if you're in a call or meeting.
+
+### Change sound notifications
+
+Assign different sounds to different kinds of notifications to prioritize tasks and reduce distractions. Mute notifications when you're busy or in a meeting.
+
+To change sound notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Sound**.
+3. Select the types of notifications you want to hear sounds for and choose a sound type in each dropdown menu.
+4. Select **Play** ![Play button](/images/en-us/a03390d5-e20f-47ab-ab49-5d6324e8a4e6) to preview the sound.
+
+**Note:**Custom sounds are currently available only on Teams for Windows and web.
+
+### Notifications display
+
+To change how your notifications appear on-screen:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Display** ![Hide objects button](/images/en-us/0ecb47bf-f197-4faa-9e5b-75976b6cc5a1).
+
+* Choose to **Show message and content previews in notifications** for more or less detailed information.
+* You can also choose to **Show notifications during calls and meetings**​​​​​​​or turn off this setting for fewer interruptions.
+* Choose where you'd like notifications to appear on your screen under **Position on the screen**. Select **Bottom right**, **Top right**, **Bottom left** or **Top left**. Change this setting at any time for the most seamless Teams experience.
+* Change the size of your message and content previews. Choose **Comfy** or **Compact**.
+
+### Manage activity emails
+
+Set the frequency of summary emails that detail your missed activity or turn them off altogether.
+
+To manage activity emails:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Missed activity emails**  ![Windows email and accounts icon](/images/en-us/510caaf0-9977-405d-bb26-144174fd23e4).
+3. Choose the frequency you want to receive activity emails from the dropdown menu.
+
+## Chat and channel notifications
+
+Customize chat and channel notifications to your personal work style.
+
+To change chat and channel notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Chats and channels**.
+3. Next to each notification type, select the dropdown menu to choose where you want the notifications to appear or select **Off** to turn that notification type off.
+
+To learn more, see [Customize channel notifications.](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)​​​​​​​
+
+## Meeting notifications
+
+Easily configure how notifications are shown for meetings about to start, and meeting chats.
+
+To manage your meeting notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Meetings**.
+
+* **Meeting start notifications** can be turned on or off using the toggle.
+* Choose to **Show meeting join bar**.
+* Select your preference in the **Meeting chat notifications for meetings I’ve accepted** dropdown menu. This setting is on by default.
+* Select your preference in the **Meeting chat notifications for meetings marked as tentative or no response** dropdown menu. This is set to **Mute until I join or send a message** by default.
+* Turn on or off **Meet now start notifications**.
+
+## Presence notifications
+
+Receive notifications that update you about your co-workers' statuses. See when people you work with are available or offline.
+
+To change presence notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Presence**.
+3. Select **Manage notifications**, then enter the name or names of the contacts you want to keep track of.
+
+* Select the correct contact(s) from the list.
+* You'll see those contacts appear below the text box. To stop tracking their status, select **Turn off** next to their name.
+
+## Calendar notifications
+
+Manage your calendar notifications to customize when you're alerted about meeting invites, updates, cancellations, and when meetings you organized have been forwarded to others.
+
+To manage calendar notifications:
+
+1. Select **Settings and more** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)in Teams.
+2. Go to **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) > **Calendar**.
+3. Next to each notification type, select the dropdown menu to choose where you want to see the notifications, or select **Off** to turn them off.
+
+## App notifications
+
+Individual apps (such as Power BI, Loop, and more) can be added to channels. Notifications can be managed and configured for each of these apps.
+
+* Use the toggle next to the app name to turn the notifications on or off.
+* Additionally, some apps may have additional options to allow you to show notifications in Activity, in Activity and banner, or to turn these notifications off.
+
+![apps notifications](/images/en-us/f2ba1393-7d4c-4504-9d01-f17a1ec70852)
+
+**Note:**The Apps section won't display until individual apps have been added to Teams, and you have received your first app notification.
+
+## Channel notifications
+
+Turn on notifications for specific channels to get the latest updates on new discussions and activity that are most relevant to you.
+
+Hover on a channel and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a)  > **Channel notifications**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).
+
+From here, you can turn on or off notifications for all new messages or posts (depending on layout). You can also choose to show notifications in **Activity and banner**, or only in **Activity**.
+
+For channels in the Threads layout:
+
+Choose to **Include thread replies** if you want to be notified when other people reply to a post or message.
+
+Choose to **Follow all new threads** if you want to see new replies in **Followed threads**​​​at the top of your list of chats and channels. This setting won't notify you in Activity.
+
+## Thread notifications
+
+Stay on top of important threads with thread notifications. To view notifications for threads you follow, select **Followed threads** at the top of your chat and channels list.
+
+You'll automatically follow a thread if you replied in the thread, if you're @mentioned in the thread, or if someone else starts a thread from your original message.
+
+To manually follow a thread:
+
+* Hover over existing replies on a thread and select **Follow**.
+* Hover over a message in the thread and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) >**Follow thread**.
+* From the side pane thread view, select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Follow thread** in the header.
+
+For a particularly important channel, configure your settings to automatically follow all new threads in that channel.
+
+To automatically follow all new threads in a channel:
+
+1. Hover over a channel name and select **More options** ![Generic Ellipsis button](/images/en-us/91df59c6-caf7-4f7c-a6fb-000fc13a678a) > **Channel notifications**.
+2. Turn on the **Follow all new threads** toggle.
+3. Select **Include replies** to receive notifications for thread replies.
+4. Select **Save**.
+
+## Activity notifications
+
+To manage activity notifications:
+
+1. Select **Activity**  ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) in Teams.
+2. Select **More options**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) > **Notification settings**  ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e).
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+Microsoft Teams notifications on MacOS provide a seamless experience for calls, meetings, chats, channels, mentions, and apps within Teams.
+
+## Overview
+
+* Chats, Channels, Mentions, Apps: Teams leverages the MacOS notifications system for these notifications and you'll need to enable notifications on the OS level first.
+* Calls, Requests to Join, and Meeting Start Notifications: These notifications are not dependent on the OS-level settings, including **Focus** and **Do Not Disturb**.
+
+## Enabling OS Notifications for Microsoft Teams
+
+Check the settings in this section to adjust your experience based on your preferences.
+
+1. Open MacOS System Settings (System Preferences for MacOS 12).
+2. Go to **Notifications**.
+3. Under **Application Notifications**, select **Microsoft Teams**.
+4. Use the toggle next to **Allow notifications** to turn on notifications.  
+   ![Mac system settings allow Microsoft Teams notifications](/images/en-us/91a9e0cd-205a-4424-9217-66a08083f3c1)
+
+To learn more about how MacOS notifications work and how to change notifications settings, refer to the MacOS user guide section Change Notifications settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+## Notifications when mirroring or sharing a display
+
+When you connect your Mac to an external display or dock station, by default all notifications will land in the Mac Notifications center only. If you want to receive Teams banner notifications:
+
+1. Open MacOS System Settings (System Preferences in MacOS 12).
+2. Go to **Notifications**.
+3. Turn on the toggle next to **Allow notifications when mirroring or sharing the display** to receive banner notifications.
+
+To learn more about pausing or allowing notifications when you mirror or share the display (for example, when playing a presentation), refer to MacOS user guide section Extend or mirror your Mac desktop across multiple displays. Make sure to select your OS version from the dropdown menu.
+
+## Teams notifications while Focus Mode is on
+
+If you want to receive Teams notifications even when **Do Not Disturb** is active, add Teams to Allowed Apps. Please note that you need to take this step individually for each Focus scenario.
+
+1. Open **M****acOS System Settings** (System Preferences in MacOS 12).
+2. Go to **Focus** > **Focus list.**
+3. Select the **Focus scenario** you would like to modify.
+4. Select the dropdown arrow next to **Allowed Apps**, then select **Teams**.![Mac system settings for Focus time and Do not disturb notifications](/images/en-us/9ca58b50-7270-4253-b770-3527228b75ff)
+5. If you want to receive all notifications (not just from Teams), select the dropdown arrow next to **Set a schedule** and turn off your focus settings.
+
+For more details on Focus options in MacOS, refer to the MacOS user guide section Change Focus settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once notifications are allowed and configured at the operating system level, you can fine-tune Teams notification settings directly within the app to receive the notifications you need.
+
+1. In the Teams app, go to **Settings and more** ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5) next to your profile picture, and select **Settings** ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce).
+2. Select **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225) and adjust the settings depending on your preferences.
+
+## Manage sound notifications
+
+To receive Teams sound notifications, make sure your OS settings match your preferences and check the following OS settings:
+
+* Open MacOS System Settings (System Preferences in MacOS 12)
+* Go to **Notifications** and search for **Microsoft Teams**.
+* Turn on the toggle next to **Play sound for notification**.
+
+### Adjust the volume of sound notifications
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* Adjust the slider next to **Alert volume** to match your preferences.![Mac setting play Teams sounds](/images/en-us/51c05eb2-49ae-466e-80b5-5298159209cb)
+
+### ​​​​​​​Check device volume settings
+
+* Open MacOS System Settings (System Preferences in MacOS 12).
+* Go to **Sound**.****
+* In the dropdown menu next to **Play sounds effects through**, select the device you'd like to use.
+* In **Output and Input**, select your preferred device from the list and adjust **Output volume**. Make sure the **Mute** checkbox is not selected.![Mac system settings sound effects](/images/en-us/4b1afefd-5cac-4d36-953e-384a1bb30a42)
+
+**Tip:**If you’re using multiple speakers, headphones or a headset, make sure to check volume settings for each device.
+
+For more information about sound output settings in MacOS, please refer to the MacOS user guide Change the sound output settings on Mac. Make sure to select your OS version from the dropdown menu.
+
+Once your OS settings are configured, you can check which Teams notifications will play a sound directly in Teams app:
+
+* Select **Settings and more**  ![More options button](/images/en-us/d6c70643-162c-4414-954a-9bcb33ee4bc5)at the top right of Teams, then select **Settings**  ![Settings button](/images/en-us/adf9a612-b3a8-4f73-b960-0fe615c367ce)> **Notifications and activity** ![Activity button](/images/en-us/ca632919-622e-46d5-b90f-c89acf80d225).​​​​​​​
+* If you prefer to hear the Teams sound, select the checkbox next to **Use Teams sound for notifications instead of the MacOS alert sound** and you’re all set.
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+To customize your notifications, tap your profile picture at the top left of the mobile app, then select **Notifications**. To troubleshoot notification issues on mobile, see [Troubleshoot notifications for Teams mobile apps.](/en-us/office/troubleshoot-notifications-in-microsoft-teams-mobile-apps-6d125ac2-e440-4fab-8e4c-2227a52d460c)
+
+## Related topics
+
+[Best practices for Teams notifications](/en-us/office/best-practices-for-notifications-in-microsoft-teams-ed04b2f7-984b-4ffa-bf78-49ca73675ecb)
+
+[First things to know about notifications](/en-us/office/first-things-to-know-about-notifications-in-microsoft-teams-abb62c60-3d15-4968-b86a-42fea9c22cf4)
+
+[Mute notifications during a meeting in Teams](/en-us/office/mute-notifications-during-a-meeting-in-microsoft-teams-534dd438-5604-44e4-b0d3-9c6167332621)
+
+[Customize channel notifications in Teams](/en-us/office/customize-channel-notifications-in-microsoft-teams-c72b8c07-37e1-4a0b-82c9-fdfda04f15b2)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Manage%20notifications%20in%20Microsoft%20Teams&body=Manage%20notifications%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fmanage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/manage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:31:14] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Modify your Teams settings directly in the desktop or mobile app. Change your profile picture, set your status, or try out different light themes to make your account more personal. You can also switch up your call ringtone, set up an Out of Office schedule, and much more.
+
+DesktopMobile
+
+## Open Teams in-app settings
+
+1. In Microsoft Teams, select **Settings and more** ![Teams settings and more icon.](/images/en-us/af1f543b-1ada-448a-8d33-75af60959bef) next to your profile picture.
+2. Select **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e) tomodify your settings from the left navigation bar.
+
+## Change Teams settings
+
+Teams will reflect the same date and time format as your device's language, date, and time settings. For example, if your device's display language is set to **English (United States)**, the date and time in Teams will display the regional format used in the United States.
+
+### Change your language settings
+
+To change your language settings on a Windows device:
+
+1. Open **System s****ettings** on your Windows device.
+2. Select **Time & language**.
+3. Under **Language & region**>**Windows display language**, choose the language you want to use from the dropdown menu.
+
+   **Note:**To install a new language to use, select **Add a language**, choose the language you want to install, and select **Next** > **Install**.
+4. For more language settings, select **More options** ![Ellipsis icon](/images/en-us/5bd3fb6d-64ce-418e-a255-31a2199359e6)**> Language options** next to your language.  
+     
+   ![language screenshot one version two.png](/images/en-us/bdd44f84-2e1a-4313-8214-ab7fe8dcdcec)
+
+### Change your region
+
+When you update your region in your device's settings, Teams will reflect those changes.
+
+To set your region on a Windows device:
+
+1. Open **Settings** on your Windows device.
+2. Select **Time & language**.
+3. Under **Region**, select your region from the **Country or region** dropdown menu.  
+     
+   ![Regional settings on a Windows device.](/images/en-us/851da056-5acb-4a8f-bc26-9660cb6aad3b)
+4. Keep your **Regional format** set to **Recommended** to sync your regional date and time with other apps, or choose another setting from the dropdown menu.
+
+To change your region on MacOS:
+
+1. Open **System Settings**on your MacOS device.
+2. Select **General** > **Language & Region**.
+3. Select the **Region** dropdown menu and choose your region.  
+     
+   ![Settings to change your region on MacOS](/images/en-us/dfd789b4-a0b5-4e09-aa42-a71355672c18)
+4. Confirm your regional change.
+
+## Change your time zone
+
+When you change your time zone in your device's settings, Teams will reflect those changes. You can also enable location permissions to update your time zone automatically.
+
+To change your time zone on a Windows device:
+
+1. Open **Settings** on your Windows device.
+2. Select **Time & language** > **Date & time**.
+3. Next to **Time zone**, choose your time zone from the dropdown menu.
+
+To change your time zone on a MacOS device:
+
+1. Open **System Settings**on your MacOS device.
+2. Select **General** > **Date & Time**.
+3. If the **Set time zone automatically**toggle is on, your time zone will update to reflect the time zone where you're currently located.
+
+   * To manually change your time zone, turn off the **Set time zone automatically** toggle. Then, select your **Closest city** from the dropdown menu to change to that city's time zone.  
+       
+     ![Settings to change your time zone on MacOS](/images/en-us/f457575e-1003-4f62-b8b2-5d30de8972f7)
+
+Remember to restart Teams to reflect your updates.
+
+Changing your preferred language and region in Teams also updates your time and date format.
+
+## Set Teams to start automatically
+
+Teams is set to automatically open and run in the background as soon as you start your device. If you close the app, it keeps running in the background. You can change these settings anytime.
+
+1. Select your profile picture at the top right of Teams
+2. Select **Settings and more** ![Teams settings and more icon.](/images/en-us/af1f543b-1ada-448a-8d33-75af60959bef)> **Settings** ![Settings button](/images/en-us/fe3fb52d-f1db-49e6-88cf-7d1ec1e8022e)**> General**.
+3. From the **System** section, uncheck the box next to **Auto-start Teams**. You can also change your settings so the app won't run in the background or keep running after you close your window.
+
+## Related topics
+
+[Manage notifications in Microsoft Teams](/en-us/office/manage-notifications-in-microsoft-teams-1cc31834-5fe5-412b-8edb-43fecc78413d)
+
+Microsoft Teams connected teams sites
+
+Tap your profile picture, then select **Settings** to manage notifications and options, access help, get version information, and sign out.
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Change%20settings%20in%20Microsoft%20Teams&body=Change%20settings%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fchange-settings-in-microsoft-teams-b506e8f1-1a96-4cf1-8c6b-b6ed4f424bc7 "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/change-settings-in-microsoft-teams-b506e8f1-1a96-4cf1-8c6b-b6ed4f424bc7)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:31:19] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 Microsoft365.com Outlook on the web Microsoft Office Microsoft Teams New Outlook for Windows
+
+Microsoft 365 can help you manage and share your work schedule. New features allow you to specify more details about your work schedule: from where you're working (remotely or in the office) and whether you work different hours on different days. In addition, you can schedule meetings with others based on their work location, view the work location on people's profile card, and see your out of office time reflected in your location.
+
+**Note:**Work location isn't used to track employees. Individuals' work location data is aggregated and anonymized to understand office occupation trends.  
+  
+This feature is not available yet for **classic Outlook for Windows** with **GCCHigh**.
+
+### In this article:
+
+[Set work hours and location](#bkmk_setworkhours)
+
+[View and update your work location](/en-us/office/set-your-work-hours-and-location-in-outlook-af2fddf9-249e-4710-9c95-5911edfd76f6)
+
+[View the location of others](#bkmk_viewotherslocation)
+
+[View suggestions to optimize your day](#bkmk_suggestions)
+
+[Legacy work hours](/en-us/office/set-your-work-hours-and-location-in-outlook-af2fddf9-249e-4710-9c95-5911edfd76f6)
+
+You can view work hours and location for yourself and others in classic Outlook, but you need to set them up with a work or school account using **new Outlook** or **Outlook on the web** following the steps below. Not sure of what version you're using? See [What version of Outlook do I have?](/en-us/office/what-version-of-outlook-do-i-have-b3a9568c-edb5-42b9-9825-d48d82b2257c)
+
+**Note:**Setting work hours is only available to individuals using a work or school account in Outlook with a qualifying Microsoft 365 subscription.
+
+## Set your work hours and location
+
+Set up your recurring work location from Settings or change a single day using the Outlook Calendar.
+
+### Set work hours and location from new Outlook or Outlook on the web settings
+
+When you set this up, others will see what days you're working remote and what days you'll be in the office. You also have the option to share your exact work location to others, for example, if your organization has multiple buildings, you can specify exactly which building you'll be in.
+
+Set your recurring work plan in **Settings**. You also have the option to share your building location with others.
+
+1. Select ****Settings****  > **Calendar** > **Work hours and location**.
+2. Select checkboxes for the days you want to set.
+3. Use the dropdowns to select your work hours and your location each day.
+
+   Share which building you're working from and where you'll be sitting.
+
+   Select the **Share office location details** checkbox.
+
+   ![Screenshot of recurring work hours and locations](/images/en-us/0a6705fc-c86a-4aef-ae70-7c9b05cd7966)
+
+   Uncheck the **Share office location details** checkbox if you don't want to share specific location details.
+
+   Anyone who views your card will only see you as **in-office** or **remote**.
+
+   ![Screenshot showing share office location is unchecked](/images/en-us/56b36ca1-0215-45e4-8bf5-7d67ab03b457)
+
+   If you don't want share details about where you'll be working, do the following:
+
+   Deselect your work location. This will remove it and replace it with **No location**.
+
+   Uncheck **Share your location**.
+
+   ![Screenshot showing Remote selected in the work location dropdown](/images/en-us/9f291969-f7e1-4d65-9f68-b2fc8d091b51)
+
+   ![Screenshot showing Work location now set to No location](/images/en-us/b33438af-47db-4e93-b769-de2a7d269f47)
+4. When you're finished, click **Save**.
+
+**Note:**This new setup experience is currently available only in new Outlook for Windows and Outlook on the web, but setting up work hours and location will be available in Teams, Outlook for Mac, and Outlook for iOS and Android at a later date.
+
+### Update work hours from the new Outlook or Outlook on the web calendar
+
+When you need to change your recurring work plan on a particular day or a few days that week, for example, you planned to work remote, but decide to go in the office for an in-person meetings, use the Outlook Calendar to make the updates.
+
+1. On the navigation pane, select **Calendar**  ![Calendar icon](/images/en-us/2588e717-0915-41a7-9f51-72cf27ea02d7).
+2. Select **Work plan**  ![Image of Work location icon](/images/en-us/e71eb1b5-14b9-4000-acce-3f83fa69d28d).
+
+   **Note:**The **Work plan** icon might look different depending on if you previously set up that day as remote or in-office.
+3. Make your changes.  
+     
+   If you're planning to go in to the office and your organization has multiple buildings, from the dropdown, select the building you plan to work from.
+
+   **Note:**Building selection is only available if your organization set up a directory of buildings to pick from.
+
+   If you plan to work remotely instead, select the days you're remote, and then click the **I work remotely** checkbox.
+
+   ![Screenshot of Calendar showing selection of Work location](/images/en-us/a85a3292-1d6c-46e8-84e1-80766628abdc)
+
+   Click **Set**. Once your plan is set, a location icon appears on your calendar days to indicate where you're working from.
+
+   ![Screenshot of daily card showing who else is working in that location](/images/en-us/891fc177-c15f-472a-8c51-a0193199373d)
+
+**Note:**The setup experience from the Outlook Calendar is currently only available in new Outlook for Windows and Outlook on the web. Setting up work hours and location in Teams, Outlook Mobile, and Outlook for Mac is upcoming.
+
+## View and update your work location
+
+When your schedule changes, update your work location from Outlook or Teams.
+
+**Note:**The option to change location per day is currently only available in Outlook on the web and Teams Desktop, but will eventually be available in classic Outlook for Windows, iOS, Android, and Mac.
+
+### Update your work location or set your out of office from new Outlook or Outlook on the web
+
+When viewing your calendar, select the icon representing your scheduled work location and change the location as needed. The work location can be cleared by deselecting the location.
+
+You can also choose to update your work location to a specific building. Buildings you set as part of your recurring work hours and location appear first as suggested places.
+
+1. To choose a building, open the location picker.
+2. Select **Search for a place**. You can also set your location to only say, **Office** by searching for it.
+
+   **Note:**Selecting a specific building is only available if your organization set up buildings as a location option.
+
+   ![Screenshot showing the option to select a building as your work location](/images/en-us/19acee7e-47e9-4925-bcf0-2535f8f1f33a)
+
+#### Set your Out of Office location
+
+You can set your out of office location by selecting that option from the Work plan window.
+
+1. Select **Work plan**  ![Image of Work location icon](/images/en-us/e71eb1b5-14b9-4000-acce-3f83fa69d28d) on the date you want to show you're out of office.
+2. Select **Out of office** from the dropdown.
+3. Type a title and set the date and time you plan to be out of office.
+4. Click **Save**. An out of office appointment is added to your calendar and your Teams presence status is also updated.
+
+   ![Screenshot showing title and date on Out of Office card](/images/en-us/40ed3aa5-033d-40f9-ab1a-899a7cd964b8)
+
+**Tip:**You can also create a calendar appointment from any device and set the Free/Busy option to Out of office. Your location is set to **Out of office** during that period of time.
+
+### Update your work location from Teams
+
+Select the circle icon with your profile picture and change the work location. The new location will be applied to your work hours for the remainder of the day and reflected in both Outlook and Teams. You can also express specifically which building location you are working from on a given day.
+
+![Setting a building location in profile](/images/en-us/3ca66046-5458-4d72-be93-dabc1f96ef22)
+
+## View the location of others
+
+Knowing where others are working from is important for scheduling and collaboration. You can view others' locations from your own work location card, when scheduling from Outlook, or when viewing another person's profile card.
+
+### View from your daily work location card in Outlook
+
+From your daily location card, you'll be able to see who else you work with is going into the office that day. If you have a specific building set, the list will be filtered to others who have also set their location to the same place for that day.
+
+### View when scheduling a meeting in Outlook
+
+If others have set up their work hours and location, their work location will appear in the Scheduling Assistant, as shown below.
+
+![: View others’ work location in Outlook Scheduling Assistant](/images/en-us/ef92f946-ae17-4122-9daf-acd341741b7d)
+
+### View another person's profile card in Outlook
+
+If you want to quickly look up where someone is working from, you can view their location in their profile card next to their availability.
+
+![Screenshot of profile card showing work hours and location](/images/en-us/1dcfed03-66e2-4995-9350-08bcbcba8edd)
+
+## View suggestions to optimize your day
+
+Optimizing your work location schedule is important to maximize collaboration and connection on your in-person days.
+
+You can identify which days have suggestions by the addition of a red dot on the **Work plan location** icon.
+
+1. Select the **Suggested work plan location**  ![Screenshot of Work location suggestion icon](/images/en-us/e4355e96-0336-4186-b6bd-b9fb97fc2b05).
+2. On the daily location card, view the suggested action. The suggestion might be to:
+
+   Update your work plan for an in-person event
+
+   ![Screenshot showing updating your work location](/images/en-us/976f3fcc-a56d-4bc0-a1dd-f74b34818379)
+
+   Book rooms for meetings on in-office days
+
+   ![A screenshot of the work location card which includes a button to Book a desk for an in-person event.](/images/en-us/4e1f1e9d-7afc-4bf5-b818-dbeb4a2979b4)
+3. Select the action based on the suggestion, or close the card.
+
+**Note:**The suggestions experience is currently opt-in. Go to Microsoft Places for more details.
+
+## Legacy work hours
+
+This new experience replaces the legacy work hours experience, but legacy work hours will continue to be supported. Because the legacy experience supports only a single start time and end time for the entire work week, the legacy work hours will approximate the modern work hours and location.
+
+For example, a user sets up the following schedule using the new work hours and location: Mondays, Tuesdays, Thursdays: 8:00 am - 5:00 pm & Wednesdays, Fridays: 10:00am - 7:00 pm. The times for their legacy work hours will be configured to the best approximation (8:00 am to 7:00 pm) – the minimum start time and maximum end time of the modern work hours.
+
+Until a user sets up modern working hours, changes to legacy working hours will also update the times in their modern working hours. However, once a user sets up (or updates) their modern working hours, future changes to legacy working hours will not propagate and overwrite the modern working hours.
+
+The exception to this rule is working hours time zone. Whenever the legacy working hours time zone changes, it will update the time zone for the modern working hours. This ensures that others can view accurate availability if someone on a legacy client travels across time zones.
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Set%20your%20work%20hours%20and%20location%20in%20Outlook&body=Set%20your%20work%20hours%20and%20location%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fset-your-work-hours-and-location-in-outlook-af2fddf9-249e-4710-9c95-5911edfd76f6 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/set-your-work-hours-and-location-in-outlook-af2fddf9-249e-4710-9c95-5911edfd76f6)
+----------------------------------------
+
+
+========================================
+[2025-08-05 16:31:22] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+DesktopiOSAndroid
+
+1. Select your profile picture at the top right of Teams. When your account manager opens, select your profile picture again.
+2. Select **Upload** ![Upload icon](/images/en-us/fb6aa1e5-e0a2-4d81-8345-eae259e60050)to choose a new profile picture, or **Remove** ![Delete button trashcan icon](/images/en-us/740cca7d-8011-4b73-b162-3d93b9d31ac6)to take away your picture completely.
+3. Select **Save** to apply changes.
+
+**Note:**It may take time for your Teams profile picture settings to update across all your channels. Clearing your Teams cache may help it update quicker.
+
+1. Tap your current picture or initials at the top left of the Teams app.
+2. Tap your name to bring up your profile.
+3. From there, tap **Update photo** to take or access your photo.
+4. You will get a notification that your profile photo was updated successfully.
+
+1. Tap **More** ![More button](/images/en-us/fff53284-ce6d-4018-a175-6778309d07f3) and then tap your picture.
+2. Tap **Edit image** to take or access your photo.
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Change%20your%20profile%20picture%20in%20Microsoft%20Teams&body=Change%20your%20profile%20picture%20in%20Microsoft%20Teams%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fchange-your-profile-picture-in-microsoft-teams-7a711943-9248-420e-b814-c071aa8d9b9c "Share by email")
+
+[SUBSCRIBE RSS FEEDS](/en-us/rss-feed-picker)
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: how to change calendar language from japanese to En
+(Page URL: https://support.microsoft.com/en-us/office/change-your-profile-picture-in-microsoft-teams-7a711943-9248-420e-b814-c071aa8d9b9c)
+----------------------------------------
+

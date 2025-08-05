@@ -5,7 +5,7 @@ from graph_qa import qa_graph, State
 from graph_site_qa import ask_site_handler
 from graph_smart_qa import smart_qa_graph
 from state import SmartHopState, SmartQARequest
-import os
+import os, time
 from logging_relay import log, smartqa_log_relay
 
 # --- Page QA API ---
@@ -41,6 +41,7 @@ smart_qa_router = APIRouter()
 
 @smart_qa_router.post("/ask-smart")
 async def ask_smart(request: SmartQARequest):
+    start_time = time.time()  # ✅ Start timer
     print(f"Received {len(request.links)} links from frontend:")
     for l in request.links:
         print(f"  - {l.get('text', '')[:60]} → {l.get('href')}")
@@ -65,11 +66,17 @@ async def ask_smart(request: SmartQARequest):
     print(f"\n🧠 Final Answer (excerpt):\n{result['answer'][:500]}...\n")
     # log("===== END OF TRACE =====\n")
 
+    end_time = time.time()
+    duration = round(end_time - start_time, 2)  # seconds with 2 decimals
+    log(f"⏱️ Total time taken: {duration} seconds")
+
     return {
         "answer": result["answer"],
         "sources": result["sources"],
         "visited_urls": result["visited_urls"],
         "sufficient": result["sufficient"],
+        "confidence": result.get("confidence"),
+        "duration_seconds": duration
     }
 
 # --- Chroma debug API ---
