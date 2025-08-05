@@ -9,7 +9,12 @@ from langgraph.graph import StateGraph, END
 from urllib.parse import urlparse
 from logging_relay import log, smartqa_log_relay
 from utils import log_llm_prompt
+from google.generativeai import configure, GenerativeModel
+from dotenv import load_dotenv
+load_dotenv()
 
+
+configure(api_key=os.environ.get("GOOGLE_API_KEY"))
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
 class State(BaseModel):
@@ -65,9 +70,13 @@ def answer_node(state: State) -> State:
     )
     # === LOGGING PROMPT ===
     log_llm_prompt(prompt)
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    answer_full = (result.content or "").strip()
+    # llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
+    # result = llm.invoke([{"role": "user", "content": prompt}])
+    # answer_full = (result.content or "").strip()
+
+    model = GenerativeModel("models/gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    answer_full = (response.text or "").strip()
 
     if "\nSUFFICIENT: YES" in answer_full:
         answer = answer_full.split("\nSUFFICIENT: YES")[0].strip()
