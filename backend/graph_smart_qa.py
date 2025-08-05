@@ -124,8 +124,11 @@ async def smart_qa_runner(
 
 
         # Keep best partial (in case we never get a sufficient one)
-        if best_partial is None or (len(qa_result.answer) > len(best_partial.answer)):
+        # if best_partial is None or (len(qa_result.answer) > len(best_partial.answer)):
+        #     best_partial = qa_result
+        if best_partial is None or (qa_result.confidence or 0) > (best_partial.confidence or 0):
             best_partial = qa_result
+
 
         log(f"🧪 Sufficient? {sufficient}")
         if sufficient:
@@ -235,7 +238,9 @@ async def smart_qa_runner(
             "answer": best_partial.answer,
             "sources": best_partial.sources,
             "visited_urls": list(visited),
-            "sufficient": False
+            "sufficient": False,
+            "confidence": best_partial.confidence, 
+            "multi_page": False
         }
     else:
         return {

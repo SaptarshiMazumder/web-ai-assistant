@@ -1,6 +1,6 @@
 import os, json, re
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -27,6 +27,7 @@ class State(BaseModel):
     used_chunks: List[Dict[str, Any]] = []
     page_url: str = ""
     sufficient: bool = False
+    confidence: Optional[int] = None
 
 # def enhance_query_node(state: State) -> State:
 #     page_text = state.text
@@ -78,6 +79,9 @@ def answer_node(state: State) -> State:
     response = model.generate_content(prompt)
     answer_full = (response.text or "").strip()
 
+    confidence_match = re.search(r'CONFIDENCE: (\d+)%', answer_full)
+    confidence = int(confidence_match.group(1)) if confidence_match else 0
+
     if "\nSUFFICIENT: YES" in answer_full:
         answer = answer_full.split("\nSUFFICIENT: YES")[0].strip()
         sufficient = True
@@ -91,6 +95,7 @@ def answer_node(state: State) -> State:
     state.answer = answer
     state.used_chunks = []  # No more chunks!
     state.sufficient = sufficient
+    state.confidence = confidence
     return state
 
 # LangGraph setup — just one node now!
