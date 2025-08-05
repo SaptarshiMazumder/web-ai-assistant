@@ -64,20 +64,20 @@ def answer_node(state: State) -> State:
         "If you cite information from a source, always include the full URL shown in the source."
         "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. "
         "Do not hallucinate."
-        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%' \n\n"
+        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%'. Write 'Full info or more info: <URL>' \n\n"
         f"CONTENT:\n{clean_text}\n\n"
         f"USER QUESTION: {question}\n"
         f"(Page URL: {page_url})"
     )
     # === LOGGING PROMPT ===
     log_llm_prompt(prompt)
-    # llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
-    # result = llm.invoke([{"role": "user", "content": prompt}])
-    # answer_full = (result.content or "").strip()
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
+    result = llm.invoke([{"role": "user", "content": prompt}])
+    answer_full = (result.content or "").strip()
 
-    model = GenerativeModel("models/gemini-1.5-flash")
-    response = model.generate_content(prompt)
-    answer_full = (response.text or "").strip()
+    # model = GenerativeModel("models/gemini-1.5-flash")
+    # response = model.generate_content(prompt)
+    # answer_full = (response.text or "").strip()
 
     confidence_match = re.search(r'CONFIDENCE: (\d+)%', answer_full)
     confidence = int(confidence_match.group(1)) if confidence_match else 0

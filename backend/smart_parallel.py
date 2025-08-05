@@ -144,12 +144,15 @@ async def llm_select_relevant_links_parallel(
     return combined[:k]
 
 
-def scrape_with_sync_playwright(url, timeout=12000):
+def scrape_with_sync_playwright(url, timeout=6000):
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(url, timeout=timeout)
+            page.route("**/*", lambda route, request: 
+                route.abort() if request.resource_type in ["image", "stylesheet", "font", "media"] else route.continue_()
+            )
+            page.goto(url, wait_until="domcontentloaded", timeout=timeout)
             html = page.content()
             final_url = page.url
             browser.close()
