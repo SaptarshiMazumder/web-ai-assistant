@@ -23,21 +23,21 @@ class State(BaseModel):
     page_url: str = ""
     sufficient: bool = False
 
-def enhance_query_node(state: State) -> State:
-    page_text = state.text
-    user_question = state.question
-    prompt = (
-        "You are a query rewriter for search. Only improve or clarify the question if needed, and ONLY use phrases or words that appear in the provided web page content. "
-        "If the question is already good, return it unchanged. NEVER invent new topics, courses, or details not present in the page.\n\n"
-        f"WEBPAGE CONTENT (first 3000 chars):\n{page_text[:3000]}\n\n"
-        f"USER QUESTION: {user_question}\n\n"
-        "REWRITTEN QUERY:"
-    )
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    enhanced_query = result.content.strip()
-    state.enhanced_query = enhanced_query
-    return state
+# def enhance_query_node(state: State) -> State:
+#     page_text = state.text
+#     user_question = state.question
+#     prompt = (
+#         "You are a query rewriter for search. Only improve or clarify the question if needed, and ONLY use phrases or words that appear in the provided web page content. "
+#         "If the question is already good, return it unchanged. NEVER invent new topics, courses, or details not present in the page.\n\n"
+#         f"WEBPAGE CONTENT (first 3000 chars):\n{page_text[:3000]}\n\n"
+#         f"USER QUESTION: {user_question}\n\n"
+#         "REWRITTEN QUERY:"
+#     )
+#     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+#     result = llm.invoke([{"role": "user", "content": prompt}])
+#     enhanced_query = result.content.strip()
+#     state.enhanced_query = enhanced_query
+#     return state
 
 
 
@@ -65,7 +65,7 @@ def answer_node(state: State) -> State:
     )
     # === LOGGING PROMPT ===
     log_llm_prompt(prompt)
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0.2)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
     result = llm.invoke([{"role": "user", "content": prompt}])
     answer_full = (result.content or "").strip()
 

@@ -86,17 +86,30 @@ async def llm_select_relevant_links_parallel(
     from utils import extract_json_from_text
     import asyncio
 
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0)
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def run_on_chunk(chunk: List[Dict[str, str]], chunk_id: int):
         log_fn(f"🧵 Thread {chunk_id} starting with {len(chunk)} available links.")
+        # prompt = (
+        #     f"The user is on the website {urlparse(chunk[0].get('href', '')).netloc} and their question is: {question}\n"
+        #     "These are the links on part of the page:\n" +
+        #     "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
+        #     "\n\nWhich of these links are most likely to contain the answer or helpful information? "
+        #     "Reply with a JSON array of up to 5 objects with 'text' and 'href'."
+        # )
+
         prompt = (
-            f"The user is on the website {urlparse(chunk[0].get('href', '')).netloc} and their question is: {question}\n"
-            "These are the links on part of the page:\n" +
-            "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
+            f"The user is on the website {urlparse(links[0].get('href', '')).netloc} and their question is: {question}\n"
+            "These are all the links on the page:\n" +
+            "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in links]) +
             "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-            "Reply with a JSON array of up to 5 objects with 'text' and 'href'."
+            "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
+            "Only select links that you are 90% confident to contain an answer, or links to lead to the answer."
+            "If you are not at least 90% confident that a link contains the answer, do not include it."
+            "Do not include links that are not relevant to the question, or that you are not confident about.\n"
+            "Reply with a JSON array of up to 0-5 objects (max 5, min 0) with 'text' and 'href'."
+
         )
 
         async with semaphore:

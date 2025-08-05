@@ -251,7 +251,7 @@ async def llm_links_message(question: str, links: list[dict]) -> str:
     from langchain_openai import ChatOpenAI
     from urllib.parse import urlparse
     openai_api_key = os.environ.get("OPENAI_API_KEY")
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0)
     # Extract website/domain from the first link
     first_url = links[0].get("href", "") if links else ""
     website = urlparse(first_url).netloc if first_url else "website"
