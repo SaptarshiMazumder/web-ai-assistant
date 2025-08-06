@@ -322,30 +322,34 @@ async def scrape_and_qa_many(
         text_ = link.get("text", "")
         if log_fn:
             log_fn(f"➡️  Fetching: {href} ({text_[:60]}...)")
-        async with sem:
-            try:
+        try:
+            async with sem:
                 scraped = await scrape_one(href)
                 qa_res = await run_page_qa(
                     text=scraped["text"],
                     question=question,
                     page_url=scraped["url"]
-        )
+                )
                 qa_res.links = scraped["links"]
                 if log_fn:
                     log_fn(f"   ↳ Done: {href} | sufficient={qa_res.sufficient} | confidence={qa_res.confidence}%")
-
                 return qa_res
-            except Exception as e:
-                if log_fn:
-                    log_fn(f"   ↳ Error on {href}: {e}")
-                return PageQAResult(
-                    url=href or "",
-                    text="",
-                    answer="",
-                    sources=[],
-                    sufficient=False,
-                    links=[]
-                )
+        except asyncio.CancelledError:
+            if log_fn:
+                log_fn(f"   ⏹️ Cancelled: {href}")
+            raise
+        except Exception as e:
+            if log_fn:
+                log_fn(f"   ↳ Error on {href}: {e}")
+            return PageQAResult(
+                url=href or "",
+                text="",
+                answer="",
+                sources=[],
+                sufficient=False,
+                links=[],
+                confidence=0  # Optional default
+            )
 
     # Prepare all coroutines
     coros = [worker(l) for l in selected_links]
