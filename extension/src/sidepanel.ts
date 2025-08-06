@@ -48,7 +48,6 @@ function renderUsefulLinks(links: {text: string, href: string}[]) {
 
 
 const chatDiv = document.getElementById("chat")!;
-const askBtn = document.getElementById("ask-btn")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
 // --- SmartQA log streaming ---
@@ -136,19 +135,16 @@ optionSmart.value = "smart";
 optionSmart.textContent = "Ask Smart";
 dropdown.appendChild(optionSmart);
 
-// --- Smart Ask button (created but hidden by default) ---
+// --- Smart Ask button (always visible, no dropdown) ---
 const smartBtn = document.createElement("button");
 smartBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#fff"/></svg>`;
 smartBtn.title = "Send";
 smartBtn.id = "smart-ask-btn";
 smartBtn.style.marginLeft = "8px";
-smartBtn.style.display = "none";
+smartBtn.style.display = "inline-block";
 
 const inputRow = document.getElementById("inputRow");
-// askBtn is already there after input, so insert smartBtn after askBtn
-inputRow?.insertBefore(smartBtn, askBtn.nextSibling);
-// dropdown always after smartBtn
-inputRow?.insertBefore(dropdown, smartBtn.nextSibling);
+inputRow?.appendChild(smartBtn);
 
 
 
@@ -282,46 +278,6 @@ function renderSources(sources: Array<{ excerpt: string; title?: string; url?: s
 //   });
 // }
 
-// --- Standard "current page" ask ---
-askBtn.onclick = async function () {
-  const question = questionInput.value.trim();
-  if (!question) return;
-  appendMessage(question, "user");
-  const thinkingBubble = appendMessage("Thinking...", "thinking");
-
-  const pageData = await getPageDataFromActiveTab();
-  let context = pageData.text;
-  if (pageData.tables && pageData.tables.length > 0) {
-    context += "\n\n# Tables:\n";
-    context += pageData.tables.map((t, i) => `Table ${i+1}:\n${t}`).join("\n\n");
-  }
-  if (pageData.links && pageData.links.length > 0) {
-    context += "\n\n# Links:\n";
-    context += pageData.links.map((l, i) => `- [${l.text}](${l.href})`).join("\n");
-  }
-  if (pageData.images && pageData.images.length > 0) {
-    context += "\n\n# Images:\n";
-    context += pageData.images.map((img, i) => `- alt: "${img.alt}" src: ${img.src}`).join("\n");
-  }
-
-  try {
-    const resp = await fetch("http://localhost:5000/ask", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: context, question }),
-    });
-    const data = await resp.json();
-    thinkingBubble.remove();
-    appendMessage(data.answer, "bot");
-    if (data.sources && data.sources.length > 0) {
-      renderSources(data.sources);
-    }
-  } catch (err) {
-    thinkingBubble.textContent = "Error. Please try again.";
-  }
-  questionInput.value = "";
-};
-
 // --- Smart Ask button logic ---
 smartBtn.onclick = async function () {
   const question = questionInput.value.trim();
@@ -400,17 +356,14 @@ smartBtn.onclick = async function () {
 };
 
 // --- DROPDOWN LOGIC: toggle visible button ---
-dropdown.addEventListener("change", () => {
-  if (dropdown.value === "ask") {
-    askBtn.style.display = "inline-block";
-    smartBtn.style.display = "none";
-  } else {
-    askBtn.style.display = "none";
-    smartBtn.style.display = "inline-block";
-  }
-});
+// dropdown.addEventListener("change", () => {
+//   if (dropdown.value === "ask") {
+//     smartBtn.style.display = "inline-block";
+//   } else {
+//     smartBtn.style.display = "inline-block";
+//   }
+// });
 
 // Default to "Ask"
-dropdown.value = "ask";
-askBtn.style.display = "inline-block";
-smartBtn.style.display = "none";
+// dropdown.value = "smart";
+// smartBtn.style.display = "inline-block";
