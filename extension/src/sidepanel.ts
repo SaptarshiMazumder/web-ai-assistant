@@ -120,25 +120,61 @@ smartqaLogSocket.onmessage = (event) => {
 }
 
 // --- DROPDOWN to toggle between Ask and Ask Smart ---
+// Remove dropdown and options
+// const dropdown = document.createElement("select");
+// dropdown.id = "ask-mode";
+// dropdown.style.marginLeft = "8px";
+// const optionAsk = document.createElement("option");
+// optionAsk.value = "ask";
+// optionAsk.textContent = "Ask";
+// dropdown.appendChild(optionAsk);
+// const optionSmart = document.createElement("option");
+// optionSmart.value = "smart";
+// optionSmart.textContent = "Ask Smart";
+// dropdown.appendChild(optionSmart);
+// const optionGemini = document.createElement("option");
+// optionGemini.value = "gemini";
+// optionGemini.textContent = "Ask Gemini";
+// dropdown.appendChild(optionGemini);
 
-const dropdown = document.createElement("select");
-dropdown.id = "ask-mode";
-dropdown.style.marginLeft = "8px";
+// --- Mode selection buttons ---
+const btnContainer = document.createElement('div');
+btnContainer.style.display = 'inline-block';
+btnContainer.style.marginLeft = '8px';
 
-const optionAsk = document.createElement("option");
-optionAsk.value = "ask";
-optionAsk.textContent = "Ask";
-dropdown.appendChild(optionAsk);
+const btnSmart = document.createElement('button');
+btnSmart.textContent = 'Search in this website';
+btnSmart.id = 'btn-smart';
+btnSmart.style.marginRight = '4px';
 
-const optionSmart = document.createElement("option");
-optionSmart.value = "smart";
-optionSmart.textContent = "Ask Smart";
-dropdown.appendChild(optionSmart);
+const btnGemini = document.createElement('button');
+btnGemini.textContent = 'Google search';
+btnGemini.id = 'btn-gemini';
 
-const optionGemini = document.createElement("option");
-optionGemini.value = "gemini";
-optionGemini.textContent = "Ask Gemini";
-dropdown.appendChild(optionGemini);
+btnContainer.appendChild(btnSmart);
+btnContainer.appendChild(btnGemini);
+
+// Selection state
+let selectedMode: 'gemini' | 'smart' = 'gemini';
+
+function updateButtonStyles() {
+  btnSmart.style.background = selectedMode === 'smart' ? '#0a5' : '';
+  btnSmart.style.color = selectedMode === 'smart' ? '#fff' : '';
+  btnGemini.style.background = selectedMode === 'gemini' ? '#0af' : '';
+  btnGemini.style.color = selectedMode === 'gemini' ? '#fff' : '';
+}
+
+btnSmart.onclick = () => {
+  selectedMode = 'smart';
+  updateButtonStyles();
+};
+btnGemini.onclick = () => {
+  selectedMode = 'gemini';
+  updateButtonStyles();
+};
+
+// Set default selection
+updateButtonStyles();
 
 // --- Smart Ask button (always visible, no dropdown) ---
 const smartBtn = document.createElement("button");
@@ -150,7 +186,7 @@ smartBtn.style.display = "inline-block";
 
 const inputRow = document.getElementById("inputRow");
 if (inputRow) {
-  inputRow.appendChild(dropdown);
+  inputRow.appendChild(btnContainer);
   inputRow.appendChild(smartBtn);
 }
 
@@ -292,7 +328,8 @@ smartBtn.onclick = async function () {
   if (!question) return;
 
   // Get selected tool
-  const selectedTool = dropdown.value;
+  let selectedTool = selectedMode;
+  if (!selectedTool) selectedTool = 'gemini'; // fallback
   console.log('Selected tool:', selectedTool);
 
   // Add "Smart QA" or "Gemini QA" tag above the bubble
