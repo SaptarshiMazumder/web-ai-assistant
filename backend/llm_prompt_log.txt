@@ -4313,3 +4313,1547 @@ USER QUESTION: change calendar color
 (Page URL: https://support.microsoft.com/en-us/office/assign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527)
 ----------------------------------------
 
+
+========================================
+[2025-08-06 17:48:33] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Microsoft
+Support
+Microsoft 365 Office Products Devices More Buy Microsoft 365
+All Microsoft
+Sign in to your account
+Outlook Calendar
+Overview
+The Outlook Calendar
+Add or delete a new calendar
+Schedule meetings or events
+Manage meetings
+Update, propose, and forward events
+Calendar item settings
+Customize your calendar
+To Do in Outlook
+More to explore
+Introduction to the Outlook Calendar
+Applies To
+We think you'll enjoy trying Microsoft 365
+
+We're giving you a free trial of Outlook.
+
+Click to unlock Outlook
+
+Calendar is the calendar and scheduling component of Outlook that is fully integrated with email, contacts, and other features.
+
+Just as you write in a notebook, you can select any time slot in the Outlook Calendar and start typing. By using the Calendar you can create appointments and events, organize meetings, view group schedules, and much more.
+
+Create appointments and events     
+
+Select any time slot in the Outlook Calendar and start to type to create your appointment or event. You can opt to have a sound or message remind you of appointments, meetings, and events, and you can color items for quick identification.
+
+For more information, see Create or schedule an appointment and Create an event.
+
+Organize meetings    
+
+Select a time on the Calendar, create a meeting request, and select the people to invite. Outlook helps you find the earliest time when all the invitees are free. When you send the meeting request by email, the invitees receive the request in their Inbox. When the invitees open the request, they can accept, tentatively accept, or decline your meeting by selecting a single button. If your request conflicts with an item on the invitees' Calendar, Outlook displays a notification. If you, as the meeting organizer, allow this, invitees can propose an alternative meeting time. As the organizer, you can track who accepts or declines the request or who proposes another time for the meeting by opening the request.
+
+For more information, see Schedule a meeting with other people.
+
+View group schedules    
+
+You can create calendars that show the schedules of a group of people or resources. For example, you can view the schedules of all the people in your department or all the resources, such as conference rooms, in your building. This helps you schedule meetings quickly.
+
+View calendars side-by-side    
+
+You can view side-by-side multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and view both your work and personal calendars side-by-side.
+
+For more information, see View multiple calendars at the same time.
+
+You can also copy or move appointments between the displayed calendars. Use the Navigation Pane to quickly share your own calendar and open other shared calendars. Depending on the permissions granted by the owner of a calendar, you can simply view another person's calendar, or create appointments on shared calendars.
+
+For more information, see Share and access a view-only calendar in Outlook and Share and access a calendar using edit or delegate permissions in Outlook.
+
+View calendars on top of one another in overlay view     
+
+You can use overlay view to display multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and overlay your work and personal calendars to quickly see where you have conflicts or free time.
+
+For more information, see View multiple calendars at the same time.
+
+Link to calendars on Microsoft SharePoint sites    
+
+If you have access to a SharePoint site, you can view the lists of events from that site in your Outlook Calendar. You can change the list in Outlook, even when you are working offline. The changes are automatically synchronized when you connect to the Internet again. Also, you can view the SharePoint calendars side-by-side with other personal or shared calendars.
+
+Send calendars to anyone through email    
+
+You can send your calendar to a mail recipient as an Internet Calendar, but keep control over how much information is shared. Your calendar information appears in the body of the email message as an Internet Calendar attachment that the recipient can open in Outlook.
+
+For more information, see Introduction to calendar sharing.
+
+Subscribe to Internet Calendars    
+
+Internet Calendar Subscriptions resemble Internet Calendars, except that the downloaded calendar is synchronized regularly with the Internet Calendar and updated.
+
+Manage another user's calendar    
+
+With the Delegate Access feature, one person can use his or her own copy of Outlook to easily manage another person's calendar. For example, an administrative assistant can manage the calendar of a manager. When the manager designates the assistant as a delegate, the assistant can create, move, or delete appointments and can organize meetings on the manager's behalf.
+
+For more information, see Manage another person's mail and calendar items.
+
+  
+Need more help?
+Want more options?
+Discover
+Community
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+Microsoft 365 subscription benefits
+
+Microsoft 365 training
+
+Microsoft security
+
+Accessibility center
+
+Was this information helpful? Yes No
+×
+What's new
+Surface Pro
+Surface Laptop
+Surface Laptop Studio 2
+Surface Laptop Go 3
+Microsoft Copilot
+AI in Windows
+Explore Microsoft products
+Windows 11 apps
+Microsoft Store
+Account profile
+Download Center
+Microsoft Store support
+Returns
+Order tracking
+Certified Refurbished
+Microsoft Store Promise
+Flexible Payments
+Education
+Microsoft in education
+Devices for education
+Microsoft Teams for Education
+Microsoft 365 Education
+How to buy for your school
+Educator training and development
+Deals for students and parents
+AI for education
+Business
+Microsoft Cloud
+Microsoft Security
+Dynamics 365
+Microsoft 365
+Microsoft Power Platform
+Microsoft Teams
+Microsoft 365 Copilot
+Small Business
+Developer & IT
+Azure
+Microsoft Developer
+Microsoft Learn
+Support for AI marketplace apps
+Microsoft Tech Community
+Azure Marketplace
+AppSource
+Visual Studio
+Company
+Careers
+About Microsoft
+Company news
+Privacy at Microsoft
+Investors
+Diversity and inclusion
+Accessibility
+Sustainability
+English (United States)
+Your Privacy Choices
+Consumer Health Privacy
+Sitemap Contact Microsoft Privacy Terms of use Trademarks Safety & eco Recycling About our ads © Microsoft 2025
+
+USER QUESTION: how do i manage another user's calendar
+(Page URL: https://support.microsoft.com/en-us/office/introduction-to-the-outlook-calendar-d94c5203-77c7-48ec-90a5-2e2bc10bd6f8)
+----------------------------------------
+
+
+========================================
+[2025-08-06 18:09:07] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Computer AndroidiPhone & iPad
+Update your settings
+On your computer, open Google Calendar.
+At the top right, click Settings   Settings.
+On the left, click General.
+
+Open Settings
+
+Learn about general settings
+Setting name	Description
+Language and region	Change the display language, region, and date and time format on your calendar. Learn more about language settings.
+Time zone	Choose a primary time zone for your calendar. You can also set up a secondary time zone. Learn how to change time zones.
+World clock	In the main menu of Calendar, you can show the current time in different locations around the world. This makes it easier to schedule meetings across time zones.
+Event settings	When you create a new event, you can set a default duration and guest permissions. You can also manage incoming invitations from senders.
+Notification settings	Change notification settings and sounds for upcoming events. Learn how to change notifications.
+View options	Update the look of your calendar, such as the first day of your week.
+Google Workspace smart features	Choose to personalize your experience with smart features across Workspace and other Google products. Workspace includes Google apps for businesses and school, such as Calendar, Gmail, Chat, Meet, and Drive. Learn about Google Workspace smart features.
+
+After you turn on smart features, you can allow Gmail to automatically create events based on flight confirmations, restaurant reservations, and more. Learn about events from Gmail.
+Working hours & location	If you have a work or school account with an eligible Google Workspace subscription, you can let others know your availability when they try to schedule a meeting with you. Show your working hours and location.
+Appointment schedules	If you have a work or school account with an eligible Google Workspace subscription, after you connect to Stripe, you can require payments for appointments that you create.
+Keyboard shortcuts	To navigate around your calendar, use your keyboard. To show a list of available shortcuts, on your keyboard, press ?. Learn more about keyboard shortcuts.
+Offline	Use your primary calendar when you’re offline. You can’t use other calendars or Tasks without an internet connection. Learn how to use Calendar offline.
+Related resources
+Use Dark theme in Calendar
+Delete or unsubscribe from a calendar
+View your day, week, or month
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Change Google Calendar settings
+Use Dark theme in Calendar
+Change event color set & density in Google Calendar
+Change your event visibility settings
+Modify Google Calendar notifications
+Add Google Calendar to your home screen
+Use Google Calendar in different time zones
+Change your language setting
+Control Google Calendar data sharing with other apps
+Use Google Calendar with a screen reader
+Find and install Calendar add-ons
+Set your working hours & location
+View how you spend time in meetings
+Add another account to Google Calendar
+Show personal & work calendars in Google Calendar
+Learn about smart features & controls for Google Workspace & other Google products
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: how to learn swimming
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&ref_topic=10510243&sjid=3394640256162437428-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-06 18:10:06] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Computer AndroidiPhone & iPad
+Update your settings
+On your computer, open Google Calendar.
+At the top right, click Settings   Settings.
+On the left, click General.
+
+Open Settings
+
+Learn about general settings
+Setting name	Description
+Language and region	Change the display language, region, and date and time format on your calendar. Learn more about language settings.
+Time zone	Choose a primary time zone for your calendar. You can also set up a secondary time zone. Learn how to change time zones.
+World clock	In the main menu of Calendar, you can show the current time in different locations around the world. This makes it easier to schedule meetings across time zones.
+Event settings	When you create a new event, you can set a default duration and guest permissions. You can also manage incoming invitations from senders.
+Notification settings	Change notification settings and sounds for upcoming events. Learn how to change notifications.
+View options	Update the look of your calendar, such as the first day of your week.
+Google Workspace smart features	Choose to personalize your experience with smart features across Workspace and other Google products. Workspace includes Google apps for businesses and school, such as Calendar, Gmail, Chat, Meet, and Drive. Learn about Google Workspace smart features.
+
+After you turn on smart features, you can allow Gmail to automatically create events based on flight confirmations, restaurant reservations, and more. Learn about events from Gmail.
+Working hours & location	If you have a work or school account with an eligible Google Workspace subscription, you can let others know your availability when they try to schedule a meeting with you. Show your working hours and location.
+Appointment schedules	If you have a work or school account with an eligible Google Workspace subscription, after you connect to Stripe, you can require payments for appointments that you create.
+Keyboard shortcuts	To navigate around your calendar, use your keyboard. To show a list of available shortcuts, on your keyboard, press ?. Learn more about keyboard shortcuts.
+Offline	Use your primary calendar when you’re offline. You can’t use other calendars or Tasks without an internet connection. Learn how to use Calendar offline.
+Related resources
+Use Dark theme in Calendar
+Delete or unsubscribe from a calendar
+View your day, week, or month
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Change Google Calendar settings
+Use Dark theme in Calendar
+Change event color set & density in Google Calendar
+Change your event visibility settings
+Modify Google Calendar notifications
+Add Google Calendar to your home screen
+Use Google Calendar in different time zones
+Change your language setting
+Control Google Calendar data sharing with other apps
+Use Google Calendar with a screen reader
+Find and install Calendar add-ons
+Set your working hours & location
+View how you spend time in meetings
+Add another account to Google Calendar
+Show personal & work calendars in Google Calendar
+Learn about smart features & controls for Google Workspace & other Google products
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: how to learn swimming
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&ref_topic=10510243&sjid=3394640256162437428-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-06 18:10:54] LLM PROMPT SENT
+========================================
+USER QUESTION: how to learn swimming
+
+----------------------------------------
+
+
+========================================
+[2025-08-06 19:02:23] LLM PROMPT SENT
+========================================
+Answer this question with grounded sources:
+
+USER QUESTION: how to learn swimming
+----------------------------------------
+
+
+========================================
+[2025-08-06 19:56:30] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Plans
+Plans
+Watch & Tablet Plans
+Phones & devices
+Phones & devices
+Deals
+Deals
+Coverage
+Coverage
+Join Us
+Join Us
+Find a store
+Contact & support
+Contact & support
+Cart
+Search
+My account
+Login
+
+more from T-Mobile
+
+WIRELESS
+BUSINESS
+PREPAID
+INTERNET
+It’s better over here. Experience it all on the Best Network. 
+
+Best Mobile Network in the US according to Ookla Speedtest. Get full terms
+
+APPLE
+Plus, we’ll pay off your current phone up to $800 a line. 
+
+That's right, we’ll pay off your current eligible phone via virtual prepaid Mastercard. You get to keep it. AND you can get a new iPhone 16 on us. All on our new Experience Beyond plan—for up to 4 lines. It’s never been easier to switch.
+
+That's right, we’ll pay off your current eligible phone via virtual prepaid Mastercard. You get to keep it. AND you can get a new iPhone 16 on us. All on our new Experience Beyond plan—for up to 4 lines. It’s never been easier to switch.
+Switch now
+Via 24 monthly bill credits when you port in an eligible number and add a new qualifying line. If you cancel entire account before receiving 24 credits, credits stop and balance on required finance agreement is due; contact us. Bill credits end if you pay off device early. For well-qualified customers; plus tax & $35 device connection charge. Virtual prepaid card typically takes 15 days. 
+Get full terms
+STAY IN TOUCH ALMOST ANYWHERE
+T-Satellite is here. Never miss a message.
+
+With 650+ satellites, the largest satellite-to-mobile constellation is ready to keep you connected in places no carrier towers can reach.
+
+With compatible device in most outdoor areas in the U.S. where you can see the sky. Satellite service, including text to 911, may be delayed, limited, or unavailable. Included with Experience Beyond plans or $10/mo.; auto renews monthly. Cancel anytime in T-Life App.
+
+ONLINE EXCLUSIVE
+
+Get up to $300 back when you sign up for T-Mobile 5G Home Internet.
+Via virtual prepaid Mastercard® when you sign up online and activate a qualifying new Home Internet line. Not available in retail. Allow 10 weeks. 
+Get full terms
+Shop our best deals.
+Digital exclusive
+SAMSUNG
+Get the new
+Galaxy Z Flip7 On Us.
+Plus, get a pair of Galaxy Buds3 Pro ($249.99 value) with your purchase. Via 24 monthly bill credits when you add a line on our Experience More or Experience Beyond plan. 
+Get full terms
+Digital exclusive
+SAMSUNG
+Get $1100 off the new Galaxy Z Fold7.
+No trade required. Plus, get a pair of Galaxy Buds3 Pro ($249.99 value) with your purchase. Via 24 monthly bill credits when you add a line on our Experience More or Experience Beyond plan. 
+Get full terms
+No trade required
+APPLE
+iPhone 14 On Us.
+Low down payments for all.
+Via 24 monthly bill credits when you port in an eligible number and add a line on a qualifying plan. 
+Get full terms
+Save on back-to-school
+FREE select smartphones.
+$0 down for all.
+Via 24 monthly bill credits when you add a new line on a qualifying plan. 
+Get full terms
+No trade required
+​​APPLE​
+iPhone 16e.
+On Us.
+Built for Apple Intelligence. Get one On Us via 24 monthly bill credits when you activate a new qualifying line and bring your number in from an eligible carrier. 
+Get full terms
+GOOGLE
+Pixel 9a and Pixel Buds A-Series On Us.
+Via 24 monthly bill credits and instant discount with a new line or eligible trade-in on most plans. 
+Get full terms
+SAVE ON BACK-TO-SCHOOL
+Hot tech at prices that make the grade.
+T-MOBILE 5G HOME INTERNET
+Get up to $300 back when you sign up online.
+Via virtual prepaid Mastercard® when you activate a qualifying new Home Internet Line. Not available in retail. Allow 10 weeks. 
+Get full terms
+
+If you cancel entire account before receiving 24 credits, credits stop and balance on required finance agreement is due; for phones, contact us. Bill credits end if you pay off device early. For well-qualified customers, plus tax & $35 device connection charge.
+
+Shop all deals
+Compare our most popular plans. 
+Essentials
+Experience More
+Experience Beyond
+Follow T-Mobile
+Instagram
+Facebook
+X
+You Tube
+English
+Español
+Even more plans
+International phone plans
+International passes
+Home Internet plans
+Phone and internet bundle package
+Hotspot data plans
+Smartwatch data plans
+Wireless business plans
+Shop cell phones by brand
+Apple iPhones
+Samsung Galaxy phones
+Google Pixel phones
+OnePlus phones
+T-Mobile Revvl phones
+Motorola Moto phones
+New featured cell phones
+New Samsung Galaxy S25
+New Samsung Galaxy S25 Plus
+New Samsung Galaxy S25 Ultra
+New Apple iPhone 16
+New Apple iPhone 16 Pro Max
+New Google Pixel 9 Pro
+New featured tablets, smartwatches & more
+Apple Watch Series 10 46mm
+Apple Watch Series 10 42mm
+Google Pixel Watch 3 (45mm)
+Google Pixel Watch 3 (41mm)
+T-Mobile SyncUP KIDS Watch 2
+Samsung Galaxy Watch Ultra 47MM
+Helpful consumer guides
+Dialed In
+Samsung Galaxy S25 vs. S24 Series
+Samsung Galaxy S25 vs. S25+ vs. S25 Ultra
+What is RCS & How is it Different
+Apple iPhone 16 vs. Plus vs. Pro vs. Pro Max
+T-Mobile customer benefits
+TV streaming deals
+T-Mobile Tuesdays
+In-flight wi-fi
+Refer-a-Friend
+Device protection plan
+Protection 360™ HomeTech
+Switch to T-Mobile
+How to switch to T-Mobile
+Try our 5G network
+Bring your own device
+Switch to T-Mobile from Verizon or AT&T
+Family freedom deal
+Cell phone trade-in
+Additional support
+View return policy
+Contact us
+Billing
+Emergency Broadband Benefit
+Free Internet for Students
+Redeem a rebate
+Domestic Violence Resources
+About T-Mobile
+Our Story
+T-Mobile careers
+Privacy Center
+Newsroom
+Corporate Responsibility
+About
+Investor relations
+Press
+Careers
+Deutsche Telekom
+Puerto Rico
+Privacy Notice
+Trust Center
+Privacy Center
+Consumer information
+Public safety/911
+Terms & conditions
+Terms of use
+Accessibility
+Open Internet
+Do Not Sell or Share My Personal Information
+Licenses & Patents
+Consumer Health Data Privacy Notice
+T-Mobile, the T logo, Magenta and the magenta color are registered trademarks of Deutsche Telekom AG.
+Instagram
+Facebook
+X
+You Tube
+
+© 2025 T‑Mobile USA, Inc.
+
+USER QUESTION: list all home internet prices for tmobile
+(Page URL: https://www.t-mobile.com/)
+----------------------------------------
+
+
+========================================
+[2025-08-06 19:56:45] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+5G Home Internet Plans
+
+Check availability now—spots are limited!
+
+## Great News! You’re eligible to choose from our new Fiber home internet and our 5G home internet plans.
+
+## Great News! T-Mobile Fiber home internet available at  your address.
+
+## Great News! 5G Home Internet is available at your address—act now, spots are limited!
+
+## Great News! 5G Home Internet is available at your address—act now, spots are limited!
+
+**Approved for service at:**   [EDIT](/home-internet/eligibility)
+
+address1 address2 city, state, zipCode
+
+# Choose a T-Mobile home internet plan.
+
+category.categoryTitle
+ , unavailable
+
+!5G Home Internet
+
+– convenient and affordable nationwide 5G Home Internet, powered by America's largest 5G network.
+
+!5G Home Internet
+
+The most convenient and affordable nationwide 5G home internet experience - powered by America's largest 5G network
+
+!Fiber Internet
+
+- Enjoy blazing fast gigabit speeds with equal upload and download speeds, with low latency, and higher uptime than cable. Learn more
+
+!Fiber Internet
+
+Enjoy blazing fast gigabit speeds with equal upload and download speeds, with low latency, and higher uptime than cable. Learn more
+
+Show pricing for internet-only customers
+
+* 5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  See Two Promotions
+
+  5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  5G Solution for internet Service Provider Outages
+
+  5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  See 3 promotions
+
+  See 3 promotions
+
+  See 2 available promotions
+
+  See 3 promotions
+
+  See 3 promotions
+
+  $15/mo. credit for wireless customers.See details.
+
+  $15/mo. credit for wireless customers.See details.
+
+  See 3 promotions
+
+  See 3 promotions
+
+  See 2 available promotions
+
+  See 3 promotions
+
+  See 3 promotions
+
+  $15/mo. credit for wireless customers.See details.
+
+  $15/mo. credit for wireless customers.See details.
+
+  5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  See Two Promotions
+
+  5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  See Two Promotions
+
+  Get $300 back within 10 weeks
+
+  5G Solution for internet Service Provider Outages
+
+  5G Solution for internet Service Provider Outages
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $300 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  Get $200 back within 10 weeks
+
+  ## 
+
+  Best Value
+
+  Best Value
+
+  Best Value
+
+  Best Value
+
+  ![]()
+
+  As low as
+   ~~$/mo.~~
+
+  YOUR PRICE
+   ~~$~~
+
+  $   $ $ /mo.
+
+  + taxes and fees   Plan taxes and fees excluded
+
+  AutoPay discount applied
+
+  Plan taxes and fees excluded
+
+  + taxes and fees   Plan taxes and fees excluded  
+
+  AutoPay discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  Voice postpaid line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  $off/mo voice line discount applied
+
+  Promotions and discounts 
+   
+    Applied  View details
+
+  + AutoPay discounts
+
+  Features & Benefits
+
+  Features & Benefits
+
+  + Equal upload & download speeds up to 500 Mbps
+  + Wi-Fi 6 router included
+  + No annual contract
+
+  + Equal upload & download speeds up to 1000 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 300 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 2000 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 940 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Symmetrical upload and download speeds up to 1 gigabits per second
+  + 5-year Price Guarantee\* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included.
+  + Unlimited data.
+  + Symmetrical upload and download speeds up to 500 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included.
+  + Unlimited data.
+  + Symmetrical upload and download speeds up to 300 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh access point included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 1 gigabit per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh access point included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+
+  Wi-Fi 6 router included.
+
+  Unlimited data.
+
+  Symmetrical upload and download speeds up to 300 megabits per second
+
+  Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included.
+  + Unlimited data.
+  + Symmetrical upload and download speeds up to 500 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh access point included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 1 gigabit per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-Year Price Guarantee\*. Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh access point included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 300 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 500 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 1 gigabit per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 300 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 500 megabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 1 gigabit per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Equal upload & download speeds up to 500 Mbps
+  + Wi-Fi 6 router included
+  + No annual contract
+
+  + Equal upload & download speeds up to 1000 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 300 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 2000 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Equal upload & download speeds up to 940 Mbps
+  + Wi-Fi 6 router included
+  + No annual contracts
+
+  + Symmetrical upload and download speeds up to 1 gigabits per second
+  + 5-year Price Guarantee\* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Exclusive perks with T-Mobile Tuesdays
+
+  + Symmetrical upload and download speeds up to 2 gigabits per second
+  + 5-year Price Guarantee. \* Exclusions like taxes and fees apply.
+  + Wi-Fi 6 router included
+  + Wi-Fi mesh extender included
+  + Unlimited data
+  + Exclusive perks with T-Mobile Tuesdays
+
+  See plan terms
+
+  ## 
+
+  ## 
+
+    
+
+  ### 
+
+   
+
+  ####
+
+  #####
+
+  ####
+
+  #### 
+
+  #### 
+
+   
+
+  ####
+
+  [Check availability](/home-internet/eligibility)
+    Select this Plan
+
+See more available plans
+
+See more available plans
+
+Delivered via 5G cellular network; speeds vary due to factors affecting cellular networks, including data prioritization.
+
+Shop fiber plans
+
+!JD Power Trophy
+
+## T-Mobile: #1 in Customer Satisfaction by J.D. Power
+
+**For National Home Wireless Internet Service. Get full terms**
+
+Compare our plans & find one that fits you.
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| **T-Mobile 5G Home Internet Plans** | | | |
+|  | **RELY** | **AMPLIFIED** | **ALL-IN**  **Over $385/year in extra value included!** |
+| **Monthly price w/ AutoPay, taxes and fees included** | **$50**  $35 w/ voice line | **$60**  $45 w/ voice line | **$70**  $55 w/ voice line |
+| **5-Year Price Guarantee**  Exclusions like taxes and fees apply. | ✔ | ✔ | ✔ |
+| **Unlimited data, no annual contracts, simple setup, T‑Mobile Tuesdays perks, 15-day test drive** | ✔ | ✔ | ✔ |
+| **High-performance 5G Gateway included** | ✔ | ✔ | ✔ |
+| **Standard security** | ✔ | ✔ | ✔ |
+| **Advanced Cyber Security**  ($7/mo. value) |  | ✔ | ✔ |
+| **Streaming perks**  Hulu (With Ads) ($9.99/mo. value)  Paramount+ Essential Plan ($7.99/mo. value) |  |  | ✔ |
+| **Wi-Fi Mesh Access Point included**  ($5/mo. value) |  |  | ✔ |
+| **24/7 tech support with  Assurant® Personal TechPro**  ($4/mo. value) |  | ✔ | ✔ |
+
+Delivered via 5G cellular network; speeds vary due to factors affecting cellular networks including data prioritization. Value included compared to prices for alternative product add-ons, services and subscriptions with comparable features. Get full terms
+
+## It’s more than just Wi-Fi. It’s peace of mind.
+
+## 5-Year Price Guarantee
+
+We won’t raise your
+
+internet rate for five years.
+
+Exclusions like taxes & fees apply.
+
+  Get full terms
+
+![](
+
+## Simple 15‑minute self‑install.
+
+If you need help, we’re here for you.
+
+Connect with us.
+
+!power-it-on-icon
+
+## No monthly equipment fees or annual contracts.
+
+5G Gateway device included.
+
+!no-credit-check-icon
+
+## Worry‑free 15‑day test drive.
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back.
+
+Get full terms
+
+!gateway-icon
+
+## Free 2-day shipping.
+
+Order today and get your gateway before you move.
+
+!shipping-icon
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+Travis F, Denver, CO
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+Cindy C, Harwood Heights, IL
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+Duane P, Oldsmar, FL
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+Janet D, Leoma, TN
+
+## "Cut the cable and enjoy wifi."
+
+Ada G, Houston, TX
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Susan V, Salem, OR
+
+Testimonials collected from actual satisfied T-Mobile Home Internet customers.
+
+* ### What is T-Mobile 5G Home Internet?
+
+  + It’s affordable internet service with national availability that lets you do it all with taxes and fees included for qualified accounts, no annual contract, and no equipment fees.
+  + T-Mobile Internet service is powered by America’s largest 5G network in locations we determine will receive a great internet experience.
+  + You receive service through a 5G Gateway device (which combines the capabilities of a router and a modem), the Gateway device then converts the 5G signal to Wi-Fi, and provides a Wi-Fi signal.
+  + The T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™  plans have our 5-year price guarantee so you won’t have to worry about exploding bills and price hikes (exclusions like taxes and fees apply).
+  + Go from box to browsing in 15 minutes or less with an easy, self-installation process.
+* ### How fast is 5G home internet (in Mbps) compared to cable?
+
+  T-Mobile All-In or Amplified Home Internet customers delivering typical speeds between 134 mbps – 415 mbps. Typical upload speeds are between 12 – 55 Mbps. 25% of our customers see speeds below and 25% see speeds above these ranges.
+
+  Keep in mind that speeds can vary depending on location, time of day, signal strength and availability, and other factors. Click here for more info.
+
+  While we can’t directly compare speeds for T-Mobile 5G Home Internet vs. Xfinity, Spectrum, Comcast, Cox, etc., you can check your current speeds here and see for yourself. Best of all, you have nothing to lose, since you can try out T-Mobile Home Internet first to make sure you find a plan that works for you.
+* ### Do these plans come with 5-Year price guarantee?
+
+  Yes, new and upgrading customers on the T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™ plans are covered by our 5- year price guarantee. 5-year price guarantee means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+* ### What is the T-Mobile Rely Internet Plan?
+
+  Rely Home Internet provides all the essentials for reliable 5G internet at a low monthly rate of $35/month with AutoPay and any T-Mobile voice line. Plus, with 5-year price guarantee we won’t raise your rate on internet for at least 5 years from your initial activation (exclusions like taxes and fees apply). It comes with unlimited data, a 5G gateway, and taxes & fees included for qualifying accounts. It delivers reliable Wi-Fi with speed that will keep you streaming, working, and playing.
+* ### What is the T-Mobile Amplified Internet Plan?
+
+  With T-Mobile Amplified internet, households enjoy the benefits from the Rely plan, plus T-Mobile’s latest 5G gateway for faster speeds that seamlessly support more people and devices. This comes on top of additional benefits like Advanced Cyber Security for added digital peace of mind.
+
+  Beyond the standard security protections included for all 5G Internet users, with Advanced Cyber Security, customers get things like Safe Browsing to help block malicious links along with Anomaly Detection to help protect connected devices from cybercriminals — all of which is easily managed through the T-Life app.
+* ### What is the T-Mobile All-In Internet Plan?
+
+  This plan is ideal for larger families or those with more devices looking to get the most out of their Home Internet. It includes nearly $300/year in value with benefits like:
+
+  + Faster speeds and more powerful performance in more places with our latest 5G Gateway and a mesh unit to boost Wi-Fi performance in those hard-to-reach places.
+  + Advanced Cyber Security to keep your devices digitally secure and protected.
+  + 24/7 Interactive Live Assistance with Video Support from Assurant Personal TechPro for any Wi-Fi connected smart devices in the home– helping people stay free from tech stress with setup, troubleshooting and maintenance support.
+  + Hulu on Us to stream full seasons of exclusive series, plus current episodes, Hulu Originals, hit movies, and more.
+  + Paramount+ on Us to stream over 40,000 episodes and hit movies, plus exclusive originals, live sports & more with Paramount+!
+* ### What is the difference between T-Mobile Home Internet and T-Mobile Fiber?
+
+  T-Mobile Home Internet is our fixed wireless internet service, which runs on our 4G LTE and 5G networks and is available to 70 million households across the country. T-Mobile Fiber delivers home internet over fiber-optic lines and is currently available in select locations across the U.S.
+* ### Can I choose between T-Mobile Home Internet and T-Mobile Fiber? Can I switch between the two?
+
+  Yes! Customers eligible for both T-Mobile Home Internet and T-Mobile Fiber can choose the home broadband option that best suits their needs. T-Mobile 5G Home Internet and T-Mobile Fiber have no annual contracts, so you can switch at any time.
+* ### When will T‑Mobile Fiber internet be available in my area?
+
+  Our service is currently available in select cities and regions in the United States. You can check your eligibility to find out if T-Mobile Fiber is available at your address. We're working to expand our service to more locations. Join our waitlist and we’ll reach out as soon as we're available at your address. You can also check to see if you are eligible for our 5G Home Internet service at <
+
+!JD Power Trophy
+
+## #1 in Customer Satisfaction by J.D. Power
+
+**For National Residential Wireless Internet Service.**
+
+Compare our plans & find one that fits you.
+
+|  |  |  |  |
+| --- | --- | --- | --- |
+| **T-Mobile 5G Home Internet Plans** | | | |
+|  | **RELY** | **AMPLIFIED** | **ALL-IN**  **Over $385/year in extra value included!** |
+| **Monthly price w/ AutoPay, taxes and fees included** | **$50**  $35 w/ voice line | **$60**  $45 w/ voice line | **$70**  $55 w/ voice line |
+| **5-Year Price Guarantee**  Exclusions like taxes and fees apply. | ✔ | ✔ | ✔ |
+| **Unlimited data, no annual contracts, simple setup, T‑Mobile Tuesdays perks, 15-day test drive** | ✔ | ✔ | ✔ |
+| **High-performance 5G Gateway included** | ✔ | ✔ | ✔ |
+| **Standard security** | ✔ | ✔ | ✔ |
+| **Advanced Cyber Security**  ($7/mo. value) |  | ✔ | ✔ |
+| **Streaming perks**  Hulu (With Ads) ($9.99/mo. value)  Paramount+ Essential Plan ($7.99/mo. value) |  |  | ✔ |
+| **Wi-Fi Mesh Access Point included**  ($5/mo. value) |  |  | ✔ |
+| **24/7 tech support with  Assurant® Personal TechPro**  ($4/mo. value) |  | ✔ | ✔ |
+
+All T-Mobile 5G home internet plans include these great benefits:
+
+## 5-Year Price Guarantee
+
+We won’t raise your
+
+internet rate for five years.
+
+Exclusions like taxes & fees apply.
+
+  Get full terms
+
+![](
+
+## Simple 15‑minute self‑install.
+
+Plus 24/7 support. If you need help, we’re here for you.
+
+!power-it-on-icon
+
+## No monthly equipment fees or annual contracts.
+
+5G Gateway device included.
+
+!no-credit-check-icon
+
+## Free 2-day shipping.
+
+Order today and get your gateway before you move.
+
+!shipping-icon
+
+## Worry‑free 15‑day test drive.
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back.
+
+Get full terms
+
+!gateway-icon
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+Travis F, Denver, CO
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+Cindy C, Harwood Heights, IL
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+Duane P, Oldsmar, FL
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+Janet D, Leoma, TN
+
+## "Cut the cable and enjoy wifi."
+
+Ada G, Houston, TX
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Susan V, Salem, OR
+
+Testimonials collected from actual satisfied T-Mobile Home Internet customers.
+
+* ### What is T-Mobile 5G Home Internet?
+
+  + It’s affordable internet service with national availability that lets you do it all with taxes and fees included for qualified accounts, no annual contract, and no equipment fees.
+  + T-Mobile Internet service is powered by America’s largest 5G network in locations we determine will receive a great internet experience.
+  + You receive service through a 5G Gateway device (which combines the capabilities of a router and a modem), the Gateway device then converts the 5G signal to Wi-Fi, and provides a Wi-Fi signal.
+  + The T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™  plans have our 5-year price guarantee so you won’t have to worry about exploding bills and price hikes (exclusions like taxes and fees apply).
+  + Go from box to browsing in 15 minutes or less with an easy, self-installation process.
+* ### How fast is 5G home internet (in Mbps) compared to cable?
+
+  T-Mobile All-In or Amplified Home Internet customers delivering typical speeds between 134 mbps – 415 mbps. Typical upload speeds are between 12 – 55 Mbps. 25% of our customers see speeds below and 25% see speeds above these ranges.
+
+  Keep in mind that speeds can vary depending on location, time of day, signal strength and availability, and other factors. Click here for more info.
+
+  While we can’t directly compare speeds for T-Mobile 5G Home Internet vs. Xfinity, Spectrum, Comcast, Cox, etc., you can check your current speeds here and see for yourself. Best of all, you have nothing to lose, since you can try out T-Mobile Home Internet first to make sure you find a plan that works for you.
+* ### Do these plans come with 5-Year price guarantee?
+
+  Yes, new and upgrading customers on the T-Mobile Rely Internet, T-Mobile Amplified Internet, T-Mobile All-In Internet and AWAY™ plans are covered by our 5- year price guarantee. 5-year price guarantee means that we won't change the price of fixed-wireless 5G internet data for at least 5 years while you are on an eligible plan. Taxes & fees, voluntary equipment or speed upgrades, future wireless generations, select limited-time promotions, per-use charges, third-party services, and network management practices aren't included. This guarantee starts when you activate or switch to an eligible plan and doesn't restart if you add a line or change plans after that.
+* ### What is the T-Mobile Rely Internet Plan?
+
+  Rely Home Internet provides all the essentials for reliable 5G internet at a low monthly rate of $35/month with AutoPay and any T-Mobile voice line. Plus, with 5-year price guarantee we won’t raise your rate on internet for at least 5 years from your initial activation (exclusions like taxes and fees apply). It comes with unlimited data, a 5G gateway, and taxes & fees included for qualifying accounts. It delivers reliable Wi-Fi with speed that will keep you streaming, working, and playing.
+* ### What is the T-Mobile Amplified Internet Plan?
+
+  With T-Mobile Amplified internet, households enjoy the benefits from the Rely plan, plus T-Mobile’s latest 5G gateway for faster speeds that seamlessly support more people and devices. This comes on top of additional benefits like Advanced Cyber Security for added digital peace of mind.
+
+  Beyond the standard security protections included for all 5G Internet users, with Advanced Cyber Security, customers get things like Safe Browsing to help block malicious links along with Anomaly Detection to help protect connected devices from cybercriminals — all of which is easily managed through the T-Life app.
+* ### What is the T-Mobile All-In Internet Plan?
+
+  This plan is ideal for larger families or those with more devices looking to get the most out of their Home Internet. It includes nearly $300/year in value with benefits like:
+
+  + Faster speeds and more powerful performance in more places with our latest 5G Gateway and a mesh unit to boost Wi-Fi performance in those hard-to-reach places.
+  + Advanced Cyber Security to keep your devices digitally secure and protected.
+  + 24/7 Interactive Live Assistance with Video Support from Assurant Personal TechPro for any Wi-Fi connected smart devices in the home– helping people stay free from tech stress with setup, troubleshooting and maintenance support.
+  + Hulu on Us to stream full seasons of exclusive series, plus current episodes, Hulu Originals, hit movies, and more.
+  + Paramount+ on Us to stream over 40,000 episodes and hit movies, plus exclusive originals, live sports & more with Paramount+!
+
+All T-Mobile internet plans include these great benefits:
+
+## Router included
+
+No equipment fees
+
+!gateway-icon
+
+## No annual contracts
+
+Feel free to cancel service  at any time
+
+!no-credit-check-icon
+
+## Unlimited data
+
+No extra charges or fees
+
+!gateway-icon
+
+## FREE installation
+
+No setup fees or surprise charges
+
+!power-it-on-icon
+
+## No exploding bills
+
+Have security and peace of mind on your home internet bill.
+
+!power-it-on-icon
+
+* ### What is T-Mobile Fiber internet?
+
+  We have plans offering speeds from 300 Mbps up to 2 Gigs (2000 Mbps) in select locations throughout the United States (speeds vary by location). Our service offers the same upload and download speeds for consistently fast speeds in both directions.
+
+  With fiber internet you also get significantly more uploading power than with most cable internet options. Upload speeds are critical for households with multiple people and devices using the internet simultaneously for a wide range of tasks, including:
+
+  + Video conferencing
+  + Gaming
+  + Sharing large files
+  + Livestreaming.
+* ### Which internet technology is best for me??
+
+  It really depends on your needs - both Fiber and 5G offer fast, reliable internet with unique advantages. Fiber offers the power to take your internet experience to the gigabit level, unlocking ultra high performance for households of avid gamers, remote workers or families who just want the best of streaming and reliability. On the other hand, 5G is perfect for those who value flexibility and ease of installation.
+* ### What is T-Mobile 5G Home Internet?
+
+  + It’s affordable internet service with national availability that lets you do it all with taxes and fees included for qualified accounts, no annual contract, and no equipment fees.
+  + T-Mobile Internet service is powered by America’s largest 5G network in locations we determine will receive a great internet experience.
+  + You receive service through a 5G Gateway device (which combines the capabilities of a router and a modem), the Gateway device then converts the 5G signal to Wi-Fi, and provides a Wi-Fi signal.
+  + All of our plans are price locked so you won’t have to worry about exploding bills and price hikes.
+  + Go from box to browsing in 15 minutes or less with an easy, self-installation process.
+* ### How does installation work?
+
+  T-Mobile Fiber internet installation involves running a fiber-optic cable from the nearest fiber connection point (like a street node) to your home. Technicians will either bury the cable underground or attach it to utility poles. Once the cable reaches your home, they install an Optical Network Terminal (ONT) inside, which converts the fiber signal into one that your devices can use. Then, the ONT is connected to a router, which distributes the internet to your home via Wi-Fi or wired connections. The technician will test the connection to ensure everything works, and once activated, you're ready to enjoy fast, reliable fiber internet.
+
+  T-Mobile 5G internet installation is much simpler than fiber internet installation. Here's how it generally works:
+
+  1. Set Up the Gateway: Once you receive the device, you’ll plug it into a power outlet and connect it to your home’s Wi-Fi network. The gateway needs to be placed near a window or in a location with a good 5G signal for the best performance.
+  2. Activation: After plugging it in, you’ll follow the setup instructions, either on a mobile app or through a web interface, to activate the service. This process typically takes just a few minutes.
+  3. Start Using the Service: Once activated, the 5G Home Internet Gateway provides high-speed 5G internet to your home, either via Wi-Fi or Ethernet, depending on your setup.
+
+   No need for technicians to come to your house for installation—it's a self-installation process, making it quick and easy to get started with 5G internet.
+* ### What is the difference between Fiber and Cable internet?
+
+  Fiber offers faster speeds, higher reliability, and greater bandwidth than cable, which uses electrical signals over coaxial cables. Fiber is less prone to interference and can deliver speeds up to 25x faster, especially for uploads. Cable, however, can experience slower speeds during peak usage times due to network congestion.
+* ### Will I be charged for installation?
+
+  Nope! T-Mobile Fiber Installation is included in the cost of your plan. T-Mobile 5G Internet just requires a simple 15‑minute self‑install.
+* ### WIll T-Mobile help pay my early termination fee if I switch?
+
+  T-Mobile 5G home internet
+
+  We’ve made it easier than ever for customers stuck in a contract or bundle to make the switch to T-Mobile Internet! When new and existing customers make the move to T-Mobile Internet from an Internet Service Provider (ISP), we'll pay off your previous carrier’s service contracts and early termination fee (ETF) up to $500. There has never been a better time to break up with your ISP!
+
+  T-Mobile Fiber Internet
+
+  We’ll cover your early termination fee—up to $750 via virtual prepaid card to you—when you switch to T-Mobile Fiber. Submit your claim to RCSolutions@T-MobileSupport.com.
+* ### How fast is 5G home internet (in Mbps) compared to cable?
+
+  T-Mobile All-In or Amplified Home Internet customers delivering typical speeds between 134 mbps – 415 mbps. Typical upload speeds are between 12 – 55 Mbps. 25% of our customers see speeds below and 25% see speeds above these ranges.
+
+  Keep in mind that speeds can vary depending on location, time of day, signal strength and availability, and other factors. Click here for more info.
+
+  While we can’t directly compare speeds for T-Mobile 5G Home Internet vs. Xfinity, Spectrum, Comcast, Cox, etc., you can check your current speeds here and see for yourself. Best of all, you have nothing to lose, since you can try out T-Mobile Home Internet first to make sure you find a plan that works for you.
+
+All T-Mobile Fiber internet plans include these great benefits:
+
+## Blazing fast gigabit speeds
+
+Equal upload & download speeds up to 2000 Mbps
+
+![](
+
+## Wi-Fi 6 router ON US
+
+Enjoy massive bandwidth and steady performance.
+
+!gateway-icon
+
+## No annual contracts
+
+Feel free to cancel service at any time
+
+!no-credit-check-icon
+
+## No caps on data usage
+
+Take advantage of  unlimited data.
+
+!Confidence-icon
+
+## FREE installation
+
+No setup fees or surprise charges
+
+!power-it-on-icon
+
+* ### What is T-Mobile Fiber internet?
+
+  We have plans offering speeds from 300 Mbps up to 2 Gigs (2000 Mbps) in select locations throughout the United States (speeds vary by location). Our service offers the same upload and download speeds for consistently fast speeds in both directions.
+
+  With fiber internet you also get significantly more uploading power than with most cable internet options. Upload speeds are critical for households with multiple people and devices using the internet simultaneously for a wide range of tasks, including:
+
+  + Video conferencing
+  + Gaming
+  + Sharing large files
+  + Livestreaming.
+* ### How is T-Mobile Fiber internet installed?
+
+  T-Mobile Fiber internet installation involves running a fiber-optic cable from the nearest fiber connection point (like a street node) to your home. Technicians will either bury the cable underground or attach it to utility poles. Once the cable reaches your home, they install an Optical Network Terminal (ONT) inside, which converts the fiber signal into one that your devices can use. Then, the ONT is connected to a router, which distributes the internet to your home via Wi-Fi or wired connections. The technician will test the connection to ensure everything works, and once activated, you're ready to enjoy fast, reliable fiber internet.
+* ### Why is fiber technology better than cable?
+
+  Fiber offers faster speeds, higher reliability, and greater bandwidth than cable, which uses electrical signals over coaxial cables. Fiber is less prone to interference and can deliver speeds up to 25x faster, especially for uploads. Cable, however, can experience slower speeds during peak usage times due to network congestion.
+* ### Will i be charged for installation?
+
+  Nope! Installation is included in the cost of your plan.
+* ### Why am I not eligible for 5G internet?
+
+  The service is available in select areas based on T-Mobile's current wireless network. It may not be available in your area yet, but as we expand T-Mobile Home Internet, we'll prioritize areas with the highest demand.
+
+USER QUESTION: list all home internet prices for tmobile
+(Page URL: https://www.t-mobile.com/home-internet/plans?INTNAV=fNav%3AEvenMorePlans%3AHomeInternetPlans)
+----------------------------------------
+
+
+========================================
+[2025-08-06 19:57:02] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Join the provider ranked #1 in Customer Satisfaction by J.D. Power for National Home Wireless Internet Service.
+
+See what T-Mobile Home Internet plans are available at your address.
+
+Existing T-Mobile Customer? Add 5G home internet can pay as little as $35/month with AutoPay and **ANY postpaid voice line**—but only while this offer lasts.
+
+Login to get started
+
+When you activate a qualifying new Home Internet line. Not available in retail. Get Full Terms
+
+T-Mobile received the highest score nationally among wireless internet providers in the J.D. Power 2024 U.S. Residential Internet Service Provider Satisfaction Study, which measures customers' satisfaction of service with their current internet provider. Visit jdpower.com/awards for more details.
+
+## It’s more than just Wi-Fi. It’s peace of mind.
+
+Our Rely, Amplified, and All-In plans include these great benefits:
+
+## 5-Year Price Guarantee
+
+We won’t raise your  
+ internet rate.
+
+Exclusions like taxes & fees apply.
+
+  Get full terms
+
+![](
+
+## Simple 15‑minute self‑install.
+
+Plus 24/7 support. If you need help, we’re here for you.
+
+!power-it-on-icon
+
+## No monthly equipment fees or annual contracts.
+
+5G Gateway device included.
+
+!no-credit-check-icon
+
+## Worry‑free 15‑day test drive.
+
+See how well T-Mobile 5G Home Internet works for you—or get your money back.
+
+Get full terms
+
+!gateway-icon
+
+## Free 2-day shipping.
+
+Order today and get your gateway before you move.
+
+!shipping-icon
+
+## "It was easy to set up. The speed is great. I have had no issues at all. I wish I had switched earlier."
+
+Travis F, Denver, CO
+
+## "Very affordable. Easy to set up. Zero connection issues. After dealing with Comcast for the last few years, I am ecstatic! Very happy Customer."
+
+Cindy C, Harwood Heights, IL
+
+## "Easy set up, dependable has been a great choice for my winter home. Handles my streaming tv and my security easily."
+
+Duane P, Oldsmar, FL
+
+## “This has been the BEST internet and phone service we've ever had! Its very affordable and I wished we had made the switch sooner! Thank you!”
+
+Janet D, Leoma, TN
+
+## "Cut the cable and enjoy wifi."
+
+Ada G, Houston, TX
+
+## "Easy setup reliable service. Haven't had any issues at all. Very happy we switched and we're saving lots of money a month too. And locked in month amount vs the other guys."
+
+Susan V, Salem, OR
+
+Testimonials collected from actual satisfied T-Mobile Home Internet customers.
+
+USER QUESTION: list all home internet prices for tmobile
+(Page URL: https://www.t-mobile.com/home-internet/eligibility?icid=HEIS_ISW_C_24HMENET_5E132E168196F61040756)
+----------------------------------------
+

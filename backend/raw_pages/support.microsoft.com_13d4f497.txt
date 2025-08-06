@@ -1,0 +1,106 @@
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 New Outlook for Windows
+
+If you want to invite someone to a meeting you haven't organized, you can forward the meeting to them. When the recipient receives the meeting request, it appears to come from the meeting organizer and the meeting organizer receives notification that you forwarded the meeting.
+
+Select a tab option below for the version of Outlook you're using. [What version of Outlook do I have?](https://support.microsoft.com/office/what-version-of-outlook-do-i-have-b3a9568c-edb5-42b9-9825-d48d82b2257c)
+
+New OutlookClassic Outlook
+
+**Note:**If the steps under this **New Outlook** tab aren't working for you, you may not be using new Outlook for Windows yet. Select the **[Classic Outlook](#picktab=classic_outlook)** tab and follow those steps instead.
+
+### Forward a meeting when you're not the organizer
+
+You can forward a meeting that you've been invited to by someone else in new Outlook for Windows.
+
+**Note:**You won't have the option to forward the meeting to others if the organizer disabled **Allow forwarding**.
+
+1. Open the meeting you'd like to forward.
+2. On the toolbar, select  ![Forward button icon](/images/en-us/3d47f098-5217-43aa-93ec-0ee71b28a9d7)**Forward**.
+
+   (If the meeting is a series, you'll have the option to forward just the selected event or the entire series.)
+3. On the **To** line, add the people you'd like to forward the meeting to, and add a message to the recipient, if you like.
+4. Select **Send**.
+
+### Prevent forwarding of a meeting you created
+
+1. In your calendar in new Outlook, select **New Event** or open a meeting you've created.
+2. Select  ![Response options button](/images/en-us/d4f903e5-236c-4be6-be1c-91be46595183)**Response Options**, then select **Allow Forwarding** to clear the check mark from that option.
+3. Select **Send**.
+
+**Tip:**To prevent email messages from being forwarded, see [Prevent email forwarding](/en-us/office/prevent-email-forwarding-in-outlook-31260d19-8b81-4f18-b866-876d078d52b5).
+
+### Forward a meeting when you're not the organizer
+
+To forward a meeting or meeting series that’s on your calendar in classic Outlook for Windows:
+
+1. In the calendar, double-click the meeting to open it.
+
+   * For a recurring meeting, select **Just this one** to forward a single meeting in the series or select **The entire series** to forward the entire series.
+2. On the main meeting menu (either **Meeting**, **Meeting Occurrence** or **Meeting Series**), in the **Actions** group, select **Forward** > **Forward**.
+3. In the **To** line, enter the email address or addresses of the people you want to forward the meeting to, and then select **Send**.
+
+### Forward a meeting when you are the meeting organizer
+
+If you're the meeting organizer, the easiest way to invite someone else to a meeting is to open the meeting from your calendar in classic Outlook and add them as an attendee.
+
+After you've added the additional attendees, select **Send Update**. You can choose whether to send the update only to added or changed attendees or to all attendees.
+
+![You can choose whether to send an update to all attendees.](/images/en-us/01fdc23b-6be6-4187-8ca6-ee98200a52b0)
+
+### Best practices for forwarding meeting requests
+
+When you use classic Outlook to forward a meeting to someone that was not originally invited to the meeting, Outlook sends a meeting forward notification to the meeting organizer.
+
+The existing meeting attendees are not notified about the added attendee.
+
+* If existing attendees need to know that an additional attendee was added to the meeting, then the organizer must open the meeting in the calendar and send a meeting update to all of the attendees.
+
+You cannot Cc or Bcc an individual on a meeting request. You can, however, add recipients as optional attendees
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fforward-a-meeting-in-outlook-94f2df68-8109-4334-8bfa-f5c013dc1578 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fforward-a-meeting-in-outlook-94f2df68-8109-4334-8bfa-f5c013dc1578&title=Forward%20a%20meeting%20in%20Outlook "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Forward%20a%20meeting%20in%20Outlook&body=Forward%20a%20meeting%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fforward-a-meeting-in-outlook-94f2df68-8109-4334-8bfa-f5c013dc1578 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

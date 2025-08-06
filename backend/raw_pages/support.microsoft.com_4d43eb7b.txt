@@ -1,0 +1,210 @@
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 Microsoft365.com Outlook on the web Outlook.com Microsoft Office New Outlook for Windows
+
+You can send a meeting request to one or more people. Outlook reserves time on your calendar for the meeting and tracks who accepts the invitation.
+
+When you create a meeting request, you can add attachments, set a location, [request in-person attendance](/en-us/office/schedule-in-person-events-in-outlook-956ae899-096e-419d-b812-a515d0710611), set the recurrence, and use the Scheduling Assistant to choose the best time for your meeting.
+
+Select a tab option below for the version of Outlook you're using. [What version of Outlook do I have?](https://support.microsoft.com/office/what-version-of-outlook-do-i-have-b3a9568c-edb5-42b9-9825-d48d82b2257c)
+
+New OutlookClassic OutlookOutlook on the webOutlook.com
+
+**Note:**If the steps under this **New Outlook** tab don't match your screen, you may not be using new Outlook for Windows yet. Select **[Classic Outlook](#picktab=classic_outlook)** and follow those steps instead.
+
+### Schedule a meeting and add attendees in new Outlook for Windows
+
+1. From the  calendar, select **New Event**.
+2. Add a title for your meeting or event.
+3. Select  ![The "Invite attendees" icon.](/images/en-us/1c013d9d-67f2-4163-b365-f13d6c6df8ce)**Invite attendees**, then enter names of individuals to invite to the meeting or event.
+
+   If you're using a work or school account in Outlook with Microsoft 365 or Exchange, use the **Scheduling Assistant** tab to see attendee schedules.
+4. In the **Scheduling Assistant**, select **Add required attendee** or **Add optional attendee**, and start typing an attendee's name or email address. When you start typing a attendee's name, Outlook will provide suggestions for you based on the people you've met with or emailed recently. Choose a name from the list to add as an attendee.
+
+   **Scheduling Assistant** will show free/busy times for each user. The horizontal bar that denotes the selected time will be blue and attendee availability will be listed under each attendee's names for the times you select. This can be especially helpful if attendees are in different time zones.
+
+   You can send the event from the Scheduling Assistant view, or return to the Event to edit more meeting details.
+5. Select a suggested time slot, or manually enter a date and start and end times on the **Event tab**.
+6. Enter a meeting location, and slide the **Teams meeting** toggle left or right as appropriate.
+
+   **Tip:**Depending on your account, you might have the option to select **Add a room** or **Search for a room or location** for your meeting.
+7. If you don't want to make this a recurring meeting, select **Send** to deliver the invitation. Otherwise, see the next section [Schedule a recurring meeting](#bkmk_newoutlookschedulerecurring).
+
+### Schedule a recurring meeting in new Outlook
+
+1. Follow steps 1-6 in the previous section, [Schedule a meeting and add attendees](#bkmk_newoutlookschedulemeeting).
+2. Select ![The Recurrence icon.](/images/en-us/1d3b2884-26ba-41d1-9cea-5fe9774457c6) **Make recurring**, and in the **Repeat** window choose the recurrence interval you want for the event. Select **Save**.
+3. Select **Send** to deliver the invitation.
+
+### Add a person to an existing meeting in new Outlook
+
+You can add another attendee to an existing meeting.
+
+**If you're the meeting owner:**
+
+1. Double-click to open the meeting, then add additional **Required** or **Optional** people, or use the **Scheduling Assistant** to add one or more people to the meeting.
+2. Select **Send Update**and one of the following options:
+
+   * Only added/removed attendees.
+   * All attendees.
+
+**If you're not the meeting owner:**
+
+1. Open the meeting request. In the **Respond** group on the ribbon, select **Respond**, then **Forward**. Add one or more recipients to the meeting request.
+2. Select **Send**. The meeting owner will receive notification that you've forwarded the meeting request to another person. For more information, see [Forward a meeting](/en-us/office/forward-a-meeting-in-outlook-94f2df68-8109-4334-8bfa-f5c013dc1578).
+
+### Schedule a meeting in classic Outlook for Windows
+
+1. Create a meeting request in one of the following ways:
+
+   * From the Inbox, select **New Items** > **Meeting** or use the keyboard shortcut **Ctrl + Shift + Q**.
+   * From the calendar, select **New Meeting** or use the keyboard shortcut **Ctrl + Shift + Q**.
+   * From an email message in the Inbox, select the **Reply with Meeting** button.
+
+     ![Reply with meeting button in classic Outlook](/images/en-us/1bc5793b-a6a9-4cbe-8a4a-27771ce6c526)
+2. Add attendees in one of two ways:
+
+   * Add your attendees to the **To** line of the meeting request and skip to step 4.
+   * If you're using a Microsoft 365 or an Exchange account, use the **Scheduling Assistant** to see attendee schedules.
+3. In the **Scheduling Assistant**, either click the box under your name and type an attendee's name or email address or click the **Add Attendees** button to bring up your address book.
+
+   Select the icon next to the attendee's name in the Scheduling Assistant to mark a specific attendee as a **Required Attendee**, **Optional Attendee**, or a **Resource**. When you start typing a attendee's name, Outlook will provide suggestions for you based on the people you've met with or emailed recently. Choose a name from the list to add as an attendee.
+4. Add a meeting subject, start time and end time, and location.
+
+   In Outlook 2016 (or newer) and Outlook for Microsoft 365, you can start typing a location's name, for example, *Fourth Coffee Shop* or *Conference Room 23*, and Outlook will look for location matches. Select one of the suggestions to choose that location, or continue typing to enter another location.
+
+   **Tip:**If you use a [Microsoft Exchange account](/en-us/office/how-do-i-tell-if-i-have-an-exchange-account-in-outlook-0e2ff2d5-82ed-45f7-9c7e-e0712efc4c43) or Microsoft 365 email account, click **Scheduling Assistant**, then click **Room Finder** to check availability and reserve rooms. For more information, see [Use the Scheduling Assistant and Room Finder for meetings in Outlook](/en-us/office/use-the-scheduling-assistant-and-room-finder-for-meetings-in-outlook-2e00ac07-cef1-47c8-9b99-77372434d3fa).
+5. To attach a file to a meeting request, on the **Insert** menu, select **Attach File**, then choose the file you want to add.
+6. If you don't want to make this a recurring meeting, select **Send**. Otherwise, see [Make a meeting recurring](#bkmk_recurring).
+
+### Make a meeting recurring in classic Outlook
+
+1. Select **Meeting** > **Recurrence**.
+
+   **Note:**Use the keyboard shortcut Ctrl+G to schedule the meeting to repeat regularly.
+2. Choose the options for the recurrence pattern you want, and then select **OK**.
+
+   **Note:**When you add a recurrence pattern to a meeting request, the **Meeting** tab changes to **Meeting Series**.
+3. To send the meeting request, select **Send**.
+
+### Add a person to an existing meeting in classic Outlook
+
+You can add another attendee to an existing meeting.
+
+**If you're the meeting owner:**
+
+1. Double-click to open the meeting, then use the **Required**or **Optional** line or the **Scheduling Assistant** to add one or more people to the meeting.
+2. Select **Send Update**and one of the following options:
+
+   * Send updates only to added or deleted attendees.
+   * Send updates to all attendees.
+
+**If you're not the meeting owner:**
+
+1. Open the meeting request. In the **Respond** group on the ribbon, select **Respond**, then **Forward**. Add one or more recipients to the meeting request.
+2. Select **Send**. The meeting owner will receive notification that you've forwarded the meeting request to another person. For more information, see [Forward a meeting](/en-us/office/forward-a-meeting-in-outlook-94f2df68-8109-4334-8bfa-f5c013dc1578).
+
+### End meetings early in classic Outlook
+
+If you're using Outlook for Microsoft 365, you can have Outlook end your meetings a few minutes early. This can help you build in travel time between meetings. You can choose a different duration for meetings under one hour and meetings over one hour.
+
+1. Select **File** > **Options** > **Calendar** > **Calendar options**
+2. Check the **Shorten appointments and meetings** checkbox, then either **End early** or **Start late**.
+3. Use the drop-downs to select the number of minutes for meetings less than one hour and one hour or longer, then select **OK**.
+
+**Note:**Outlook on the web is the web version of Outlook for business users with a work or school account.
+
+### Schedule a meeting or event in Outlook on the web
+
+1. 1. From the  calendar, select **New Event** > **Event**.
+   2. Add a title for your meeting or event.
+   3. Select  ![The "Invite attendees" icon.](/images/en-us/1c013d9d-67f2-4163-b365-f13d6c6df8ce)**Invite attendees**, then enter names of individuals to invite to the meeting or event.
+
+      If you're using a work or school account in Outlook with Microsoft 365 or Exchange, use the **Scheduling Assistant** tab to see attendee schedules.
+   4. In the **Scheduling Assistant**, select **Add required attendee** or **Add optional attendee**, and start typing an attendee's name or email address. When you start typing a attendee's name, Outlook will provide suggestions for you based on the people you've met with or emailed recently. Choose a name from the list to add as an attendee.
+   5. Select a suggested time slot, or manually enter a date and start and end times on the **Event tab**.
+   6. Enter a meeting location, and slide the **Teams meeting** toggle left or right as appropriate.
+
+      **Tip:**Depending on your account, you might have the option to select **Add a room** or **Search for a room or location** for your meeting.
+   7. If you don't want to make this a recurring meeting, select **Send** to deliver the invitation. Otherwise, see the next section [Schedule a recurring meeting](#bkmk_newoutlookschedulerecurring).
+
+   Schedule a recurring meeting
+
+   1. Follow steps 1-6 in the previous section, [Schedule a meeting and add attendees](#bkmk_newoutlookschedulemeeting).
+   2. Select ![The Recurrence icon.](/images/en-us/1d3b2884-26ba-41d1-9cea-5fe9774457c6) **Make recurring**, and in the **Repeat** window choose the recurrence interval you want for the event. Select **Save**.
+   3. Select **Send** to deliver the invitation.
+
+**Note:**
+**Outlook.com** is the web version of Outlook for users signing in with a personal Microsoft account such as an Outlook.com or Hotmail.com account.
+
+### Schedule a meeting and invite others in Outlook.com
+
+1. From the Outlook.com  calendar, select **New Event**.
+2. Add a title for your meeting or event.
+3. Select  ![The "Invite attendees" icon.](/images/en-us/1c013d9d-67f2-4163-b365-f13d6c6df8ce)**Invite attendees** and enter names of individuals to invite to the meeting or event. When you start typing an attendee's name, Outlook will provide suggestions for you based on the people you've met with or emailed recently. Choose a name from the list to add as an attendee.
+4. Select a suggested time slot, or manually enter a date and start and end times.
+5. Enter a meeting location, and slide the **Skype meeting** (or **Teams meeting**) toggle left or right as appropriate:
+
+   ![Screenshot showing toggle to set a Skype meeting](/images/en-us/11c40b60-d6c7-431d-958d-a2ed4afdae86)
+6. Select **Send** to deliver the invitation.
+
+### Schedule a recurring meeting or event in Outlook.com
+
+1. From the  calendar, select **New Event**, and add a title for your meeting or event.
+2. If you need to invite others to this event or meeting, select  ![The "Invite attendees" icon.](/images/en-us/1c013d9d-67f2-4163-b365-f13d6c6df8ce)**Invite attendees**, then enter names of individuals to invite to the meeting.
+3. Select a suggested time slot for the meeting, or manually enter a date and start and end times.
+4. Select ![The Recurrence icon.](/images/en-us/1d3b2884-26ba-41d1-9cea-5fe9774457c6) **Don't repeat** dropdown, then choose the recurrence interval you want for the event.
+5. Enter a meeting location, and slide the **Skype meeting** (or **Teams meeting**) toggle left or right as appropriate:
+
+   ![Screenshot showing toggle to set a Skype meeting](/images/en-us/11c40b60-d6c7-431d-958d-a2ed4afdae86)
+6. Select **Send** to deliver the invitation.
+
+## Related articles
+
+[Create a meeting or appointment in Outlook for Mac](/en-us/office/create-a-meeting-or-appointment-in-outlook-for-mac-689abe2a-4be7-4299-be4a-736adc36fc79)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-a-meeting-or-event-in-outlook-5c9877bc-ab91-4a7c-99fb-b0b68d7ea94f "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-a-meeting-or-event-in-outlook-5c9877bc-ab91-4a7c-99fb-b0b68d7ea94f&title=Schedule%20a%20meeting%20or%20event%20in%20Outlook "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Schedule%20a%20meeting%20or%20event%20in%20Outlook&body=Schedule%20a%20meeting%20or%20event%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-a-meeting-or-event-in-outlook-5c9877bc-ab91-4a7c-99fb-b0b68d7ea94f "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

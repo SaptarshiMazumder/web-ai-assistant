@@ -1,0 +1,117 @@
+Applies To
+
+Outlook for Microsoft 365 Outlook for Microsoft 365 for Mac Outlook 2024 Outlook 2024 for Mac Outlook 2021 Outlook 2021 for Mac Outlook 2019 Outlook 2016 Outlook on the web Outlook for Android Outlook for iOS
+
+If you use a Microsoft 365 or Microsoft Exchange account with Outlook, you can use the Scheduling Assistant and Room Finder to help schedule your meetings.
+
+Microsoft 365WindowsWebmacOSOffice for Android and iOS
+
+**Note:**The new Room Finder was first available in Outlook for Microsoft 365 starting in Version 2012 (Build 13530.20316). Room Finder has a dependency on WebView2, which started rolling out to Microsoft 365 applications on April 1, 2021, version 2101 (Build 13628.20274) and higher. For more information on WebView2, see the admin documentation: [Microsoft Edge WebView2 and Microsoft 365 Apps](https://docs.microsoft.com/en-us/DeployOffice/webview2-install).
+
+1. In a new meeting, add the **Required** attendees, the **Start time** and the **End time**, then select the **Room Finder** button at the end of the **Location** field.  
+     
+   Alternatively, you can select in the **Location** field and select **Browse with Room Finder** at the bottom in the list of suggested locations.   
+     
+    ![Image of drop down menu for room finder under location button.](/images/en-us/d6e0a6a9-09be-473c-ae2e-89cd877ab54c)
+2. Choose the room specifics on the **Room Finder**. These conference rooms are set up by your Microsoft Exchange or Microsoft 365 administrator.  
+     
+   ![test](/images/en-us/767d0928-40e0-43f0-99b2-3b9767e3ad8a)
+3. If the meeting has multiple attendees and busy conference rooms, it can be difficult to find a time that works for everyone. To find availability for people and rooms, select the **Scheduling Assistant** button on the ribbon, then select **AutoPick** and choose the appropriate criteria.
+
+   **Note:**This feature replaces the **Suggested Times** feature from earlier versions of Outlook.
+4. After you find an appropriate time slot and add a conference room to the meeting, select **Meeting** on the ribbon. You can then close the Room Finder. When you're done setting up your meeting, select **Send**.
+
+## Use the Scheduling Assistant
+
+1. From the **Inbox**, select **New Items** > **Meeting**or in the **Calendar**, select **New Meeting**. You also can use the keyboard shortcut Ctrl+Shift+Q to create a new meeting request.
+2. Add attendees in the **Required/Optional** field.
+3. In the **Subject** box, enter a description of the meeting or event.
+4. Select **Scheduling Assistant** from the Ribbon. You'll see a row for every recipient you entered in the To box. If you want to add more attendees, you can type their name in any blank row in the Scheduling Assistant.
+5. Times that your attendees are busy are shown in dark blue. Times that your attendees have a tentative appointment are shown in a light blue hashed block, and times outside of your attendees' working hours are shown in light gray. Select an available time for all of your attendees.
+
+## Use the Room Finder
+
+1. In a new meeting, select the **Scheduling Assistant** button on the ribbon. Select the **Room Finder** button to the right of the **Location** field or select **Browse with Room Finder** at the bottom in the list of suggested locations.
+2. Next, browse for a building in the city where you'd like to meet by using the drop-down menu in the **Building** field or search by typing in the **Building** field.
+3. After selecting a building, you can browse and filter the rooms in that building by **Type**, **Capacity**, **Floor**, and **Features**. These lists are set up by your Microsoft Exchange or Microsoft 365 administrator.   
+     
+    ![Use the Room Finder to see conference rooms available for your meeting.](/images/en-us/c841c114-f5a1-4cf0-8108-80e481aa2f0a)
+4. Select an available room to add the room to the **Scheduling Assistant** and to the meeting as a recipient.
+5. If you want to make the meeting recur, on the Meeting menu, in the **Options** group, select **Recurrence**, select the recurrence pattern, and then select **OK**. When you add a recurrence pattern to a meeting request, the **Meeting** menu changes to **Recurring Meeting**.
+6. When you're done setting up your meeting, select **Send**.
+
+## Locate Room Finder
+
+In a new meeting, select **Browse with Places** at the bottom of **Suggested locations**.  
+  
+Next, browse for a building in the city where you'd like to meet by using the drop-down menu in the **Building** field or search by typing in the **Building** field.
+
+After selecting a building, you can browse and filter the rooms in that building by **Type**, **Capacity**, **Floor**, and **Features**.
+
+## Use the Room Finder
+
+In a new meeting, select **Browse more rooms** under the **Add a location** section, and then select **Room Finder**.  
+  
+![Image with 'Browse more rooms' highlighted in red. ](/images/en-us/ca0038b0-41b6-4b8b-944b-2751af38199b)  
+  
+![Image of Calendar and Room finder.](/images/en-us/efa61b2d-bf07-456e-b940-2d63ea08e47c)
+
+Next, browse for a building in the city where you'd like to meet by using the drop-down menu in the **Building** field or search by typing in the **Building** field.
+
+After selecting a building, you can browse and filter the rooms in that building by **Type**, **Capacity**, **Floor**, and **Features**.
+
+## Use the Room Finder
+
+Search for and book conference rooms from the **New Event** screen with **Browse conference rooms.**  
+  
+ ![Image of mobile app with'Browse conference rooms' highlighted.](/images/en-us/537725bd-ff09-4fae-bc3a-7eb3332995c2)
+
+Next, browse for a building in the city where you'd like to meet by typing it in the **Building** field.
+
+[Top of Page](#)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-the-scheduling-assistant-and-room-finder-for-meetings-in-outlook-2e00ac07-cef1-47c8-9b99-77372434d3fa "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-the-scheduling-assistant-and-room-finder-for-meetings-in-outlook-2e00ac07-cef1-47c8-9b99-77372434d3fa&title=Use%20the%20Scheduling%20Assistant%20and%20Room%20Finder%20for%20meetings%20in%20Outlook "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Use%20the%20Scheduling%20Assistant%20and%20Room%20Finder%20for%20meetings%20in%20Outlook&body=Use%20the%20Scheduling%20Assistant%20and%20Room%20Finder%20for%20meetings%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fuse-the-scheduling-assistant-and-room-finder-for-meetings-in-outlook-2e00ac07-cef1-47c8-9b99-77372434d3fa "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

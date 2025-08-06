@@ -135,6 +135,11 @@ optionSmart.value = "smart";
 optionSmart.textContent = "Ask Smart";
 dropdown.appendChild(optionSmart);
 
+const optionGemini = document.createElement("option");
+optionGemini.value = "gemini";
+optionGemini.textContent = "Ask Gemini";
+dropdown.appendChild(optionGemini);
+
 // --- Smart Ask button (always visible, no dropdown) ---
 const smartBtn = document.createElement("button");
 smartBtn.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="#fff"/></svg>`;
@@ -144,7 +149,10 @@ smartBtn.style.marginLeft = "8px";
 smartBtn.style.display = "inline-block";
 
 const inputRow = document.getElementById("inputRow");
-inputRow?.appendChild(smartBtn);
+if (inputRow) {
+  inputRow.appendChild(dropdown);
+  inputRow.appendChild(smartBtn);
+}
 
 
 
@@ -283,11 +291,15 @@ smartBtn.onclick = async function () {
   const question = questionInput.value.trim();
   if (!question) return;
 
-  // Add "Smart QA" tag above the bubble
+  // Get selected tool
+  const selectedTool = dropdown.value;
+  console.log('Selected tool:', selectedTool);
+
+  // Add "Smart QA" or "Gemini QA" tag above the bubble
   const tag = document.createElement('div');
-  tag.textContent = "Smart QA";
+  tag.textContent = selectedTool === 'gemini' ? "Gemini QA" : "Smart QA";
   tag.style.fontSize = "0.8em";
-  tag.style.color = "#0a5";
+  tag.style.color = selectedTool === 'gemini' ? "#0af" : "#0a5";
   tag.style.fontWeight = "bold";
   tag.style.letterSpacing = "0.03em";
   tag.style.margin = "0 10px 0 0";
@@ -298,7 +310,11 @@ smartBtn.onclick = async function () {
   const thinkingBubble = appendMessage("Thinking...", "thinking");
   const logContainer = (thinkingBubble as any).logContainer;
   logContainer.innerText = "";
-  connectSmartQALogSocket(logContainer);
+  if (selectedTool === 'gemini') {
+    // No log socket for Gemini
+  } else {
+    connectSmartQALogSocket(logContainer);
+  }
 
   // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
   const pageData = await getPageDataFromActiveTab();
@@ -312,14 +328,18 @@ smartBtn.onclick = async function () {
       page_url,
     };
     try {
-      const resp = await fetch("http://localhost:5000/ask-smart", {
+      let endpoint = "http://localhost:5000/ask-smart";
+      if (selectedTool === 'gemini') {
+        endpoint = "http://localhost:5000/ask-gemini";
+      }
+      const resp = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await resp.json();
       (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
-      if (smartqaLogSocket) {
+      if (smartqaLogSocket && selectedTool !== 'gemini') {
         smartqaLogSocket.close();
       }
 
@@ -349,7 +369,7 @@ smartBtn.onclick = async function () {
       }
 
     } catch (err) {
-      (thinkingBubble as any).thinkingText.textContent = "Error (smart QA). Please try again.";
+      (thinkingBubble as any).thinkingText.textContent = selectedTool === 'gemini' ? "Error (Gemini QA). Please try again." : "Error (smart QA). Please try again.";
     }
     questionInput.value = "";
   });

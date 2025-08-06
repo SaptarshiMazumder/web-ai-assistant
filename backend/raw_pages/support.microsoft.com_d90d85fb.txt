@@ -1,0 +1,396 @@
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 Outlook on the web Microsoft Office New Outlook for Windows
+
+New Outlook brings a new, powerful email experience that can help executive administrators and delegates become more productive in their everyday work. This article captures some new Outlook tips for [calendar and mail](#bkmk_calendar_mail_tips) that are useful for executive admins. To get started, we encourage you to try [new Outlook.](/en-us/office/start-using-new-outlook-for-windows-4395454d-cb2f-4c16-bb24-fa4bb36650ae)
+
+We want to hear how we can improve the experience for executive admins and delegates! You can [submit your feedback here](#bkmk_feedback).
+
+**Note:**Delegate access is only available if you're using a work or school account in Microsoft 365 or with Exchange Online.
+
+In this article, you can:
+
+[Share and access a calendar with edit or delegate permissions](#bkmk_shareaccesscal)
+
+[Share category management with a delegate](#bkmk_sharecategory)
+
+[View shared calendars](#bkmk_viewsharedcalendars)
+
+[Add new shared or delegate calendars](#bkmk_addsharedcal)
+
+[Add and view shared or delegate mailboxes and folders](#bkmk_addandviewshared)
+
+[Manage and use executive's categories as a delegate](#bkmk_createandapply)
+
+[Tips for executive assistants in mail and calendar](#bkmk_calendar_mail_tips)
+
+## Share and access a calendar with edit or delegate permissions
+
+To learn how to share and access a calendar with edit or delegate permissions in Outlook, please refer to [Share and access a calendar with edit or delegate permissions in Outlook.](/en-us/office/share-and-access-a-calendar-with-edit-or-delegate-permissions-in-outlook-532e6410-ee80-42b5-9b1b-a09345ccef1b)
+
+[Back to top](#bkmk_top)
+
+## Share category management access with a delegate
+
+1. From the navigation pane, select **Calendar**.
+2. From the **Home** tab, select **Share Calendar**.  
+     
+   ![Select share calendar from the ribbon](/images/en-us/3c2a5d0d-c2aa-4bfc-9a9a-f66a585d376f)
+3. In the **Sharing and permissions** page, type the name or email address of the person you want to share your calendar with and assign delegate access. Though you can share your calendar with more than one person, you can only add one person at a time from Outlook on the web.
+4. After you’ve added the person you want to manage your calendar, select the drop-down list next to their name, and choose the level of access you want them to have.
+5. Select **Delegate** to give them the same permission as an editor, plus they will receive meeting requests and responses on your behalf.
+6. To allow the delegate to manage your categories, select the check box for **Let delegate manage categories**.  
+     
+   ![Check the box next to Let delegate manage categories](/images/en-us/cec8de16-e555-474e-af17-3412f9229ab7)
+
+After you’ve finished adding the person you want to share your calendar with and have chosen which permission you want to give them, select **Share**. If you decide not to share your calendar right now, select **Remove**.
+
+The person you shared your calendar with will receive an email message telling them about it. When they select the **Accept** button in the invitation, it will add your calendar to their list of calendars.
+
+To learn more, visit [Share and access a calendar with edit or delegate permissions in Outlook.](/en-us/office/share-and-access-a-calendar-with-edit-or-delegate-permissions-in-outlook-532e6410-ee80-42b5-9b1b-a09345ccef1b)
+
+[Back to top](#bkmk_top)
+
+## View shared calendars
+
+Shared or delegated calendars may not appear by default in the new Outlook. To view shared calendars, click **Show all** in the calendar list and view shared calendars under **People's calendars**. Then, select the calendar you are interested in and then select **Split view** in the ribbon to view multiple calendars side by side.
+
+![Screenshot showing show all option in new outlook calendar](/images/en-us/a60a8c9b-6912-4a9d-9b1f-6d6fbbaeea4f)
+
+![Screenshot showing Outlook split view showing two calendars side-by-side.](/images/en-us/8f1c6faf-909c-4105-8000-66c76db10604)
+
+[Back to top](#bkmk_top)
+
+## Add new shared or delegate calendars
+
+You can add a new shared or delegate calendar either from the email you receive to manage the invite, or directly from the calendar.
+
+To add directly from your calendar, click on **Add calendar**. Then choose **Add from directory** and select the executive or team member whose calendar you would like to add.
+
+**Note:**You can add any team member's calendar and see their default calendar sharing details (for most organizations, this is usually free/busy sharing).
+
+![Screenshot showing split view in the ribbon](/images/en-us/6077a1f0-36e1-4c40-be26-e36dba3e7639)
+
+![Screenshot showing new outlook add from directory with suggested contacts](/images/en-us/1bcb33f1-093c-43a8-a483-593be44baf2e)
+
+[Back to top](#bkmk_top)
+
+## Add and view shared or delegate mailboxes and folders
+
+To add shared or delegate mailboxes and folders, click on the three dots next to the **Shared with me** folder under your account and select **Add shared folder or mailbox**.
+
+Then select the shared or delegate account you want to add. You can then view the shared mailbox or folders under **Shared with me**.
+
+![Screenshot of popup in Outlook for adding a shared folder or mailbox](/images/en-us/586b623d-3e6e-4b30-a4e1-ab040b7ac7db)
+
+![Screenshot about "Shared with me" to add a shared folder or mailbox](/images/en-us/5814a01c-6048-4ac4-96fb-6a542a43e189)
+
+[Back to top](#bkmk_top)
+
+## Manage and use executive's categories as a delegate
+
+If you have been granted category management permission, you must accept the permissions and restart Outlook to manage the list of your executive's categories in **Settings**.
+
+You can now create new categories on behalf of your executive who granted the permission. You can also apply these categories to the Mail and Calendar events of the executive.
+
+### View and create categories for an executive:
+
+1. Go to Outlook **Settings**.
+2. Select **Accounts** > **Categories**.
+3. Select the executive's account from the drop-down list to view their categories.
+4. From here you can **Create new** categories.
+
+### Apply categories to Calendar meetings and events:
+
+1. In Outlook, go to **Calendar**.
+2. Expand the section called **People’s calendars**  and select your executive's calendar.
+3. Select and hold (or right-click) one of their meetings or events, and then select **Categorize**
+4. To add an existing category, select it from the list, or choose **New category**. Enter a name for the new category and choose a color.
+5. Select **Save**.
+
+**Notes:**
+
+* You can only create categories on behalf of someone else at this time. The ability to edit, favorite or delete existing categories on behalf of someone else is not yet supported.
+* Additionally, it may take up to 30 minutes for the new category to be reflected in the other person's calendar.
+
+[Back to top](#bkmk_top)
+
+[Follow](https://www.microsoft.com/en-us/microsoft-365/roadmap?filters=&searchterms=423047)
+
+### Here are some calendar tips and mail tips to help executive assistants and delegates better navigate their time management needs in new Outlook.​​​​​​​
+
+## Calendar tips
+
+**Find time and request in-person event**
+
+When scheduling a meeting, click on **Find a time** to easily find suitable time slots on the attendee's calendars. You can view availability by hovering on the attendee icon.
+
+You can also request in-person attendance by turning on the **In-person event** toggle on. You can still add a Teams meeting link for attendees who may not be able to join in person.
+
+[Schedule in-person events in Outlook](/en-us/office/schedule-in-person-events-in-outlook-956ae899-096e-419d-b812-a515d0710611)
+
+![screenshot shows find a time option when scheduling a meeting in new Outlook](/images/en-us/4c124b52-03d5-4368-b8bb-260062d77b7a)
+
+![Screenshot shows In-person event toggle on in new Outlook](/images/en-us/3183105b-462f-4d43-bf81-3ec872565b62)
+
+**Use Scheduling Assistant**
+
+Use the scheduling assistant to easily find time for meetings. In new Outlook, you can view the attendee time zones and schedule labels in the Scheduling Assistant.  
+Note that attendee time zones are shown only if at least one attendee is in a different time zone.
+
+[Use the Scheduling Assistant to help schedule your meetings](/en-us/office/use-the-scheduling-assistant-and-room-finder-for-meetings-in-outlook-2e00ac07-cef1-47c8-9b99-77372434d3fa)
+
+![Screenshot shows scheduling assistant in new Outlook to find time for meetings](/images/en-us/93f0cfe6-5592-4afc-bc47-77c90e55bd68)
+
+**Automatic online meetings**
+
+In new Outlook, all meetings are online by default. The Teams meeting toggle is turned on when you add attendees to a meeting. Unlike classic Outlook, the Teams meeting link and details are added after the invite is sent. You can then view the meeting invite to see and copy the Teams meeting details.  
+We are working to update this behavior and pre-create meeting links so you will see the experience match classic Outlook in the future.
+
+**Note:**You can update every meeting online setting from **Settings***>*** Calendar **>** Events** and invitations and enable or disable **Add online meeting to all meetings**.
+
+If you are using 3rd party online meeting providers like Zoom or Cisco WebEx, you will also see those as meeting provider options in this setting, provided you have their web add-in installed.
+
+[Make every meeting online](/en-us/office/make-every-meeting-online-70f9bda0-fd29-498b-9757-6709cc1c73f0)
+
+![Screenshot showing the Teams meeting toggle is turned on when you add attendees to a meeting](/images/en-us/e5c7cc3b-5d3f-453a-9cac-2130eb7ec4b4)
+
+![screenshot shows enable or disable add online meeting to all meetings](/images/en-us/12757bea-17f2-41c8-93ca-e6497a25b5a4)
+
+![Screenshot shows meeting provider options for 3rd party online meeting providers](/images/en-us/3cd0cca6-2ada-4198-9f72-f2443784dbf5)
+
+**Hide attendee list**
+
+You can now choose to hide the attendee list from being visible to users who receive the meeting invite. When creating a new meeting, select **Response options** and click on **Hide attendee list**
+
+![Screenshot showing hide attendee list](/images/en-us/11c98a08-e551-4f52-8e9d-2721b0e04c17)
+
+**Attendees can add rooms**
+
+In new Outlook, attendees can add rooms by forwarding the meeting invite to the relevant rooms. The meeting room will then be visible to all attendees.
+
+![Screenshot showing attendees can add rooms in new Outlook](/images/en-us/1b51f8d7-261c-4af9-aa73-7e7262ab7cbd)
+
+**Edit events in a series**
+
+New Outlook for Windows offers the following options for editing a meeting series:
+
+1. This event: Updates only the selected instance of the meeting series.
+2. This and all following events: Updates the selected instance and all future occurrences in the series, leaving past instances unchanged. (This option is not available in classic Outlook for Windows.)
+3. All events in the series: Updates every instance in the meeting series.
+
+   [Change an appointment, meeting, or event in Outlook](/en-us/office/change-an-appointment-meeting-or-event-in-outlook-29b44f7a-8938-4b99-b98d-3efcf45f7613)
+
+![Screenshot showing edit events in series](/images/en-us/3f1cdc3a-b9d1-4875-83bf-3ef5d7c8940c)
+
+**Duplicate a meeting**
+
+Right click on an event in the calendar surface and select **Duplicate event** to duplicate it.
+
+![Screenshot showing duplicate event in calendar in new Outlook](/images/en-us/259d63de-d0d4-495a-92ab-9261e833ab82)
+
+**Add multiple Time Zones in calendar**
+
+Easily manage meetings across different time zones in New Outlook. New Outlook allows you to add up to 20 time zones in the calendar, whereas classic Outlook allows adding only 3 time zones.
+
+[Manage time zone settings in Outlook](/en-us/office/manage-time-zone-settings-in-outlook-65239869-12e7-4a9d-bca1-76b0ad7ce273)
+
+![Screenshot showing adding multiple time zone in calendar](/images/en-us/821c5981-6c37-4a71-a33a-ac16d74d54c5)
+
+**Use executive's categories in calendar**
+
+Select and hold (or right-click) an event in the calendar view and select **Categorize** to apply an executive's categories. We plan to allow executive admins to edit, favorite, and delete executive's categories in the future.
+
+[Use calendar categories and reminders in Outlook](/en-us/office/use-calendar-categories-and-reminders-in-outlook-59230c47-6fe9-46bd-8646-e1118e9eb973)
+
+![Screenshots showing executive categories in calendar space in new Outlook](/images/en-us/78dede9e-f75a-43e5-b7c4-0d77a821baed)
+
+**Receive shared calendar notifications**
+
+In new Outlook, users can opt to receive notifications on changes to events in the shared calendar. This capability is extended to both the executive principal and delegates.
+
+You can select the calendars you want to opt in for notifications from **Settings**>** Calendar > Shared Calendars> Calendar updates**.
+
+[Receive notifications from a shared calendar in Outlook](/en-us/office/receive-notifications-from-a-shared-calendar-in-outlook-f6a318d6-9d76-4c9f-b8c0-9c6f94066eb0)
+
+![Screenshot showing users to opt calendar notifications](/images/en-us/a2a267e4-b6e1-4a34-83bd-5416e70dc9ab)
+
+**Don't send response RSVP tracked**
+
+In classic Outlook, if the user chooses **Do not send response** while RSVPing, the organizer will not be able to track that individual RSVP.
+
+However, in new Outlook, if the user unchecks **Email organizer** while RSVPing, even though there will not be a visible response email sent to the organizer, the organizer will still be able track that RSVP as long as the organizer and the RSVPing attendee are in the same M365 tenant (or organization).  
+  
+We plan to support RSVP tracking across different tenants in the future.
+
+![Screenshot shows don't send response RSVP tracked in new outlook](/images/en-us/1ce1ab6f-14d1-4b32-97c7-11b06725141a)
+
+**Preserve declined meetings on the calendar and RSVP'd meetings in inbox**
+
+Preserve declined meetings on the calendar so that you can still be aware of it and update RSVP later if needed. This can be enabled by selecting **Settings** > **Calendar** > **Events and invitations**  and clicking the **Save declined events** checkbox.
+
+Meetings that have been RSVP'd to, can also be retained in the inbox so that you can easily find them later. This can be done from **Settings** > **Calendar** > **Events and invitations** > **Invitations** from other people and selecting the **Delete invitations from inbox after responding**.  
+These settings will have to be enabled on the executive's mailbox for them to be respected in the delegate calendar and inbox folder respectively.
+
+[Show a declined meeting on my calendar](/en-us/office/show-a-declined-meeting-on-my-calendar-in-outlook-24e81b9b-3906-4c02-8b63-f97b02161763)
+
+![Screenshot showing preserve declined meetings on the calendar](/images/en-us/b28e71b7-c32a-4a7a-84f6-c13c892c0556)
+
+**Follow a meeting you can't attend**
+
+The new RSVP option allows you to let the organizer know you can't attend but want to be kept informed. You will continue to have access to the meeting chat and any recording and meeting notes if they are available. his is a great way to stay informed about discussions that you or your executives are unable to join.
+
+[Follow a meeting in Outlook](/en-us/office/follow-a-meeting-in-outlook-4dd196ec-b4ae-4fca-9577-cb9c297723be)
+
+![Screenshot of follow a meeting you can't attend](/images/en-us/9c823203-2beb-4498-b966-bfad7db23ca5)​​​​​​​
+
+**RSVP in-person or virtually**
+
+When you want to know how many people will attend an event in person or virtually, create an in-person event by turning on the **In-Person event** toggle next to the location field. Although you are marking the event as "in-person," you can also add a Teams meeting for those who are not able to make it into the office and still want to participate.
+
+Recipients will now see the RSVP options for **Yes, in-person**, **Yes, virtually** and **Yes** with no attendance information.
+
+![Turn the In-person event toggle on to display to recipients the meeting is happening in person.](/images/en-us/894d3284-89ca-466a-bbc0-6ac73052e85a)​​​​​​​
+
+**Send update to added/removed attendees**
+
+You can now send meeting updates **only to the added/removed attendees** instead of everyone on the recipients list.
+
+[Change an appointment, meeting, or event in Outlook](/en-us/office/change-an-appointment-meeting-or-event-in-outlook-29b44f7a-8938-4b99-b98d-3efcf45f7613)
+
+![Screenshot shows send update to added removed attendees](/images/en-us/6bd41930-7eba-43fc-a4f7-8bad7c6efe08)​​​​​​​
+
+**Drag and drop emails and attachments**
+
+New Outlook supports dragging and dropping mail and attachments into the meeting form to keep your workflows efficient.
+
+![Screenshot showing drag and drop emails and attachments in calendar space](/images/en-us/4218b866-58f2-478d-b61e-6756a932addc)
+
+**Copy and export meeting attendees**
+
+The new Outlook now introduces enhanced attendee management features, including:
+
+* Copy: Easily copy and paste attendee information directly from the interface
+* Sort: Alphabetically sort the attendee list by display name (coming soon)
+* Search: Quickly find attendees with just a few keystrokes (coming soon)
+* Download: Export attendee tracking details into a .csv file for external use (coming soon)
+
+![Screenshot of copy and export meeting attendees](/images/en-us/e8a67ea1-a709-49d5-9d12-322463fb84b8)
+
+## Mail tips
+
+**Mail filters and rules for executive admins**
+
+In the new Outlook, executive admins can use the **has calendar invites** email filter to easily find meeting invites.
+
+You can also set up an **Email received for others** rule for your executive's account and automatically move it to a separate folder and categorize it as you like.
+
+[Manage email messages by using rules in Outlook](/en-us/office/manage-email-messages-by-using-rules-in-outlook-c24f5dea-9465-4df4-ad17-a50704d66c59)
+
+![Screenshot shows executive admins can use the ‘has calendar invites’ email filter](/images/en-us/99e56a3b-052e-42f3-ba23-05ebf1870349)
+
+![Screenshot showing set up an ‘Email received for others’ rule for executive’s account](/images/en-us/f4ed96aa-b23d-42df-8231-c0aa411066a0)
+
+**Drag and drop emails to create tasks**
+
+Effortlessly stay on top of things by dragging emails to My Day to turn them into tasks.
+
+[Manage email messages by using rules in Outlook](/en-us/office/manage-email-messages-by-using-rules-in-outlook-c24f5dea-9465-4df4-ad17-a50704d66c59)
+
+![Screenshot shows drag and drop emails to create tasks](/images/en-us/73bccc18-489f-4d6b-b055-b78329a1f200)
+
+**Pin emails for quick access**
+
+You can now pin an email to appear at the top of your inbox, saving you time from having to go back and search for it. Hover or right-click on the email and select **Pin** to pin it.
+
+![Screenshot showing pin emails for quick access](/images/en-us/116a60cc-6391-422a-927d-a3d7fc5c3de8)
+
+**Schedule when to send email**
+
+In today's hybrid work world, your day might be someone else's night, so you don't want to send an email to someone in the middle of the night. With the new Outlook, it's simple to send an email when you want to. Just select the dropdown arrow next to **Send** and choose **Schedule send**.
+
+[Delay or schedule sending email messages in Outlook](/en-us/office/delay-or-schedule-sending-email-messages-in-outlook-026af69f-c287-490a-a72f-6c65793744ba)
+
+![Screenshot showing scheduling when to send email](/images/en-us/c2bdecb9-a180-468e-b8ea-bd73155d09f6)
+
+**Snooze email**
+
+With the snooze feature, you can schedule a time for the email to be re-delivered to your inbox, appearing at the time you want it to, so you can handle it when it's the right time for you. Just right-click any message and choose Snooze, or select **Snooze** from the ribbon. Then choose the time you want it to be delivered.
+
+![Screenshot showing snoozing email in ribbon in Outlook](/images/en-us/9a138a7b-3871-4205-8bfc-1d819f3868aa)
+
+**Undo send time**
+
+New Outlook offers the option to undo send. After you send a mail, you can see the undo option for up to 10 seconds. You can navigate to **Settings**  >  **Mail** >  **Compose and Reply** > **Undo send**, to manage this setting.
+
+![Screenshot showing undo send time](/images/en-us/8e96738b-249f-4d5a-ae53-ed0ffac8ebea)
+
+**Set up Out of Office**
+
+You can set up Automatic Replies for when you are out of office. You can also block your calendar and automatically decline new meetings from this experience. To set up automatic replies, navigate to **Settings** > **Accounts** > **Automatic replies**.
+
+[Set up auto-reply (out of office)](/en-us/office/set-up-auto-reply-out-of-office-cc0e480f-973e-4412-a27b-8a52108d6d51)
+
+![Screenshot shows setting up out of office](/images/en-us/55a2d2c2-0dbc-44f7-9bca-d8f78baab5d8)
+
+**Use Mail Merge**
+
+New Outlook supports the basic Mail Merge capability. From a **New mail**, select the **Send** drop down and select **Start mail merge**. Every recipient will receive their own copy of the email without other recipients listed.
+
+Advanced mail merge is coming soon and will allow variable fields in the email which can be populated with values defined in the list. [Follow this roadmap item for more details.](https://www.microsoft.com/en-us/microsoft-365/roadmap?filters=&searchterms=423047)
+
+![Select Send > Start Mail Merge](/images/en-us/68bf4242-9b3e-453c-8aec-666208a0e7d3)
+
+![Start Mail Merge with recipients. Every recipient will receive their own copy of the email without other recipients listed.](/images/en-us/1b2be151-83a2-4889-9b34-8940ab1a9c78)
+
+### Provide feedback
+
+We're listening! Your feedback can help us improve the product. **​​​​​​​**
+
+**​​​​​​​**You can submit feedback on the new Outlook experience from **Help** > **Feedback**. Please mention – **I am an EA** Or **I am a delegate** when adding comments.
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fnew-outlook-tips-for-executive-admins-and-delegates-20fb5fab-b6e0-4736-bcd8-9b65db3a50d4 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fnew-outlook-tips-for-executive-admins-and-delegates-20fb5fab-b6e0-4736-bcd8-9b65db3a50d4&title=New%20Outlook%20tips%20for%20executive%20admins%20and%20delegates "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20New%20Outlook%20tips%20for%20executive%20admins%20and%20delegates&body=New%20Outlook%20tips%20for%20executive%20admins%20and%20delegates%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fnew-outlook-tips-for-executive-admins-and-delegates-20fb5fab-b6e0-4736-bcd8-9b65db3a50d4 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)

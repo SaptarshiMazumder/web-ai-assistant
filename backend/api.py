@@ -5,6 +5,7 @@ from graph_smart_qa import smart_qa_graph
 from state import SmartHopState, SmartQARequest
 import os, time
 from logging_relay import log, smartqa_log_relay
+from graph_qa import gemini_answer_node, State
 
 # --- Smart Hop QA API ---
 smart_qa_router = APIRouter()
@@ -46,6 +47,26 @@ async def ask_smart(request: SmartQARequest):
         "visited_urls": result["visited_urls"],
         "sufficient": result["sufficient"],
         "confidence": result.get("confidence"),
+        "duration_seconds": duration
+    }
+
+@smart_qa_router.post("/ask-gemini")
+async def ask_gemini(request: SmartQARequest):
+    start_time = time.time()
+    s = State(
+        text=request.text,
+        question=request.question,
+        page_url=request.page_url
+    )
+    s = gemini_answer_node(s)
+    end_time = time.time()
+    duration = round(end_time - start_time, 2)
+    return {
+        "answer": s.answer,
+        "sources": [],
+        "visited_urls": [request.page_url],
+        "sufficient": s.sufficient,
+        "confidence": s.confidence,
         "duration_seconds": duration
     }
 

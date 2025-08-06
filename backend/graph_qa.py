@@ -11,6 +11,8 @@ from logging_relay import log, smartqa_log_relay
 from utils import log_llm_prompt
 from google.generativeai import configure, GenerativeModel
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 load_dotenv()
 
 
@@ -99,6 +101,113 @@ def answer_node(state: State) -> State:
     state.sufficient = sufficient
     state.confidence = confidence
     return state
+
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\gen-lang-client-0545494042-a92b6b867500.json"  # 🔁 your JSON key here
+
+def gemini_answer_node(state):
+    print("🔎 Using Gemini grounded answer node")
+
+    question = state.question
+
+    client = genai.Client(
+        vertexai=True,
+        project="gen-lang-client-0545494042",  # 🔁 Replace with your actual GCP project ID
+        location="us-central1"          # or "europe-west4", "global"
+    )
+
+    model = "gemini-2.5-flash-lite"  # 🔁 use "gemini-1.5-pro-001" or "gemini-2.5-pro" if enabled
+
+    # Create prompt
+    contents = [
+        types.Content(
+            role="user",
+            parts=[types.Part(text=question)]
+        )
+    ]
+
+    tools = [
+        types.Tool(google_search=types.GoogleSearch())
+    ]
+
+    config = types.GenerateContentConfig(
+        temperature=0.3,
+        top_p=0.95,
+        max_output_tokens=2048,
+        safety_settings=[
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_LOW_AND_ABOVE"),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_LOW_AND_ABOVE"),
+        ],
+        tools=tools,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+
+    answer_full = ""
+    # Store the full response for post-processing
+    response = None
+
+    for chunk in client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=config,
+    ):
+        response = chunk  # Save the final full chunk to get grounding info
+        if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
+            continue
+        answer_full += chunk.text or ""
+    print("\n\n====================== ANSWER ======================")
+    print(answer_full)
+    print("====================================================")
+    # === Parse answer for confidence and sufficiency ===
+    confidence_match = re.search(r'CONFIDENCE: (\d+)%', answer_full)
+    confidence = int(confidence_match.group(1)) if confidence_match else None
+
+    if "\nSUFFICIENT: YES" in answer_full:
+        answer = answer_full.split("\nSUFFICIENT: YES")[0].strip()
+        sufficient = True
+    elif "\nSUFFICIENT: NO" in answer_full:
+        answer = answer_full.split("\nSUFFICIENT: NO")[0].strip()
+        sufficient = False
+    else:
+        answer = answer_full
+        sufficient = False
+
+    try:
+        grounding_metadata = response.candidates[0].grounding_metadata
+
+        if grounding_metadata and grounding_metadata.grounding_chunks:
+            answer += "\n\n🔗 Sources:\n"
+            for i, chunk in enumerate(grounding_metadata.grounding_chunks, 1):
+                context = chunk.web or chunk.retrieved_context
+                if not context or not context.uri:
+                    continue
+
+                uri = context.uri
+                title = context.title or "Source"
+                snippet = getattr(context, "snippet", None)
+
+                # Convert gs:// to real link
+                if uri.startswith("gs://"):
+                    uri = uri.replace("gs://", "https://storage.googleapis.com/", 1).replace(" ", "%20")
+
+                answer += f"{i}. [{title}]({uri})\n"
+                if snippet:
+                    answer += f"    → {snippet.strip()}\n"
+    except Exception as e:
+        print("⚠️ Failed to extract grounding sources:", str(e))
+
+
+
+
+
+    # === Update state ===
+    state.answer = answer
+    state.used_chunks = []
+    state.sufficient = sufficient
+    state.confidence = confidence
+
+    return state
+
 
 # LangGraph setup — just one node now!
 qa_builder = StateGraph(State)

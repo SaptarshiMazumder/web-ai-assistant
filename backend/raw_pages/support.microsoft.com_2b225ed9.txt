@@ -1,0 +1,90 @@
+Applies To
+
+Outlook on the web New Outlook for Windows
+
+New Outlook and Outlook on the web can help you with scheduling in-person events. Organizers can request invitees to attend the meeting in-person, and attendees can respond confirming if they will be able to participate in person or if they can only attend virtually.
+
+## Request in-person attendance
+
+When organizing a meeting in new Outlook and Outlook on the web, you can request invitees to attend the event in person:
+
+1. Create or open the meeting that you want to set as in-person.
+2. Next to the location field, select the **In-person event** toggle.
+
+You can mark appointments as in-person too.
+
+## Time suggestions for in-person events
+
+When you mark an event as in-person in new Outlook and Outlook on the web, the suggested times for the event might change based now not only on the attendees' time availability, but now also on their location availability. Time slots in which attendees are planning to be in the office will be suggested first.
+
+![The image shows the create event form for a meeting the organizer is trying to schedule. The organizer has selected the in-person toggle. Thus, in the Suggested Times section, one can see three different suggested time cards, out of which the first two are time slots in which everyone can attend the meeting in-person.](/images/en-us/5bf5ce3c-a9f2-4826-af10-fd4b4abcb476)
+
+## Identifying an in-person event
+
+If you receive a meeting invite that is marked as in-person, you will see visual cues on both the email invite and the calendar event to help inform that the meeting organizer has requested attendees to participate in person.
+
+The email invite and the calendar event will both have an [in-person] suffix appended to the title. The mail invite will also include an **in-person** label in its contents.
+
+![scheduling in person events screenshot one.jpg](/images/en-us/ab66f420-05ed-4fd5-968c-cab6348ca017)
+
+Additionally, the calendar event will also contain a unique icon to help identify in-person events.
+
+![scheduling in person events screenshot two.jpg](/images/en-us/2c68135c-e5b3-4b5e-b73f-b1aef669db20)
+
+## Responding to an in-person event
+
+When responding to an in-person request in new Outlook and Outlook on the web, instead of just one "Yes" option, you will now see three. Choose **Yes, in person** if you plan to attend the meeting in-person as requested by the organizer. Choose **Yes, virtually** if you would like to attend, but cannot make it in-person. Or select **Yes** - with no attendance mode information - in case you prefer to confirm participation, but not disclosing your attendance mode.
+
+![Image shows the hybrid RSVP menu button for Yes with its dropdown expanded, where one can see three different options: "Yes, in person", "Yes, virtually" and "Yes".](/images/en-us/d4f7ed15-0e36-4747-a033-fdd6d5744ed3)
+
+## Tracking in-person responses
+
+As attendees respond to an in-person request, you can track their responses in the tracking pane, which displays each person's attendance mode along with their response.
+
+![Image shows a meeting's tracking pane where one can see all the responses for each invitee along with the new extra information about if each attendee will participate "in person" or "virtually".](/images/en-us/2820ab5e-8316-4347-8f72-02fa37c176c9)
+
+[![Facebook](/images/Facebook-GrayScale.png)](https://www.facebook.com/sharer.php?u=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-in-person-events-in-outlook-956ae899-096e-419d-b812-a515d0710611 "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)](https://linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-in-person-events-in-outlook-956ae899-096e-419d-b812-a515d0710611&title=Schedule%20in-person%20events%20in%20Outlook "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Schedule%20in-person%20events%20in%20Outlook&body=Schedule%20in-person%20events%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fschedule-in-person-events-in-outlook-956ae899-096e-419d-b812-a515d0710611 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 subscription benefits](https://www.microsoft.com/microsoft-365?ocid=cmmg4dr5b7t)
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+[Ask the Microsoft Community](https://learn.microsoft.com/answers/)
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+[Microsoft Tech Community](https://techcommunity.microsoft.com/)
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+[Windows Insiders](https://insider.windows.com)
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+[Microsoft 365 Insiders](https://insider.office.com)
