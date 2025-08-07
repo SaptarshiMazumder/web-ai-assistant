@@ -17,7 +17,8 @@ from playwright.sync_api import sync_playwright
 
 from langchain_openai import ChatOpenAI
 
-from page_qa import answer_node, State
+from state import State
+from page_qa import answer_node
 
 from utils import extract_json_from_text
 

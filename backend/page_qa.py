@@ -7,22 +7,11 @@ from google.generativeai import configure, GenerativeModel
 from google import genai
 from google.genai import types
 from config import config
+from state import State
 
 configure(api_key=config.GOOGLE_API_KEY)
 openai_api_key = config.OPENAI_API_KEY
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.GOOGLE_APPLICATION_CREDENTIALS
-
-class State(BaseModel):
-    text: str
-    question: str
-    enhanced_query: str = ""
-    docs: List[Any] = []
-    retrieved_docs: List[Any] = []
-    answer: str = ""
-    used_chunks: List[Dict[str, Any]] = []
-    page_url: str = ""
-    sufficient: bool = False
-    confidence: Optional[int] = None
 
 def clean_markdown(md: str) -> str:
     md = re.sub(r'\[([^\]]+)\]\((http[s]?://[^\)]+)\)', r'\1', md)
@@ -30,7 +19,7 @@ def clean_markdown(md: str) -> str:
     md = re.sub(r'\n{3,}', '\n\n', md)
     return md.strip()
 
-def answer_node(state: State) -> State:
+def answer_node(state: BaseModel) -> BaseModel:
     page_text = state.text
     question = state.question
     page_url = getattr(state, "page_url", "")

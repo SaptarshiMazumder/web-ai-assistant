@@ -19,3 +19,15 @@ class SmartHopState(BaseModel):
     visited_urls: List[str] = []
     hops: int = 0
     original_domain: str = ""
+
+class State(BaseModel):
+    text: str
+    question: str
+    enhanced_query: str = ""
+    docs: List[Any] = []
+    retrieved_docs: List[Any] = []
+    answer: str = ""
+    used_chunks: List[Dict[str, Any]] = []
+    page_url: str = ""
+    sufficient: bool = False
+    confidence: Optional[int] = None

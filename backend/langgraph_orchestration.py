@@ -1,5 +1,6 @@
 from langgraph.graph import StateGraph, END
-from page_qa import State, answer_node
+from state import State
+from page_qa import answer_node
 
 # LangGraph setup — just one node now!
 qa_builder = StateGraph(State)

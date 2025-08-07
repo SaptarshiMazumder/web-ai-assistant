@@ -1,8 +1,9 @@
-from graph_smart_qa import smart_qa_graph
+from multi_hop_orchestrator import smart_qa_graph
 from state import SmartHopState, SmartQARequest
 import time
 from logging_relay import log
-from page_qa import gemini_answer_node, State
+from state import State
+from page_qa import gemini_answer_node
 from config import config
 
 async def ask_smart_use_case(request: SmartQARequest):

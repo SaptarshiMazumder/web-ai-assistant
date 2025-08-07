@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 
 from langchain_openai import ChatOpenAI
 
-from page_qa import answer_node, State
+from state import State
+from page_qa import answer_node
 from state import SmartHopState
 from smart_parallel import (
     llm_select_relevant_links,
@@ -65,22 +66,6 @@ async def _run_page_qa_once(
         sufficient=s.sufficient
     )
 
-
-# async def _is_sufficient(question: str, answer: str) -> bool:
-#     prompt = (
-#         f"Question: {question}\n"
-#         f"Answer given: {answer}\n\n"
-#         "Based on the answer, is the user's question fully answered with clear and specific information? "
-#         "Reply with only 'YES' or 'NO'"
-#     )
-#     llm = ChatOpenAI(api_key=openai_api_key, 
-#                     #  model="gpt-3.5-turbo", 
-#                      model="gpt-4o", 
-#                      temperature=0)
-#     result = llm.invoke([{"role": "user", "content": prompt}])
-#     out = (result.content or "").strip().lower()
-#     print(f"⚡ [SUFFICIENCY] {out}")
-#     return "yes" in out
 
 def _same_domain(url: str, original_domain: str) -> bool:
     
