@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from langchain_openai import ChatOpenAI
 
-from graph_qa import answer_node, State
+from page_qa import answer_node, State
 from state import SmartHopState
 from smart_parallel import (
     llm_select_relevant_links,

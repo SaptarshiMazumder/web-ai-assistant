@@ -1,1 +1,0 @@
-# Core QA business logic
