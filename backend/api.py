@@ -6,18 +6,18 @@ import time
 from logging_relay import log, smartqa_log_relay
 from config import config
 import os
-from use_cases.qa_usecase import ask_smart_service, ask_gemini_service
+from use_cases.qa_usecase import ask_smart_use_case, ask_gemini_use_case
 
 # --- Smart Hop QA API ---
 smart_qa_router = APIRouter()
 
 @smart_qa_router.post("/ask-smart")
 async def ask_smart(request: SmartQARequest):
-    return await ask_smart_service(request)
+    return await ask_smart_use_case(request)
 
 @smart_qa_router.post("/ask-gemini")
 async def ask_gemini(request: SmartQARequest):
-    return await ask_gemini_service(request)
+    return await ask_gemini_use_case(request)
 
 # --- Chroma debug API ---
 class PageData(BaseModel):

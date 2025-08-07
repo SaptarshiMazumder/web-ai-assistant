@@ -134,7 +134,7 @@ def gemini_answer_node(state):
         types.Tool(google_search=types.GoogleSearch())
     ]
 
-    config = types.GenerateContentConfig(
+    gen_config = types.GenerateContentConfig(
         temperature=0.3,
         top_p=0.95,
         max_output_tokens=2048,
@@ -153,7 +153,7 @@ def gemini_answer_node(state):
     for chunk in client.models.generate_content_stream(
         model=model,
         contents=contents,
-        config=config,
+        config=gen_config,
     ):
         response = chunk  # Save the final full chunk to get grounding info
         print("Chunk:", chunk)
