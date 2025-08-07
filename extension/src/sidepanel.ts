@@ -158,10 +158,36 @@ btnContainer.appendChild(btnGemini);
 let selectedMode: 'gemini' | 'smart' = 'gemini';
 
 function updateButtonStyles() {
-  btnSmart.style.background = selectedMode === 'smart' ? '#0a5' : '';
-  btnSmart.style.color = selectedMode === 'smart' ? '#fff' : '';
-  btnGemini.style.background = selectedMode === 'gemini' ? '#0af' : '';
-  btnGemini.style.color = selectedMode === 'gemini' ? '#fff' : '';
+  // Reset styles
+  [btnSmart, btnGemini].forEach(btn => {
+    btn.style.background = '#fff';
+    btn.style.color = '#222';
+    btn.style.border = '1px solid #b0b0b0';
+    btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
+    btn.style.borderRadius = '6px';
+    btn.style.transition = 'background 0.15s, color 0.15s';
+    btn.style.cursor = 'pointer';
+    btn.onmouseover = null;
+    btn.onmouseout = null;
+  });
+  // Selected styles
+  if (selectedMode === 'smart') {
+    btnSmart.style.background = '#1976d2';
+    btnSmart.style.color = '#fff';
+    btnSmart.style.border = '1.5px solid #1976d2';
+    btnSmart.onmouseover = null;
+    btnSmart.onmouseout = null;
+    btnGemini.onmouseover = () => btnGemini.style.background = '#f3f3f3';
+    btnGemini.onmouseout = () => btnGemini.style.background = '#fff';
+  } else {
+    btnGemini.style.background = '#1976d2';
+    btnGemini.style.color = '#fff';
+    btnGemini.style.border = '1.5px solid #1976d2';
+    btnGemini.onmouseover = null;
+    btnGemini.onmouseout = null;
+    btnSmart.onmouseover = () => btnSmart.style.background = '#f3f3f3';
+    btnSmart.onmouseout = () => btnSmart.style.background = '#fff';
+  }
 }
 
 btnSmart.onclick = () => {

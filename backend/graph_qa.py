@@ -103,20 +103,24 @@ def answer_node(state: State) -> State:
     return state
 
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\gen-lang-client-0545494042-a92b6b867500.json"  # 🔁 your JSON key here
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\gen-lang-client-0545494042-a92b6b867500.json"  # 🔁 your JSON key here
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\tour-proj-451201-f03b91fdf3d7.json"
 
 def gemini_answer_node(state):
     print("🔎 Using Gemini grounded answer node")
+    PROJECT_ID = "gen-lang-client-0545494042"
+    PROJECT_ID = "tour-proj-451201"
 
     question = state.question
 
+    
     client = genai.Client(
         vertexai=True,
-        project="gen-lang-client-0545494042",  # 🔁 Replace with your actual GCP project ID
+        project=PROJECT_ID,  # 🔁 Replace with your actual GCP project ID
         location="us-central1"          # or "europe-west4", "global"
     )
 
-    model = "gemini-2.5-flash-lite"  # 🔁 use "gemini-1.5-pro-001" or "gemini-2.5-pro" if enabled
+    model = "gemini-2.0-flash-001"  # 🔁 use "gemini-1.5-pro-001" or "gemini-2.5-pro" if enabled
 
     # Create prompt
     contents = [
@@ -139,19 +143,20 @@ def gemini_answer_node(state):
             types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_LOW_AND_ABOVE"),
         ],
         tools=tools,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
+        # thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
 
     answer_full = ""
     # Store the full response for post-processing
     response = None
-
+    
     for chunk in client.models.generate_content_stream(
         model=model,
         contents=contents,
         config=config,
     ):
         response = chunk  # Save the final full chunk to get grounding info
+        print("Chunk:", chunk)
         if not chunk.candidates or not chunk.candidates[0].content or not chunk.candidates[0].content.parts:
             continue
         answer_full += chunk.text or ""
