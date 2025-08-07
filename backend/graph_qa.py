@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma
 from langgraph.graph import StateGraph, END
 from urllib.parse import urlparse
 from logging_relay import log, smartqa_log_relay

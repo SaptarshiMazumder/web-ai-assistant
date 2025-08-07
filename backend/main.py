@@ -1,4 +1,4 @@
-import os
+import os, signal
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -7,10 +7,17 @@ from logging_relay import smartqa_log_relay
 from api import smart_qa_router, chroma_router
 
 load_dotenv()
+
 import sys
 import asyncio
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+def force_exit(*args, **kwargs):
+    print("Force exiting due to Ctrl+C")
+    os._exit(0)
+
+signal.signal(signal.SIGINT, force_exit)
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 if not openai_api_key:

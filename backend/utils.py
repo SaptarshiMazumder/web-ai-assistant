@@ -33,3 +33,43 @@ def log_llm_prompt(prompt: str):
         f.write("="*40 + "\n")
         f.write(prompt)
         f.write("\n" + "-"*40 + "\n\n")
+
+
+from vertexai import rag
+from vertexai.generative_models import GenerativeModel, Tool
+
+from google.cloud import aiplatform
+from vertexai.preview import rag
+
+aiplatform.init(project="YOUR_PROJECT_ID", location="us-central1")
+
+def get_or_create_rag_corpus():
+    embedding_config = rag.RagEmbeddingModelConfig(
+        vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
+            publisher_model="projects/google/models/text-embedding-005"
+        )
+    )
+
+    return rag.create_corpus(
+        display_name="web-ai-dynamic-corpus",
+        backend_config=rag.RagVectorDbConfig(rag_embedding_model_config=embedding_config)
+    )
+
+def generate_rag_answer_from_vertex_ai(question: str) -> str:
+    rag_corpus = get_or_create_rag_corpus()
+
+    retrieval_tool = Tool.from_retrieval(
+        retrieval=rag.Retrieval(
+            source=rag.VertexRagStore(
+                rag_resources=[rag.RagResource(rag_corpus=rag_corpus.name)]
+            )
+        )
+    )
+
+    model = GenerativeModel(
+        model_name="gemini-2.0-flash-001",
+        tools=[retrieval_tool]
+    )
+
+    response = model.generate_content(question)
+    return response.text

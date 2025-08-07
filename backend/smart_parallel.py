@@ -18,7 +18,17 @@ from playwright.sync_api import sync_playwright
 from langchain_openai import ChatOpenAI
 
 from graph_qa import answer_node, State
+
 from utils import extract_json_from_text
+
+from vertexai import  rag
+from google.cloud import aiplatform
+from vertexai.preview import rag
+
+from vertexai.generative_models import GenerativeModel, Tool
+from utils import generate_rag_answer_from_vertex_ai
+
+aiplatform.init(project="tour-proj-451201", location="us-central1")
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
@@ -107,7 +117,8 @@ async def llm_select_relevant_links_parallel(
             "\n\nWhich of these links are most likely to contain the answer or helpful information? "
             "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
             "Only select links that you are 90% confident to contain an answer, or links to lead to the answer."
-            "If you are not at least 90% confident that a link contains the answer, do not include it."
+            "If you are not at least "
+            " confident that a link contains the answer, do not include it."
             "Do not include links that are not relevant to the question, or that you are not confident about.\n"
             "Reply with a JSON array of up to 0-5 objects (max 5, min 0) with 'text' and 'href'."
 
@@ -284,7 +295,16 @@ async def run_page_qa(
     page_url: str
 ) -> PageQAResult:
     s = State(text=text, question=question, page_url=page_url)
-    s = answer_node(s)
+    USE_VERTEX_RAG = False  # Toggle RAG mode
+
+    if USE_VERTEX_RAG:
+        print("🧠 Using Vertex AI RAG for answer generation")
+        s.answer = generate_rag_answer_from_vertex_ai(s.question)
+        s.sufficient = True
+        s.confidence = 100  # Static for now, update later if needed
+    else:
+        s = answer_node(s)
+
     return PageQAResult(
         url=page_url,
         text=text,
@@ -372,3 +392,38 @@ async def scrape_and_qa_many(
                     return [result]  # Early return, as soon as sufficient found
     # If none sufficient, return all results
     return results
+
+# vertex ai rag setup
+
+# --- Create corpus once ---
+embedding_config = rag.RagEmbeddingModelConfig(
+    vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
+        publisher_model="projects/google/models/text-embedding-005"
+    )
+)
+from utils import get_or_create_rag_corpus
+rag_corpus = get_or_create_rag_corpus()
+
+def ingest_content_to_vertex_ai(text: str, url: str):
+    """Store content in GCS and import into Vertex AI corpus"""
+    from google.cloud import storage
+    import uuid
+
+    # Upload to GCS
+    bucket_name = "web-ai-dynamic-corpus-bucket"
+    file_name = f"scraped_pages/{uuid.uuid4()}.txt"
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(file_name)
+    blob.upload_from_string(text)
+
+    # Import into RAG
+    gcs_path = f"gs://{bucket_name}/{file_name}"
+    rag.import_files(
+        rag_corpus.name,
+        paths=[gcs_path],
+        transformation_config=rag.TransformationConfig(
+            chunking_config=rag.ChunkingConfig(chunk_size=512, chunk_overlap=50)
+        )
+    )
+    return gcs_path

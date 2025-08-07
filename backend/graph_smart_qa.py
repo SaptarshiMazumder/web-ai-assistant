@@ -17,6 +17,14 @@ from utils import extract_json_from_text
 import sys, json as _json
 from logging_relay import log, smartqa_log_relay
 
+from vertexai import  rag
+from google.cloud import aiplatform
+from vertexai.preview import rag
+
+from vertexai.generative_models import GenerativeModel, Tool
+from utils import generate_rag_answer_from_vertex_ai
+
+
 if sys.platform.startswith("win"):
     import asyncio
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -34,13 +42,20 @@ DEFAULT_K_LINKS = 5
 DEFAULT_MAX_CONCURRENCY = 5
 DEFAULT_TOTAL_PAGE_BUDGET = 25  # safety
 
+USE_VERTEX_RAG = False  # Toggle to switch between old and new
+
 async def _run_page_qa_once(
     text: str,
     question: str,
     page_url: str | None
 ) -> PageQAResult:
     s = State(text=text, question=question, page_url=page_url or "")
-    s = answer_node(s)
+    if USE_VERTEX_RAG:
+        print("🧠 Using Vertex AI RAG for answer generation")
+        s.answer = generate_rag_answer_from_vertex_ai(s.question)
+        s.sufficient = True  # Or add logic to parse confidence later
+    else:
+        s = answer_node(s)
     return PageQAResult(
         url=page_url or "",
         text=text,
@@ -280,3 +295,6 @@ class _SmartQAGraphCompat:
         return await smart_qa_runner(state)
 
 smart_qa_graph = _SmartQAGraphCompat()
+
+from utils import get_or_create_rag_corpus
+rag_corpus = get_or_create_rag_corpus()
