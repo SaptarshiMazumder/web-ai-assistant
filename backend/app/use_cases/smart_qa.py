@@ -1,6 +1,10 @@
 from app.state import SmartHopState, SmartQARequest
 import time
 from app.domain.qa import smart_qa_graph, gemini_answer_node, State
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+from backend.logging_relay import log, smartqa_log_relay
 
 async def ask_smart_use_case(request: SmartQARequest):
     start_time = time.time()
@@ -17,12 +21,18 @@ async def ask_smart_use_case(request: SmartQARequest):
     )
     end_time = time.time()
     duration = round(end_time - start_time, 2)
+    # Handle both dict and State object
+    answer = getattr(result, 'answer', None) or result.get('answer', '')
+    visited_urls = getattr(result, 'visited_urls', None) or result.get('visited_urls', [])
+    sufficient = getattr(result, 'sufficient', None) or result.get('sufficient', False)
+    confidence = getattr(result, 'confidence', None) or result.get('confidence', None)
+    # Always provide sources as an empty list (unless you add it to State)
     return {
-        "answer": result["answer"],
-        "sources": result["sources"],
-        "visited_urls": result["visited_urls"],
-        "sufficient": result["sufficient"],
-        "confidence": result.get("confidence"),
+        "answer": answer,
+        "sources": [],
+        "visited_urls": visited_urls,
+        "sufficient": sufficient,
+        "confidence": confidence,
         "duration_seconds": duration
     }
 

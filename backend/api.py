@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from state import SmartHopState, SmartQARequest
+from app.state import SmartHopState, SmartQARequest
 import time
 from logging_relay import log, smartqa_log_relay
-from config import config
+from app.config import config
 import os
-from use_cases.qa_usecase import ask_smart_use_case, ask_gemini_use_case
+from app.use_cases.smart_qa import ask_smart_use_case, ask_gemini_use_case
 
 # --- Smart Hop QA API ---
 smart_qa_router = APIRouter()

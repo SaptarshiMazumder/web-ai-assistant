@@ -1,1 +1,1 @@
-# Chroma DB infrastructure code
+# Placeholder for Chroma DB infrastructure code
