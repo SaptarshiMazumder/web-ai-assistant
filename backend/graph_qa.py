@@ -10,14 +10,14 @@ from urllib.parse import urlparse
 from logging_relay import log, smartqa_log_relay
 from utils import log_llm_prompt
 from google.generativeai import configure, GenerativeModel
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-load_dotenv()
+from config import config
 
+configure(api_key=config.GOOGLE_API_KEY)
+openai_api_key = config.OPENAI_API_KEY
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.GOOGLE_APPLICATION_CREDENTIALS
 
-configure(api_key=os.environ.get("GOOGLE_API_KEY"))
-openai_api_key = os.environ.get("OPENAI_API_KEY")
 
 class State(BaseModel):
     text: str
@@ -104,20 +104,20 @@ def answer_node(state: State) -> State:
 
 
 # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\gen-lang-client-0545494042-a92b6b867500.json"  # 🔁 your JSON key here
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\tour-proj-451201-f03b91fdf3d7.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"C:\Users\googler\Downloads\tour-proj-451201-f03b91fdf3d7.json"
 
 def gemini_answer_node(state):
     print("🔎 Using Gemini grounded answer node")
-    PROJECT_ID = "gen-lang-client-0545494042"
-    PROJECT_ID = "tour-proj-451201"
+    PROJECT_ID = config.PROJECT_ID
+    LOCATION = config.LOCATION
 
     question = state.question
 
     
     client = genai.Client(
         vertexai=True,
-        project=PROJECT_ID,  # 🔁 Replace with your actual GCP project ID
-        location="us-central1"          # or "europe-west4", "global"
+        project=PROJECT_ID,
+        location=LOCATION
     )
 
     model = "gemini-2.0-flash-001"  # 🔁 use "gemini-1.5-pro-001" or "gemini-2.5-pro" if enabled

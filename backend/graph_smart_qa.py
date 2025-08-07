@@ -23,13 +23,14 @@ from vertexai.preview import rag
 
 from vertexai.generative_models import GenerativeModel, Tool
 from utils import generate_rag_answer_from_vertex_ai
+from config import config
 
 
 if sys.platform.startswith("win"):
     import asyncio
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
-openai_api_key = os.environ.get("OPENAI_API_KEY")
+openai_api_key = config.OPENAI_API_KEY
 
 # --- Log relay (keep for compatibility) ---
 from asyncio import Queue

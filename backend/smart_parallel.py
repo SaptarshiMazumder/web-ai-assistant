@@ -27,10 +27,10 @@ from vertexai.preview import rag
 
 from vertexai.generative_models import GenerativeModel, Tool
 from utils import generate_rag_answer_from_vertex_ai
+from config import config
 
-aiplatform.init(project="tour-proj-451201", location="us-central1")
-
-openai_api_key = os.environ.get("OPENAI_API_KEY")
+aiplatform.init(project=config.PROJECT_ID, location=config.LOCATION)
+openai_api_key = config.OPENAI_API_KEY
 
 class PageQAResult(BaseModel):
     url: str
@@ -43,7 +43,9 @@ class PageQAResult(BaseModel):
 
 import datetime
 
-def save_llm_prompt(prompt: str, filename: str = "llm-prompt.txt"):
+def save_llm_prompt(prompt: str, filename: str = None):
+    if filename is None:
+        filename = config.PROMPT_LOG_PATH
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(filename, "a", encoding="utf-8") as f:
         f.write("\n" + "="*40 + "\n")
@@ -410,7 +412,7 @@ def ingest_content_to_vertex_ai(text: str, url: str):
     import uuid
 
     # Upload to GCS
-    bucket_name = "web-ai-dynamic-corpus-bucket"
+    bucket_name = config.GCS_BUCKET
     file_name = f"scraped_pages/{uuid.uuid4()}.txt"
     client = storage.Client()
     bucket = client.bucket(bucket_name)

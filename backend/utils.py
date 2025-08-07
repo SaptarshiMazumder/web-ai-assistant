@@ -1,4 +1,5 @@
 import re, datetime
+from config import config
 
 def extract_json_from_text(text):
     code_block = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
@@ -22,11 +23,9 @@ def clean_markdown(md: str) -> str:
 
 
 
-PROMPT_LOG_PATH = "llm_prompt_log.txt"
-
 def log_llm_prompt(prompt: str):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(PROMPT_LOG_PATH, "a", encoding="utf-8") as f:
+    with open(config.PROMPT_LOG_PATH, "a", encoding="utf-8") as f:
         f.write("\n")
         f.write("="*40 + "\n")
         f.write(f"[{now}] LLM PROMPT SENT\n")
@@ -41,7 +40,7 @@ from vertexai.generative_models import GenerativeModel, Tool
 from google.cloud import aiplatform
 from vertexai.preview import rag
 
-aiplatform.init(project="YOUR_PROJECT_ID", location="us-central1")
+aiplatform.init(project=config.PROJECT_ID, location=config.LOCATION)
 
 def get_or_create_rag_corpus():
     embedding_config = rag.RagEmbeddingModelConfig(

@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 from graph_smart_qa import smart_qa_graph
 from state import SmartHopState, SmartQARequest
-import os, time
+import time
 from logging_relay import log, smartqa_log_relay
 from graph_qa import gemini_answer_node, State
+from config import config
+import os
 
 # --- Smart Hop QA API ---
 smart_qa_router = APIRouter()
@@ -81,7 +83,7 @@ chroma_router = APIRouter()
 @chroma_router.get("/chroma_exists")
 async def chroma_exists(domain: str = Query(...)):
     print(f"Checking if chroma db exists for domain: {domain}")
-    path = f"backend/chroma_db/{domain}"
+    path = f"{config.CHROMA_DB_DIR}{domain}"
     return {"exists": os.path.exists(path)}
 
 @chroma_router.post("/add_page_data")
