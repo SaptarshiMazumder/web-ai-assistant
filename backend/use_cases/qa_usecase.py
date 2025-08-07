@@ -1,4 +1,4 @@
-from multi_hop_orchestrator import smart_qa_graph
+from multi_hop_orchestrator import multi_hop_qa_orchestrator
 from state import SmartHopState, SmartQARequest
 import time
 from logging_relay import log
@@ -11,7 +11,7 @@ async def ask_smart_use_case(request: SmartQARequest):
     print(f"Received {len(request.links)} links from frontend:")
     for l in request.links:
         print(f"  - {l.get('text', '')[:60]}  {l.get('href')}")
-    result = await smart_qa_graph.ainvoke(
+    result = await multi_hop_qa_orchestrator(
         SmartHopState(
             text=request.text,
             question=request.question,

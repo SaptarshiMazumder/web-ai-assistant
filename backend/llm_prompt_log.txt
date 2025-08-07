@@ -964,3 +964,647 @@ USER QUESTION: chnage calendar color outlook
 (Page URL: https://support.microsoft.com/en-us/office/assign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527)
 ----------------------------------------
 
+
+========================================
+[2025-08-07 17:22:19] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Microsoft
+Support
+Microsoft 365 Office Products DevicesAccount & billingResources Buy Microsoft 365
+All Microsoft
+Search 
+Sign in to your account
+Sign in
+Outlook Calendar
+Overview
+The Outlook Calendar
+Add or delete a new calendar
+Schedule meetings or events
+Manage meetings
+Update, propose, and forward events
+Calendar item settings
+Customize your calendar
+To Do in Outlook
+More to explore
+Introduction to the Outlook Calendar
+Applies To
+We think you'll enjoy trying Microsoft 365
+
+We're giving you a free trial of Outlook.
+
+Click to unlock Outlook
+
+Calendar is the calendar and scheduling component of Outlook that is fully integrated with email, contacts, and other features.
+
+Just as you write in a notebook, you can select any time slot in the Outlook Calendar and start typing. By using the Calendar you can create appointments and events, organize meetings, view group schedules, and much more.
+
+Create appointments and events     
+
+Select any time slot in the Outlook Calendar and start to type to create your appointment or event. You can opt to have a sound or message remind you of appointments, meetings, and events, and you can color items for quick identification.
+
+For more information, see Create or schedule an appointment and Create an event.
+
+Organize meetings    
+
+Select a time on the Calendar, create a meeting request, and select the people to invite. Outlook helps you find the earliest time when all the invitees are free. When you send the meeting request by email, the invitees receive the request in their Inbox. When the invitees open the request, they can accept, tentatively accept, or decline your meeting by selecting a single button. If your request conflicts with an item on the invitees' Calendar, Outlook displays a notification. If you, as the meeting organizer, allow this, invitees can propose an alternative meeting time. As the organizer, you can track who accepts or declines the request or who proposes another time for the meeting by opening the request.
+
+For more information, see Schedule a meeting with other people.
+
+View group schedules    
+
+You can create calendars that show the schedules of a group of people or resources. For example, you can view the schedules of all the people in your department or all the resources, such as conference rooms, in your building. This helps you schedule meetings quickly.
+
+View calendars side-by-side    
+
+You can view side-by-side multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and view both your work and personal calendars side-by-side.
+
+For more information, see View multiple calendars at the same time.
+
+You can also copy or move appointments between the displayed calendars. Use the Navigation Pane to quickly share your own calendar and open other shared calendars. Depending on the permissions granted by the owner of a calendar, you can simply view another person's calendar, or create appointments on shared calendars.
+
+For more information, see Share and access a view-only calendar in Outlook and Share and access a calendar using edit or delegate permissions in Outlook.
+
+View calendars on top of one another in overlay view     
+
+You can use overlay view to display multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and overlay your work and personal calendars to quickly see where you have conflicts or free time.
+
+For more information, see View multiple calendars at the same time.
+
+Link to calendars on Microsoft SharePoint sites    
+
+If you have access to a SharePoint site, you can view the lists of events from that site in your Outlook Calendar. You can change the list in Outlook, even when you are working offline. The changes are automatically synchronized when you connect to the Internet again. Also, you can view the SharePoint calendars side-by-side with other personal or shared calendars.
+
+Send calendars to anyone through email    
+
+You can send your calendar to a mail recipient as an Internet Calendar, but keep control over how much information is shared. Your calendar information appears in the body of the email message as an Internet Calendar attachment that the recipient can open in Outlook.
+
+For more information, see Introduction to calendar sharing.
+
+Subscribe to Internet Calendars    
+
+Internet Calendar Subscriptions resemble Internet Calendars, except that the downloaded calendar is synchronized regularly with the Internet Calendar and updated.
+
+Manage another user's calendar    
+
+With the Delegate Access feature, one person can use his or her own copy of Outlook to easily manage another person's calendar. For example, an administrative assistant can manage the calendar of a manager. When the manager designates the assistant as a delegate, the assistant can create, move, or delete appointments and can organize meetings on the manager's behalf.
+
+For more information, see Manage another person's mail and calendar items.
+
+  
+Need more help?
+Want more options?
+Discover
+Community
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+Microsoft 365 subscription benefits
+
+Microsoft 365 training
+
+Microsoft security
+
+Accessibility center
+
+Was this information helpful? Yes No
+×
+What's new
+Surface Pro
+Surface Laptop
+Surface Laptop Studio 2
+Surface Laptop Go 3
+Microsoft Copilot
+AI in Windows
+Explore Microsoft products
+Windows 11 apps
+Microsoft Store
+Account profile
+Download Center
+Microsoft Store support
+Returns
+Order tracking
+Certified Refurbished
+Microsoft Store Promise
+Flexible Payments
+Education
+Microsoft in education
+Devices for education
+Microsoft Teams for Education
+Microsoft 365 Education
+How to buy for your school
+Educator training and development
+Deals for students and parents
+AI for education
+Business
+Microsoft Cloud
+Microsoft Security
+Dynamics 365
+Microsoft 365
+Microsoft Power Platform
+Microsoft Teams
+Microsoft 365 Copilot
+Small Business
+Developer & IT
+Azure
+Microsoft Developer
+Microsoft Learn
+Support for AI marketplace apps
+Microsoft Tech Community
+Azure Marketplace
+AppSource
+Visual Studio
+Company
+Careers
+About Microsoft
+Company news
+Privacy at Microsoft
+Investors
+Diversity and inclusion
+Accessibility
+Sustainability
+English (United States)
+Your Privacy Choices
+Consumer Health Privacy
+Sitemap Contact Microsoft Privacy Terms of use Trademarks Safety & eco Recycling About our ads © Microsoft 2025
+
+USER QUESTION: chnage calendar color outlook
+(Page URL: https://support.microsoft.com/en-us/office/introduction-to-the-outlook-calendar-d94c5203-77c7-48ec-90a5-2e2bc10bd6f8)
+----------------------------------------
+
+
+========================================
+[2025-08-07 17:22:31] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 Outlook on the web Outlook.com New Outlook for Windows
+
+Color categories in Outlook help you more easily recognize and organize related items. You can apply them to meetings, appointments, emails, notes, contacts, and more.
+
+Once assigned, the color category indication appears within the individual item and also in collective table views (e.g., Inbox). If needed, you can assign multiple color categories to a single item. You can also customize the names and colors of your available color category set.
+
+**Note:**If you apply a color category to a meeting or request that you've received from another person, the color category selection will not affect their Outlook view. Your category selections apply only to items within your calendar.
+
+Select a tab option below for the version of Outlook you're using. What version of Outlook do I have?
+
+New OutlookClassic OutlookWeb
+
+**Note:**If the steps under this **new Outlook** tab don't work, you may not be using new Outlook for Windows yet. Select the **[Classic Outlook](#picktab=classic_outlook)** tab and follow those steps instead.
+
+### Add a category to a calendar event in new Outlook
+
+1. Select **Calendar** ![Calendar icon](/images/en-us/2588e717-0915-41a7-9f51-72cf27ea02d7) from the navigation pane.
+2. On your calendar, right-click a calendar event and select **Categorize**. Or, open the calendar item and from the ribbon under the **Event** tab, select **Categorize**.​​​​​​​
+
+   ![Screenshot showing an event and the category selection list](/images/en-us/70e29f86-110c-4a54-a244-f493372250c2)
+3. Select a category from the list. If you want to assign a second or third color category, you can perform this action multiple times. Categorize displays the most recently used categories. If you have additional categories, select **Manage categories** to see the rest of your list.  
+     
+   The same listed categories are available for use on all Outlook item types, such as contacts and messages. If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you'll see other category options and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).​​​​​​​
+
+### Manage categories in new Outlook
+
+1. To change the color of categories or create new ones, select **Settings** > **Accounts** > **Categories**.
+
+   ![Manage Color Categories panel](/images/en-us/58849f54-dac4-4d71-8f5c-d7753c7ae79a)
+2. For any displayed category name, select the appropriate icon for any of these actions:
+
+* Select ![Edit icon (pencil)](/images/en-us/784c1122-5d17-49f6-9b0d-04c3f008ab54) **Edit**to rename the category or change the color
+* Select ![Outlook trashcan delete button icon](/images/en-us/f8862fb1-8244-406f-b8fb-d998246c5acc) **Delete**to remove the category
+* Select ![](/images/en-us/d7a69693-af5c-479c-b5e6-d60ff088205f) **Favorite**to add the category under **Favorites** in the folder pane
+
+![You can right click an appointment and assign a category.](/images/en-us/461563db-58f3-4ce9-9eda-6a5344891c08)
+  
+*Example of a color-category selection from your list of options.*
+  
+  
+The same listed categories are available for use on all Outlook item types (e.g., tasks, contacts, messages). If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you will see others and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).
+
+### Assigning color categories in classic Outlook
+
+To assign a color category to an appointment, meeting, or event in classic Outlook, use one of the following options:
+
+* From your main calendar view, right-click the appointment, meeting, or event. Then point to **Categorize** ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) and select from the displayed list.
+* Within an open appointment, meeting, or event in classic Outlook, locate the **Categorize** button ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) on the ribbon (in the **Tags** group).
+
+  ![You can apply a color category to an open appointment, meeting, or event.](/images/en-us/fc1755e3-b152-4c91-bb74-e7901d0d4849)
+
+### The Color Categories dialog box in classic Outlook
+
+To see more categories or to create a new category, select **All Categories** in the drop-down list. This will open the **Color Categories** dialog box. To assign a color category select the associate check box. You can also assign multiple categories to a single item.
+
+![Color Categories box](/images/en-us/cf9d5d85-fe99-4565-b4a7-4e1b803c8752)
+
+The first time that you assign a default color category to an item in classic Outlook, you will be prompted to rename the category. At this time, you can also change the color of the category and assign a keyboard shortcut.
+
+![Add New Category box](/images/en-us/6a12975e-d882-4a5d-ade4-8e0d00d9b94e)
+
+**Notes:**
+
+* At any time, you can change the color associated with a category name.
+* You can click **Categorize** ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) on the toolbar to open the **Categorize** menu and **Color Categories** dialog box in classic Outlook.
+* Only the fifteen most recently used color categories appear on the **Categorize** menu. To see the others, go to the **Categorize** menu and select **All Categories.**
+
+### Add a category to a calendar event in Outlook on the web
+
+1. Select **Calendar** ![Calendar icon](/images/en-us/2588e717-0915-41a7-9f51-72cf27ea02d7) from the navigation pane.
+2. On your calendar, right-click a calendar event and select **Categorize**. Or, open the calendar item and from the ribbon under the **Event** tab, select **Categorize**.
+
+   ![Screenshot showing an event and the category selection list](/images/en-us/70e29f86-110c-4a54-a244-f493372250c2)
+3. Select a category from the list. If you want to assign a second or third color category, you can perform this action multiple times. Categorize displays the most recently used categories. If you have additional categories, select **Manage categories** to see the rest of your list.  
+     
+   The same listed categories are available for use on all Outlook item types, such as contacts and messages. If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you'll see other category options and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).​​​​​​​
+
+### Manage categories in Outlook on the web
+
+1. To change the color of categories or create new ones, select **Settings** > **Accounts** > **Categories**.
+
+   ![Manage Color Categories panel](/images/en-us/58849f54-dac4-4d71-8f5c-d7753c7ae79a)
+2. For any displayed category name, select the appropriate icon for any of these actions:
+
+* Select ![Edit icon (pencil)](/images/en-us/784c1122-5d17-49f6-9b0d-04c3f008ab54) **Edit**to rename the category or change the color
+* Select ![Outlook trashcan delete button icon](/images/en-us/f8862fb1-8244-406f-b8fb-d998246c5acc) **Delete**to remove the category
+* Select ![](/images/en-us/d7a69693-af5c-479c-b5e6-d60ff088205f) **Favorite**to add the category under **Favorites** in the folder pane
+
+## Related articles
+
+[Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Assign%20a%20color%20category%20to%20a%20calendar%20event%20in%20Outlook&body=Assign%20a%20color%20category%20to%20a%20calendar%20event%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fassign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: chnage calendar color outlook
+(Page URL: https://support.microsoft.com/en-us/office/assign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527)
+----------------------------------------
+
+
+========================================
+[2025-08-07 17:28:59] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Microsoft
+Support
+Microsoft 365 Office Products DevicesAccount & billingResources Buy Microsoft 365
+All Microsoft
+Search 
+Sign in to your account
+Sign in
+Outlook Calendar
+Overview
+The Outlook Calendar
+Add or delete a new calendar
+Schedule meetings or events
+Manage meetings
+Update, propose, and forward events
+Calendar item settings
+Customize your calendar
+To Do in Outlook
+More to explore
+Introduction to the Outlook Calendar
+Applies To
+We think you'll enjoy trying Microsoft 365
+
+We're giving you a free trial of Outlook.
+
+Click to unlock Outlook
+
+Calendar is the calendar and scheduling component of Outlook that is fully integrated with email, contacts, and other features.
+
+Just as you write in a notebook, you can select any time slot in the Outlook Calendar and start typing. By using the Calendar you can create appointments and events, organize meetings, view group schedules, and much more.
+
+Create appointments and events     
+
+Select any time slot in the Outlook Calendar and start to type to create your appointment or event. You can opt to have a sound or message remind you of appointments, meetings, and events, and you can color items for quick identification.
+
+For more information, see Create or schedule an appointment and Create an event.
+
+Organize meetings    
+
+Select a time on the Calendar, create a meeting request, and select the people to invite. Outlook helps you find the earliest time when all the invitees are free. When you send the meeting request by email, the invitees receive the request in their Inbox. When the invitees open the request, they can accept, tentatively accept, or decline your meeting by selecting a single button. If your request conflicts with an item on the invitees' Calendar, Outlook displays a notification. If you, as the meeting organizer, allow this, invitees can propose an alternative meeting time. As the organizer, you can track who accepts or declines the request or who proposes another time for the meeting by opening the request.
+
+For more information, see Schedule a meeting with other people.
+
+View group schedules    
+
+You can create calendars that show the schedules of a group of people or resources. For example, you can view the schedules of all the people in your department or all the resources, such as conference rooms, in your building. This helps you schedule meetings quickly.
+
+View calendars side-by-side    
+
+You can view side-by-side multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and view both your work and personal calendars side-by-side.
+
+For more information, see View multiple calendars at the same time.
+
+You can also copy or move appointments between the displayed calendars. Use the Navigation Pane to quickly share your own calendar and open other shared calendars. Depending on the permissions granted by the owner of a calendar, you can simply view another person's calendar, or create appointments on shared calendars.
+
+For more information, see Share and access a view-only calendar in Outlook and Share and access a calendar using edit or delegate permissions in Outlook.
+
+View calendars on top of one another in overlay view     
+
+You can use overlay view to display multiple calendars that you created and also calendars shared by other Outlook users. For example, you can create a separate calendar for your personal appointments and overlay your work and personal calendars to quickly see where you have conflicts or free time.
+
+For more information, see View multiple calendars at the same time.
+
+Link to calendars on Microsoft SharePoint sites    
+
+If you have access to a SharePoint site, you can view the lists of events from that site in your Outlook Calendar. You can change the list in Outlook, even when you are working offline. The changes are automatically synchronized when you connect to the Internet again. Also, you can view the SharePoint calendars side-by-side with other personal or shared calendars.
+
+Send calendars to anyone through email    
+
+You can send your calendar to a mail recipient as an Internet Calendar, but keep control over how much information is shared. Your calendar information appears in the body of the email message as an Internet Calendar attachment that the recipient can open in Outlook.
+
+For more information, see Introduction to calendar sharing.
+
+Subscribe to Internet Calendars    
+
+Internet Calendar Subscriptions resemble Internet Calendars, except that the downloaded calendar is synchronized regularly with the Internet Calendar and updated.
+
+Manage another user's calendar    
+
+With the Delegate Access feature, one person can use his or her own copy of Outlook to easily manage another person's calendar. For example, an administrative assistant can manage the calendar of a manager. When the manager designates the assistant as a delegate, the assistant can create, move, or delete appointments and can organize meetings on the manager's behalf.
+
+For more information, see Manage another person's mail and calendar items.
+
+  
+Need more help?
+Want more options?
+Discover
+Community
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+Microsoft 365 subscription benefits
+
+Microsoft 365 training
+
+Microsoft security
+
+Accessibility center
+
+Was this information helpful? Yes No
+×
+What's new
+Surface Pro
+Surface Laptop
+Surface Laptop Studio 2
+Surface Laptop Go 3
+Microsoft Copilot
+AI in Windows
+Explore Microsoft products
+Windows 11 apps
+Microsoft Store
+Account profile
+Download Center
+Microsoft Store support
+Returns
+Order tracking
+Certified Refurbished
+Microsoft Store Promise
+Flexible Payments
+Education
+Microsoft in education
+Devices for education
+Microsoft Teams for Education
+Microsoft 365 Education
+How to buy for your school
+Educator training and development
+Deals for students and parents
+AI for education
+Business
+Microsoft Cloud
+Microsoft Security
+Dynamics 365
+Microsoft 365
+Microsoft Power Platform
+Microsoft Teams
+Microsoft 365 Copilot
+Small Business
+Developer & IT
+Azure
+Microsoft Developer
+Microsoft Learn
+Support for AI marketplace apps
+Microsoft Tech Community
+Azure Marketplace
+AppSource
+Visual Studio
+Company
+Careers
+About Microsoft
+Company news
+Privacy at Microsoft
+Investors
+Diversity and inclusion
+Accessibility
+Sustainability
+English (United States)
+Your Privacy Choices
+Consumer Health Privacy
+Sitemap Contact Microsoft Privacy Terms of use Trademarks Safety & eco Recycling About our ads © Microsoft 2025
+
+USER QUESTION: chnage calendar color outlook
+(Page URL: https://support.microsoft.com/en-us/office/introduction-to-the-outlook-calendar-d94c5203-77c7-48ec-90a5-2e2bc10bd6f8)
+----------------------------------------
+
+
+========================================
+[2025-08-07 17:29:09] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Applies To
+
+Outlook for Microsoft 365 Outlook 2024 Outlook 2021 Outlook 2019 Outlook 2016 Outlook on the web Outlook.com New Outlook for Windows
+
+Color categories in Outlook help you more easily recognize and organize related items. You can apply them to meetings, appointments, emails, notes, contacts, and more.
+
+Once assigned, the color category indication appears within the individual item and also in collective table views (e.g., Inbox). If needed, you can assign multiple color categories to a single item. You can also customize the names and colors of your available color category set.
+
+**Note:**If you apply a color category to a meeting or request that you've received from another person, the color category selection will not affect their Outlook view. Your category selections apply only to items within your calendar.
+
+Select a tab option below for the version of Outlook you're using. What version of Outlook do I have?
+
+New OutlookClassic OutlookWeb
+
+**Note:**If the steps under this **new Outlook** tab don't work, you may not be using new Outlook for Windows yet. Select the **[Classic Outlook](#picktab=classic_outlook)** tab and follow those steps instead.
+
+### Add a category to a calendar event in new Outlook
+
+1. Select **Calendar** ![Calendar icon](/images/en-us/2588e717-0915-41a7-9f51-72cf27ea02d7) from the navigation pane.
+2. On your calendar, right-click a calendar event and select **Categorize**. Or, open the calendar item and from the ribbon under the **Event** tab, select **Categorize**.​​​​​​​
+
+   ![Screenshot showing an event and the category selection list](/images/en-us/70e29f86-110c-4a54-a244-f493372250c2)
+3. Select a category from the list. If you want to assign a second or third color category, you can perform this action multiple times. Categorize displays the most recently used categories. If you have additional categories, select **Manage categories** to see the rest of your list.  
+     
+   The same listed categories are available for use on all Outlook item types, such as contacts and messages. If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you'll see other category options and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).​​​​​​​
+
+### Manage categories in new Outlook
+
+1. To change the color of categories or create new ones, select **Settings** > **Accounts** > **Categories**.
+
+   ![Manage Color Categories panel](/images/en-us/58849f54-dac4-4d71-8f5c-d7753c7ae79a)
+2. For any displayed category name, select the appropriate icon for any of these actions:
+
+* Select ![Edit icon (pencil)](/images/en-us/784c1122-5d17-49f6-9b0d-04c3f008ab54) **Edit**to rename the category or change the color
+* Select ![Outlook trashcan delete button icon](/images/en-us/f8862fb1-8244-406f-b8fb-d998246c5acc) **Delete**to remove the category
+* Select ![](/images/en-us/d7a69693-af5c-479c-b5e6-d60ff088205f) **Favorite**to add the category under **Favorites** in the folder pane
+
+![You can right click an appointment and assign a category.](/images/en-us/461563db-58f3-4ce9-9eda-6a5344891c08)
+  
+*Example of a color-category selection from your list of options.*
+  
+  
+The same listed categories are available for use on all Outlook item types (e.g., tasks, contacts, messages). If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you will see others and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).
+
+### Assigning color categories in classic Outlook
+
+To assign a color category to an appointment, meeting, or event in classic Outlook, use one of the following options:
+
+* From your main calendar view, right-click the appointment, meeting, or event. Then point to **Categorize** ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) and select from the displayed list.
+* Within an open appointment, meeting, or event in classic Outlook, locate the **Categorize** button ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) on the ribbon (in the **Tags** group).
+
+  ![You can apply a color category to an open appointment, meeting, or event.](/images/en-us/fc1755e3-b152-4c91-bb74-e7901d0d4849)
+
+### The Color Categories dialog box in classic Outlook
+
+To see more categories or to create a new category, select **All Categories** in the drop-down list. This will open the **Color Categories** dialog box. To assign a color category select the associate check box. You can also assign multiple categories to a single item.
+
+![Color Categories box](/images/en-us/cf9d5d85-fe99-4565-b4a7-4e1b803c8752)
+
+The first time that you assign a default color category to an item in classic Outlook, you will be prompted to rename the category. At this time, you can also change the color of the category and assign a keyboard shortcut.
+
+![Add New Category box](/images/en-us/6a12975e-d882-4a5d-ade4-8e0d00d9b94e)
+
+**Notes:**
+
+* At any time, you can change the color associated with a category name.
+* You can click **Categorize** ![Button image](/images/en-us/b94186a9-86c7-499d-90e0-66a374e875b8) on the toolbar to open the **Categorize** menu and **Color Categories** dialog box in classic Outlook.
+* Only the fifteen most recently used color categories appear on the **Categorize** menu. To see the others, go to the **Categorize** menu and select **All Categories.**
+
+### Add a category to a calendar event in Outlook on the web
+
+1. Select **Calendar** ![Calendar icon](/images/en-us/2588e717-0915-41a7-9f51-72cf27ea02d7) from the navigation pane.
+2. On your calendar, right-click a calendar event and select **Categorize**. Or, open the calendar item and from the ribbon under the **Event** tab, select **Categorize**.
+
+   ![Screenshot showing an event and the category selection list](/images/en-us/70e29f86-110c-4a54-a244-f493372250c2)
+3. Select a category from the list. If you want to assign a second or third color category, you can perform this action multiple times. Categorize displays the most recently used categories. If you have additional categories, select **Manage categories** to see the rest of your list.  
+     
+   The same listed categories are available for use on all Outlook item types, such as contacts and messages. If you don't find the category color that you want in the initially displayed list, select **All Categories**. There you'll see other category options and be able to create and assign new categories. See [Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc).​​​​​​​
+
+### Manage categories in Outlook on the web
+
+1. To change the color of categories or create new ones, select **Settings** > **Accounts** > **Categories**.
+
+   ![Manage Color Categories panel](/images/en-us/58849f54-dac4-4d71-8f5c-d7753c7ae79a)
+2. For any displayed category name, select the appropriate icon for any of these actions:
+
+* Select ![Edit icon (pencil)](/images/en-us/784c1122-5d17-49f6-9b0d-04c3f008ab54) **Edit**to rename the category or change the color
+* Select ![Outlook trashcan delete button icon](/images/en-us/f8862fb1-8244-406f-b8fb-d998246c5acc) **Delete**to remove the category
+* Select ![](/images/en-us/d7a69693-af5c-479c-b5e6-d60ff088205f) **Favorite**to add the category under **Favorites** in the folder pane
+
+## Related articles
+
+[Create and assign color categories in Outlook](/en-us/office/create-and-assign-color-categories-in-outlook-a1fde97e-15e1-4179-a1a0-8a91ef89b8dc)
+
+[![Facebook](/images/Facebook-GrayScale.png)]( "Share on Facebook")
+[![LinkedIn](/images/Linkedin-GrayScale.png)]( "Share on LinkedIn")
+[![Email](/images/Mail-GrayScale.png)](mailto://?subject=I%20think%20you%27d%20be%20interested%20in%20this%3A%20Assign%20a%20color%20category%20to%20a%20calendar%20event%20in%20Outlook&body=Assign%20a%20color%20category%20to%20a%20calendar%20event%20in%20Outlook%20https%3A%2F%2Fsupport.microsoft.com%2Fen-us%2Foffice%2Fassign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527 "Share by email")
+
+### Need more help?
+
+### Want more options?
+
+DiscoverCommunity
+
+Explore subscription benefits, browse training courses, learn how to secure your device, and more.
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 subscription benefits
+
+![](/images/en-us/a9241eee-a729-4513-97b4-5b87c381c21b)
+
+[Microsoft 365 training](/en-us/training)
+
+![](/images/en-us/9e557d93-f803-44df-a274-1282d542cf63)
+
+[Microsoft security](/en-us/security)
+
+![](/images/en-us/fbf6e41b-ddbe-43db-a616-7a8e48d43d18)
+
+[Accessibility center](/en-us/accessibility)
+
+Communities help you ask and answer questions, give feedback, and hear from experts with rich knowledge.
+
+![](/images/en-us/9255871d-06a6-4de5-9236-5fd7af100c5c)
+
+Ask the Microsoft Community
+
+![](/images/en-us/ccb7c2a6-17dd-4cc3-88b7-8da966e59f59)
+
+Microsoft Tech Community
+
+![](/images/en-us/bcd2fdf1-530a-482f-b96d-5f2f2a49ac66)
+
+Windows Insiders
+
+![](/images/en-us/f4e85874-2a1a-438d-9c3c-17b069c454c0)
+
+Microsoft 365 Insiders
+
+USER QUESTION: chnage calendar color outlook
+(Page URL: https://support.microsoft.com/en-us/office/assign-a-color-category-to-a-calendar-event-in-outlook-750596d9-707d-4412-8c0e-7fdc0fc52527)
+----------------------------------------
+
