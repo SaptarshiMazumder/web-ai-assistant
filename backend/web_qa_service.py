@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from utils import log_llm_prompt
+from logging_relay import smartqa_log_relay
 from google.generativeai import configure, GenerativeModel
 from google import genai
 from google.genai import types
@@ -43,8 +44,38 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
     )
     log_llm_prompt(prompt)
     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    answer_full = (result.content or "").strip()
+    # Stream tokens to frontend via SmartQA log websocket
+    full_text_accum = ""
+    streamed_answer_sent_len = 0
+    try:
+        smartqa_log_relay.log(json.dumps({"type": "answer_reset"}))
+        for chunk in llm.stream([{ "role": "user", "content": prompt }]):
+            try:
+                delta_text = getattr(chunk, "content", None)
+                if not delta_text:
+                    continue
+                full_text_accum += delta_text
+                # Exclude footer from streamed content
+                idx_yes = full_text_accum.find("\nSUFFICIENT: YES")
+                idx_no = full_text_accum.find("\nSUFFICIENT: NO")
+                cut_idxs = [i for i in (idx_yes, idx_no) if i != -1]
+                cut_idx = min(cut_idxs) if cut_idxs else len(full_text_accum)
+                display_text = full_text_accum[:cut_idx]
+                if len(display_text) > streamed_answer_sent_len:
+                    delta_to_send = display_text[streamed_answer_sent_len:]
+                    smartqa_log_relay.log(json.dumps({
+                        "type": "answer_delta",
+                        "text": delta_to_send,
+                    }))
+                    streamed_answer_sent_len = len(display_text)
+            except Exception:
+                pass
+    except Exception:
+        # Fallback to single-shot if streaming not available
+        result = llm.invoke([{ "role": "user", "content": prompt }])
+        full_text_accum = (result.content or "").strip()
+
+    answer_full = full_text_accum.strip()
     confidence_match = re.search(r'CONFIDENCE: (\d+)%', answer_full)
     confidence = int(confidence_match.group(1)) if confidence_match else 0
     if "\nSUFFICIENT: YES" in answer_full:
@@ -56,6 +87,14 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
     else:
         answer = answer_full
         sufficient = False
+    try:
+        smartqa_log_relay.log(json.dumps({
+            "type": "answer_done",
+            "sufficient": sufficient,
+            "confidence": confidence,
+        }))
+    except Exception:
+        pass
     state.answer = answer
     state.used_chunks = []
     state.sufficient = sufficient
