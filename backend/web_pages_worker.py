@@ -2,7 +2,6 @@ import os
 import json
 import asyncio
 from typing import List, Dict, Any, Optional, Callable
-from pydantic import BaseModel
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -17,8 +16,8 @@ from playwright.sync_api import sync_playwright
 
 from langchain_openai import ChatOpenAI
 
-from state import State
-from page_qa import answer_node
+from state import AssistantState
+from web_qa_service import webpage_answer_node
 
 from utils import extract_json_from_text
 
@@ -29,18 +28,10 @@ from vertexai.preview import rag
 from vertexai.generative_models import GenerativeModel, Tool
 from utils import generate_rag_answer_from_vertex_ai
 from config import config
+from models import PageQAResult
 
 aiplatform.init(project=config.PROJECT_ID, location=config.LOCATION)
 openai_api_key = config.OPENAI_API_KEY
-
-class PageQAResult(BaseModel):
-    url: str
-    text: str
-    answer: str
-    sources: List[Dict[str, Any]]
-    sufficient: Optional[bool] = None
-    links: List[Dict[str, str]] = []
-    confidence: Optional[int] = None
 
 import datetime
 
@@ -297,7 +288,7 @@ async def run_page_qa(
     question: str,
     page_url: str
 ) -> PageQAResult:
-    s = State(text=text, question=question, page_url=page_url)
+    s = AssistantState(text=text, question=question, page_url=page_url)
     USE_VERTEX_RAG = False  # Toggle RAG mode
 
     if USE_VERTEX_RAG:
@@ -306,7 +297,7 @@ async def run_page_qa(
         s.sufficient = True
         s.confidence = 100  # Static for now, update later if needed
     else:
-        s = answer_node(s)
+        s = webpage_answer_node(s)
 
     return PageQAResult(
         url=page_url,

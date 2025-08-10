@@ -1,13 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
-class SmartQARequest(BaseModel):
-    text: str
-    question: str
-    links: List[Dict[str, str]]
-    page_url: str
-
-class SmartHopState(BaseModel):
+class WebsiteMultiHopState(BaseModel):
     text: str
     question: str
     links: List[Dict[str, str]]
@@ -20,7 +14,7 @@ class SmartHopState(BaseModel):
     hops: int = 0
     original_domain: str = ""
 
-class State(BaseModel):
+class AssistantState(BaseModel):
     text: str
     question: str
     enhanced_query: str = ""

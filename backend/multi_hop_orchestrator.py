@@ -10,9 +10,9 @@ import os
 import asyncio
 from typing import List, Dict, Any, Optional, Set
 from urllib.parse import urlparse
-from state import State, SmartHopState
-from page_qa import answer_node
-from smart_parallel import scrape_and_qa_many, PageQAResult
+from state import AssistantState, WebsiteMultiHopState
+from web_qa_service import webpage_answer_node
+from web_pages_worker import scrape_and_qa_many, PageQAResult
 from utils import generate_rag_answer_from_vertex_ai, get_or_create_rag_corpus
 from logging_relay import log
 from config import config
@@ -27,7 +27,7 @@ USE_VERTEX_RAG = False  # Toggle to switch between old and new
 
 # --- Main Orchestration ---
 async def multi_hop_qa_orchestrator(
-    init_state: SmartHopState,
+    init_state: WebsiteMultiHopState,
     *,
     max_hops: int = DEFAULT_MAX_HOPS,
     k_links: int = DEFAULT_K_LINKS,
@@ -121,7 +121,7 @@ async def multi_hop_qa_orchestrator(
             continue
 
         # 7. Use LLM to select the most promising links to follow next
-        from smart_parallel import llm_select_relevant_links_parallel
+        from web_pages_worker import llm_select_relevant_links_parallel
         selected_links = await llm_select_relevant_links_parallel(
             question=question,
             links=candidate_links,
@@ -203,15 +203,15 @@ async def multi_hop_qa_orchestrator(
 # --- Helpers ---
 async def run_single_page_qa(text: str, question: str, page_url: Optional[str]) -> PageQAResult:
     """
-    Runs QA on a single page using either Vertex AI RAG or the default answer_node.
+    Runs QA on a single page using either Vertex AI RAG or the default webpage_answer_node.
     """
-    s = State(text=text, question=question, page_url=page_url or "")
+    s = AssistantState(text=text, question=question, page_url=page_url or "")
     if USE_VERTEX_RAG:
         print("🧠 Using Vertex AI RAG for answer generation")
         s.answer = generate_rag_answer_from_vertex_ai(s.question)
         s.sufficient = True  # Or add logic to parse confidence later
     else:
-        s = answer_node(s)
+        s = webpage_answer_node(s)
     return PageQAResult(
         url=page_url or "",
         text=text,

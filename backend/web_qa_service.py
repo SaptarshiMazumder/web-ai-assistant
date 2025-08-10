@@ -7,7 +7,7 @@ from google.generativeai import configure, GenerativeModel
 from google import genai
 from google.genai import types
 from config import config
-from state import State
+from state import AssistantState
 
 configure(api_key=config.GOOGLE_API_KEY)
 openai_api_key = config.OPENAI_API_KEY
@@ -19,7 +19,7 @@ def clean_markdown(md: str) -> str:
     md = re.sub(r'\n{3,}', '\n\n', md)
     return md.strip()
 
-def answer_node(state: BaseModel) -> BaseModel:
+def webpage_answer_node(state: BaseModel) -> BaseModel:
     page_text = state.text
     question = state.question
     page_url = getattr(state, "page_url", "")
@@ -62,7 +62,7 @@ def answer_node(state: BaseModel) -> BaseModel:
     state.confidence = confidence
     return state
 
-def gemini_answer_node(state):
+def google_search_answer_node(state):
     print("🔎 Using Gemini grounded answer node")
     PROJECT_ID = config.PROJECT_ID
     LOCATION = config.LOCATION
