@@ -52,6 +52,11 @@ const questionInput = document.getElementById("question")! as HTMLInputElement;
 
 // --- SmartQA log streaming ---
 let smartqaLogSocket: WebSocket | null = null;
+let streamingActive = false;
+let currentAnswerBuffer = "";
+let currentAnswerBubble: HTMLElement | null = null;
+let pendingDeltaQueue = "";
+let typewriterInterval: number | null = null;
 
 function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[]) {
     const prev = document.getElementById('llm-links-block');
@@ -83,6 +88,36 @@ function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: s
 
 
 
+function ensureStreamingBubble(): HTMLElement {
+  if (currentAnswerBubble) return currentAnswerBubble;
+  // Create an empty bot bubble to stream into
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble bot';
+  bubble.textContent = '';
+  chatDiv.appendChild(bubble);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+  currentAnswerBubble = bubble;
+  return bubble;
+}
+
+function renderStreamedBufferAsMarkdown() {
+  if (!currentAnswerBubble) return;
+  const parsed = marked.parse(currentAnswerBuffer);
+  if (parsed instanceof Promise) {
+    parsed.then(html => {
+      currentAnswerBubble!.innerHTML = html as string;
+      currentAnswerBubble!.querySelectorAll("pre code").forEach((block) => {
+        hljs.highlightElement(block as HTMLElement);
+      });
+    });
+  } else {
+    currentAnswerBubble.innerHTML = parsed as string;
+    currentAnswerBubble.querySelectorAll("pre code").forEach((block) => {
+      hljs.highlightElement(block as HTMLElement);
+    });
+  }
+}
+
 function connectSmartQALogSocket(logContainer: HTMLElement) {
   if (smartqaLogSocket) {
     smartqaLogSocket.close();
@@ -104,6 +139,60 @@ smartqaLogSocket.onmessage = (event) => {
     if (isJSON && msg && msg.type === "selected_links") {
         renderUsefulLinks(msg.links);
         return;
+    }
+
+    // 2. Streamed answer events
+    if (isJSON && msg && msg.type === "answer_reset") {
+      streamingActive = true;
+      currentAnswerBuffer = "";
+      pendingDeltaQueue = "";
+      if (typewriterInterval !== null) {
+        clearInterval(typewriterInterval);
+        typewriterInterval = null;
+      }
+      const bubble = ensureStreamingBubble();
+      bubble.textContent = "";
+      return;
+    }
+    if (isJSON && msg && msg.type === "answer_delta") {
+      if (!streamingActive) return;
+      const delta = msg.text || "";
+      pendingDeltaQueue += delta;
+      // Start typewriter if not running
+      if (typewriterInterval === null) {
+        typewriterInterval = window.setInterval(() => {
+          if (pendingDeltaQueue.length > 0) {
+            const stepSize = 8; // chars per tick
+            const chunk = pendingDeltaQueue.slice(0, stepSize);
+            pendingDeltaQueue = pendingDeltaQueue.slice(stepSize);
+            currentAnswerBuffer += chunk;
+            const bubble = ensureStreamingBubble();
+            bubble.textContent = currentAnswerBuffer;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+          } else if (!streamingActive) {
+            // Finished streaming and queue drained; finalize
+            if (typewriterInterval !== null) {
+              clearInterval(typewriterInterval);
+              typewriterInterval = null;
+            }
+            renderStreamedBufferAsMarkdown();
+          }
+        }, 16);
+      }
+      return;
+    }
+    if (isJSON && msg && msg.type === "answer_done") {
+      if (!streamingActive) return;
+      streamingActive = false;
+      // If queue is empty, finalize immediately. Otherwise the interval will finalize when drained.
+      if (pendingDeltaQueue.length === 0) {
+        if (typewriterInterval !== null) {
+          clearInterval(typewriterInterval);
+          typewriterInterval = null;
+        }
+        renderStreamedBufferAsMarkdown();
+      }
+      return;
     }
 
     // 3. All other logs: append as a <div> (NOT with innerText)
@@ -407,7 +496,13 @@ smartBtn.onclick = async function () {
       }
 
       // Show the answer
-      appendMessage(data.answer, "bot");
+      if (!currentAnswerBubble || !currentAnswerBuffer) {
+        // No streaming happened, render the full answer now
+        appendMessage(data.answer, "bot");
+      } else if (currentAnswerBuffer && currentAnswerBubble) {
+        // Ensure final markdown formatting (in case stream ended early)
+        renderStreamedBufferAsMarkdown();
+      }
       // Show sources (if any)
       if (data.sources && data.sources.length > 0) {
         renderSources(data.sources);
@@ -435,6 +530,10 @@ smartBtn.onclick = async function () {
       (thinkingBubble as any).thinkingText.textContent = selectedTool === 'gemini' ? "Error (Gemini QA). Please try again." : "Error (smart QA). Please try again.";
     }
     questionInput.value = "";
+    // Reset streaming state for next question
+    streamingActive = false;
+    currentAnswerBuffer = "";
+    currentAnswerBubble = null;
   });
 };
 
