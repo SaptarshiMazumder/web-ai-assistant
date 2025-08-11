@@ -496,12 +496,18 @@ smartBtn.onclick = async function () {
       }
 
       // Show the answer
-      if (!currentAnswerBubble || !currentAnswerBuffer) {
-        // No streaming happened, render the full answer now
-        appendMessage(data.answer, "bot");
-      } else if (currentAnswerBuffer && currentAnswerBubble) {
-        // Ensure final markdown formatting (in case stream ended early)
+      // Smart (webpage) path: never append a separate HTTP bubble; always use the streaming bubble
+      if (selectedTool === 'smart') {
+        if (!currentAnswerBubble) {
+          ensureStreamingBubble();
+        }
+        if (!currentAnswerBuffer) {
+          currentAnswerBuffer = data.answer || "";
+        }
         renderStreamedBufferAsMarkdown();
+      } else {
+        // Gemini path (non-streaming): render HTTP answer directly, regardless of any prior streaming state
+        appendMessage(data.answer, 'bot');
       }
       // Show sources (if any)
       if (data.sources && data.sources.length > 0) {
@@ -536,16 +542,3 @@ smartBtn.onclick = async function () {
     currentAnswerBubble = null;
   });
 };
-
-// --- DROPDOWN LOGIC: toggle visible button ---
-// dropdown.addEventListener("change", () => {
-//   if (dropdown.value === "ask") {
-//     smartBtn.style.display = "inline-block";
-//   } else {
-//     smartBtn.style.display = "inline-block";
-//   }
-// });
-
-// Default to "Ask"
-// dropdown.value = "smart";
-// smartBtn.style.display = "inline-block";
