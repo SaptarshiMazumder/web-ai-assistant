@@ -31,8 +31,9 @@ async def ask_website_use_case(request: WebAssistantRequest):
     end_time = time.time()
     duration = round(end_time - start_time, 2)
     log(f"⏱️ Total time taken: {duration} seconds")
+    print("Returning final answer")
     return {
-        "answer": result["answer"],
+        # "answer": result["answer"],
         "sources": result["sources"],
         "visited_urls": result["visited_urls"],
         "sufficient": result["sufficient"],

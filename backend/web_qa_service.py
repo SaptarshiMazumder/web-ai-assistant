@@ -14,6 +14,11 @@ configure(api_key=config.GOOGLE_API_KEY)
 openai_api_key = config.OPENAI_API_KEY
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.GOOGLE_APPLICATION_CREDENTIALS
 
+# Backend flag to control whether partial answers are pushed over websocket.
+# Set to False to avoid duplicate answers in the UI when the final HTTP
+# response also renders the answer. When True, streaming deltas are sent.
+ENABLE_ANSWER_STREAMING = True
+
 def clean_markdown(md: str) -> str:
     md = re.sub(r'\[([^\]]+)\]\((http[s]?://[^\)]+)\)', r'\1', md)
     md = re.sub(r'http[s]?://\S+', '', md)
@@ -48,7 +53,8 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
     full_text_accum = ""
     streamed_answer_sent_len = 0
     try:
-        smartqa_log_relay.log(json.dumps({"type": "answer_reset"}))
+        if ENABLE_ANSWER_STREAMING:
+            smartqa_log_relay.log(json.dumps({"type": "answer_reset"}))
         for chunk in llm.stream([{ "role": "user", "content": prompt }]):
             try:
                 delta_text = getattr(chunk, "content", None)
@@ -61,7 +67,7 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
                 cut_idxs = [i for i in (idx_yes, idx_no) if i != -1]
                 cut_idx = min(cut_idxs) if cut_idxs else len(full_text_accum)
                 display_text = full_text_accum[:cut_idx]
-                if len(display_text) > streamed_answer_sent_len:
+                if ENABLE_ANSWER_STREAMING and len(display_text) > streamed_answer_sent_len:
                     delta_to_send = display_text[streamed_answer_sent_len:]
                     smartqa_log_relay.log(json.dumps({
                         "type": "answer_delta",
@@ -88,13 +94,15 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
         answer = answer_full
         sufficient = False
     try:
-        smartqa_log_relay.log(json.dumps({
-            "type": "answer_done",
-            "sufficient": sufficient,
-            "confidence": confidence,
-        }))
+        if ENABLE_ANSWER_STREAMING:
+            smartqa_log_relay.log(json.dumps({
+                "type": "answer_done",
+                "sufficient": sufficient,
+                "confidence": confidence,
+            }))
     except Exception:
         pass
+    answer = answer_full
     state.answer = answer
     state.used_chunks = []
     state.sufficient = sufficient

@@ -57,6 +57,10 @@ let currentAnswerBuffer = "";
 let currentAnswerBubble: HTMLElement | null = null;
 let pendingDeltaQueue = "";
 let typewriterInterval: number | null = null;
+// When false, ignore any late streaming events for the last question
+let acceptStreaming = false;
+// Incremented per ask; used to tag DOM nodes for cleanup
+let currentSessionId = 0;
 
 function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[]) {
     const prev = document.getElementById('llm-links-block');
@@ -89,10 +93,17 @@ function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: s
 
 
 function ensureStreamingBubble(): HTMLElement {
-  if (currentAnswerBubble) return currentAnswerBubble;
+  // Only reuse if the bubble belongs to the current session
+  if (
+    currentAnswerBubble &&
+    currentAnswerBubble.getAttribute('data-session-id') === String(currentSessionId)
+  ) {
+    return currentAnswerBubble;
+  }
   // Create an empty bot bubble to stream into
   const bubble = document.createElement('div');
   bubble.className = 'bubble bot';
+  bubble.setAttribute('data-session-id', String(currentSessionId));
   bubble.textContent = '';
   chatDiv.appendChild(bubble);
   chatDiv.scrollTop = chatDiv.scrollHeight;
@@ -122,6 +133,8 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
   if (smartqaLogSocket) {
     smartqaLogSocket.close();
   }
+  // Allow streaming for the newly initiated request
+  acceptStreaming = true;
   smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
 smartqaLogSocket.onmessage = (event) => {
     let isJSON = false;
@@ -143,6 +156,7 @@ smartqaLogSocket.onmessage = (event) => {
 
     // 2. Streamed answer events
     if (isJSON && msg && msg.type === "answer_reset") {
+      if (!acceptStreaming) return;
       streamingActive = true;
       currentAnswerBuffer = "";
       pendingDeltaQueue = "";
@@ -150,11 +164,14 @@ smartqaLogSocket.onmessage = (event) => {
         clearInterval(typewriterInterval);
         typewriterInterval = null;
       }
+      // Force a fresh answer bubble for this new stream
+      currentAnswerBubble = null;
       const bubble = ensureStreamingBubble();
       bubble.textContent = "";
       return;
     }
     if (isJSON && msg && msg.type === "answer_delta") {
+      if (!acceptStreaming) return;
       if (!streamingActive) return;
       const delta = msg.text || "";
       pendingDeltaQueue += delta;
@@ -182,6 +199,7 @@ smartqaLogSocket.onmessage = (event) => {
       return;
     }
     if (isJSON && msg && msg.type === "answer_done") {
+      if (!acceptStreaming) return;
       if (!streamingActive) return;
       streamingActive = false;
       // If queue is empty, finalize immediately. Otherwise the interval will finalize when drained.
@@ -205,6 +223,7 @@ smartqaLogSocket.onmessage = (event) => {
 
   smartqaLogSocket.onclose = () => {
     // Optionally reconnect or clear
+    acceptStreaming = false;
   };
 }
 
@@ -425,20 +444,13 @@ function renderSources(sources: Array<{ excerpt: string; title?: string; url?: s
   chatDiv.appendChild(srcDiv);
 }
 
-// function jumpToSource(excerpt: string) {
-//   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-//     if (tabs[0]?.id !== undefined) {
-//       chrome.tabs.sendMessage(
-//         tabs[0].id,
-//         { type: "JUMP_TO_POSITION", excerpt },
-//         () => {}
-//       );
-//     }
-//   });
-// }
+
 
 // --- Smart Ask button logic ---
 smartBtn.onclick = async function () {
+  // Start a new session for this question
+  currentSessionId += 1;
+  
   const question = questionInput.value.trim();
   if (!question) return;
 
@@ -492,6 +504,8 @@ smartBtn.onclick = async function () {
       const data = await resp.json();
       (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
       if (smartqaLogSocket && selectedTool !== 'gemini') {
+        // Stop accepting any more streamed content for this request
+        acceptStreaming = false;
         smartqaLogSocket.close();
       }
 
@@ -501,10 +515,18 @@ smartBtn.onclick = async function () {
         if (!currentAnswerBubble) {
           ensureStreamingBubble();
         }
-        if (!currentAnswerBuffer) {
-          currentAnswerBuffer = data.answer || "";
+        // Always trust the final HTTP answer (ensures SUFFICIENT suffix is kept)
+        if (data.answer) {
+          currentAnswerBuffer = data.answer;
         }
         renderStreamedBufferAsMarkdown();
+        // Remove any duplicate bot bubbles created during this session, keeping only the last one
+        const sessionBubbles = chatDiv.querySelectorAll(`div.bubble.bot[data-session-id="${currentSessionId}"]`);
+        if (sessionBubbles.length > 1) {
+          for (let i = 0; i < sessionBubbles.length - 1; i++) {
+            (sessionBubbles[i] as HTMLElement).remove();
+          }
+        }
       } else {
         // Gemini path (non-streaming): render HTTP answer directly, regardless of any prior streaming state
         appendMessage(data.answer, 'bot');
@@ -534,6 +556,7 @@ smartBtn.onclick = async function () {
 
     } catch (err) {
       (thinkingBubble as any).thinkingText.textContent = selectedTool === 'gemini' ? "Error (Gemini QA). Please try again." : "Error (smart QA). Please try again.";
+      acceptStreaming = false;
     }
     questionInput.value = "";
     // Reset streaming state for next question
