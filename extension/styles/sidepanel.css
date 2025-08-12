@@ -28,6 +28,17 @@
     /* box-shadow: 0 1px 4px rgba(60,60,80,0.04); */
 }
 
+/* Final answer bubble (Smart QA): light green */
+.bubble.bot.final {
+    background: #e8f7ec; /* light green */
+    border: 1px solid #b7e3c3;
+}
+
+/* Streaming/processing bubble: lighter text to indicate in-progress */
+.bubble.bot.processing {
+    color: #6f6f6f; /* light grey text */
+}
+
 
 
 /* User Bubble: right, only as wide as text */

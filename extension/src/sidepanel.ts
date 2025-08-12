@@ -99,18 +99,30 @@ function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: s
 
 
 function ensureStreamingBubble(): HTMLElement {
-  // Only reuse if the bubble belongs to the current session
+  // Reuse in-memory bubble if it matches current session and is not a final bubble
   if (
     currentAnswerBubble &&
-    currentAnswerBubble.getAttribute('data-session-id') === String(currentSessionId)
+    currentAnswerBubble.getAttribute('data-session-id') === String(currentSessionId) &&
+    !currentAnswerBubble.classList.contains('final')
   ) {
     return currentAnswerBubble;
+  }
+  // Otherwise, try to find an existing streaming bubble for this session in the DOM
+  const existing = chatDiv.querySelector(
+    `div.bubble.bot[data-session-id="${currentSessionId}"]:not(.final)`
+  ) as HTMLElement | null;
+  if (existing) {
+    currentAnswerBubble = existing;
+    return existing;
   }
   // Create an empty bot bubble to stream into
   const bubble = document.createElement('div');
   bubble.className = 'bubble bot';
   bubble.setAttribute('data-session-id', String(currentSessionId));
-  bubble.textContent = '';
+  bubble.classList.add('processing');
+  const span = document.createElement('span');
+  span.className = 'stream-text';
+  bubble.appendChild(span);
   chatDiv.appendChild(bubble);
   chatDiv.scrollTop = chatDiv.scrollHeight;
   currentAnswerBubble = bubble;
@@ -118,23 +130,7 @@ function ensureStreamingBubble(): HTMLElement {
 }
 
 function renderStreamedBufferAsMarkdown() {
-  if (!currentAnswerBubble) return;
-  const parsed = marked.parse(currentAnswerBuffer);
-  if (parsed instanceof Promise) {
-    parsed.then(html => {
-      currentAnswerBubble!.innerHTML = html as string;
-      currentAnswerBubble!.querySelectorAll("pre code").forEach((block) => {
-        hljs.highlightElement(block as HTMLElement);
-      });
-      
-    });
-  } else {
-    currentAnswerBubble.innerHTML = parsed as string;
-    currentAnswerBubble.querySelectorAll("pre code").forEach((block) => {
-      hljs.highlightElement(block as HTMLElement);
-    });
-    
-  }
+  // Intentionally no-op to avoid replacing streamed chunks. Final answer rendered separately.
 }
 
 function connectSmartQALogSocket(logContainer: HTMLElement) {
@@ -172,10 +168,9 @@ smartqaLogSocket.onmessage = (event) => {
         clearInterval(typewriterInterval);
         typewriterInterval = null;
       }
-      // Force a fresh answer bubble for this new stream
-      currentAnswerBubble = null;
-      const bubble = ensureStreamingBubble();
-      bubble.textContent = "";
+      // Ensure a streaming bubble exists but do NOT clear existing content.
+      // This allows new data to be appended rather than replacing prior content.
+      ensureStreamingBubble();
       return;
     }
     if (isJSON && msg && msg.type === "answer_delta") {
@@ -192,15 +187,24 @@ smartqaLogSocket.onmessage = (event) => {
             pendingDeltaQueue = pendingDeltaQueue.slice(stepSize);
             currentAnswerBuffer += chunk;
             const bubble = ensureStreamingBubble();
-            bubble.textContent = currentAnswerBuffer;
+            const span = bubble.querySelector('span.stream-text') as HTMLElement | null;
+            if (span) {
+              span.textContent += chunk;
+            } else {
+              // Fallback: always append, never replace
+              const fallback = document.createElement('span');
+              fallback.className = 'stream-text';
+              fallback.textContent = chunk;
+              bubble.appendChild(fallback);
+            }
             chatDiv.scrollTop = chatDiv.scrollHeight;
           } else if (!streamingActive) {
-            // Finished streaming and queue drained; finalize
+            // Finished streaming and queue drained
             if (typewriterInterval !== null) {
               clearInterval(typewriterInterval);
               typewriterInterval = null;
             }
-            renderStreamedBufferAsMarkdown();
+            // Do not transform the streaming bubble; final answer will be appended separately
           }
         }, 16);
       }
@@ -216,7 +220,7 @@ smartqaLogSocket.onmessage = (event) => {
           clearInterval(typewriterInterval);
           typewriterInterval = null;
         }
-        renderStreamedBufferAsMarkdown();
+        // Do not modify the streaming bubble on done; final HTTP answer will be a separate bubble
       }
       return;
     }
@@ -410,6 +414,7 @@ function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking', sessio
     const parsed = marked.parse(text);
     if (parsed instanceof Promise) {
       parsed.then(html => {
+        // Only set innerHTML for non-streaming appended messages (final answers, info)
         bubble.innerHTML = html;
         bubble.querySelectorAll("pre code").forEach((block) => {
           hljs.highlightElement(block as HTMLElement);
@@ -522,25 +527,14 @@ smartBtn.onclick = async function () {
       }
 
       // Show the answer
-      // Smart (webpage) path: never append a separate HTTP bubble; always use the streaming bubble
+      // Smart (webpage) path: append a distinct final answer bubble in light green
       if (selectedTool === 'smart') {
-        if (!currentAnswerBubble) {
-          ensureStreamingBubble();
-        }
-        // Always trust the final HTTP answer (ensures SUFFICIENT suffix is kept)
         if (data.answer) {
-          currentAnswerBuffer = data.answer;
-        }
-        renderStreamedBufferAsMarkdown();
-        // Remove any duplicate bot bubbles created during this session, keeping only the last one
-        const sessionBubbles = chatDiv.querySelectorAll(`div.bubble.bot[data-session-id="${currentSessionId}"]`);
-        if (sessionBubbles.length > 1) {
-          for (let i = 0; i < sessionBubbles.length - 1; i++) {
-            (sessionBubbles[i] as HTMLElement).remove();
-          }
+          const finalBubble = appendMessage(data.answer, 'bot', currentSessionId);
+          finalBubble.classList.add('final');
         }
       } else {
-        // Gemini path (non-streaming): render HTTP answer directly, regardless of any prior streaming state
+        // Gemini path (non-streaming): render HTTP answer directly
         appendMessage(data.answer, 'bot', currentSessionId);
       }
       // Show sources (if any)
