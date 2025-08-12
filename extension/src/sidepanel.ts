@@ -120,12 +120,14 @@ function renderStreamedBufferAsMarkdown() {
       currentAnswerBubble!.querySelectorAll("pre code").forEach((block) => {
         hljs.highlightElement(block as HTMLElement);
       });
+      
     });
   } else {
     currentAnswerBubble.innerHTML = parsed as string;
     currentAnswerBubble.querySelectorAll("pre code").forEach((block) => {
       hljs.highlightElement(block as HTMLElement);
     });
+    
   }
 }
 
@@ -480,7 +482,7 @@ smartBtn.onclick = async function () {
     connectSmartQALogSocket(logContainer);
   }
 
-  // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
+      // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
   const pageData = await getPageDataFromActiveTab();
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const tab = tabs[0];
@@ -510,25 +512,13 @@ smartBtn.onclick = async function () {
       }
 
       // Show the answer
-      // Smart (webpage) path: never append a separate HTTP bubble; always use the streaming bubble
+      // Smart (webpage) path: append the final HTTP answer as a NEW bubble (do not reuse or delete any bubbles)
       if (selectedTool === 'smart') {
-        if (!currentAnswerBubble) {
-          ensureStreamingBubble();
-        }
-        // Always trust the final HTTP answer (ensures SUFFICIENT suffix is kept)
         if (data.answer) {
-          currentAnswerBuffer = data.answer;
-        }
-        renderStreamedBufferAsMarkdown();
-        // Remove any duplicate bot bubbles created during this session, keeping only the last one
-        const sessionBubbles = chatDiv.querySelectorAll(`div.bubble.bot[data-session-id="${currentSessionId}"]`);
-        if (sessionBubbles.length > 1) {
-          for (let i = 0; i < sessionBubbles.length - 1; i++) {
-            (sessionBubbles[i] as HTMLElement).remove();
-          }
+          appendMessage(data.answer, 'bot');
         }
       } else {
-        // Gemini path (non-streaming): render HTTP answer directly, regardless of any prior streaming state
+        // Gemini path (non-streaming): render HTTP answer directly
         appendMessage(data.answer, 'bot');
       }
       // Show sources (if any)

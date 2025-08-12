@@ -12526,3 +12526,1746 @@ USER QUESTION: how to chnage event color
 (Page URL: https://support.google.com/calendar/answer/72143)
 ----------------------------------------
 
+
+========================================
+[2025-08-11 16:07:08] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:07:24] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:07:29] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* Google Chrome
+* Firefox
+* Safari
+* Microsoft Edge
+
+## Open Calendar in your browser
+
+1. From a web browser, visit calendar.google.com.
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+Open Google Calendar
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC#)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:07:34] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:07:44] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change your language setting
+
+You can choose which language you want to use with Google Calendar.
+
+Computer AndroidiPhone & iPad
+
+![Change your language settings](//storage.googleapis.com/support-kms-prod/ZsMn2ev5ivhTwF40BjtDaOVvhdtNOHh3OJKp)
+
+1. Open Google Calendar.
+2. In the top right corner, click Settings ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36) ![and then](//lh3.googleusercontent.com/QbWcYKta5vh_4-OgUeFmK-JOB0YgLLoGh69P478nE6mKdfpWQniiBabjF7FVoCVXI0g=h36)  **Settings**.
+3. In the "Language" section, choose the language you want to use from the drop-down menu. Changes are automatically saved.
+
+**Tip:** You can also [change other Google Calendar settings](/calendar/answer/6084644), like notifications and time zones.
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CNCLAxInQ2hhbmdlIHlvdXIgbGFuZ3VhZ2Ugc2V0dGluZyAtIENvbXB1dGVy)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/50640?hl=en&ref_topic=10510243)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:17:42] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:17:54] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:17:56] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* Google Chrome
+* Firefox
+* Safari
+* Microsoft Edge
+
+## Open Calendar in your browser
+
+1. From a web browser, visit calendar.google.com.
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+Open Google Calendar
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC#)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:18:01] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-11 16:18:09] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change your language setting
+
+You can choose which language you want to use with Google Calendar.
+
+Computer AndroidiPhone & iPad
+
+![Change your language settings](//storage.googleapis.com/support-kms-prod/ZsMn2ev5ivhTwF40BjtDaOVvhdtNOHh3OJKp)
+
+1. Open Google Calendar.
+2. In the top right corner, click Settings ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36) ![and then](//lh3.googleusercontent.com/QbWcYKta5vh_4-OgUeFmK-JOB0YgLLoGh69P478nE6mKdfpWQniiBabjF7FVoCVXI0g=h36)  **Settings**.
+3. In the "Language" section, choose the language you want to use from the drop-down menu. Changes are automatically saved.
+
+**Tip:** You can also [change other Google Calendar settings](/calendar/answer/6084644), like notifications and time zones.
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CNCLAxInQ2hhbmdlIHlvdXIgbGFuZ3VhZ2Ugc2V0dGluZyAtIENvbXB1dGVy)
+
+true
+
+USER QUESTION: chnage google calendar language
+(Page URL: https://support.google.com/calendar/answer/50640?hl=en&ref_topic=10510243)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:32:27] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:32:43] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:32:46] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* Google Chrome
+* Firefox
+* Safari
+* Microsoft Edge
+
+## Open Calendar in your browser
+
+1. From a web browser, visit calendar.google.com.
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+Open Google Calendar
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC#)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:32:51] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:32:59] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change your language setting
+
+You can choose which language you want to use with Google Calendar.
+
+Computer AndroidiPhone & iPad
+
+![Change your language settings](//storage.googleapis.com/support-kms-prod/ZsMn2ev5ivhTwF40BjtDaOVvhdtNOHh3OJKp)
+
+1. Open Google Calendar.
+2. In the top right corner, click Settings ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36) ![and then](//lh3.googleusercontent.com/QbWcYKta5vh_4-OgUeFmK-JOB0YgLLoGh69P478nE6mKdfpWQniiBabjF7FVoCVXI0g=h36)  **Settings**.
+3. In the "Language" section, choose the language you want to use from the drop-down menu. Changes are automatically saved.
+
+**Tip:** You can also [change other Google Calendar settings](/calendar/answer/6084644), like notifications and time zones.
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CNCLAxInQ2hhbmdlIHlvdXIgbGFuZ3VhZ2Ugc2V0dGluZyAtIENvbXB1dGVy)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/50640?hl=en&ref_topic=10510243)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:33:29] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:33:39] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Create an event
+
+You can create Google Calendar events from your computer or device.
+
+Computer AndroidiPhone & iPad
+
+## Ways to create an event
+
+Click an empty time in your calendar
+
+1. On your computer, open Google Calendar.
+2. **Optional:** If you want to add guests to your event, on the left click **Search for people** and start typing the names of your guests.
+3. Click any time on the calendar that doesn't already have an event scheduled.
+4. Add a title to the event, and any event details.
+5. Click **Save**.
+
+**Tip:** To create a longer event, drag your mouse down the page while you're selecting the time.
+
+Click the Create button
+
+1. On your computer, open Google Calendar.
+2. **Optional:** If you want to add guests to your event, on the left click **Search for people** and start typing the names of your guests.
+3. In the top left corner, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+4. Add a title to the event, and any event details.
+5. At the top of the page, click **Save**.
+
+Quickly create an event
+
+You can quickly create an event for a specific time if you see "Add title and time" in the text box.
+
+1. On your computer, open Google Calendar.
+2. Click the space next to date you want to add an event to.
+3. Add a title and time for your event.
+4. Click **Save**. Calendar will automatically create an event at the time you set.
+
+**Examples:**
+
+* Tennis practice at 5pm
+* Dinner at 7pm
+
+**Tip**: You can use the keyboard shortcut **Shift + C** to quickly create an event in any view.
+
+## Create an event in a shared calendar
+
+**Important:** To create events in a shared calendar, you can:
+
+* Create a new calendar and share it. Learn how to create a new calendar.
+* Share an existing calendar. Learn how to share your calendar with someone.
+
+1. On your computer, open Google Calendar.
+2. At the top left, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+3. Add a title and any event details.
+4. At the bottom, click on the calendar name next to Calendar ![Event](//lh3.googleusercontent.com/dBixRWeMQa1CDyJx-yjX_2eFvvwssixRgvo8AQbURNYEuC1B7AD5zIayK47zyO5Q_8hR=w36-h36).
+5. Next to the calendar name, click the Down arrow ![Down arrow](//lh3.googleusercontent.com/Wu-YhgjMghnU7K9vrc1U30vzipw9NGy4xdAE2Mbrl4g4xn7xEmJEwf-ULoDIbVdtPyGm=w36-h36). A list of all the calendars you can create events for appears.
+6. Select your preferred calendar.
+7. Click **Save.** The event appears with both the calendar name and the name of the person who created the event.
+
+**Tip:** You can't create events for Birthday or Holiday calendars.
+
+## Event options
+
+Create an all-day event
+
+1. On your computer, open Google Calendar.
+2. In the top left corner, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+3. Add a description for your event.
+4. Under the date and time, check the box next to **All day**.
+5. Click **Save**.
+
+You'll see all-day events at the top of the page for that day.
+
+Create a repeating event
+
+You can create a repeating event. Learn how to [create and manage repeating events](/calendar/answer/37115).
+
+Add video meetings
+
+If you use Calendar for work or school, a [Meet video meeting](/meet/) is added when you add invitees and click **Save**.
+
+To manually add a video meeting, select **Add Google Meet video conferencing**. Click **Save**.
+
+**Tip**: If you use Calendar for work or school, you can add third-party conferencing apps from the G Suite Marketplace. Get extra Calendar tools.
+
+Add live streaming
+
+If you use Calendar and Google Meet for work or school, you can add view-only live streaming to an event for up to 100,000 people to watch. Learn how to live stream a video meeting.
+
+Pick a color for your event
+
+When you're creating an event, you can choose the color that event will show as in your calendars. People won't be able to see the color you set for events unless you've given them permission to make changes on your calendar. [Learn how to manage your calendar permissions](/calendar/answer/37082).
+
+1. On your computer, open Google Calendar.
+2. Right click an existing event. Then, pick a color.
+
+## Edit an event you've created
+
+1. On your computer, open Google Calendar.
+2. Click on the event you want to edit. If you see Edit event ![Edit event](//lh3.googleusercontent.com/Ki7EaAFuLAHfeJeFZ5XQ6hMBnyF7cEPzYDLrw72jQxzxRe3FIqwO8gzUTo0qdMHbzuY=w36-h36), click it.
+3. Make changes to your event.
+4. At the top of the page, click **Save**.
+
+## Let guests edit your event
+
+You can let your guests edit event details, such as adding rooms, adjusting the time, or adding attachments.
+
+1. On your computer, open Google Calendar.
+2. Click an event ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) Edit event ![Edit event](//lh3.googleusercontent.com/Ki7EaAFuLAHfeJeFZ5XQ6hMBnyF7cEPzYDLrw72jQxzxRe3FIqwO8gzUTo0qdMHbzuY=w36-h36).
+3. At the right, under “Guest permissions,” check “Modify event.”
+4. Click **Save**.
+
+**Tip:** When you check “Guests can modify event,” they can manage the event as you can.
+
+## Troubleshoot issues
+
+Can't save events
+
+Try these steps in order:
+
+1. Refresh the page.
+2. Clear your browser's [cache and cookies](/accounts/answer/32050).
+3. Make sure [Javascript is turned on](/answer/23852).
+4. Sign out of Google Calendar.
+5. Close your browser.
+6. Open your browser and sign in to Google Calendar again. Make sure to use "https" in the web address instead of "http."
+
+If you're using a third-party app to sync your calendar, try turning off sync before signing back in again.
+
+When I try to add a guest, my contact does not show up as a suggestion
+
+Only contacts with a valid email address show up as suggestions.
+
+## Related articles
+
+* [Change your event privacy settings](/calendar/answer/34580)
+* [Change or turn off Calendar notifications](/calendar/answer/37242)
+* [Turn on Meet video calling](/a/answer/9493952)
+* [Schedule events in Gmail](/calendar/answer/13469141)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CM-zBBIaQ3JlYXRlIGFuIGV2ZW50IC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/72143)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:33:42] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:39:51] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+You have 3 new notifications
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:03] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:05] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* Google Chrome
+* Firefox
+* Safari
+* Microsoft Edge
+
+## Open Calendar in your browser
+
+1. From a web browser, visit calendar.google.com.
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+Open Google Calendar
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC#)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:08] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* Google Chrome
+* Firefox
+* Safari
+* Microsoft Edge
+
+## Open Calendar in your browser
+
+1. From a web browser, visit calendar.google.com.
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+Open Google Calendar
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC#)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:17] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+## Browse help topics
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en)
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar#topic=10509740)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:19] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+## Browse help topics
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en)
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/?hl=en#topic=10509740)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:21] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:28] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change your language setting
+
+You can choose which language you want to use with Google Calendar.
+
+Computer AndroidiPhone & iPad
+
+![Change your language settings](//storage.googleapis.com/support-kms-prod/ZsMn2ev5ivhTwF40BjtDaOVvhdtNOHh3OJKp)
+
+1. Open Google Calendar.
+2. In the top right corner, click Settings ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36) ![and then](//lh3.googleusercontent.com/QbWcYKta5vh_4-OgUeFmK-JOB0YgLLoGh69P478nE6mKdfpWQniiBabjF7FVoCVXI0g=h36)  **Settings**.
+3. In the "Language" section, choose the language you want to use from the drop-down menu. Changes are automatically saved.
+
+**Tip:** You can also [change other Google Calendar settings](/calendar/answer/6084644), like notifications and time zones.
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CNCLAxInQ2hhbmdlIHlvdXIgbGFuZ3VhZ2Ugc2V0dGluZyAtIENvbXB1dGVy)
+
+true
+
+USER QUESTION: change calendar language
+(Page URL: https://support.google.com/calendar/answer/50640?hl=en&ref_topic=10510243)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:44] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Google Calendar Help
+Help Center
+Community
+Google Calendar
+Critical notification.
+Your account, marcusrashford019.mufc@gmail.com, is missing recovery info. If you’re locked out of your account, recovery info helps you get back in.
+Add recovery info
+Get started with Google Calendar
+
+With Google Calendar, you can:
+
+Schedule meetings and events.
+Assign tasks.
+Share your schedule.
+Create multiple calendars.
+Computer AndroidiPhone & iPad
+Learn about supported browsers for Calendar
+
+Important: To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+Google Chrome
+Firefox
+Safari
+Microsoft Edge
+Open Calendar in your browser
+From a web browser, visit calendar.google.com.
+Sign in to your Google Account.
+To change your settings, at the top right corner, click Settings menu .
+
+Open Google Calendar
+
+Tip: While you can’t download and install Calendar on your computer, you can use it offline. Learn how to use Calendar offline.
+Related resources
+Learn about supported browsers for Google Calendar
+Change your Calendar settings
+Share your Calendar with someone
+Create an event
+Give feedback about this article
+Need more help?
+Try these next steps:
+Post to the help community
+Get answers from community members
+Help
+Get started with Google Calendar
+Learn about supported browsers for Google Calendar
+Create a new calendar
+View your day, week, or month
+Use Google Calendar in a mobile browser
+Print your calendar
+Search on Google Calendar
+Use keyboard shortcuts in Google Calendar
+Use Google Calendar offline
+Accessibility in Google Calendar
+©2025 Google  Privacy Policy  Terms of Service
+Language
+English‎
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/2465776?hl=en&ref_topic=10509740&sjid=2747318112490927702-NC)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:54] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Android ComputeriPhone & iPad
+
+## Update your settings
+
+1. On your Android phone or tablet, open the Google Calendar app ![Calendar](//storage.googleapis.com/support-kms-prod/YelkamjYMyOhd6y9ity2uYQGzGnAs6K5IF3h).
+2. Tap Menu ![Menu](//lh3.googleusercontent.com/MQ2tY3DEUt6Z21yeBk-xXDztA5OtaJqUokZ1eQqTzLdTcwArL7KNmaSu_B_xTAfL7Ao=w36-h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings** ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **General**.
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Start of the week** | Change the start day of your Calendar week. [Learn more about view settings](/calendar/answer/6110849). |
+| **Use device time zone** | Automatically set your calendar’s time zone to your device’s time zone. When you turn this setting off, you can manually select a time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Time zone** | Select a time zone for your calendar. If you turn on “Use device time zone,” you can’t select the time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **Alternate calendar** | Use a lunar or solar calendar. Choose a calendar:   * Chinese * Hebrew * Hijiri * Indian * Persian  [Learn more about alternate calendars](/calendar/answer/13748650). |
+| **Show week number** | Displays the week number in your calendar. |
+| **Show declined events** | Displays events that you decline in your calendar. |
+| **Show completed tasks** | Displays tasks that you complete in your calendar. [Learn more about tasks in Calendar](/calendar/answer/9901136). |
+| **Display shorter entries the same size as 30 minute entries** | Displays events shorter than 30 minutes the same size as 30-minute events. |
+| **Show event illustrations** | On some events, you can use Calendar illustrations, such as birthdays. |
+| **Default event duration** | Select the default duration for new events. For non-Google Accounts, the default duration is one hour. |
+| **Adding invitations** | Control who sends invitations to your calendar. [Learn how to manage invitations in Calendar](/calendar/answer/13159188). |
+| **Theme** | Adjust the background of your calendar to your device’s default theme or manually set it to a dark or light theme. [Learn about Dark theme in Calendar](/calendar/answer/15240542). |
+| **Calendar notifications** | Adjust Calendar notifications. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Tasks notifications** | Adjust how Tasks on Calendar notifies you. [Learn how to change Calendar notifications](/calendar/answer/37242). |
+| **Quick responses** | To give event attendees a quick response, select or edit a response to send. |
+| **Share Google Calendar data with other apps** | Control whether apps have access to your calendar data. You can choose to share all or none of your data with third-party apps. [Learn more about calendar data sharing](/calendar/answer/16089827). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* Delete or unsubscribe from a calendar
+* View your day, week, or month
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKUNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBBbmRyb2lk)
+
+true
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+----------------------------------------
+
+
+========================================
+[2025-08-12 13:40:58] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Create an event
+
+You can create Google Calendar events from your computer or device.
+
+Computer AndroidiPhone & iPad
+
+## Ways to create an event
+
+Click an empty time in your calendar
+
+1. On your computer, open Google Calendar.
+2. **Optional:** If you want to add guests to your event, on the left click **Search for people** and start typing the names of your guests.
+3. Click any time on the calendar that doesn't already have an event scheduled.
+4. Add a title to the event, and any event details.
+5. Click **Save**.
+
+**Tip:** To create a longer event, drag your mouse down the page while you're selecting the time.
+
+Click the Create button
+
+1. On your computer, open Google Calendar.
+2. **Optional:** If you want to add guests to your event, on the left click **Search for people** and start typing the names of your guests.
+3. In the top left corner, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+4. Add a title to the event, and any event details.
+5. At the top of the page, click **Save**.
+
+Quickly create an event
+
+You can quickly create an event for a specific time if you see "Add title and time" in the text box.
+
+1. On your computer, open Google Calendar.
+2. Click the space next to date you want to add an event to.
+3. Add a title and time for your event.
+4. Click **Save**. Calendar will automatically create an event at the time you set.
+
+**Examples:**
+
+* Tennis practice at 5pm
+* Dinner at 7pm
+
+**Tip**: You can use the keyboard shortcut **Shift + C** to quickly create an event in any view.
+
+## Create an event in a shared calendar
+
+**Important:** To create events in a shared calendar, you can:
+
+* Create a new calendar and share it. Learn how to create a new calendar.
+* Share an existing calendar. Learn how to share your calendar with someone.
+
+1. On your computer, open Google Calendar.
+2. At the top left, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+3. Add a title and any event details.
+4. At the bottom, click on the calendar name next to Calendar ![Event](//lh3.googleusercontent.com/dBixRWeMQa1CDyJx-yjX_2eFvvwssixRgvo8AQbURNYEuC1B7AD5zIayK47zyO5Q_8hR=w36-h36).
+5. Next to the calendar name, click the Down arrow ![Down arrow](//lh3.googleusercontent.com/Wu-YhgjMghnU7K9vrc1U30vzipw9NGy4xdAE2Mbrl4g4xn7xEmJEwf-ULoDIbVdtPyGm=w36-h36). A list of all the calendars you can create events for appears.
+6. Select your preferred calendar.
+7. Click **Save.** The event appears with both the calendar name and the name of the person who created the event.
+
+**Tip:** You can't create events for Birthday or Holiday calendars.
+
+## Event options
+
+Create an all-day event
+
+1. On your computer, open Google Calendar.
+2. In the top left corner, click Create ![Add](//lh3.googleusercontent.com/lW8scZrPJkRGWZggGKmjtwEM6Ku_w4UMUFQjUiZTJeMvGOyFGBME9TdQd8Fkfd-y_ixz=w36-h36).
+3. Add a description for your event.
+4. Under the date and time, check the box next to **All day**.
+5. Click **Save**.
+
+You'll see all-day events at the top of the page for that day.
+
+Create a repeating event
+
+You can create a repeating event. Learn how to [create and manage repeating events](/calendar/answer/37115).
+
+Add video meetings
+
+If you use Calendar for work or school, a [Meet video meeting](/meet/) is added when you add invitees and click **Save**.
+
+To manually add a video meeting, select **Add Google Meet video conferencing**. Click **Save**.
+
+**Tip**: If you use Calendar for work or school, you can add third-party conferencing apps from the G Suite Marketplace. Get extra Calendar tools.
+
+Add live streaming
+
+If you use Calendar and Google Meet for work or school, you can add view-only live streaming to an event for up to 100,000 people to watch. Learn how to live stream a video meeting.
+
+Pick a color for your event
+
+When you're creating an event, you can choose the color that event will show as in your calendars. People won't be able to see the color you set for events unless you've given them permission to make changes on your calendar. [Learn how to manage your calendar permissions](/calendar/answer/37082).
+
+1. On your computer, open Google Calendar.
+2. Right click an existing event. Then, pick a color.
+
+## Edit an event you've created
+
+1. On your computer, open Google Calendar.
+2. Click on the event you want to edit. If you see Edit event ![Edit event](//lh3.googleusercontent.com/Ki7EaAFuLAHfeJeFZ5XQ6hMBnyF7cEPzYDLrw72jQxzxRe3FIqwO8gzUTo0qdMHbzuY=w36-h36), click it.
+3. Make changes to your event.
+4. At the top of the page, click **Save**.
+
+## Let guests edit your event
+
+You can let your guests edit event details, such as adding rooms, adjusting the time, or adding attachments.
+
+1. On your computer, open Google Calendar.
+2. Click an event ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) Edit event ![Edit event](//lh3.googleusercontent.com/Ki7EaAFuLAHfeJeFZ5XQ6hMBnyF7cEPzYDLrw72jQxzxRe3FIqwO8gzUTo0qdMHbzuY=w36-h36).
+3. At the right, under “Guest permissions,” check “Modify event.”
+4. Click **Save**.
+
+**Tip:** When you check “Guests can modify event,” they can manage the event as you can.
+
+## Troubleshoot issues
+
+Can't save events
+
+Try these steps in order:
+
+1. Refresh the page.
+2. Clear your browser's [cache and cookies](/accounts/answer/32050).
+3. Make sure [Javascript is turned on](/answer/23852).
+4. Sign out of Google Calendar.
+5. Close your browser.
+6. Open your browser and sign in to Google Calendar again. Make sure to use "https" in the web address instead of "http."
+
+If you're using a third-party app to sync your calendar, try turning off sync before signing back in again.
+
+When I try to add a guest, my contact does not show up as a suggestion
+
+Only contacts with a valid email address show up as suggestions.
+
+## Related articles
+
+* [Change your event privacy settings](/calendar/answer/34580)
+* [Change or turn off Calendar notifications](/calendar/answer/37242)
+* [Turn on Meet video calling](/a/answer/9493952)
+* [Schedule events in Gmail](/calendar/answer/13469141)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CM-zBBIaQ3JlYXRlIGFuIGV2ZW50IC0gQ29tcHV0ZXI)
+
+true
+
+USER QUESTION: change event color
+(Page URL: https://support.google.com/calendar/answer/72143)
+----------------------------------------
+
