@@ -177,37 +177,17 @@ smartqaLogSocket.onmessage = (event) => {
       if (!acceptStreaming) return;
       if (!streamingActive) return;
       const delta = msg.text || "";
-      pendingDeltaQueue += delta;
-      // Start typewriter if not running
-      if (typewriterInterval === null) {
-        typewriterInterval = window.setInterval(() => {
-          if (pendingDeltaQueue.length > 0) {
-            const stepSize = 8; // chars per tick
-            const chunk = pendingDeltaQueue.slice(0, stepSize);
-            pendingDeltaQueue = pendingDeltaQueue.slice(stepSize);
-            currentAnswerBuffer += chunk;
-            const bubble = ensureStreamingBubble();
-            const span = bubble.querySelector('span.stream-text') as HTMLElement | null;
-            if (span) {
-              span.textContent += chunk;
-            } else {
-              // Fallback: always append, never replace
-              const fallback = document.createElement('span');
-              fallback.className = 'stream-text';
-              fallback.textContent = chunk;
-              bubble.appendChild(fallback);
-            }
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-          } else if (!streamingActive) {
-            // Finished streaming and queue drained
-            if (typewriterInterval !== null) {
-              clearInterval(typewriterInterval);
-              typewriterInterval = null;
-            }
-            // Do not transform the streaming bubble; final answer will be appended separately
-          }
-        }, 16);
+      // Append immediately without throttling to avoid UI delay
+      currentAnswerBuffer += delta;
+      const bubble = ensureStreamingBubble();
+      let span = bubble.querySelector('span.stream-text') as HTMLElement | null;
+      if (!span) {
+        span = document.createElement('span');
+        span.className = 'stream-text';
+        bubble.appendChild(span);
       }
+      span.textContent += delta;
+      chatDiv.scrollTop = chatDiv.scrollHeight;
       return;
     }
     if (isJSON && msg && msg.type === "answer_done") {
@@ -215,13 +195,12 @@ smartqaLogSocket.onmessage = (event) => {
       if (!streamingActive) return;
       streamingActive = false;
       // If queue is empty, finalize immediately. Otherwise the interval will finalize when drained.
-      if (pendingDeltaQueue.length === 0) {
-        if (typewriterInterval !== null) {
-          clearInterval(typewriterInterval);
-          typewriterInterval = null;
-        }
-        // Do not modify the streaming bubble on done; final HTTP answer will be a separate bubble
+      // Since we append immediately, there may be no pending queue or interval to drain
+      if (typewriterInterval !== null) {
+        clearInterval(typewriterInterval);
+        typewriterInterval = null;
       }
+      // Do not modify the streaming bubble on done; final HTTP answer will be a separate bubble
       return;
     }
 

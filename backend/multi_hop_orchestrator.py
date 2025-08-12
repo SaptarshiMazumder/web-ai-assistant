@@ -211,7 +211,7 @@ async def run_single_page_qa(text: str, question: str, page_url: Optional[str]) 
         s.answer = generate_rag_answer_from_vertex_ai(s.question)
         s.sufficient = True  # Or add logic to parse confidence later
     else:
-        s = webpage_answer_node(s)
+        s = await webpage_answer_node(s)
     return PageQAResult(
         url=page_url or "",
         text=text,

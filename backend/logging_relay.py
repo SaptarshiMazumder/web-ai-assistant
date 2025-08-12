@@ -16,7 +16,7 @@ class SmartQALogRelay:
             self.queues.remove(q)
 
     def log(self, msg: str):
-        print(msg)
+        # Push to websocket queues only; avoid terminal prints to prioritize UI streaming
         for q in self.queues:
             q.put_nowait(msg)
 

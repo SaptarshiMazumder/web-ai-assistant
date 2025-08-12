@@ -1,4 +1,4 @@
-import os, json, re
+import os, json, re, asyncio
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from langchain_openai import ChatOpenAI
@@ -25,7 +25,7 @@ def clean_markdown(md: str) -> str:
     md = re.sub(r'\n{3,}', '\n\n', md)
     return md.strip()
 
-def webpage_answer_node(state: BaseModel) -> BaseModel:
+async def webpage_answer_node(state: BaseModel) -> BaseModel:
     page_text = state.text
     question = state.question
     page_url = getattr(state, "page_url", "")
@@ -59,6 +59,8 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
             try:
                 delta_text = getattr(chunk, "content", None)
                 if not delta_text:
+                    # Yield control to allow websocket sender to flush any pending messages
+                    await asyncio.sleep(0)
                     continue
                 full_text_accum += delta_text
                 # Exclude footer from streamed content
@@ -74,7 +76,11 @@ def webpage_answer_node(state: BaseModel) -> BaseModel:
                         "text": delta_to_send,
                     }))
                     streamed_answer_sent_len = len(display_text)
+                # Yield to the event loop so websocket messages can be sent immediately
+                await asyncio.sleep(0)
             except Exception:
+                # Still yield to avoid starving the loop
+                await asyncio.sleep(0)
                 pass
     except Exception:
         # Fallback to single-shot if streaming not available
