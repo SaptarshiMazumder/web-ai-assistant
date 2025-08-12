@@ -28,7 +28,7 @@ function ensureContentScript(tabId: number, cb: () => void) {
   });
 }
 
-function renderUsefulLinks(links: {text: string, href: string}[]) {
+function renderUsefulLinks(links: {text: string, href: string}[], sessionId?: number) {
     // Remove previous block if you want only one set of links at a time
     const prev = document.getElementById('useful-links-block');
     if (prev) prev.remove();
@@ -36,6 +36,9 @@ function renderUsefulLinks(links: {text: string, href: string}[]) {
     if (!links || !links.length) return;
     const chatDiv = document.getElementById("chat")!;
     const block = document.createElement('div');
+    if (sessionId !== undefined) {
+      block.setAttribute('data-session-id', String(sessionId));
+    }
     block.id = 'useful-links-block';
     block.className = 'system-message';
     block.style.margin = '16px 0';
@@ -62,12 +65,15 @@ let acceptStreaming = false;
 // Incremented per ask; used to tag DOM nodes for cleanup
 let currentSessionId = 0;
 
-function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[]) {
+function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[], sessionId?: number) {
     const prev = document.getElementById('llm-links-block');
     if (prev) prev.remove();
 
     const chatDiv = document.getElementById("chat")!;
     const block = document.createElement('div');
+    if (sessionId !== undefined) {
+      block.setAttribute('data-session-id', String(sessionId));
+    }
     block.id = 'llm-links-block';
     block.className = 'system-message';
     block.style.margin = '16px 0';
@@ -148,11 +154,11 @@ smartqaLogSocket.onmessage = (event) => {
 
     // 1. LLM links (unchanged)
     if (isJSON && msg && msg.type === "llm_links_message") {
-        renderLLMLinksMessage(msg.message, msg.links);
+        renderLLMLinksMessage(msg.message, msg.links, currentSessionId);
         return;
     }
     if (isJSON && msg && msg.type === "selected_links") {
-        renderUsefulLinks(msg.links);
+        renderUsefulLinks(msg.links, currentSessionId);
         return;
     }
 
@@ -359,9 +365,12 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 }
 
 // Markdown rendering for chat bubbles (fix: no async needed)
-function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking'): HTMLElement {
+function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking', sessionId?: number): HTMLElement {
   const bubble = document.createElement('div');
   bubble.className = 'bubble ' + sender;
+  if (sessionId !== undefined) {
+    bubble.setAttribute('data-session-id', String(sessionId));
+  }
 
   if (sender === 'thinking') {
     const thinkingText = document.createElement('span');
@@ -472,8 +481,9 @@ smartBtn.onclick = async function () {
   tag.style.textAlign = "right";
   tag.style.width = "100%";
   chatDiv.appendChild(tag);
-  appendMessage(question, "user");
-  const thinkingBubble = appendMessage("Thinking...", "thinking");
+  tag.setAttribute('data-session-id', String(currentSessionId));
+  appendMessage(question, "user", currentSessionId);
+  const thinkingBubble = appendMessage("Thinking...", "thinking", currentSessionId);
   const logContainer = (thinkingBubble as any).logContainer;
   logContainer.innerText = "";
   if (selectedTool === 'gemini') {
@@ -482,7 +492,7 @@ smartBtn.onclick = async function () {
     connectSmartQALogSocket(logContainer);
   }
 
-      // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
+  // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
   const pageData = await getPageDataFromActiveTab();
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const tab = tabs[0];
@@ -512,25 +522,41 @@ smartBtn.onclick = async function () {
       }
 
       // Show the answer
-      // Smart (webpage) path: append the final HTTP answer as a NEW bubble (do not reuse or delete any bubbles)
+      // Smart (webpage) path: never append a separate HTTP bubble; always use the streaming bubble
       if (selectedTool === 'smart') {
+        if (!currentAnswerBubble) {
+          ensureStreamingBubble();
+        }
+        // Always trust the final HTTP answer (ensures SUFFICIENT suffix is kept)
         if (data.answer) {
-          appendMessage(data.answer, 'bot');
+          currentAnswerBuffer = data.answer;
+        }
+        renderStreamedBufferAsMarkdown();
+        // Remove any duplicate bot bubbles created during this session, keeping only the last one
+        const sessionBubbles = chatDiv.querySelectorAll(`div.bubble.bot[data-session-id="${currentSessionId}"]`);
+        if (sessionBubbles.length > 1) {
+          for (let i = 0; i < sessionBubbles.length - 1; i++) {
+            (sessionBubbles[i] as HTMLElement).remove();
+          }
         }
       } else {
-        // Gemini path (non-streaming): render HTTP answer directly
-        appendMessage(data.answer, 'bot');
+        // Gemini path (non-streaming): render HTTP answer directly, regardless of any prior streaming state
+        appendMessage(data.answer, 'bot', currentSessionId);
       }
       // Show sources (if any)
       if (data.sources && data.sources.length > 0) {
+        // Tag sources with the session id by wrapping in a container
+        const sourcesWrapper = document.createElement('div');
+        sourcesWrapper.setAttribute('data-session-id', String(currentSessionId));
+        chatDiv.appendChild(sourcesWrapper);
         renderSources(data.sources);
       }
 
       // If not sufficient, show LLM-picked links (plain, no style)
       if (data.sufficient === false && data.selected_links && data.selected_links.length > 0) {
-        appendMessage("Try checking one of these links for more info:", "bot");
+        appendMessage("Try checking one of these links for more info:", "bot", currentSessionId);
         data.selected_links.forEach((l: any) => {
-          appendMessage(`• ${l.text} — ${l.href}`, "bot");
+          appendMessage(`• ${l.text} — ${l.href}`, "bot", currentSessionId);
         });
       }
 
@@ -541,7 +567,7 @@ smartBtn.onclick = async function () {
           msg += `• ${url}\n`;
         });
         msg += `\nYou can also view the last visited page for more details..`;
-        appendMessage(msg, "bot");
+        appendMessage(msg, "bot", currentSessionId);
       }
 
     } catch (err) {
