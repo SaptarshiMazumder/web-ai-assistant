@@ -136,7 +136,7 @@ def scrape_with_sync_playwright(url, timeout=6000):
 
 import asyncio
 
-async def _scrape_with_playwright(url: str, timeout: int = 12000) -> tuple[str, str]:
+async def _scrape_with_playwright(url: str, timeout: int = 30000) -> tuple[str, str]:
     print(f"⚡ [SCRAPE] Using Playwright (sync/thread) for: {url}")
     loop = asyncio.get_event_loop()
     html, final_url = await loop.run_in_executor(
