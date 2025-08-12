@@ -47,37 +47,12 @@ def save_llm_prompt(prompt: str, filename: str = None):
         f.write("\n" + "-"*40 + "\n\n")
 
 
-def llm_select_relevant_links(
-    question: str,
-    links: List[Dict[str, str]],
-    k: int = 3
-) -> List[Dict[str, str]]:
-    # subset = links[:30]
-    prompt = (
-        f"The user is on the website {urlparse(links[0].get('href', '')).netloc} and their question is: {question}\n"
-        "These are all the links on the page:\n" +
-        "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in links]) +
-        "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-        "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
-        "Only select links that you are 90% confident to contain an answer, or links to lead to the answer."
-        "If you are not at least 90% confident that a link contains the answer, do not include it."
-        "Do not include links that are not relevant to the question, or that you are not confident about.\n"
-        "Reply with a JSON array of up to 0-5 objects (max 5, min 0) with 'text' and 'href'."
-
-    )
-    # === LOG PROMPT ===
-    save_llm_prompt(prompt)
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
-    result = llm.invoke([{"role": "user", "content": prompt}])
-    print(f"LLM SELECT LINKS RESULT: {result}")
-    output = (result.content or "").strip()
-
-    json_str = extract_json_from_text(output)
-    
-    data = json.loads(json_str) if json_str else []
-    if isinstance(data, list):
-        return data[:k]
-    return []
+def _safe_log(log_fn, msg: str):
+    try:
+        if log_fn:
+            log_fn(msg)
+    except Exception:
+        pass
 
 async def llm_select_relevant_links_parallel(
     question: str,
@@ -95,27 +70,19 @@ async def llm_select_relevant_links_parallel(
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def run_on_chunk(chunk: List[Dict[str, str]], chunk_id: int):
-        log_fn(f"🧵 Thread {chunk_id} starting with {len(chunk)} available links.")
-        # prompt = (
-        #     f"The user is on the website {urlparse(chunk[0].get('href', '')).netloc} and their question is: {question}\n"
-        #     "These are the links on part of the page:\n" +
-        #     "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
-        #     "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-        #     "Reply with a JSON array of up to 5 objects with 'text' and 'href'."
-        # )
-
+        if log_fn:
+            log_fn(f"🧵 Thread {chunk_id} starting with {len(chunk)} available links.")
+  
         prompt = (
-            f"The user is on the website {urlparse(links[0].get('href', '')).netloc} and their question is: {question}\n"
-            "These are all the links on the page:\n" +
-            "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in links]) +
+            f"The user is on the website {urlparse((chunk[0].get('href','') if chunk else '')).netloc} "
+            f"and their question is: {question}\n"
+            "These are the links to consider (subset):\n" +
+            "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
             "\n\nWhich of these links are most likely to contain the answer or helpful information? "
-            "Use your general knowledge and the context of the question, the website, or similarity, intuition to select the most relevant links.\n"
-            "Only select links that you are 90% confident to contain an answer, or links to lead to the answer."
-            "If you are not at least "
-            " confident that a link contains the answer, do not include it."
-            "Do not include links that are not relevant to the question, or that you are not confident about.\n"
-            "Reply with a JSON array of up to 0-5 objects (max 5, min 0) with 'text' and 'href'."
-
+            "Use your general knowledge and the context of the question and website.\n"
+            "Only select links that you are 90% confident contain the answer or lead to it. "
+            "If you are not at least 90% confident, do not include it.\n"
+            "Reply with a JSON array of up to 0-5 objects with 'text' and 'href'."
         )
 
         async with semaphore:
