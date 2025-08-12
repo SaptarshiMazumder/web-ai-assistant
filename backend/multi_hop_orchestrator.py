@@ -131,14 +131,8 @@ async def multi_hop_qa_orchestrator(
 
         # Optionally, log or notify about the selected links
         if selected_links:
-            async def send_llm_links_message():
-                msg = await format_llm_links_message(question, selected_links)
-                log(_json.dumps({
-                    "type": "llm_links_message",
-                    "message": msg,
-                    "links": selected_links
-                }))
-            asyncio.create_task(send_llm_links_message())
+            # Stream a friendly LLM message about selected links as typewriter text
+            asyncio.create_task(stream_llm_links_message(question, selected_links))
 
         print(f"🧠 LLM selected links: {selected_links}")
 
@@ -249,6 +243,76 @@ async def format_llm_links_message(question: str, links: list[dict]) -> str:
     )
     result = llm.invoke([{"role": "user", "content": prompt}])
     return result.content.strip()
+
+async def stream_llm_links_message(question: str, links: list[dict]):
+    """
+    Streams a friendly message about which links are being explored, sending
+    incremental deltas over the websocket so the UI can render typewriter-style.
+    Falls back to single-shot if streaming fails.
+    """
+    try:
+        from langchain_openai import ChatOpenAI
+        from urllib.parse import urlparse
+        openai_api_key = os.environ.get("OPENAI_API_KEY")
+        llm = ChatOpenAI(api_key=openai_api_key, model="gpt-3.5-turbo", temperature=0)
+        first_url = links[0].get("href", "") if links else ""
+        website = urlparse(first_url).netloc if first_url else "website"
+        prompt = (
+            f"You are a master of the {website}.\n"
+            f"User's question: {question}\n"
+            "You found the following links which might help answer the user's question:\n"
+            + "\n".join(f"- {l['text'] or l['href']}" for l in links[:5]) + "\n"
+            "Write a friendly, brief message to the user, explaining that I found these pages where you can find <whatever query they have>"
+            "I'm currently browsing through them to see if I can find the info.... "
+            "No greetings or introductions needed. Just Make the tone sound like you are currently browsing"
+        )
+
+        # Notify UI to reset the LLM links message area for streaming
+        log(_json.dumps({
+            "type": "llm_links_reset",
+            "links": links,
+        }))
+
+        accumulated = ""
+        try:
+            for chunk in llm.stream([{ "role": "user", "content": prompt }]):
+                delta_text = getattr(chunk, "content", None) or ""
+                if not delta_text:
+                    await asyncio.sleep(0)
+                    continue
+                accumulated += delta_text
+                log(_json.dumps({
+                    "type": "llm_links_delta",
+                    "text": delta_text,
+                }))
+                await asyncio.sleep(0)
+        except Exception:
+            # Fallback to non-streaming if stream fails
+            result = llm.invoke([{ "role": "user", "content": prompt }])
+            accumulated = (result.content or "").strip()
+            log(_json.dumps({
+                "type": "llm_links_message",
+                "message": accumulated,
+                "links": links,
+            }))
+            return
+
+        # Finished streaming
+        log(_json.dumps({
+            "type": "llm_links_done",
+            "links": links,
+        }))
+    except Exception:
+        # Ultimate fallback: try best-effort single shot via existing helper
+        try:
+            msg = await format_llm_links_message(question, links)
+            log(_json.dumps({
+                "type": "llm_links_message",
+                "message": msg,
+                "links": links
+            }))
+        except Exception:
+            pass
 
 # --- RAG Corpus (if needed) ---
 rag_corpus = get_or_create_rag_corpus()

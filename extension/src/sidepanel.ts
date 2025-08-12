@@ -77,21 +77,23 @@ function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: s
     block.id = 'llm-links-block';
     block.className = 'system-message';
     block.style.margin = '16px 0';
-    block.innerHTML = `
-        <div style="margin-bottom:6px;">${llmMessage}</div>
-        <ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
-            ${
-                links.map(link =>
-                    `<li>
-                        <a href="${link.href}" target="_blank" rel="noopener noreferrer">
-                            ${link.text || link.href}
-                        </a>
-                        <br>
-                        <small style="color:#888;">${link.href}</small>
-                    </li>`
-                ).join('')
-            }
-        </ul>`;
+    const messageDiv = document.createElement('div');
+    messageDiv.style.marginBottom = '6px';
+    messageDiv.id = 'llm-links-message-span';
+    messageDiv.textContent = llmMessage;
+    const list = document.createElement('ul');
+    list.style.marginTop = '4px';
+    list.style.marginBottom = '4px';
+    list.style.paddingLeft = '16px';
+    list.innerHTML = links.map(link => `
+      <li>
+        <a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a>
+        <br>
+        <small style="color:#888;">${link.href}</small>
+      </li>
+    `).join('');
+    block.appendChild(messageDiv);
+    block.appendChild(list);
     chatDiv.appendChild(block);
     block.scrollIntoView({behavior: "smooth"});
 }
@@ -148,8 +150,36 @@ smartqaLogSocket.onmessage = (event) => {
         isJSON = true;
     } catch (e) {}
 
-    // 1. LLM links (unchanged)
+    // 1. LLM links (streaming-aware)
+    if (isJSON && msg && msg.type === "llm_links_reset") {
+        if (!acceptStreaming) return;
+        // Create/reset the streaming block with provided links, empty message
+        renderLLMLinksMessage("", (msg.links || []), currentSessionId);
+        return;
+    }
+    if (isJSON && msg && msg.type === "llm_links_delta") {
+        if (!acceptStreaming) return;
+        const block = document.getElementById('llm-links-block');
+        if (!block) return;
+        let span = document.getElementById('llm-links-message-span');
+        if (!span) {
+          span = document.createElement('div');
+          span.id = 'llm-links-message-span';
+          block.insertBefore(span, block.firstChild);
+        }
+        span.textContent = (span.textContent || "") + (msg.text || "");
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+        return;
+    }
+    if (isJSON && msg && msg.type === "llm_links_done") {
+        if (!acceptStreaming) return;
+        // Optionally mark final state
+        const block = document.getElementById('llm-links-block');
+        if (block) block.classList.add('final');
+        return;
+    }
     if (isJSON && msg && msg.type === "llm_links_message") {
+        // Fallback non-streaming single-shot
         renderLLMLinksMessage(msg.message, msg.links, currentSessionId);
         return;
     }

@@ -297,7 +297,7 @@ async def run_page_qa(
         s.sufficient = True
         s.confidence = 100  # Static for now, update later if needed
     else:
-        s = webpage_answer_node(s)
+        s = await webpage_answer_node(s)
 
     return PageQAResult(
         url=page_url,
