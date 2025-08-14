@@ -59,18 +59,18 @@ rag_retrieval_config = rag.RagRetrievalConfig(
     top_k=3,  # Optional
     filter=rag.Filter(vector_distance_threshold=0.5),  # Optional
 )
-response = rag.retrieval_query(
-    rag_resources=[
-        rag.RagResource(
-            rag_corpus=rag_corpus.name,
-            # Optional: supply IDs from `rag.list_files()`.
-            # rag_file_ids=["rag-file-1", "rag-file-2", ...],
-        )
-    ],
-    text="What is RAG and why it is helpful?",
-    rag_retrieval_config=rag_retrieval_config,
-)
-print(response)
+# response = rag.retrieval_query(
+#     rag_resources=[
+#         rag.RagResource(
+#             rag_corpus=rag_corpus.name,
+#             # Optional: supply IDs from `rag.list_files()`.
+#             # rag_file_ids=["rag-file-1", "rag-file-2", ...],
+#         )
+#     ],
+#     text="What is RAG and why it is helpful?",
+#     rag_retrieval_config=rag_retrieval_config,
+# )
+# print(response)
 
 # Enhance generation
 # Create a RAG retrieval tool
@@ -94,9 +94,27 @@ rag_model = GenerativeModel(
     model_name="gemini-2.0-flash-001", tools=[rag_retrieval_tool]
 )
 
-# Generate response
-response = rag_model.generate_content("Give me all home internet plans and prices")
-print(response.text)
+# Generate responses interactively from terminal
+print("Interactive RAG console: type 'exit', 'quit' or 'q' to leave.")
+while True:
+    try:
+        user_query = input("Enter your prompt > ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\nExiting.")
+        break
+
+    if not user_query:
+        continue
+
+    if user_query.lower() in ("exit", "quit", "q"):
+        print("Goodbye.")
+        break
+
+    try:
+        response = rag_model.generate_content(user_query)
+        print(response.text)
+    except Exception as e:
+        print(f"Error generating response: {e}")
 # Example response:
 #   RAG stands for Retrieval-Augmented Generation.
 #   It's a technique used in AI to enhance the quality of responses
