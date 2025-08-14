@@ -55,8 +55,8 @@ rag.import_files(
     # Optional
     transformation_config=rag.TransformationConfig(
         chunking_config=rag.ChunkingConfig(
-            chunk_size=512,
-            chunk_overlap=100,
+            chunk_size=1600,
+            chunk_overlap=400,
         ),
     ),
     max_embedding_requests_per_min=1000,  # Optional
@@ -149,8 +149,8 @@ def import_gcs_prefix_into_corpus(corpus_name: str, bucket_name: str, prefix: st
 
 # Direct context retrieval
 rag_retrieval_config = rag.RagRetrievalConfig(
-    top_k=3,  # Optional
-    filter=rag.Filter(vector_distance_threshold=0.5),  # Optional
+    # top_k=3,  # Optional
+    # filter=rag.Filter(vector_distance_threshold=0.5),  # Optional
 )
 # response = rag.retrieval_query(
 #     rag_resources=[
@@ -164,6 +164,113 @@ rag_retrieval_config = rag.RagRetrievalConfig(
 #     rag_retrieval_config=rag_retrieval_config,
 # )
 # print(response)
+
+def debug_retrieval(rag_corpus_name: str, query: str, top_k: int = 12):
+    """Print the retrieved contexts safely (SDK-agnostic)."""
+    cfg = rag.RagRetrievalConfig(top_k=top_k)  # keep it simple; no vector_distance_threshold
+    resp = rag.retrieval_query(
+        rag_resources=[rag.RagResource(rag_corpus=rag_corpus_name)],
+        text=query,
+        rag_retrieval_config=cfg,
+    )
+
+    # --- normalize contexts into a list ---
+    ctxs = getattr(resp, "contexts", None)
+    try:
+        ctx_list = list(ctxs) if ctxs is not None else []
+    except TypeError:
+        # some versions wrap the list in a .contexts attribute
+        inner = getattr(ctxs, "contexts", None)
+        ctx_list = list(inner) if inner is not None else []
+
+    # --- pretty demarcation for clarity ---
+    print("\n" + "=" * 80)
+    print("[RETRIEVED CHUNKS]")
+    print(f"- query: {query!r}")
+    print(f"- total: {len(ctx_list)}")
+    print("=" * 80)
+
+    def _ctx_text(c):
+        # text can live at different spots depending on version
+        t = getattr(c, "text", None)
+        if t: return t
+        chunk = getattr(c, "chunk", None)
+        if chunk and getattr(chunk, "text", None):
+            return chunk.text
+        # last resort: repr
+        return str(c)
+
+    for i, c in enumerate(ctx_list, 1):
+        txt = (_ctx_text(c) or "")[:800]
+        print(f"\n---- Chunk {i}/{len(ctx_list)} ----\n{txt}")
+
+    print("\n" + "=" * 80 + "\n")
+
+    return ctx_list, resp
+
+
+# --- Reuse-existing-crawl helpers ---
+
+def _site_slug_from_url(url: str) -> str:
+    return _slugify(urlparse(url).netloc or "site")
+
+def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: str) -> list[str]:
+    """
+    Returns sorted list of GCS prefixes for previous crawls of this site.
+    Format we look for: {base_prefix}/{site-slug}/{timestamp}/...
+    e.g., raw_pages/playvalorant-com/20250813-153422/...
+    """
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    site_slug = _site_slug_from_url(site_url)
+    site_root = f"{base_prefix}/{site_slug}/"
+
+    # Collect unique first-level subfolders under site_root (timestamps)
+    prefixes = set()
+    for blob in bucket.list_blobs(prefix=site_root):
+        # blob.name like: raw_pages/playvalorant-com/20250813-153422/file.md
+        parts = blob.name.split("/")
+        if len(parts) >= 3 and parts[0] == base_prefix and parts[1] == site_slug:
+            ts = parts[2]
+            if ts:  # "20250813-153422"
+                prefixes.add(f"{base_prefix}/{site_slug}/{ts}")
+
+    # Sort by timestamp if possible
+    def _ts_key(pref: str) -> tuple:
+        # pref ends with ".../{timestamp}"
+        ts = pref.rstrip("/").split("/")[-1]
+        # try to parse YYYYMMDD-HHMMSS
+        try:
+            dt = datetime.strptime(ts, "%Y%m%d-%H%M%S")
+            return (dt, ts)
+        except Exception:
+            return (datetime.min, ts)
+
+    return sorted(prefixes, key=_ts_key)
+
+def choose_prefix_interactively(prefixes: list[str]) -> str | None:
+    """
+    Small interactive picker. Returns chosen prefix or None if user aborts.
+    """
+    if not prefixes:
+        return None
+    print("\nFound previous crawls:\n")
+    for i, p in enumerate(prefixes, 1):
+        print(f"  {i}. gs://{BUCKET_NAME}/{p}/")
+    print("  0. Cancel")
+    while True:
+        choice = input("Pick a number (Enter=latest): ").strip()
+        if choice == "":
+            return prefixes[-1]  # latest
+        if choice == "0":
+            return None
+        if choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(prefixes):
+                return prefixes[idx - 1]
+        print("Invalid choice. Try again.")
+
+
 
 # Enhance generation
 # Create a RAG retrieval tool
@@ -207,11 +314,37 @@ while True:
     # If input looks like a URL, perform crawl → upload → import
     if user_query.lower().startswith("http://") or user_query.lower().startswith("https://"):
         try:
+            # 1) Check for existing crawls in GCS
+            existing = list_existing_site_prefixes(BUCKET_NAME, GCS_SUBPATH, user_query)
+            if existing:
+                latest = existing[-1]
+                ans = input(
+                    f"Found {len(existing)} previous crawls for this site.\n"
+                    f"Reuse latest prefix gs://{BUCKET_NAME}/{latest}/ ? [Y/n/i=list] "
+                ).strip().lower()
+
+                if ans in ("", "y", "yes"):
+                    print(f"Reusing {latest} ... importing into corpus.")
+                    import_gcs_prefix_into_corpus(rag_corpus.name, BUCKET_NAME, latest)
+                    print("Import complete. You can now query against the previously indexed pages.")
+                    continue
+                elif ans in ("i", "list", "l"):
+                    chosen = choose_prefix_interactively(existing)
+                    if chosen:
+                        print(f"Reusing {chosen} ... importing into corpus.")
+                        import_gcs_prefix_into_corpus(rag_corpus.name, BUCKET_NAME, chosen)
+                        print("Import complete. You can now query against the selected crawl.")
+                        continue
+                    else:
+                        print("Cancelled reuse; proceeding to fresh crawl.")
+
+            # 2) No reuse (or user chose fresh crawl) → crawl anew
             print(f"Crawling site (BFS): {user_query}")
             crawled_docs = asyncio.run(crawl_site_bfs(user_query, max_depth=8, max_concurrent=25))
             if not crawled_docs:
                 print("No pages crawled.")
                 continue
+
             print(f"Crawled {len(crawled_docs)} pages. Uploading to gs://{BUCKET_NAME}/{GCS_SUBPATH}/ ...")
             gcs_prefix = upload_markdown_docs_to_gcs(BUCKET_NAME, GCS_SUBPATH, crawled_docs)
             print(f"Uploaded to gs://{BUCKET_NAME}/{gcs_prefix}/. Importing into Vertex RAG corpus...")
@@ -221,10 +354,19 @@ while True:
             print(f"Error during crawl/upload/import: {e}")
         continue
 
+
     # Otherwise, treat as a normal prompt to the RAG-enabled model
     try:
+        # 2a) Inspect what RAG brings back
+        _ = debug_retrieval(rag_corpus.name, user_query, top_k=12)
+
+        # 2b) Now generate, grounded on those contexts
         response = rag_model.generate_content(user_query)
+        print("\n" + "=" * 80)
+        print("[FINAL ANSWER]")
+        print("=" * 80)
         print(response.text)
+        print("\n" + "=" * 80 + "\n")
     except Exception as e:
         print(f"Error generating response: {e}")
 # Example response:
