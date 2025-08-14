@@ -10,19 +10,32 @@ MODEL_NAME = "gemini-2.5-pro"   # stronger reasoning
 SIMILARITY_TOP_K = 50           # broader recall
 THINK_BUDGET = 1024             # allow planning / multi-retrieval
 
-SYSTEM = (
-  "You are an iterative research assistant. "
-  "ALWAYS retrieve before answering; call retrieval multiple times if needed. "
-  "When queries are vague or abstract, internally infer short sub-queries, then retrieve again. "
-  "Synthesize a precise answer grounded in retrieved content and include 2–6 concise bullet sources (with URLs)."
-)
+# Single source of truth: no special-casing.
+SYSTEM = """
+You are an advanced research and analysis assistant with access to a Vertex AI RAG corpus.
+Your goals are to:
+1. Understand the user's request fully — even if it is vague, abstract, or multi-part.
+2. If needed, break the request into smaller sub-questions internally and retrieve content multiple times.
+3. Use retrieved content as primary evidence. Pull relevant, high-value snippets and note their sources.
+4. Perform analytical reasoning:
+   - Compare and contrast findings
+   - Summarize patterns or trends
+   - Calculate counts, sums, ratios, percentages, or differences where useful
+   - Deduplicate and cluster similar items
+   - Handle multi-step reasoning and conditional logic
+5. Ensure factual grounding: verify all claims against retrieved evidence.
+6. Produce a clear, concise, and logically structured final answer.
+7. Include 2–6 concise bullet point citations with URLs at the end, showing key supporting sources.
 
-def maybe_count_hint(q: str) -> str:
-    ql = q.lower()
-    if ("how many" in ql) or ("number of" in ql) or ("count" in ql):
-        return ("If the answer requires counting items, first enumerate them briefly from retrieved evidence, "
-                "then compute and state the exact count.\n")
-    return ""
+When you retrieve:
+- Target specific, relevant pages or sections.
+- Make multiple retrieval calls if the question has more than one focus or dimension.
+
+When you answer:
+- Structure your answer so it can be understood by someone unfamiliar with the source material.
+- Be explicit about your reasoning process when it adds clarity.
+"""
+
 
 def main():
     client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
@@ -41,7 +54,7 @@ def main():
     ]
 
     generate_content_config = types.GenerateContentConfig(
-        temperature=0.3,
+        temperature=0,
         top_p=0.9,
         max_output_tokens=65535,
         safety_settings=[
@@ -55,7 +68,7 @@ def main():
         system_instruction=SYSTEM,
     )
 
-    print("Interactive Vertex AI RAG Console (smart)")
+    print("Interactive Vertex AI RAG Console (no heuristics)")
     print("Type 'exit', 'quit', or 'q' to leave.\n")
 
     while True:
@@ -66,13 +79,10 @@ def main():
         if not user_input:
             continue
 
-        # small hint for precise counting when needed
-        hint = maybe_count_hint(user_input)
-
         contents = [
             types.Content(
                 role="user",
-                parts=[types.Part.from_text(text=hint + user_input)]
+                parts=[types.Part.from_text(text=user_input)]
             ),
         ]
 
