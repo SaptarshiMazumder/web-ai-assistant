@@ -2,6 +2,14 @@ from vertexai import rag
 from vertexai.generative_models import GenerativeModel, Tool
 import vertexai
 import os
+import re
+import asyncio
+from datetime import datetime
+import hashlib
+from urllib.parse import urldefrag, urlparse
+from typing import List, Dict, Any
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
+from google.cloud import storage
 
 # Create a RAG Corpus, Import Files, and Generate a response
 
@@ -54,6 +62,91 @@ rag.import_files(
     max_embedding_requests_per_min=1000,  # Optional
 )
 
+# ---- Crawl + Upload helpers ----
+def _normalize_url(url: str) -> str:
+    return urldefrag(url)[0]
+
+def _slugify(text: str) -> str:
+    text = text.strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    text = re.sub(r"-+", "-", text).strip("-")
+    return text or "index"
+
+async def crawl_site_bfs(root_url: str, max_depth: int = 5, max_concurrent: int = 20) -> List[Dict[str, Any]]:
+    browser_config = BrowserConfig(headless=True, verbose=False)
+    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=70.0,
+        check_interval=1.0,
+        max_session_permit=max_concurrent,
+    )
+
+    parsed_root = urlparse(root_url)
+    root_netloc = parsed_root.netloc
+    visited = set()
+    current_urls = set([_normalize_url(root_url)])
+    all_results: List[Dict[str, Any]] = []
+
+    def is_internal(url: str) -> bool:
+        return urlparse(url).netloc == root_netloc
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        for _depth in range(max_depth):
+            urls_to_crawl = [u for u in current_urls if u not in visited]
+            if not urls_to_crawl:
+                break
+
+            results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
+            next_level_urls = set()
+
+            for result in results:
+                norm = _normalize_url(result.url)
+                visited.add(norm)
+                if result.success and result.markdown:
+                    all_results.append({"url": result.url, "markdown": result.markdown})
+                    for link in result.links.get("internal", []):
+                        href = _normalize_url(link.get("href", ""))
+                        if href and href not in visited and is_internal(href):
+                            next_level_urls.add(href)
+            current_urls = next_level_urls
+
+    return all_results
+
+def upload_markdown_docs_to_gcs(bucket_name: str, base_prefix: str, docs: List[Dict[str, Any]]) -> str:
+    """Uploads docs as markdown files to GCS and returns the prefix used."""
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    # Organize under raw_pages/<netloc>/<timestamp>/
+    first_url = docs[0]["url"] if docs else ""
+    netloc = urlparse(first_url).netloc or "site"
+    prefix = f"{base_prefix}/{_slugify(netloc)}/{timestamp}"
+
+    for doc in docs:
+        url = doc["url"]
+        md = doc["markdown"]
+        parsed = urlparse(url)
+        path_slug = _slugify(parsed.path or "index")
+        # Ensure uniqueness using a short hash of the full URL
+        url_hash = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
+        filename = f"{path_slug or 'index'}-{url_hash}.md"
+        blob_name = f"{prefix}/{filename}"
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(md, content_type="text/markdown")
+
+    return prefix
+
+def import_gcs_prefix_into_corpus(corpus_name: str, bucket_name: str, prefix: str) -> None:
+    rag.import_files(
+        corpus_name,
+        [f"gs://{bucket_name}/{prefix}/"],
+        transformation_config=rag.TransformationConfig(
+            chunking_config=rag.ChunkingConfig(chunk_size=512, chunk_overlap=100)
+        ),
+        max_embedding_requests_per_min=1000,
+    )
+
 # Direct context retrieval
 rag_retrieval_config = rag.RagRetrievalConfig(
     top_k=3,  # Optional
@@ -96,9 +189,10 @@ rag_model = GenerativeModel(
 
 # Generate responses interactively from terminal
 print("Interactive RAG console: type 'exit', 'quit' or 'q' to leave.")
+print("Tip: enter a URL (e.g., https://example.com) to crawl the site, upload to GCS, and index into the current corpus.")
 while True:
     try:
-        user_query = input("Enter your prompt > ").strip()
+        user_query = input("Enter your prompt or URL > ").strip()
     except (EOFError, KeyboardInterrupt):
         print("\nExiting.")
         break
@@ -110,6 +204,24 @@ while True:
         print("Goodbye.")
         break
 
+    # If input looks like a URL, perform crawl → upload → import
+    if user_query.lower().startswith("http://") or user_query.lower().startswith("https://"):
+        try:
+            print(f"Crawling site (BFS): {user_query}")
+            crawled_docs = asyncio.run(crawl_site_bfs(user_query, max_depth=8, max_concurrent=25))
+            if not crawled_docs:
+                print("No pages crawled.")
+                continue
+            print(f"Crawled {len(crawled_docs)} pages. Uploading to gs://{BUCKET_NAME}/{GCS_SUBPATH}/ ...")
+            gcs_prefix = upload_markdown_docs_to_gcs(BUCKET_NAME, GCS_SUBPATH, crawled_docs)
+            print(f"Uploaded to gs://{BUCKET_NAME}/{gcs_prefix}/. Importing into Vertex RAG corpus...")
+            import_gcs_prefix_into_corpus(rag_corpus.name, BUCKET_NAME, gcs_prefix)
+            print("Import complete. You can now query against the newly indexed pages.")
+        except Exception as e:
+            print(f"Error during crawl/upload/import: {e}")
+        continue
+
+    # Otherwise, treat as a normal prompt to the RAG-enabled model
     try:
         response = rag_model.generate_content(user_query)
         print(response.text)
