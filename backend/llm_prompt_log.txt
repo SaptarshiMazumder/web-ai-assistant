@@ -2736,3 +2736,531 @@ USER QUESTION: give me all home internet plans and prices
 (Page URL: https://www.t-mobile.com/home-internet)
 ----------------------------------------
 
+
+========================================
+[2025-08-14 16:46:40] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+GAME INFO
+
+MEDIA
+
+NEWS
+
+SUPPORT
+
+OUR SOCIALS
+
+ESPORTS
+
+PLAY NOW
+VALORANT — A 5V5 TACTICAL SHOOTER FEATURING AGENTS WITH UNIQUE ABILITIES
+PLAY FOR FREE
+THE LATEST
+GO TO NEWS PAGE
+ESPORTS
+8/14/2025
+Champions Paris Tickets On Sale Now
+Get Your Tickets for Champions Paris!
+GAME UPDATES
+8/12/2025
+Manila Game Server Coming to VALORANT
+Read on to learn more about our newest server launching soon.
+ESPORTS
+8/6/2025
+Sacy reacts to his pro career
+Relive some of the most exciting moments of Sacy’s VALORANT career through his reactions & commentary!
+
+SEASON 2025 // ACT IV
+
+Brave the harsh beauty of Corrode. New ground, classic energy.
+
+WATCH NOW
+
+WE ARE VALORANT
+
+DEFY THE LIMITS
+
+Blend your style and experience on a global, competitive stage. You have 13 rounds to attack and defend your side using sharp gunplay and tactical abilities. And, with one life per-round, you'll need to think faster than your opponent if you want to survive. Take on foes across Competitive and Unranked modes as well as Deathmatch and Spike Rush.
+
+LEARN THE GAME
+
+YOUR AGENTS
+
+CREATIVITY IS YOUR GREATEST WEAPON.
+
+More than guns and bullets, you’ll choose an Agent armed with adaptive, swift, and lethal abilities that create opportunities to let your gunplay shine. No two Agents play alike, just as no two highlight reels will look the same.
+
+VIEW ALL AGENTS
+
+YOUR MAPS
+
+FIGHT AROUND THE WORLD
+
+Each map is a playground to showcase your creative thinking. Purpose-built for team strategies, spectacular plays, and clutch moments. Make the play others will imitate for years to come..
+
+VIEW ALL MAPS
+
+DOWNLOAD RIOT MOBILE COMPANION APP
+Twitter
+YouTube
+Instagram
+TikTok
+Facebook
+Discord
+
+© 2020-2025 Riot Games, Inc. RIOT GAMES, VALORANT and any associated logos are trademarks, service marks, and/or registered trademarks of Riot Games, Inc.
+
+PRIVACY NOTICE
+TERMS OF SERVICE
+COOKIE PREFERENCES
+Blood
+Language
+Violence
+Users Interact
+In-Game Purchases
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:46:51] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+[![](data:image/svg+xml,<svg xmlns="
+
+Brimstone](/en-us/agents/brimstone)[![](data:image/svg+xml,<svg xmlns="
+
+Phoenix](/en-us/agents/phoenix)[![](data:image/svg+xml,<svg xmlns="
+
+Sage](/en-us/agents/sage)[![](data:image/svg+xml,<svg xmlns="
+
+Sova](/en-us/agents/sova)[![](data:image/svg+xml,<svg xmlns="
+
+Viper](/en-us/agents/viper)[![](data:image/svg+xml,<svg xmlns="
+
+Cypher](/en-us/agents/cypher)[![](data:image/svg+xml,<svg xmlns="
+
+Reyna](/en-us/agents/reyna)[![](data:image/svg+xml,<svg xmlns="
+
+Killjoy](/en-us/agents/killjoy)[![](data:image/svg+xml,<svg xmlns="
+
+Breach](/en-us/agents/breach)[![](data:image/svg+xml,<svg xmlns="
+
+Omen](/en-us/agents/omen)[![](data:image/svg+xml,<svg xmlns="
+
+Jett](/en-us/agents/jett)[![](data:image/svg+xml,<svg xmlns="
+
+Raze](/en-us/agents/raze)[![](data:image/svg+xml,<svg xmlns="
+
+Skye](/en-us/agents/skye)[![](data:image/svg+xml,<svg xmlns="
+
+Yoru](/en-us/agents/yoru)[![](data:image/svg+xml,<svg xmlns="
+
+Astra](/en-us/agents/astra)[![](data:image/svg+xml,<svg xmlns="
+
+KAY/O](/en-us/agents/kay-o)[![](data:image/svg+xml,<svg xmlns="
+
+Chamber](/en-us/agents/chamber)[![](data:image/svg+xml,<svg xmlns="
+
+Neon](/en-us/agents/neon)[![](data:image/svg+xml,<svg xmlns="
+
+Fade](/en-us/agents/fade)[![](data:image/svg+xml,<svg xmlns="
+
+Harbor](/en-us/agents/harbor)[![](data:image/svg+xml,<svg xmlns="
+
+Gekko](/en-us/agents/gekko)[![](data:image/svg+xml,<svg xmlns="
+
+Deadlock](/en-us/agents/deadlock)[![](data:image/svg+xml,<svg xmlns="
+
+Iso](/en-us/agents/iso)[![](data:image/svg+xml,<svg xmlns="
+
+Clove](/en-us/agents/clove)[![](data:image/svg+xml,<svg xmlns="
+
+Vyse](/en-us/agents/vyse)[![](data:image/svg+xml,<svg xmlns="
+
+Tejo](/en-us/agents/tejo/)[![](data:image/svg+xml,<svg xmlns="
+
+Waylay](/en-us/agents/waylay/)
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:46:54] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+[![](data:image/svg+xml,<svg xmlns="
+
+Brimstone](/en-us/agents/brimstone)[![](data:image/svg+xml,<svg xmlns="
+
+Phoenix](/en-us/agents/phoenix)[![](data:image/svg+xml,<svg xmlns="
+
+Sage](/en-us/agents/sage)[![](data:image/svg+xml,<svg xmlns="
+
+Sova](/en-us/agents/sova)[![](data:image/svg+xml,<svg xmlns="
+
+Viper](/en-us/agents/viper)[![](data:image/svg+xml,<svg xmlns="
+
+Cypher](/en-us/agents/cypher)[![](data:image/svg+xml,<svg xmlns="
+
+Reyna](/en-us/agents/reyna)[![](data:image/svg+xml,<svg xmlns="
+
+Killjoy](/en-us/agents/killjoy)[![](data:image/svg+xml,<svg xmlns="
+
+Breach](/en-us/agents/breach)[![](data:image/svg+xml,<svg xmlns="
+
+Omen](/en-us/agents/omen)[![](data:image/svg+xml,<svg xmlns="
+
+Jett](/en-us/agents/jett)[![](data:image/svg+xml,<svg xmlns="
+
+Raze](/en-us/agents/raze)[![](data:image/svg+xml,<svg xmlns="
+
+Skye](/en-us/agents/skye)[![](data:image/svg+xml,<svg xmlns="
+
+Yoru](/en-us/agents/yoru)[![](data:image/svg+xml,<svg xmlns="
+
+Astra](/en-us/agents/astra)[![](data:image/svg+xml,<svg xmlns="
+
+KAY/O](/en-us/agents/kay-o)[![](data:image/svg+xml,<svg xmlns="
+
+Chamber](/en-us/agents/chamber)[![](data:image/svg+xml,<svg xmlns="
+
+Neon](/en-us/agents/neon)[![](data:image/svg+xml,<svg xmlns="
+
+Fade](/en-us/agents/fade)[![](data:image/svg+xml,<svg xmlns="
+
+Harbor](/en-us/agents/harbor)[![](data:image/svg+xml,<svg xmlns="
+
+Gekko](/en-us/agents/gekko)[![](data:image/svg+xml,<svg xmlns="
+
+Deadlock](/en-us/agents/deadlock)[![](data:image/svg+xml,<svg xmlns="
+
+Iso](/en-us/agents/iso)[![](data:image/svg+xml,<svg xmlns="
+
+Clove](/en-us/agents/clove)[![](data:image/svg+xml,<svg xmlns="
+
+Vyse](/en-us/agents/vyse)[![](data:image/svg+xml,<svg xmlns="
+
+Tejo](/en-us/agents/tejo/)[![](data:image/svg+xml,<svg xmlns="
+
+Waylay](/en-us/agents/waylay/)
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:12] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Controller
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP an incendiary grenade launcher. FIRE to launch a grenade that detonates as it comes to a rest on the floor, creating a lingering fire zone that damages players within the zone.
+
+EQUIP an incendiary grenade launcher. FIRE to launch a grenade that detonates as it comes to a rest on the floor, creating a lingering fire zone that damages players within the zone.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/brimstone/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:12] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Sentinel
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a slowing orb. FIRE to throw a slowing orb forward that detonates upon landing, creating a lingering field that slows players caught inside of it.
+
+EQUIP a resurrection ability. FIRE with your crosshairs placed over a dead ally to begin resurrecting them. After a brief channel, the ally will be brought back to life with full health.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/sage/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:13] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Initiator
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a bow with a shock bolt. FIRE to send the explosive bolt forward, detonating upon collision and damaging players nearby. HOLD FIRE to extend the range of the projectile. ALT FIRE to add up to two bounces to this arrow.
+
+EQUIP a bow with recon bolt. FIRE to send the recon bolt forward, activating upon collision and Revealing the location of nearby enemies caught in the line of sight of the bolt. Enemies can destroy this bolt. HOLD FIRE to extend the range of the projectile. ALT FIRE to add up to two bounces to this arrow.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/sova/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:14] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Controller
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a gas emitter. FIRE to throw the emitter that perpetually remains throughout the round. RE-USE the ability to create a toxic gas cloud at the cost of fuel. This ability can be picked up to be REDEPLOYED before the round starts and can be RE-USED more than once throughout the round.
+
+EQUIP a gas emitter. FIRE to throw the emitter that perpetually remains throughout the round. RE-USE the ability to create a toxic gas cloud at the cost of fuel. This ability can be picked up to be REDEPLOYED before the round starts and can be RE-USED more than once throughout the round.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/viper/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:15] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Duelist
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a flare orb that takes a curving path and detonates shortly after throwing. FIRE to curve the flare orb to the left, detonating and blinding any player who sees the orb. ALTERNATE FIRE to curve the flare orb to the right.
+
+EQUIP a flare orb that takes a curving path and detonates shortly after throwing. FIRE to curve the flare orb to the left, detonating and blinding any player who sees the orb. ALTERNATE FIRE to curve the flare orb to the right.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/phoenix/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:17] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Initiator
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a bow with a shock bolt. FIRE to send the explosive bolt forward, detonating upon collision and damaging players nearby. HOLD FIRE to extend the range of the projectile. ALT FIRE to add up to two bounces to this arrow.
+
+EQUIP a bow with recon bolt. FIRE to send the recon bolt forward, activating upon collision and Revealing the location of nearby enemies caught in the line of sight of the bolt. Enemies can destroy this bolt. HOLD FIRE to extend the range of the projectile. ALT FIRE to add up to two bounces to this arrow.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/sova/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:18] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Controller
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a gas emitter. FIRE to throw the emitter that perpetually remains throughout the round. RE-USE the ability to create a toxic gas cloud at the cost of fuel. This ability can be picked up to be REDEPLOYED before the round starts and can be RE-USED more than once throughout the round.
+
+EQUIP a gas emitter. FIRE to throw the emitter that perpetually remains throughout the round. RE-USE the ability to create a toxic gas cloud at the cost of fuel. This ability can be picked up to be REDEPLOYED before the round starts and can be RE-USED more than once throughout the round.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/viper/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:20] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Sentinel
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a slowing orb. FIRE to throw a slowing orb forward that detonates upon landing, creating a lingering field that slows players caught inside of it.
+
+EQUIP a resurrection ability. FIRE with your crosshairs placed over a dead ally to begin resurrecting them. After a brief channel, the ally will be brought back to life with full health.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/sage/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:22] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Controller
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP an incendiary grenade launcher. FIRE to launch a grenade that detonates as it comes to a rest on the floor, creating a lingering fire zone that damages players within the zone.
+
+EQUIP an incendiary grenade launcher. FIRE to launch a grenade that detonates as it comes to a rest on the floor, creating a lingering fire zone that damages players within the zone.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/brimstone/)
+----------------------------------------
+
+
+========================================
+[2025-08-14 16:47:24] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](data:image/svg+xml,<svg xmlns="
+
+ROLE
+
+Duelist
+
+1. ![](data:image/svg+xml,<svg xmlns="
+2. ![](data:image/svg+xml,<svg xmlns="
+3. ![](data:image/svg+xml,<svg xmlns="
+4. ![](data:image/svg+xml,<svg xmlns="
+
+![](data:image/svg+xml,<svg xmlns="
+
+[](
+
+EQUIP a flare orb that takes a curving path and detonates shortly after throwing. FIRE to curve the flare orb to the left, detonating and blinding any player who sees the orb. ALTERNATE FIRE to curve the flare orb to the right.
+
+EQUIP a flare orb that takes a curving path and detonates shortly after throwing. FIRE to curve the flare orb to the left, detonating and blinding any player who sees the orb. ALTERNATE FIRE to curve the flare orb to the right.
+
+USER QUESTION: how many agents in the game
+(Page URL: https://playvalorant.com/en-us/agents/phoenix/)
+----------------------------------------
+
