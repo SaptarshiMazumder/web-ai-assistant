@@ -62,6 +62,21 @@ async def multi_hop_qa_orchestrator(
     best_partial: Optional[PageQAResult] = None
     pages_seen = 0
 
+    # Emit start stage
+    try:
+        log(_json.dumps({
+            "type": "stage",
+            "stage": "orchestrator_start",
+            "question": question,
+            "init_url": init_state.page_url,
+            "max_hops": max_hops,
+            "k_links": k_links,
+            "max_concurrency": max_concurrency,
+            "total_page_budget": total_page_budget,
+        }))
+    except Exception:
+        pass
+
     # 3. Main loop: process pages in the queue (BFS)
     while queue:
         node = queue.pop(0)
@@ -81,6 +96,16 @@ async def multi_hop_qa_orchestrator(
 
         log(f"\n📄 [Depth {depth}] QA on: {page_url or '(initial page)'}")
         log(f"🧪 This page had {len(links)} input links.")
+        try:
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "page_qa_start",
+                "depth": depth,
+                "page_url": page_url,
+                "input_links": len(links),
+            }))
+        except Exception:
+            pass
 
         # 4. Try to answer the question using this page
         qa_result = await run_single_page_qa(text=text, question=question, page_url=page_url)
@@ -91,6 +116,17 @@ async def multi_hop_qa_orchestrator(
             best_partial = qa_result
 
         log(f"🧪 Sufficient? {sufficient}")
+        try:
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "page_qa_done",
+                "depth": depth,
+                "page_url": page_url,
+                "sufficient": bool(sufficient),
+                "confidence": getattr(qa_result, "confidence", None),
+            }))
+        except Exception:
+            pass
         if sufficient:
             # If the answer is good enough, return it immediately
             return {
@@ -113,8 +149,18 @@ async def multi_hop_qa_orchestrator(
             and is_same_domain(l["href"], original_domain)
         ]
         log(f"🔍 Found {len(candidate_links)} valid domain links:")
-        for l in candidate_links:
-            print(f"   - {l.get('text', '')[:40]} → {l.get('href')}")
+        try:
+            log(_json.dumps({
+                "type": "link_candidates",
+                "count": len(candidate_links),
+                "depth": depth,
+                "domain": original_domain,
+                "items": [
+                    {"text": (l.get('text') or '')[:120], "href": l.get('href')} for l in candidate_links[:50]
+                ],
+            }))
+        except Exception:
+            pass
 
         if not candidate_links:
             log("🔚 No candidate links to expand from this page.")
@@ -122,6 +168,16 @@ async def multi_hop_qa_orchestrator(
 
         # 7. Use LLM to select the most promising links to follow next
         from web_pages_worker import llm_select_relevant_links_parallel
+        try:
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "link_selection_start",
+                "depth": depth,
+                "k": k_links,
+                "candidate_count": len(candidate_links),
+            }))
+        except Exception:
+            pass
         selected_links = await llm_select_relevant_links_parallel(
             question=question,
             links=candidate_links,
@@ -133,14 +189,32 @@ async def multi_hop_qa_orchestrator(
         if selected_links:
             # Stream a friendly LLM message about selected links as typewriter text
             asyncio.create_task(stream_llm_links_message(question, selected_links))
-
-        print(f"🧠 LLM selected links: {selected_links}")
+        try:
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "link_selection_done",
+                "depth": depth,
+                "selected_count": len(selected_links or []),
+                "items": selected_links[:50] if selected_links else [],
+            }))
+        except Exception:
+            pass
 
         if not selected_links:
             log("🤷 LLM returned no useful follow-up links.")
             continue
 
         log(f"🔗 LLM selected {len(selected_links)} links to fetch in parallel (k={k_links}).")
+        try:
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "children_retrieval_start",
+                "depth": depth,
+                "count": len(selected_links),
+                "max_concurrency": max_concurrency,
+            }))
+        except Exception:
+            pass
 
         # 8. Scrape and run QA on the selected links in parallel
         child_results: List[PageQAResult] = await scrape_and_qa_many(
@@ -150,6 +224,18 @@ async def multi_hop_qa_orchestrator(
             original_domain=original_domain,
             log_fn=log
         )
+
+        try:
+            any_sufficient = any(getattr(cr, "sufficient", False) for cr in child_results)
+            log(_json.dumps({
+                "type": "stage",
+                "stage": "children_retrieval_done",
+                "depth": depth,
+                "results": len(child_results),
+                "any_sufficient": bool(any_sufficient),
+            }))
+        except Exception:
+            pass
 
         # 9. If any child page has a sufficient answer, return it immediately
         for cr in child_results:

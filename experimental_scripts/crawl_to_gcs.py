@@ -13,6 +13,7 @@ import os
 import re
 import hashlib
 from datetime import datetime
+import time
 from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse, urldefrag
 
@@ -96,19 +97,36 @@ def get_or_create_corpus(project_id: str, location: str, corpus_hint: str = RAG_
 
 def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix: str) -> None:
     """Import all files under gs://bucket/prefix/ into the given RAG corpus."""
-    vx_rag.import_files(
-        corpus_resource,
-        [f"gs://{bucket_name}/{prefix}/"],
-        transformation_config=vx_rag.TransformationConfig(
-            chunking_config=vx_rag.ChunkingConfig(
-                chunk_size=CHUNK_SIZE,
-                chunk_overlap=CHUNK_OVERLAP,
-            )
-            # (Later) you can switch to semantic/html chunking configs
-        ),
-        max_embedding_requests_per_min=1000,
-    )
-    print(f"[RAG] Imported: gs://{bucket_name}/{prefix}/")
+    gcs_uri = f"gs://{bucket_name}/{prefix}/"
+    try:
+        vx_rag.import_files(
+            corpus_resource,
+            [gcs_uri],
+            transformation_config=vx_rag.TransformationConfig(
+                chunking_config=vx_rag.ChunkingConfig(
+                    chunk_size=CHUNK_SIZE,
+                    chunk_overlap=CHUNK_OVERLAP,
+                )
+                # (Later) you can switch to semantic/html chunking configs
+            ),
+            max_embedding_requests_per_min=1000,
+        )
+        print(f"[RAG] Imported: {gcs_uri}")
+    except Exception as e:
+        # Provide actionable diagnostics
+        print("[RAG] Import failed.")
+        print(f"  Corpus:   {corpus_resource}")
+        print(f"  GCS URI:  {gcs_uri}")
+        print(f"  Project:  {PROJECT_ID}")
+        print(f"  Location: {VERTEX_LOCATION}")
+        print(f"  Error:    {e}")
+        print("\nCommon fixes:\n"
+              "  1) Grant the Vertex AI service agent Storage Object Viewer on your bucket:\n"
+              "     gsutil iam ch serviceAccount:service-PROJECT_NUMBER@gcp-sa-aiplatform.iam.gserviceaccount.com:roles/storage.objectViewer gs://" + bucket_name + "\n"
+              "  2) Ensure the corpus exists in the same Vertex location (" + VERTEX_LOCATION + ") and you initialized vertexai with that location.\n"
+              "  3) Verify the prefix exists and contains files: gsutil ls " + gcs_uri + "\n"
+              "  4) Check that your account has Vertex AI permissions in project " + PROJECT_ID + ".")
+        raise
 
 # =========================
 # ---- GCS HELPERS --------
@@ -251,6 +269,9 @@ def main():
         url = _ensure_url(user_input)
 
         try:
+            # --- Timing start ---
+            start_wall_utc = datetime.utcnow()
+            start_perf = time.perf_counter()
             # Reuse?
             existing = list_existing_site_prefixes(BUCKET_NAME, GCS_SUBPATH, url)
             if existing:
@@ -269,7 +290,13 @@ def main():
                 if chosen:
                     print(f"Reusing: gs://{BUCKET_NAME}/{chosen}/")
                     import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, chosen)
+                    # --- Timing end (reuse path) ---
+                    end_wall_utc = datetime.utcnow()
+                    elapsed_s = time.perf_counter() - start_perf
                     print("Done.\n")
+                    print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
+                    print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
+                    print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
                     continue
                 else:
                     print("Proceeding to fresh crawl.\n")
@@ -283,14 +310,30 @@ def main():
                 print("No pages crawled.\n")
                 continue
 
+            crawl_done_perf = time.perf_counter()
             print(f"Crawled {len(docs)} pages. Uploading to gs://{BUCKET_NAME}/{GCS_SUBPATH}/ ...")
             gcs_prefix = upload_markdown_docs_to_gcs(BUCKET_NAME, GCS_SUBPATH, docs)
+            upload_done_perf = time.perf_counter()
             print(f"Uploaded to: gs://{BUCKET_NAME}/{gcs_prefix}/")
 
             # Import into RAG corpus
             print("[RAG] Importing uploaded pages into corpus...")
             import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, gcs_prefix)
+            # --- Timing end (fresh crawl path) ---
+            end_wall_utc = datetime.utcnow()
+            import_done_perf = time.perf_counter()
+            elapsed_s = import_done_perf - start_perf
+            crawl_s = crawl_done_perf - start_perf
+            upload_s = upload_done_perf - crawl_done_perf
+            import_s = import_done_perf - upload_done_perf
             print("Import complete.\n")
+            print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
+            print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
+            print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
+            print("[TIMING] Breakdown:")
+            print(f"  - Crawl:  {crawl_s:.2f} s")
+            print(f"  - Upload: {upload_s:.2f} s")
+            print(f"  - Import: {import_s:.2f} s\n")
 
         except Exception as e:
             print(f"Error: {e}\n")

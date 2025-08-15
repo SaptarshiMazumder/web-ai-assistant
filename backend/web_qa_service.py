@@ -30,6 +30,17 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
     question = state.question
     page_url = getattr(state, "page_url", "")
     clean_text = clean_markdown(page_text)
+    # Stage: planning/analysis instruction prompt build
+    try:
+        smartqa_log_relay.log(json.dumps({
+            "type": "stage",
+            "stage": "node_start",
+            "node": "webpage_answer",
+            "page_url": page_url,
+        }))
+    except Exception:
+        pass
+
     prompt = (
         "You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. "
         "DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. "
@@ -55,6 +66,12 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
     try:
         if ENABLE_ANSWER_STREAMING:
             smartqa_log_relay.log(json.dumps({"type": "answer_reset"}))
+            smartqa_log_relay.log(json.dumps({
+                "type": "stage",
+                "stage": "generation_stream_start",
+                "node": "webpage_answer",
+                "page_url": page_url,
+            }))
         for chunk in llm.stream([{ "role": "user", "content": prompt }]):
             try:
                 delta_text = getattr(chunk, "content", None)
@@ -106,6 +123,14 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
                 "sufficient": sufficient,
                 "confidence": confidence,
             }))
+        smartqa_log_relay.log(json.dumps({
+            "type": "stage",
+            "stage": "node_done",
+            "node": "webpage_answer",
+            "page_url": page_url,
+            "sufficient": sufficient,
+            "confidence": confidence,
+        }))
     except Exception:
         pass
     answer = answer_full
