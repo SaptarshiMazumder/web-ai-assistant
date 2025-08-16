@@ -276,19 +276,25 @@ btnSmart.textContent = 'Search in this website';
 btnSmart.id = 'btn-smart';
 btnSmart.style.marginRight = '4px';
 
+const btnWebsiteRag = document.createElement('button');
+btnWebsiteRag.textContent = 'Website RAG';
+btnWebsiteRag.id = 'btn-website-rag';
+btnWebsiteRag.style.marginRight = '4px';
+
 const btnGemini = document.createElement('button');
 btnGemini.textContent = 'Google search';
 btnGemini.id = 'btn-gemini';
 
 btnContainer.appendChild(btnSmart);
+btnContainer.appendChild(btnWebsiteRag);
 btnContainer.appendChild(btnGemini);
 
 // Selection state
-let selectedMode: 'gemini' | 'smart' = 'gemini';
+let selectedMode: 'gemini' | 'smart' | 'website_rag' = 'gemini';
 
 function updateButtonStyles() {
   // Reset styles
-  [btnSmart, btnGemini].forEach(btn => {
+  [btnSmart, btnWebsiteRag, btnGemini].forEach(btn => {
     btn.style.background = '#fff';
     btn.style.color = '#222';
     btn.style.border = '1px solid #b0b0b0';
@@ -306,6 +312,18 @@ function updateButtonStyles() {
     btnSmart.style.border = '1.5px solid #1976d2';
     btnSmart.onmouseover = null;
     btnSmart.onmouseout = null;
+    btnWebsiteRag.onmouseover = () => btnWebsiteRag.style.background = '#f3f3f3';
+    btnWebsiteRag.onmouseout = () => btnWebsiteRag.style.background = '#fff';
+    btnGemini.onmouseover = () => btnGemini.style.background = '#f3f3f3';
+    btnGemini.onmouseout = () => btnGemini.style.background = '#fff';
+  } else if (selectedMode === 'website_rag') {
+    btnWebsiteRag.style.background = '#9c27b0';
+    btnWebsiteRag.style.color = '#fff';
+    btnWebsiteRag.style.border = '1.5px solid #9c27b0';
+    btnWebsiteRag.onmouseover = null;
+    btnWebsiteRag.onmouseout = null;
+    btnSmart.onmouseover = () => btnSmart.style.background = '#f3f3f3';
+    btnSmart.onmouseout = () => btnSmart.style.background = '#fff';
     btnGemini.onmouseover = () => btnGemini.style.background = '#f3f3f3';
     btnGemini.onmouseout = () => btnGemini.style.background = '#fff';
   } else {
@@ -316,11 +334,17 @@ function updateButtonStyles() {
     btnGemini.onmouseout = null;
     btnSmart.onmouseover = () => btnSmart.style.background = '#f3f3f3';
     btnSmart.onmouseout = () => btnSmart.style.background = '#fff';
+    btnWebsiteRag.onmouseover = () => btnWebsiteRag.style.background = '#f3f3f3';
+    btnWebsiteRag.onmouseout = () => btnWebsiteRag.style.background = '#fff';
   }
 }
 
 btnSmart.onclick = () => {
   selectedMode = 'smart';
+  updateButtonStyles();
+};
+btnWebsiteRag.onclick = () => {
+  selectedMode = 'website_rag';
   updateButtonStyles();
 };
 btnGemini.onclick = () => {
@@ -484,11 +508,11 @@ smartBtn.onclick = async function () {
   if (!selectedTool) selectedTool = 'gemini'; // fallback
   console.log('Selected tool:', selectedTool);
 
-  // Add "Smart QA" or "Gemini QA" tag above the bubble
+  // Add mode tag above the bubble
   const tag = document.createElement('div');
-  tag.textContent = selectedTool === 'gemini' ? "Gemini QA" : "Smart QA";
+  tag.textContent = selectedTool === 'gemini' ? "Gemini QA" : (selectedTool === 'smart' ? "Smart QA" : "Website RAG");
   tag.style.fontSize = "0.8em";
-  tag.style.color = selectedTool === 'gemini' ? "#0af" : "#0a5";
+  tag.style.color = selectedTool === 'gemini' ? "#0af" : (selectedTool === 'smart' ? "#0a5" : "#9c27b0");
   tag.style.fontWeight = "bold";
   tag.style.letterSpacing = "0.03em";
   tag.style.margin = "0 10px 0 0";
@@ -500,11 +524,9 @@ smartBtn.onclick = async function () {
   const thinkingBubble = appendMessage("Thinking...", "thinking", currentSessionId);
   const logContainer = (thinkingBubble as any).logContainer;
   logContainer.innerText = "";
-  if (selectedTool === 'gemini') {
-    // No log socket for Gemini
-  } else {
+  if (selectedTool === 'smart') {
     connectSmartQALogSocket(logContainer);
-  }
+  } // No log socket for Gemini or Site Memory placeholder
 
   // --- NEW: Always use getPageDataFromActiveTab to ensure injection ---
   const pageData = await getPageDataFromActiveTab();
@@ -521,6 +543,8 @@ smartBtn.onclick = async function () {
       let endpoint = "http://localhost:5000/ask-smart";
       if (selectedTool === 'gemini') {
         endpoint = "http://localhost:5000/ask-gemini";
+      } else if (selectedTool === 'website_rag') {
+        endpoint = "http://localhost:5000/ask-website-rag";
       }
       const resp = await fetch(endpoint, {
         method: "POST",
@@ -529,15 +553,15 @@ smartBtn.onclick = async function () {
       });
       const data = await resp.json();
       (thinkingBubble as any).thinkingText.textContent = 'Completed thinking.';
-      if (smartqaLogSocket && selectedTool !== 'gemini') {
+      if (smartqaLogSocket && selectedTool === 'smart') {
         // Stop accepting any more streamed content for this request
         acceptStreaming = false;
         smartqaLogSocket.close();
       }
 
       // Show the answer
-      // Smart (webpage) path: append a distinct final answer bubble in light green
-      if (selectedTool === 'smart') {
+      // Smart and Website RAG paths: append a distinct final answer bubble in light green
+      if (selectedTool === 'smart' || selectedTool === 'website_rag') {
         if (data.answer) {
           const finalBubble = appendMessage(data.answer, 'bot', currentSessionId);
           finalBubble.classList.add('final');

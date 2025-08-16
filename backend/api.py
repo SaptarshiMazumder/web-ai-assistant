@@ -20,6 +20,17 @@ async def ask_smart(request: WebAssistantRequest):
 async def ask_gemini(request: WebAssistantRequest):
     return await ask_google_use_case(request)
 
+# --- Website RAG (placeholder) ---
+@smart_qa_router.post("/ask-website-rag")
+async def ask_website_rag(request: WebAssistantRequest):
+    return {
+        "answer": "Website RAG endpoint is ready. Wiring to Vertex RAG coming soon.",
+        "sources": [],
+        "sufficient": True,
+        "selected_links": [],
+        "visited_urls": [],
+    }
+
 # --- Chroma debug API ---
 class PageData(BaseModel):
     url: str
