@@ -14,8 +14,12 @@ class Config:
     GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
     if not GOOGLE_APPLICATION_CREDENTIALS:
         # Optionally set a default or raise error
-        GOOGLE_APPLICATION_CREDENTIALS = r"C:\Users\googler\Downloads\tour-proj-451201-f03b91fdf3d7.json"
-    PROJECT_ID = os.environ.get("PROJECT_ID", "tour-proj-451201")
+        # GOOGLE_APPLICATION_CREDENTIALS = r"C:\Users\googler\Downloads\tour-proj-451201-f03b91fdf3d7.json"
+        GOOGLE_APPLICATION_CREDENTIALS = r"C:\Users\googler\Downloads\gen-lang-client-0545494042-b36c2aa59869.json"
+
+    # PROJECT_ID = os.environ.get("PROJECT_ID", "tour-proj-451201")
+    PROJECT_ID = os.environ.get("PROJECT_ID", "gen-lang-client-0545494042")
+
     LOCATION = os.environ.get("LOCATION", "us-central1")
     # Chroma DB path
     CHROMA_DB_DIR = os.environ.get("CHROMA_DB_DIR", "backend/chroma_db/")

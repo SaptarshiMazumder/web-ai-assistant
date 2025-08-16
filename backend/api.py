@@ -2,7 +2,8 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from state import WebsiteMultiHopState
-from models import WebAssistantRequest
+from models import WebAssistantRequest, WebsiteRagRequest
+from vertex_rag_eg import run_vertex_rag
 import time
 from logging_relay import log, smartqa_log_relay
 from config import config
@@ -22,14 +23,19 @@ async def ask_gemini(request: WebAssistantRequest):
 
 # --- Website RAG (placeholder) ---
 @smart_qa_router.post("/ask-website-rag")
-async def ask_website_rag(request: WebAssistantRequest):
-    return {
-        "answer": "Website RAG endpoint is ready. Wiring to Vertex RAG coming soon.",
-        "sources": [],
-        "sufficient": True,
-        "selected_links": [],
-        "visited_urls": [],
-    }
+async def ask_website_rag(request: WebsiteRagRequest):
+    # Derive domain if not provided
+    domain = request.domain
+    try:
+        if not domain and request.page_url:
+            from urllib.parse import urlparse
+            domain = urlparse(request.page_url).hostname
+    except Exception:
+        pass
+    print(f"[Website RAG] domain: {domain}")
+    # Call Vertex RAG pipeline using the user's question
+    result = run_vertex_rag(request.question)
+    return result
 
 # --- Chroma debug API ---
 class PageData(BaseModel):

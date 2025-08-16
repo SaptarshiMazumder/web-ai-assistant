@@ -533,12 +533,19 @@ smartBtn.onclick = async function () {
   chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const tab = tabs[0];
     const page_url = tab?.url ?? "";
-    const body = {
+    let domain = "";
+    try {
+      domain = page_url ? new URL(page_url).hostname : "";
+    } catch {}
+    const body: any = {
       text: pageData.text,
       question,
       links: pageData.links,
       page_url,
     };
+    if (selectedTool === 'website_rag') {
+      body.domain = domain;
+    }
     try {
       let endpoint = "http://localhost:5000/ask-smart";
       if (selectedTool === 'gemini') {

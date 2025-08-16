@@ -17,6 +17,8 @@ import json
 import re
 import hashlib
 from typing import List, Dict, Any
+import io
+import contextlib
 
 # =========================
 # Config
@@ -337,79 +339,100 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 # =========================
 # Main
 # =========================
-def main():
+def run_vertex_rag(question: str) -> Dict[str, Any]:
+    """Minimal callable wrapper that reuses the script logic and returns structured output.
+
+    It captures any printed streaming output to assemble the final answer text without
+    changing the underlying logic functions.
+    """
+    print(f"\n[RAG] Running Vertex RAG for question: {question}\n")
     vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
     client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
 
-    print("Smart RAG Console — Complexity Gate → One-shot OR Plan→Retrieve→Analyze")
-    print("Type 'exit' to quit.\n")
+    answer_text_parts: List[str] = []
+    sources: List[Dict[str, str]] = []
+    sufficient = True
 
-    while True:
-        q = input("Query > ").strip()
-        if not q:
-            continue
-        if q.lower() in ("exit", "quit", "q"):
-            print("bye.")
-            break
+    # Decide path
+    complex_q = is_complex_question(client, question)
+    if not complex_q:
+        # Fast path: capture streaming prints from one_shot_answer
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            one_shot_answer(client, question)
+        captured = buf.getvalue().strip()
+        answer_text_parts.append(captured)
+        print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+        return {
+            "answer": "".join(answer_text_parts).strip(),
+            "sources": sources,
+            "sufficient": sufficient,
+            "selected_links": [],
+            "visited_urls": [],
+        }
 
-        # Decide path
-        complex_q = is_complex_question(client, q)
-        if not complex_q:
-            # fast path that worked well before
-            one_shot_answer(client, q)
-            print("-" * 80)
-            continue
+    # PLAN
+    subqueries = plan_subqueries(client, question)
+    if not subqueries:
+        subqueries = [question]
 
-        # -------- PLAN --------
-        subqueries = plan_subqueries(client, q)
-        if not subqueries:
-            print("[plan] No subqueries; using the original question.")
-            subqueries = [q]
-        else:
-            print(f"[plan] {len(subqueries)} subqueries:")
-            for i, s in enumerate(subqueries, 1):
-                print(f"  {i}. {s}")
+    # RETRIEVE
+    evidence: List[Dict[str, str]] = []
+    for step in range(MAX_STEPS):
+        for sq in subqueries:
+            chunks = retrieve_for_subquery(RAG_CORPUS, sq, top_k=RETRIEVAL_TOP_K)
+            evidence.extend(chunks)
+        break
 
-        # -------- RETRIEVE --------
-        evidence: List[Dict[str, str]] = []
-        for step in range(MAX_STEPS):
-            for idx, sq in enumerate(subqueries, 1):
-                print(f"\n[retrieve] Subquery {idx}/{len(subqueries)}: {sq}")
-                chunks = retrieve_for_subquery(RAG_CORPUS, sq, top_k=RETRIEVAL_TOP_K)
-                print(f"[retrieve] Retrieved {len(chunks)} chunk(s).")
-                for j, c in enumerate(chunks, 1):
-                    preview = (c.get("snippet") or "").replace("\n", " ").strip()
-                    if len(preview) > 280:
-                        preview = preview[:280] + " ..."
-                    print(f"  --- Chunk {j} ---")
-                    print(f"  URL: {c.get('url','')}")
-                    print(f"  {preview}\n")
-                evidence.extend(chunks)
-            break  # (set MAX_STEPS > 1 and add re-plan logic if desired)
+    evidence = dedupe_evidence(evidence)
+    if not evidence:
+        # Fallback to one-shot; capture streaming
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            one_shot_answer(client, question)
+        captured = buf.getvalue().strip()
+        answer_text_parts.append(captured)
+        print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+        return {
+            "answer": "".join(answer_text_parts).strip(),
+            "sources": sources,
+            "sufficient": sufficient,
+            "selected_links": [],
+            "visited_urls": [],
+        }
 
-        evidence = dedupe_evidence(evidence)
-        if not evidence:
-            print("[analyze] No evidence retrieved. Falling back to one-shot.\n")
-            one_shot_answer(client, q)
-            print("-" * 80)
-            continue
+    # ANALYZE (capture any incidental prints)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        final_answer = analyze_with_evidence(client, question, evidence)
+    if final_answer:
+        answer_text_parts.append(final_answer)
+    else:
+        answer_text_parts.append(buf.getvalue())
 
-        # -------- ANALYZE --------
-        print("[analyze] Synthesizing final answer...\n")
-        final_answer = analyze_with_evidence(client, q, evidence)
+    # VERIFY and optionally re-synthesize
+    ver = verify_answer_supported(client, question, evidence, "".join(answer_text_parts).strip())
+    if (not ver.get("supported")) or (ver.get("confidence", 0) < 0.6):
+        sufficient = False
+        fixed = resynthesize_grounded(client, question, evidence)
+        if fixed:
+            answer_text_parts = [fixed]
 
-        # -------- VERIFY --------
-        ver = verify_answer_supported(client, q, evidence, final_answer)
-        if (not ver.get("supported")) or (ver.get("confidence", 0) < 0.6):
-            print("\n[verify] Detected unsupported claims. Re-synthesizing grounded answer...\n")
-            fixed = resynthesize_grounded(client, q, evidence)
-            if fixed:
-                print(fixed)
-            else:
-                print("[fallback] Using one-shot mode instead:\n")
-                one_shot_answer(client, q)
+    # Prepare sources from evidence
+    for e in evidence:
+        sources.append({
+            "excerpt": e.get("snippet", ""),
+            "url": e.get("url", ""),
+        })
 
-        print("-" * 80)
+    print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+    return {
+        "answer": "".join(answer_text_parts).strip(),
+        "sources": sources,
+        "sufficient": sufficient,
+        "selected_links": [],
+        "visited_urls": [],
+    }
 
-if __name__ == "__main__":
-    main()
+
+# run_vertex_rag("List all open positions in China at Riot games")

@@ -19,3 +19,7 @@ class WebAssistantRequest(BaseModel):
     page_url: str
 
 
+class WebsiteRagRequest(WebAssistantRequest):
+    domain: Optional[str] = None
+
+
