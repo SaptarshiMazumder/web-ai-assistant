@@ -24,7 +24,7 @@ class Config:
     # Chroma DB path
     CHROMA_DB_DIR = os.environ.get("CHROMA_DB_DIR", "backend/chroma_db/")
     # GCS bucket for RAG
-    GCS_BUCKET = os.environ.get("GCS_BUCKET", "web-ai-dynamic-corpus-bucket")
+    GCS_BUCKET = os.environ.get("GCS_BUCKET", "web-assistant-test-bucket-1/raw_pages/")
     # Prompt log path
     PROMPT_LOG_PATH = os.environ.get("PROMPT_LOG_PATH", "llm_prompt_log.txt")
 

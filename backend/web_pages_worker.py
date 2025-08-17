@@ -365,26 +365,3 @@ embedding_config = rag.RagEmbeddingModelConfig(
 from utils import get_or_create_rag_corpus
 rag_corpus = get_or_create_rag_corpus()
 
-def ingest_content_to_vertex_ai(text: str, url: str):
-    """Store content in GCS and import into Vertex AI corpus"""
-    from google.cloud import storage
-    import uuid
-
-    # Upload to GCS
-    bucket_name = config.GCS_BUCKET
-    file_name = f"scraped_pages/{uuid.uuid4()}.txt"
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(file_name)
-    blob.upload_from_string(text)
-
-    # Import into RAG
-    gcs_path = f"gs://{bucket_name}/{file_name}"
-    rag.import_files(
-        rag_corpus.name,
-        paths=[gcs_path],
-        transformation_config=rag.TransformationConfig(
-            chunking_config=rag.ChunkingConfig(chunk_size=512, chunk_overlap=50)
-        )
-    )
-    return gcs_path

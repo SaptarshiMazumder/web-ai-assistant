@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from logging_relay import smartqa_log_relay
 
-from api import smart_qa_router, chroma_router
+from api import smart_qa_router
 
 load_dotenv()
 
@@ -34,7 +34,7 @@ app.add_middleware(
 
 # Register endpoints
 app.include_router(smart_qa_router)
-app.include_router(chroma_router)
+
 
 @app.websocket("/ws/smartqa-logs")
 async def smartqa_logs_ws(websocket: WebSocket):

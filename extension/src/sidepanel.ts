@@ -53,6 +53,65 @@ function renderUsefulLinks(links: {text: string, href: string}[], sessionId?: nu
 const chatDiv = document.getElementById("chat")!;
 const questionInput = document.getElementById("question")! as HTMLInputElement;
 
+// --- Website Indexed Status UI ---
+const indexStatus = document.createElement('div');
+indexStatus.id = 'index-status';
+indexStatus.style.display = 'inline-flex';
+indexStatus.style.alignItems = 'center';
+indexStatus.style.gap = '6px';
+indexStatus.style.marginLeft = '8px';
+indexStatus.style.fontSize = '12px';
+indexStatus.style.color = '#444';
+
+function getActiveTabUrl(): Promise<string> {
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      resolve(tabs[0]?.url || "");
+    });
+  });
+}
+
+async function updateIndexStatus() {
+  try {
+    const url = await getActiveTabUrl();
+    if (!url) {
+      indexStatus.textContent = '';
+      return;
+    }
+    const resp = await fetch(`${BACKEND_BASE_URL}/is-indexed?url=${encodeURIComponent(url)}`);
+    const data = await resp.json();
+    const indexed = !!data?.indexed;
+    const host = data?.host || '';
+    indexStatus.innerHTML = '';
+    if (indexed) {
+      const check = document.createElement('span');
+      check.textContent = '✔';
+      check.style.color = '#2e7d32';
+      check.style.fontWeight = 'bold';
+      const label = document.createElement('span');
+      label.textContent = host ? `Indexed (${host})` : 'Indexed';
+      label.style.color = '#2e7d32';
+      indexStatus.appendChild(check);
+      indexStatus.appendChild(label);
+    } else {
+      const btn = document.createElement('button');
+      btn.id = 'btn-index-site';
+      btn.textContent = 'Index this site';
+      btn.style.background = '#fff';
+      btn.style.color = '#222';
+      btn.style.border = '1px solid #b0b0b0';
+      btn.style.borderRadius = '6px';
+      btn.style.padding = '4px 8px';
+      btn.style.cursor = 'pointer';
+      btn.onclick = () => {};
+      indexStatus.appendChild(btn);
+    }
+  } catch (e) {
+    // Silent fail; leave status empty
+    indexStatus.textContent = '';
+  }
+}
+
 // --- SmartQA log streaming ---
 let smartqaLogSocket: WebSocket | null = null;
 let streamingActive = false;
@@ -367,6 +426,7 @@ const inputRow = document.getElementById("inputRow");
 if (inputRow) {
   inputRow.appendChild(btnContainer);
   inputRow.appendChild(smartBtn);
+  inputRow.appendChild(indexStatus);
 }
 
 
@@ -615,3 +675,14 @@ smartBtn.onclick = async function () {
     currentAnswerBubble = null;
   });
 };
+
+// Keep index status updated
+updateIndexStatus();
+chrome.tabs.onActivated.addListener(() => {
+  updateIndexStatus();
+});
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab.active && (changeInfo.status === 'complete' || changeInfo.url)) {
+    updateIndexStatus();
+  }
+});
