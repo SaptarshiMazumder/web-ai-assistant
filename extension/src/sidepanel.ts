@@ -6,6 +6,7 @@ import { crawlEntireSite, debugLog } from "./siteCrawler";
 // crawl webpage start
 
 const BACKEND_BASE_URL = "http://localhost:5000";
+let indexPollTimer: number | null = null;
 
 function ensureContentScript(tabId: number, cb: () => void) {
   debugLog(`Ensuring content script is injected for tab ${tabId}`);
@@ -84,6 +85,10 @@ async function updateIndexStatus() {
     const host = data?.host || '';
     indexStatus.innerHTML = '';
     if (indexed) {
+      if (indexPollTimer !== null) {
+        clearInterval(indexPollTimer);
+        indexPollTimer = null;
+      }
       const check = document.createElement('span');
       check.textContent = '✔';
       check.style.color = '#2e7d32';
@@ -103,7 +108,37 @@ async function updateIndexStatus() {
       btn.style.borderRadius = '6px';
       btn.style.padding = '4px 8px';
       btn.style.cursor = 'pointer';
-      btn.onclick = () => {};
+      btn.onclick = async () => {
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Indexing...';
+          await fetch(`${BACKEND_BASE_URL}/index-site`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+          // Start polling until indexed
+          if (indexPollTimer !== null) {
+            clearInterval(indexPollTimer);
+            indexPollTimer = null;
+          }
+          indexPollTimer = window.setInterval(async () => {
+            try {
+              const r = await fetch(`${BACKEND_BASE_URL}/is-indexed?url=${encodeURIComponent(url)}`);
+              const d = await r.json();
+              if (d && d.indexed) {
+                clearInterval(indexPollTimer!);
+                indexPollTimer = null;
+                updateIndexStatus();
+              }
+            } catch {}
+          }, 5000);
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = 'Index this site';
+          console.error('Failed to start indexing', e);
+        }
+      };
       indexStatus.appendChild(btn);
     }
   } catch (e) {

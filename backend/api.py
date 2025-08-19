@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+import asyncio
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from state import WebsiteMultiHopState
@@ -10,7 +11,8 @@ from config import config
 import os
 from use_cases.qa_usecase import ask_website_use_case, ask_google_use_case
 from urllib.parse import urlparse
-from crawl_to_gcs import list_existing_site_prefixes
+from crawl_to_gcs import list_existing_site_prefixes, crawl_site_bfs, upload_markdown_docs_to_gcs, CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
+from typing import Optional
 
 # --- Smart Hop QA API ---
 smart_qa_router = APIRouter()
@@ -118,3 +120,42 @@ async def is_indexed(url: str = Query(..., description="Full page URL to check")
     except Exception:
         return {"indexed": False, "host": host, "source": "local_raw_pages"}
 
+
+@smart_qa_router.post("/index-site")
+async def index_site(payload: Dict[str, Any]):
+    """Kick off a background crawl of the provided URL and upload results to GCS.
+
+    Request body: { url: string }
+    Response: { status: "started" | "error", message?: string }
+    """
+    url: Optional[str] = (payload or {}).get("url") if isinstance(payload, dict) else None
+    if not url:
+        return {"status": "error", "message": "Missing 'url' in request body."}
+
+    if not url.startswith(("http://", "https://")):
+        url = f"https://{url}"
+
+    # Parse bucket and base prefix from config (e.g., "bucket/raw_pages/")
+    try:
+        bucket_and_prefix = (config.GCS_BUCKET or '').strip('/').split('/', 1)
+        if len(bucket_and_prefix) == 2:
+            bucket_name, base_prefix = bucket_and_prefix[0], bucket_and_prefix[1]
+        else:
+            bucket_name, base_prefix = bucket_and_prefix[0], ''
+    except Exception:
+        return {"status": "error", "message": "Invalid GCS_BUCKET configuration."}
+
+    async def crawl_and_upload():
+        try:
+            docs = await crawl_site_bfs(url, max_depth=CRAWL_MAX_DEPTH, max_concurrent=CRAWL_MAX_CONCURRENCY)
+            if docs:
+                upload_markdown_docs_to_gcs(bucket_name=bucket_name, base_prefix=base_prefix, docs=docs)
+        except Exception as e:
+            try:
+                print(f"[index-site] Error while crawling/uploading {url}: {e}")
+            except Exception:
+                pass
+
+    # Fire-and-forget background task
+    asyncio.create_task(crawl_and_upload())
+    return {"status": "started"}
