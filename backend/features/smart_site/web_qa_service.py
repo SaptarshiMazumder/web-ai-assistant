@@ -25,7 +25,7 @@ def clean_markdown(md: str) -> str:
     md = re.sub(r'\n{3,}', '\n\n', md)
     return md.strip()
 
-async def webpage_answer_node(state: BaseModel) -> BaseModel:
+async def webpage_answer_node(state: BaseModel, step_intent: str = "") -> BaseModel:
     page_text = state.text
     question = state.question
     page_url = getattr(state, "page_url", "")
@@ -41,7 +41,9 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
     except Exception:
         pass
 
+    step_prefix = (f"Step intent: {step_intent}\n\n" if step_intent else "")
     prompt = (
+        step_prefix +
         "You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. "
         "DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. "
         "Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. "

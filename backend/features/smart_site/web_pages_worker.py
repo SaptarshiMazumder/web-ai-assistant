@@ -60,7 +60,8 @@ async def llm_select_relevant_links_parallel(
     k: int = 3,
     chunk_size: int = 200,
     max_concurrency: int = 5,
-    log_fn: Optional[Callable[[str], None]] = None
+    log_fn: Optional[Callable[[str], None]] = None,
+    step_context: Optional[Dict[str, Any]] = None
 ) -> List[Dict[str, str]]:
     from langchain_openai import ChatOpenAI
     from utils import extract_json_from_text
@@ -73,9 +74,13 @@ async def llm_select_relevant_links_parallel(
         if log_fn:
             log_fn(f"🧵 Thread {chunk_id} starting with {len(chunk)} available links.")
   
+        intent = (step_context or {}).get("intent", "")
+        keywords = (step_context or {}).get("keywords", [])
+        kw_line = ("; focus keywords: " + ", ".join(keywords[:8])) if keywords else ""
         prompt = (
             f"The user is on the website {urlparse((chunk[0].get('href','') if chunk else '')).netloc} "
             f"and their question is: {question}\n"
+            + (f"Step intent: {intent}{kw_line}\n" if intent or keywords else "") +
             "These are the links to consider (subset):\n" +
             "\n".join([f"- {l.get('text','').strip()[:80]} ({l.get('href')})" for l in chunk]) +
             "\n\nWhich of these links are most likely to contain the answer or helpful information? "

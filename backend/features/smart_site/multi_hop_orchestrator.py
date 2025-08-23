@@ -25,6 +25,66 @@ DEFAULT_MAX_CONCURRENCY = 5
 DEFAULT_TOTAL_PAGE_BUDGET = 25  # safety
 USE_VERTEX_RAG = False  # Toggle to switch between old and new
 
+# --- Simple Planner ---
+async def plan_search_steps(question: str, page_url: str, domain: str) -> List[Dict[str, Any]]:
+    """Return a very small plan of steps. Falls back to one generic step."""
+    try:
+        # Minimal heuristic; can be replaced with LLM if desired
+        intents: List[Dict[str, Any]] = []
+        if any(w in (question or '').lower() for w in ["compare", "list", "table", "prices", "features"]):
+            intents.append({
+                "intent": "aggregate across multiple pages to collect comparable facts",
+                "keywords": [],
+                "success_criteria": "answer is specific and cites at least 2 distinct URLs",
+                "max_k": 5,
+                "refined_query": f"Aggregate and compare facts relevant to: {question}",
+            })
+        intents.append({
+            "intent": "find the most relevant single page that answers the question",
+            "keywords": [],
+            "success_criteria": "webpage_answer_node returns SUFFICIENT: YES",
+            "max_k": 3,
+            "refined_query": f"Direct answer for: {question}",
+        })
+        return intents
+    except Exception:
+        return [{
+            "intent": "find the most relevant page",
+            "keywords": [],
+            "success_criteria": "webpage_answer_node returns SUFFICIENT: YES",
+            "max_k": 3,
+            "refined_query": f"Direct answer for: {question}",
+        }]
+
+# --- Aggregation helper ---
+def aggregate_and_verify(question: str, page_results: List["PageQAResult"]) -> Optional[Dict[str, Any]]:
+    """Very lightweight synthesis over multiple page results, returns dict if confident."""
+    try:
+        snippets = []
+        urls = []
+        for r in page_results[:8]:
+            if not r or not getattr(r, "text", None):
+                continue
+            text = (r.text or "").strip().splitlines()
+            excerpt = "\n".join(text[:30])  # short excerpt
+            snippets.append(excerpt)
+            if getattr(r, "url", None):
+                urls.append(r.url)
+        if not snippets:
+            return None
+        # Simple heuristic: join snippets and assume sufficient if enough content
+        combined = "\n---\n".join(snippets)
+        if len(combined) < 400:
+            return None
+        answer = combined[:4000]  # cap
+        return {
+            "answer": answer,
+            "sources": [{"url": u} for u in urls],
+            "sufficient": False,  # keep conservative; orchestrator decides final
+        }
+    except Exception:
+        return None
+
 # --- Main Orchestration ---
 async def multi_hop_qa_orchestrator(
     init_state: WebsiteMultiHopState,
@@ -51,7 +111,36 @@ async def multi_hop_qa_orchestrator(
     original_domain = init_state.original_domain or urlparse(init_state.page_url).netloc if init_state.page_url else ""
     visited: Set[str] = set(init_state.visited_urls or [])
 
-    # 2. Initialize BFS queue with the starting page
+    # 2. Planning
+    steps = await plan_search_steps(question, init_state.page_url or "", original_domain)
+    # Print and log planned steps for debugging/visibility
+    try:
+        log(_json.dumps({
+            "type": "plan",
+            "steps": steps,
+        }))
+    except Exception:
+        pass
+    try:
+        print("\nPlanned steps (details):")
+        for idx, st in enumerate(steps or [], 1):
+            st = st or {}
+            intent = st.get("intent", "")
+            keywords = st.get("keywords", []) or []
+            success = st.get("success_criteria", "")
+            max_k = st.get("max_k", None)
+            rq = st.get("refined_query", "")
+            print(f"- Step {idx}:")
+            print(f"  intent: {intent}")
+            print(f"  keywords: {', '.join(keywords) if keywords else '-'}")
+            print(f"  success_criteria: {success}")
+            print(f"  max_k: {max_k}")
+            print(f"  refined_query: {rq}")
+        print("")
+    except Exception:
+        pass
+
+    # 3. Initialize BFS queue with the starting page
     queue: List[Dict[str, Any]] = [{
         "page_url": init_state.page_url,
         "text": init_state.text,
@@ -77,7 +166,11 @@ async def multi_hop_qa_orchestrator(
     except Exception:
         pass
 
-    # 3. Main loop: process pages in the queue (BFS)
+    # 4. Process steps
+    current_step_idx = 0
+    current_step = steps[current_step_idx] if steps else {"intent": "", "keywords": [], "max_k": 3}
+
+    # 5. Main loop: process pages in the queue (BFS)
     while queue:
         node = queue.pop(0)
         page_url = node["page_url"]
@@ -107,8 +200,13 @@ async def multi_hop_qa_orchestrator(
         except Exception:
             pass
 
-        # 4. Try to answer the question using this page
-        qa_result = await run_single_page_qa(text=text, question=question, page_url=page_url)
+        # 6. Try to answer the question using this page (with step intent)
+        qa_result = await run_single_page_qa(
+            text=text,
+            question=question,
+            page_url=page_url,
+            step_intent=current_step.get("intent", "")
+        )
         sufficient = qa_result.sufficient
 
         # Keep track of the best partial answer (in case we never find a sufficient one)
@@ -136,7 +234,7 @@ async def multi_hop_qa_orchestrator(
                 "sufficient": True
             }
 
-        # 5. If not sufficient, check if we can hop further
+        # 7. If not sufficient, check if we can hop further
         if depth >= max_hops:
             log(f"⛔ Max hops ({max_hops}) reached at depth {depth}. No expansion.")
             continue
@@ -166,23 +264,25 @@ async def multi_hop_qa_orchestrator(
             log("🔚 No candidate links to expand from this page.")
             continue
 
-        # 7. Use LLM to select the most promising links to follow next
+        # 8. Use LLM to select the most promising links to follow next (step-aware)
         from .web_pages_worker import llm_select_relevant_links_parallel
         try:
             log(_json.dumps({
                 "type": "stage",
                 "stage": "link_selection_start",
                 "depth": depth,
-                "k": k_links,
+                "k": min(k_links, int(current_step.get("max_k", k_links) or k_links)),
                 "candidate_count": len(candidate_links),
             }))
         except Exception:
             pass
+        step_context = {"intent": current_step.get("intent", ""), "keywords": current_step.get("keywords", [])}
         selected_links = await llm_select_relevant_links_parallel(
             question=question,
             links=candidate_links,
-            k=k_links,
+            k=min(k_links, int(current_step.get("max_k", k_links) or k_links)),
             log_fn=log,
+            step_context=step_context,
         )
 
         # Optionally, log or notify about the selected links
@@ -216,7 +316,7 @@ async def multi_hop_qa_orchestrator(
         except Exception:
             pass
 
-        # 8. Scrape and run QA on the selected links in parallel
+        # 9. Scrape and run QA on the selected links in parallel
         child_results: List[PageQAResult] = await scrape_and_qa_many(
             selected_links,
             question=question,
@@ -250,7 +350,19 @@ async def multi_hop_qa_orchestrator(
                     "sufficient": True
                 }
 
-        # 10. Otherwise, add all child pages to the queue for further exploration
+        # 10. Optional aggregation if none sufficient and step suggests multi-page
+        if not any(getattr(cr, "sufficient", False) for cr in child_results):
+            agg = aggregate_and_verify(question, child_results)
+            if agg and (len(agg.get("answer", "")) > 0):
+                log("🧩 Aggregated multi-page evidence for tentative answer")
+                return {
+                    "answer": agg.get("answer", ""),
+                    "sources": agg.get("sources", []),
+                    "visited_urls": list(visited),
+                    "sufficient": False,
+                }
+
+        # 11. Otherwise, add all child pages to the queue for further exploration
         for cr in child_results:
             if cr.url:
                 visited.add(cr.url)
@@ -261,7 +373,12 @@ async def multi_hop_qa_orchestrator(
                 "depth": depth + 1
             })
 
-    # 11. If we exit the loop without a sufficient answer, return the best partial answer found
+        # 12. Step rotation (simple): if queue got big and current step has been attempted, move to next step
+        if len(queue) > 8 and current_step_idx + 1 < len(steps):
+            current_step_idx += 1
+            current_step = steps[current_step_idx]
+
+    # 13. If we exit the loop without a sufficient answer, return the best partial answer found
     log("❗ No sufficient answer found. Returning best partial.")
     if best_partial:
         return {
@@ -281,7 +398,7 @@ async def multi_hop_qa_orchestrator(
         }
 
 # --- Helpers ---
-async def run_single_page_qa(text: str, question: str, page_url: Optional[str]) -> PageQAResult:
+async def run_single_page_qa(text: str, question: str, page_url: Optional[str], step_intent: str = "") -> PageQAResult:
     """
     Runs QA on a single page using either Vertex AI RAG or the default webpage_answer_node.
     """
@@ -291,7 +408,7 @@ async def run_single_page_qa(text: str, question: str, page_url: Optional[str]) 
         s.answer = generate_rag_answer_from_vertex_ai(s.question)
         s.sufficient = True  # Or add logic to parse confidence later
     else:
-        s = await webpage_answer_node(s)
+        s = await webpage_answer_node(s, step_intent=step_intent)
     return PageQAResult(
         url=page_url or "",
         text=text,
