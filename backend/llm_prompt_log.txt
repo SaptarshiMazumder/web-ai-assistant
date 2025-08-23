@@ -19674,3 +19674,234 @@ USER QUESTION: give me code for how to crawl all pages of a website
 (Page URL: https://docs.crawl4ai.com/core/quickstart/)
 ----------------------------------------
 
+
+========================================
+[2025-08-23 18:33:17] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Forums
+Matches
+Events
+Rankings
+BETA2
+Stats
+Night:
+OFF
+Spoilers:
+ON
+Log in 
+BABYBAY Andrej Francisty
+@KING_BABYBAY
+twitch.tv/a_babybay
+ UNITED STATES
+Overview
+Match History
+AGENTS
+PAST:
+30d
+60d
+90d
+All
+	USE	RND	RATING2.0	ACS	K:D	ADR	KAST	KPR	APR	FKPR	FDPR	K	D	A	FK	FD
+
+	(8) 47%	161	1.10	206.1	1.20	136.5	77%	0.75	0.18	0.17	0.11	120	100	29	27	17
+
+	(4) 24%	86	1.07	226.5	1.15	137.9	73%	0.73	0.27	0.14	0.10	63	55	23	12	9
+
+	(4) 24%	74	0.81	159.3	0.78	108.6	76%	0.53	0.41	0.07	0.16	39	50	30	5	12
+
+	(1) 6%	20	1.02	165.0	1.20	100.2	85%	0.60	0.10	0.05	0.05	12	10	2	1	1
+RECENT RESULTS
+VCT 25: AMER Stage 2
+Playoffs ⋅ UBSF
+G2 Esports
+#BN1
+2
+:
+1
+NRG
+#Z5K
+2025/08/23
+9:35 am
+VCT 25: AMER Stage 2
+Playoffs ⋅ UR1
+G2 Esports
+#BN1
+2
+:
+0
+100 Thieves
+#XSN
+2025/08/22
+9:45 am
+VCT 25: AMER Stage 2
+Group Stage ⋅ W5
+G2 Esports
+#BN1
+2
+:
+0
+Cloud9
+#V5F
+2025/08/18
+6:00 am
+VCT 25: AMER Stage 2
+Group Stage ⋅ W4
+G2 Esports
+#BN1
+2
+:
+0
+FURIA
+#A1RV
+2025/08/11
+6:00 am
+VCT 25: AMER Stage 2
+Group Stage ⋅ W3
+G2 Esports
+#BN1
+2
+:
+1
+Evil Geniuses
+#X1FD
+2025/08/04
+6:00 am
+... 163 more results
+CURRENT TEAMS
+G2 Esports
+STAND-IN
+joined in August 2025
+PAST TEAMS
+Team BABYBAY
+FaZe Clan
+August 2020 – July 2023
+LATEST NEWS
+2025/07/19
+BABYBAY stands in for leaf for Stage 2
+2023/07/25
+FaZe Clan release mens Valorant roster
+2023/02/02
+FaZe Clan reveal NA VCL roster
+2023/01/29
+FaZe Clan, Team RA'AD, Nongshim RedForce - News Almost Missed January 28
+2021/03/22
+"They are just f**kin' good" — Sentinels sweep FaZe
+2020/08/05
+FaZe sign BABYBAY, Rawkus
+EVENT PLACEMENTS
+TOTAL WINNINGS
+$27,650
+For Those Who Dare
+Open Qualifier 1 – 5th–6th
+BackOutsideBoys
+2023
+Liquid Open 2023: North America
+Main Event – 1st
+$1,200 BackOutsideBoys
+Open Qualifier – 1st–4th
+BackOutsideBoys
+2023
+Knights Monthly Gauntlet 2023: July
+Playoffs – 9th–16th
+Torch
+2023
+Challengers League: North America
+Playoffs – 5th–6th
+$600 FaZe Clan
+Split 2 – 6th
+FaZe Clan
+Mid-Season Face Off – 7th–8th
+$200 FaZe Clan
+Split 1 – 7th
+FaZe Clan
+2023
+G4 Rumble
+Playoffs – 1st
+$1,400 Team BABYBAY
+2022
+Champions Tour North America: Last Chance Qualifier
+Main Event – 3rd
+FaZe Clan
+2022
+Champions Tour North America Stage 2: Challengers
+Playoffs – 3rd
+$5,200 FaZe Clan
+Group Stage – 3rd–4th
+FaZe Clan
+Open Qualifier #1 – 1st–2nd
+FaZe Clan
+2022
+Knights Circuit Monthly #1
+Playoffs – 3rd–4th
+$100 FaZe Clan
+2022
+Champions Tour North America Stage 1: Challengers
+Open Qualifier #2 – 17th–24th
+FaZe Clan
+Open Qualifier #1 – 17th–24th
+FaZe Clan
+2022
+BoomTV Proving Grounds $20k - Spring 2022
+Main Event – 1st
+$1,600 FaZe Clan
+2022
+YFP Winter Classic
+Playoffs – 3rd–4th
+$50 FaZe Clan
+2022
+Champions Tour North America: Last Chance Qualifier
+Main Event – 7th–8th
+FaZe Clan
+2021
+Champions Tour North America Stage 3: Challengers Playoffs
+Main Event – 5th–6th
+$1,000 FaZe Clan
+2021
+Champions Tour North America Stage 3: Challengers 2
+Main Event – 2nd
+$2,000 FaZe Clan
+2021
+Champions Tour North America Stage 1: Masters
+Main Event – 2nd
+$6,000 FaZe Clan
+2021
+Champions Tour North America Stage 1: Challengers 3
+Main Event – 1st
+$4,000 FaZe Clan
+2021
+Cloud9 To The Skyes Invitational
+Tournament – 5th–8th
+$300 FaZe Clan
+2020
+JBL Quantum Cup
+Playoffs – 2nd
+$3,000 FaZe Clan
+2020
+First Strike: North America
+Main Event – 5th–8th
+$1,000 FaZe Clan
+2020
+FaZe Clan Invitational
+Playoffs – 7th–8th
+FaZe Clan
+Group Stage – 5th–8th
+FaZe Clan
+2020
+Contact
+•
+Privacy
+•
+Terms
+•
+Switch to Desktop
+Find us on:
+Twitter
+Discord
+
+USER QUESTION: just tell me the teams babybay played against this year and how many kills he had in each game
+(Page URL: https://www.vlr.gg/player/2170/babybay)
+----------------------------------------
+
