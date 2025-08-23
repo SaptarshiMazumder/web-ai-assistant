@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 from langchain_openai import ChatOpenAI
 
 from state import AssistantState
-from web_qa_service import webpage_answer_node
+from .web_qa_service import webpage_answer_node
 
 from utils import extract_json_from_text
 
@@ -283,7 +283,7 @@ async def run_page_qa(
 #         "Reply with only 'YES' if it is enough, or 'NO' if it is not clear/specific enough."
 #     )
 #     llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=0)
-#     result = llm.invoke([{"role": "user", "content": prompt}])
+#     result = llm.invoke([{ "role": "user", "content": prompt }])
 #     return "yes" in (result.content or "").strip().lower()
 
 async def scrape_and_qa_many(
@@ -364,5 +364,7 @@ embedding_config = rag.RagEmbeddingModelConfig(
 )
 from utils import get_or_create_rag_corpus
 rag_corpus = get_or_create_rag_corpus()
+
+
 
 

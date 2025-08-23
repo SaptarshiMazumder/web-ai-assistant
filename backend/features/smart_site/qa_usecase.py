@@ -1,17 +1,17 @@
-from features.smart_site.multi_hop_orchestrator import multi_hop_qa_orchestrator
+from .multi_hop_orchestrator import multi_hop_qa_orchestrator
 from state import WebsiteMultiHopState
 from models import WebAssistantRequest
 import time
 from logging_relay import log
 from state import AssistantState
-from features.smart_site.web_qa_service import google_search_answer_node
+from .web_qa_service import google_search_answer_node
 from config import config
 
 async def ask_website_use_case(request: WebAssistantRequest):
     start_time = time.time()
     print(f"Received {len(request.links)} links from frontend:")
     for l in request.links:
-        print(f"  - {l.get('text', '')[:60]}  {l.get('href')}")
+        print(f"  - {l.get('text', '')[:60]}  … {l.get('href')}")
     result = await multi_hop_qa_orchestrator(
         WebsiteMultiHopState(
             text=request.text,
@@ -59,3 +59,5 @@ async def ask_google_use_case(request: WebAssistantRequest):
         "confidence": s.confidence,
         "duration_seconds": duration
     }
+
+

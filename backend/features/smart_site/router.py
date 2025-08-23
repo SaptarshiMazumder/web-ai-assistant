@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from models import WebAssistantRequest
-from use_cases.qa_usecase import ask_website_use_case
+from .qa_usecase import ask_website_use_case
 
 
 router = APIRouter()

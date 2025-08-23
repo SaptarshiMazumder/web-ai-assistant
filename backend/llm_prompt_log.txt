@@ -16450,3 +16450,257 @@ USER QUESTION: who do the comments support
 (Page URL: https://www.youtube.com/watch?v=8G4wsF7Bz2s)
 ----------------------------------------
 
+
+========================================
+[2025-08-23 15:00:06] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to content
+macrofactor
+features
+articles
+tools
+roadmap
+MacroFactor
+The macro tracker that adapts to your metabolism
+From $5.99/month. Try it free for 7 days.
+5K reviews
+★★★★★
+4.8/5
+5K reviews
+★★★★★
+4.9/5
+Lose weight, gain muscle, maintain results
+Reach your diet goals with MacroFactor's best-in-class features
+The fastest food logger on the market
+
+Track your meals quickly and easily with ultra-fast food logging utilities. 
+
+Plus, all items in MacroFactor’s food search database have been verified, so you can trust the accuracy of the foods you log. 
+
+Learn more
+Smart nutrition coaching algorithms
+
+Tell us your goal, and the app will design a plan to get you there. MacroFactor’s smart algorithms personalize your calorie and macro intake targets, just like a nutrition coach would.
+
+Then, just check in weekly to get smart adjustments based on your progress, so you can stay on track toward your goal.
+
+Learn more
+Dynamic energy expenditure calculator
+
+Get a personalized energy expenditure calculation based on your daily nutrition and weight data.
+
+MacroFactor keeps pace with your ever-changing energy needs and updates your expenditure estimate as needed to ensure that your calorie targets are appropriate for your goals.
+
+Learn more
+Micronutrient tracker
+
+Enhance your nutrition by tracking the vitamins and minerals that are important to you.
+
+MacroFactor’s comprehensive three-part nutrient goal management lets you set your own floor, target, and ceiling. Plus, beautiful charts and data reporting help you visualize insights on intake timing and dietary habits.
+
+Learn more
+Progress photos and body metrics tracking
+
+Track up to 3 photo views and 21 body metrics, then bring specific metrics into focus and visualize your progress over time.
+
+Learn more
+Widgets
+
+Evaluate the day’s nutrition at a glance, and take actions faster than ever before with customizable home and lock screen widgets. 
+
+Learn more
+Label scanner
+
+Effortlessly create and track new foods with MacroFactor’s fast, convenient label scanning. 
+
+Quickly scan calorie, macronutrient, and micronutrient details directly from food labels, then watch as the information populates in real time in the app. 
+
+Learn more
+Science-based sustainability
+
+Using the latest nutrition and behavior change science, MacroFactor is designed to maximize the likelihood that you’ll achieve your goals and be able to maintain (or build upon) your results.
+
+It is one of the only nutrition coach apps that flexibly adapts to your goals and lifestyle, and helps you avoid any unnecessary stress, anxiety, or feelings of shame and guilt.
+
+Learn more
+Start your free trial
+Download on the App Store or Google Play to start your free trial of this premium, ad-free app.
+5K reviews
+★★★★★
+4.8/5
+5K reviews
+★★★★★
+4.8/5
+Feature Breakdown
+Track your nutrition, monitor your progress, and glean useful data insights. MacroFactor’s thoughtfully designed features make it easy and beautiful.
+Macro Program features
+Coached, Collaborative, and Manual modes
+Low-carb, keto, carb-focused, and balanced diet plans
+Set different macros for different days
+Support for fasting days
+Food Logger features
+Barcode scanner
+Verified food search database
+Nutrition label scanner
+Custom food and recipes
+Copy and paste foods, meals, or entire days
+Smart history
+Speech-to-text food logging
+Metric and imperial options
+Nutrition Coaching features
+Bulk, cut, and maintenance goal settings
+Dynamic weekly adjustments
+Adherence neutral
+Goal ETA insights
+Select preferred rate of weight change
+Change your goal any time
+Analytics and Insights features
+Energy expenditure estimate
+Weight trend
+Nutrition and weight habits
+Weekly, monthly, and historical nutrition averages
+Top contributors for any macro- or micronutrient
+Nutrient timing insights
+Integrations with Apple Health and Google Fit
+Home and lock screen widgets
+Tracking features
+Macro tracking
+Weight tracking
+Period tracking
+Habit tracking for logging streaks
+Full micronutrient tracking
+Body measurement tracking
+Progress photo tracking
+Step tracking
+Privacy features
+No ads
+Data is private and will never be sold
+Export your data any time
+How MacroFactor Works
+Get a dynamic, science-backed nutrition plan that's perfectly calibrated for you and your goals.
+Step 1
+Answer a few questions
+
+Tell us about your lifestyle, goals, food preferences, and training demands.
+
+Step 2
+Get your program
+
+MacroFactor will recommend custom calorie and macronutrient targets for you based on your goals and the latest science.
+
+Step 3
+Log your weight and nutrition
+
+Take a few minutes per day to log your weight and the foods you eat, so MacroFactor can calculate your energy expenditure and caloric needs with even greater precision.
+
+Step 4
+Check in weekly to get smart macro plan updates
+
+During the Check-In, the MF Coach will ask you relevant questions, suggest novel changes to your macro program, and make personalized adjustments based on your data and feedback.
+
+Ad-free, privacy-first experience
+Premium by design
+Month to month
+Charged on a monthly basis.
+$
+11
+99
+Monthly
+ 
+Yearly
+Charged yearly for $71.99.
+$
+5
+99
+Monthly
+ 
+Every 6 months
+Charged for $47.99.
+$
+7
+99
+Monthly
+ 
+Your subscription enables us to deliver the highest quality product and a user-focused experience.
+We will never serve ads or use ad networks to track you.
+Your subscription supports continuous enhancement of your experience.
+You have full access to all features and all of your data at all times.
+Top-notch customer support ensures you have a great experience.
+We offer a free trial so you can try before you buy.
+Frequently asked questions
+What makes MacroFactor different?
+I live outside the US. Will I be able to log foods from my country?
+Is there a free version?
+Does MacroFactor integrate with smart watches and activity trackers?
+Can I use MacroFactor on my desktop/computer?
+Can I upload historical food logs from another app?
+Can I use MacroFactor with my coaching clients or see my client’s food logs and progress?
+How is energy expenditure calculated? How do you make program adjustments?
+Reach your diet goals
+Join 300,000 users. Download and start your free trial today.
+5K reviews
+★★★★★
+4.8/5
+5K reviews
+★★★★★
+4.8/5
+EXPLORE MORE FEATURES
+Energy expenditure calculator
+Learn more >
+Fastest food logger
+Learn more >
+Micronutrient tracker
+Learn more >
+Widgets
+Learn more >
+Progress photos and body metrics
+Learn more >
+Energy expenditure calculator
+Learn more >
+Fastest food logger
+Learn more >
+Micronutrient tracker
+Learn more >
+Widgets
+Learn more >
+Progress photos and body metrics
+Learn more >
+Energy expenditure calculator
+Learn more >
+Try MacroFactor for free
+Download and start your free trial to get your custom macro plan and food logging access today.
+Learn more
+Home
+About the app
+Articles
+Press kit
+Affiliate codes
+Subscriber resources
+Help center
+Roadmap
+Monthly newsletter
+Release notes
+Connect with us
+Facebook group
+Subreddit
+Instagram
+
+Copyright © 2021-2025 MacroFactor
+
+Copyright © 2021-2025 MacroFactor
+Privacy Policy
+Cookie Notice
+Health Disclaimer
+Health Data Notice
+Terms
+Cookie Preferences
+Cookie preferences
+Scroll to Top
+
+USER QUESTION: tell me the featyures of the app
+(Page URL: https://macrofactorapp.com/macrofactor/)
+----------------------------------------
+

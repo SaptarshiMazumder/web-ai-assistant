@@ -11,8 +11,8 @@ import asyncio
 from typing import List, Dict, Any, Optional, Set
 from urllib.parse import urlparse
 from state import AssistantState, WebsiteMultiHopState
-from web_qa_service import webpage_answer_node
-from web_pages_worker import scrape_and_qa_many, PageQAResult
+from .web_qa_service import webpage_answer_node
+from .web_pages_worker import scrape_and_qa_many, PageQAResult
 from utils import generate_rag_answer_from_vertex_ai, get_or_create_rag_corpus
 from logging_relay import log
 from config import config
@@ -167,7 +167,7 @@ async def multi_hop_qa_orchestrator(
             continue
 
         # 7. Use LLM to select the most promising links to follow next
-        from web_pages_worker import llm_select_relevant_links_parallel
+        from .web_pages_worker import llm_select_relevant_links_parallel
         try:
             log(_json.dumps({
                 "type": "stage",
@@ -402,3 +402,5 @@ async def stream_llm_links_message(question: str, links: list[dict]):
 
 # --- RAG Corpus (if needed) ---
 rag_corpus = get_or_create_rag_corpus()
+
+
