@@ -3,9 +3,9 @@ from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from models import WebsiteRagRequest
-from vertex_rag_eg import run_vertex_rag
+from .vertex_rag_eg import run_vertex_rag
 from config import config
-from crawl_to_gcs import list_existing_site_prefixes, crawl_site_bfs, upload_markdown_docs_to_gcs, CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
+from .crawl_to_gcs import list_existing_site_prefixes, crawl_site_bfs, upload_markdown_docs_to_gcs, CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
 import asyncio
 
 

@@ -13515,3 +13515,2938 @@ USER QUESTION: which section talks about elastic beanstalk
 (Page URL: https://www.udemy.com/course/aws-certified-solutions-architect-associate-saa-c03/?__cf_chl_rt_tk=loEhHVRbA2kVLp5qY8aAg7sPkGnNVXO0Z8KwiDGUTM4-1755503469-1.0.1.1-etebs.v5ohu1Qx68wHJtQhuySJQIln3_A5FqsmwxSyY)
 ----------------------------------------
 
+
+========================================
+[2025-08-23 12:56:26] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Jump to Main Content
+Jump to Primary Navigation
+
+WHO WE ARE
+
+WORK WITH US
+
+NEWS
+
+SIGN IN
+
+What's happening?
+SEE MORE
+TFT Pro Circuit: Everything You Need to Know
+NEWS
+Roo's Lantern (Pt 1) | Spirit Blossom: First Bloom | Cinematic Trailer
+NEWS
+How to buy Riftbound
+NEWS
+Minions, Servers, and Progression – The Tech Behind Swarm
+TECH BLOG
+Know Before You Go - 2XKO at Evo 2025
+NEWS
+Games
+
+windows
+apple
+
+windows
+playstation
+xbox
+windows
+apple
+mobile
+mobile
+windows
+mobile
+Esports & Entertainment
+We’re hiring!
+
+Team up with Riot to forge your path and craft unforgettable experiences for players
+
+155
+Open positions
+26
+Offices
+Explore Careers
+Riot Games
+PRESSSECURITYLEGALLEADERSHIPCANDIDATE PRIVACYTERMS OF SERVICEPRIVACY NOTICEPLAYER SUPPORTE-VERIFYACCESSIBILITYANNUAL REPORTSPEERING INFORMATION
+Follow us on Twitter
+Follow us on Instagram
+Follow us on Tiktok
+Share this on LinkedIn
+Follow us on Facebook
+Watch on YouTube
+Cookie Preferences© 2025 Riot Games, Inc. All Rights Reserved.
+TO THE SURFACE
+
+USER QUESTION: list all open positions in LA at Riot games
+(Page URL: https://www.riotgames.com/en)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:56:41] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](
+
+# Unleash Play
+
+[See Open Roles](#job-list)
+
+## We turn passion into play. We’re looking for S-tier pros to join us in shaping unforgettable experiences for players.
+
+[Life at Riot](/en/work-with-us/life-at-riot)
+
+### Life at Riot
+
+[Learn more](/en/work-with-us/life-at-riot)
+
+[Learn more](/en/work-with-us/life-at-riot)
+
+[Interviewing at Riot](/en/work-with-us/interviewing-at-riot)
+
+### Interviewing at Riot
+
+[Learn more](/en/work-with-us/interviewing-at-riot)
+
+[Learn more](/en/work-with-us/interviewing-at-riot)
+
+[Offices](/en/work-with-us/offices)
+
+### Offices
+
+[Learn more](/en/work-with-us/offices)
+
+[Learn more](/en/work-with-us/offices)
+
+[University Programs](/en/university-programs)
+
+### University Programs
+
+[Learn more](/en/university-programs)
+
+[Learn more](/en/university-programs)
+
+## Work with us
+
+Open Positions: **155**
+
+* [Senior Game Designer - Legends of Runeterra
+
+  Design
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7164070)
+* [1st Party Platform Partnerships Strategist III
+
+  Business Development
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7104443)
+* [Administrative Specialist - League Studio, Operations Services Team (12month Contract)
+
+  Admin
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7170894)
+* [Animation Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7116699)
+* [Broadcast Engineer - Esports Event Technology
+
+  Esports
+
+  Esports
+
+  Berlin, Germany](/en/j/7163935)
+* [Business Systems Analyst II, Finance Technology
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6879113)
+* [Director of Publishing Content and Community Strategy - VALORANT
+
+  Publishing
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7074943)
+* [Director, Brand Management - Unpublished R&D Product
+
+  Brand Management
+
+  Development Studios
+
+  Los Angeles, USA](/en/j/7126233)
+* [Director, Insights - WILD RIFT
+
+  Insights
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6683346)
+* [Director, Marketing Creative Direction - Unpublished R&D Product
+
+  Creative Direction & Management
+
+  Development Studios
+
+  Los Angeles, USA](/en/j/7126180)
+* [Director, Publishing Product Management, LOL APAC
+
+  Product Management Group
+
+  League of Legends
+
+  Singapore](/en/j/6750158)
+* [Diversity & Inclusion Advisor, People & Processes
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7158328)
+* [Game Designer - Legends of Runeterra
+
+  Design
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7164077)
+* [Game Designer III - VALORANT, Competitive Systems
+
+  Design
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7012037)
+* [Game Designer, Combat (Contract)
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102266)
+* [Game Producer (Contract)
+
+  Production Group
+
+  Riot Discovery
+
+  Guangzhou, China](/en/j/7116711)
+* [Game Producer III, Characters and Agents - VALORANT
+
+  Production Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7095177)
+* [Generative AI Research Intern (PhD or Master’s), Singapore Efficiency Team (Contract)
+
+  Data
+
+  Riot Operations & Support
+
+  Singapore](/en/j/6812455)
+* [HRBP - China
+
+  People
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6879174)
+* [Insights Analyst Coordinator, 金铲铲之战(Contract)
+
+  Insights
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/6202178)
+* [Insights Analyst III - BizOps & Strategy
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6902106)
+* [Interactive Music Designer III - League Studios, Creative eXpressions
+
+  Audio
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7088632)
+* [Legal Counsel EMEA (Employment Law) 10 months contract
+
+  Legal
+
+  Riot Game Operations
+
+  Dublin, Ireland](/en/j/7057006)
+* [Live Event Producer (Contractor 6 months)
+
+  Publishing
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7160926)
+* [Localization QA
+
+  QA Group
+
+  Riftbound
+
+  Shanghai, China](/en/j/7134094)
+* [Manager Infrastructure Engineering
+
+  Infrastructure
+
+  Esports
+
+  Los Angeles, USA](/en/j/6277551)
+* [Manager, Accounting
+
+  Accounting
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/6814970)
+* [Manager, Game Product Management, Metasystem - Wild Rift Shanghai(英雄联盟手游）
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6679850)
+* [Manager, Game Production - Competitive Systems, VALORANT
+
+  Production Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7163936)
+* [Manager, Software Engineering
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6701531)
+* [Manager, Software Engineering (UI/UX)- LPC.HEX, Hextech Engine, Player Experience
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7088660)
+* [Manager, Software Engineering - Content Access Platform
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7005607)
+* [Manager, Software Engineering - Legends of Runeterra
+
+  Software Engineering Group
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7167374)
+* [Manager, Software Engineering - Teamfight Tactics - Core Tech
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Sydney, Australia](/en/j/6908627)
+* [Manager, Software Engineering - Unreal Ecosystem
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Sydney, Australia](/en/j/6975941)
+* [Manager, Software Engineering - Unreal Ecosystem (UnEco)
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6569520)
+* [Manager, Sound Design - League of Legends
+
+  Audio
+
+  Development Studios
+
+  Singapore](/en/j/6781423)
+* [Manager, VFX Art - League of Legends
+
+  Art
+
+  League of Legends
+
+  Singapore](/en/j/6908404)
+* [Network Engineer
+
+  Infrastructure
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/7053455)
+* [Outsourcing Manager (Game Production)
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7053502)
+* [Principal Concept Artist (Character) - VALORANT
+
+  Art
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6908903)
+* [Principal Concept Artist (Characters) - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6879135)
+* [Principal Data Engineer - GS.VAL, 2XKO, Analytics Team
+
+  Data
+
+  2XKO
+
+  Los Angeles, USA](/en/j/7126335)
+* [Principal Data Engineer - Unpublished R&D Product
+
+  Data
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7091915)
+* [Principal Data Scientist, ML Bots - Game Tech Group
+
+  Data
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177099)
+* [Principal Game Designer, Levels - Unpublished R&D Product
+
+  Design
+
+  MMO
+
+  Los Angeles, USA](/en/j/7009290)
+* [Principal Game Designer, Progression and Economy - Unpublished R&D Product
+
+  Design
+
+  MMO
+
+  Los Angeles, USA](/en/j/6969260)
+* [Principal Game Producer – League of Legends
+
+  Production Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6913465)
+* [Principal Game Product Manager, Metagame & Monetization - Unpublished R&D Product
+
+  Product Management Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7012628)
+* [Principal Insights Analyst - League of Legends
+
+  Insights
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7117233)
+* [Principal Insights Analyst - Unpublished R&D Product
+
+  Insights
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7005449)
+* [Principal Program Manager, Contingent Workforce
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6996975)
+* [Principal QA Engineer, Gameplay - TFT
+
+  QA Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/6908931)
+* [Principal Researcher (R&D Publishing) - Central Product Insights
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7159544)
+* [Principal Software Engineer, Core Tech - Teamfight Tactics
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/7138089)
+* [Principal Software Engineer, ML Platform - Game Tech Group
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177101)
+* [Principal Software Engineer, Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/5905246)
+* [Principal Software Engineer, VALORANT - Foundations Developer Experience & Workflows
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6889307)
+* [Principal Technical Producer, Launch & Integrations - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7172718)
+* [Principal Technical Product Manager, Game Understanding Agents
+
+  Product Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177109)
+* [Principal Technical Program Manager - Central Game Tech
+
+  Program Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7078020)
+* [Principal UX Designer, Riot Client
+
+  Design
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6899074)
+* [Principal VFX Artist - Unpublished R&D Product
+
+  Art
+
+  MMO
+
+  Los Angeles, USA](/en/j/6996831)
+* [Principal, Publishing Content Strategy (Editor in Chief)
+
+  Publishing
+
+  Legends of Runeterra
+
+  Los Angeles, USA](/en/j/7167123)
+* [Procurement Specialist
+
+  Finance
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/6798316)
+* [Program Manager III - Quantitative Research Operations
+
+  Program Management Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6879172)
+* [Publishing Coordinator, 金铲铲之战 (Contract)
+
+  Publishing
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/7137448)
+* [QA Engineer - LiveOps & SDK
+
+  QA Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7015284)
+* [QA Engineer – Compliance & Release
+
+  QA Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7009294)
+* [Recruiting Coordinator (Contract)
+
+  People
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/7155224)
+* [Regional D&I Advisor
+
+  People
+
+  Riot Operations & Support
+
+  Dublin, Ireland](/en/j/6996887)
+* [Rendering Technical Artist II - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6996860)
+* [Researcher III - Central Product Insights
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6991947)
+* [Senior Technical Artist - Singapore Efficiency Team
+
+  Art
+
+  Development Studios
+
+  Singapore](/en/j/7005393)
+* [Senior 3D Character Artist - League of Legends, Summoners Rift
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7138435)
+* [Senior 3D Environment Artist
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6928277)
+* [Senior 3D Environment Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102224)
+* [Senior Accountant
+
+  Accounting
+
+  Riot Operations & Support
+
+  Singapore](/en/j/7053979)
+* [Senior Business Operations Manager, China Studio
+
+  Corporate
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6781429)
+* [Senior Concept Artist (Characters) - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7103434)
+* [Senior Concept Artist, Environment (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102219)
+* [Senior Data Scientist - Singapore Efficiency Team
+
+  Data
+
+  Development Studios
+
+  Singapore](/en/j/6580972)
+* [Senior Data Scientist, Skill & Matchmaking - VALORANT Data Ops
+
+  Data
+
+  VALORANT
+
+  SF Bay Area, USA](/en/j/7078979)
+* [Senior Game Designer, Combat 资深战斗策划
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6324724)
+* [Senior Game Producer - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6843438)
+* [Senior Game Product Manager (Monetization and Growth) - FFGS(金铲铲之战)
+
+  Product Management Group
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/6197738)
+* [Senior Game Product Manager - Teamfight Tactics
+
+  Product Management Group
+
+  Development Studios
+
+  Singapore](/en/j/6879075)
+* [Senior Game Product Manager, Monetization, VALORANT Mobile
+
+  Product Management Group
+
+  VALORANT
+
+  Shanghai, China](/en/j/7053923)
+* [Senior Integration Specialist, Enterprise
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6357129)
+* [Senior Internal Audit
+
+  Accounting
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6991957)
+* [Senior Manager, Accounting
+
+  Accounting
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6948671)
+* [Senior Manager, Art Direction - Teamfight Tactics
+
+  Art
+
+  Development Studios
+
+  Singapore](/en/j/6188875)
+* [Senior Manager, Art Management - Wild Rift
+
+  Art
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7103618)
+* [Senior Manager, Content Production- Wild Rift Publishing
+
+  Production Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6798319)
+* [Senior Manager, Equity Administration
+
+  Accounting
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6231178)
+* [Senior Manager, HRBP
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6996888)
+* [Senior Manager, Insights - League of Legends
+
+  Insights
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7116877)
+* [Senior Manager, Software Engineering
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6975400)
+* [Senior Manager, Software Engineering (UI) - League of Legends
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6557586)
+* [Senior Manager, Software Engineering, Services - VALORANT
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7181933)
+* [Senior Manager, Technical Program Management - Data Foundations
+
+  Program Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6892749)
+* [Senior Motion Graphics Artist - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6863444)
+* [Senior OneStream Application Engineer, Finance Technology
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7126070)
+* [Senior Product Category Manager, Consumer Products
+
+  Entertainment
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/7009292)
+* [Senior Product Manager - Product Accessibility
+
+  Product Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6338534)
+* [Senior Product Manager - VALORANT Mobile
+
+  Product Management Group
+
+  VALORANT
+
+  Shanghai, China](/en/j/7104399)
+* [Senior QA Engineer - Unpublished R&D Product
+
+  QA Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7115147)
+* [Senior Rendering Technical Artist - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7103432)
+* [Senior Researcher, WR
+
+  Insights
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6710152)
+* [Senior Software Engineer - Hextech, Gameplay
+
+  Software Engineering Group
+
+  League of Legends
+
+  Sydney, Australia](/en/j/7182012)
+* [Senior Software Engineer - Live Operations Observability Pipeline (LOOP)
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7167903)
+* [Senior Software Engineer - Player Platform, Revenue Protection
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6899146)
+* [Senior Software Engineer - Teamfight Tactics, Core Tech (Contract, 12 months)
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Sydney, Australia](/en/j/7178365)
+* [Senior Software Engineer - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7069639)
+* [Senior Technical Producer (Release Management) - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058299)
+* [Senior Technical Producer - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7061266)
+* [Senior VFX Artist - VALORANT, Expressions
+
+  Art
+
+  VALORANT
+
+  Mercer Island, USA](/en/j/6908905)
+* [Software Engineer, Gameplay (Contract)
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6362205)
+* [Software Engineering Manager - Metagame Features, 2XKO
+
+  Software Engineering Group
+
+  Development Studios
+
+  Singapore](/en/j/6879125)
+* [Sr. HR Business Partner
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7097384)
+* [Sr. HR Business Partner (Rotational Coverage)
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7118614)
+* [Sr. Manager, Creative Direction
+
+  Creative Direction & Management
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7053453)
+* [Sr. Manager, Game Product Manager (Gameplay)-Wild Rift
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7093485)
+* [Sr. Manager, Game Production - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6952691)
+* [Sr. Manager, Publishing Product Management, 2XKO AMER
+
+  Product Management Group
+
+  2XKO
+
+  Los Angeles, USA](/en/j/6750150)
+* [Sr. Manager, Publishing Product Management, 2XKO APAC
+
+  Product Management Group
+
+  2XKO
+
+  Singapore](/en/j/6752859)
+* [Sr. Manager, Publishing Product Management, WildRift EMEA
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Istanbul, Turkey](/en/j/6750139)
+* [Sr. Manager, Software Engineering - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6580958)
+* [Sr. Manager, Software Engineering, ML Platform - Game Tech Group
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177104)
+* [Sr. Manager, Technical Game Design - Unpublished R&D Product
+
+  Design
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6813889)
+* [Sr.Manager, Game Production
+
+  Production Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6825847)
+* [Staff Software Engineer (Graphics) - League Studios, Hextech Graphics
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6635781)
+* [Staff Software Engineer - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7061304)
+* [Staff Software Engineer - VALORANT, Foundations, Build Platforms
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6918315)
+* [Staff Software Engineer, Audio - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Mercer Island, USA](/en/j/6879137)
+* [Staff Software Engineer, Game UI - Teamfight Tactics
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/6489845)
+* [Staff Software Engineer, Gameplay Systems - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6274023)
+* [Staff Software Engineer, Player Expressions - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6824551)
+* [Staff Software Engineer, Rendering 渲染工程师
+
+  Software Engineering Group
+
+  Development Studios
+
+  Shanghai, China](/en/j/7154094)
+* [Staff Software Engineer, SRE Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058302)
+* [Staff Software Engineer, Server Systems - Unpublished R&D Product
+
+  Software Engineering Group
+
+  MMO
+
+  Los Angeles, USA](/en/j/6969256)
+* [Staff Software Engineer, Services
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/4519009)
+* [Staff Software Engineer, Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7053985)
+* [Staff Software Engineer, Web - Esports Platform & Experiences
+
+  Software Engineering Group
+
+  Esports
+
+  Los Angeles, USA](/en/j/6852885)
+* [Technical Animator II - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058275)
+* [Technical Art Director - Central Creative Team
+
+  Art
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6333564)
+* [Technical Artist, Rendering (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102244)
+* [Technical Game Designer III - AI Foundations (Contract)
+
+  Design
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7079595)
+* [Technical Producer, VALORANT - Release Engineering & China Coordination
+
+  Production Group
+
+  VALORANT
+
+  Sydney, Australia](/en/j/6975579)
+* [Technical Product Manager II - League Studios, Platform Services
+
+  Product Management Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6879115)
+* [VFX Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102256)
+* [Workplace Experience Partner
+
+  Workplace Experience
+
+  Riot Operations & Support
+
+  Sao Paulo, Brazil](/en/j/7053426)
+* [Workplace Program Partner
+
+  Workplace Experience
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6917768)
+* [系统策划 – R&D 产品（Contract)
+
+  Design
+
+  Research & Development
+
+  Shanghai, China](/en/j/7055812)
+* [资深策划 (Contract)
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7051868)
+
+USER QUESTION: list all open positions in LA at Riot games
+(Page URL: https://www.riotgames.com/en/work-with-us)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:01] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Skip to main content
+Rewards
+Discover
+Trips
+Review
+USD
+Sign in
+Shibuya
+Hotels
+Things to Do
+Restaurants
+Flights
+Vacation Rentals
+Cruises
+Forums
+AsiaJapanKantoTokyo PrefectureTokyoShibuyaThings to Do in ShibuyaShibuya Crossing
+See all things to do
+Shibuya Crossing
+Unclaimed
+Share
+Review
+Save
+See all things to do
+Shibuya Crossing
+4.2
+About
+The area
+Reviews
+See options
+4.2
+(7,807 reviews)
+#7 of 360 things to do in Shibuya
+5,518
+About
+Travelers’ Choice Best of the Best
+2025
+The only place where 7 cross roads come together and the lights all turn red at the same time. Thousands of pedestrians then all cross at the same time. Just amazing.
+Duration: < 1 hour
+Suggest edits to improve what we show.
+Improve this listing
+Tours & experiences
+Explore different ways to experience this place.
+See options
+Hours
+Open now
+Saturday
+12:00 AM - 11:59 PM
+Featured experiences
+See all
+1
+Customizable Private Tokyo Tour with an English-speaking Driver
+(356)
+Duration: 9h
+Free cancellation
+from $320
+Reserve
+2
+Fast & Furious Tokyo Drift 3 (Kaila Yu-SP) : Experience Ride JDM
+(39)
+Duration: 4h
+Free cancellation
+from $165
+Reserve
+3
+Tokyo: Shibuya Food Tour (13 dishes and 4 Eateries)
+(362)
+Duration: 3h
+Free cancellation
+from $88
+Reserve
+4
+Likely To Sell Out*
+Official Street Go-Kart in Shibuya
+(2,668)
+Duration: 60–90 minutes
+Free cancellation
+from $108 $97
+Reserve
+5
+Likely To Sell Out*
+Tokyo Shibuya Crossing & Hidden Streets Walking Tour
+(30)
+Duration: 2h
+Free cancellation
+from $30
+Reserve
+6
+Special Offer
+Tokyo Customizable Private Tour by Car English speaking chauffeur
+(565)
+Duration: 9h
+Free cancellation
+from $360 $324
+Reserve
+7
+Special Offer
+Ramen Tasting - Mini Bowl Ramen Tour
+(49)
+Duration: 3h
+Free cancellation
+from $125 $106
+Reserve
+8
+Tokyo: 3-Hour Bike/E-Bike Tour of the City's Highlights
+(93)
+Duration: 3h
+Free cancellation
+from $59
+Reserve
+9
+Special Offer
+3-Hour Shibuya Local Bar and Izakaya Crawl Tour
+(135)
+Duration: 3h
+Free cancellation
+from $42 $34
+Reserve
+10
+Best Go Kart Experience in Shibuya Crossing with Iconic Photos
+(229)
+Duration: 1h 20m
+Free cancellation
+from $97
+Reserve
+Are you currently on your trip?
+Help us find experiences available for you.
+Yes
+No
+More tickets, tours, and experiences
+4WD Tours
+Special Offer
+1. Go Kart Tour in Tokyo explore Shibuya crossing~Harajuku~Shinjuku
+(124)
+4WD Tours
+1h 15m
+Free cancellation
+from $97 $91
+Special Offer
+2. Tokyo Best Attractions go kart Tour with Monkey kart -*IDP Must*
+(162)
+4WD Tours
+1h 30m
+Free cancellation
+from $163 $122
+3. Tokyo Private Driving Tour by Car/Van with English Chauffeur
+(141)
+4WD Tours
+9h
+Free cancellation
+from $320
+4. Tokyo Go-Kart Tour by SHIBUYA KART (90 minutes course)
+(5)
+4WD Tours
+80–90 minutes
+Free cancellation
+from $104
+5. Tokyo Private Sightseeing With English Speaking Driver
+(34)
+Layover Tours
+8h
+Free cancellation
+from $499
+6. Customizable Private Tokyo Tour with an English-speaking Driver
+(356)
+Private and Luxury
+9h
+Free cancellation
+from $320
+7. Fast & Furious Tokyo Drift 3 (Kaila Yu-SP) : Experience Ride JDM
+(39)
+4WD Tours
+4h
+Free cancellation
+from $165
+8. Tokyo, Hakone, Mt Fuji, and Nikko, 3 Day Private Tour
+(1)
+Multi-day Tours
+3 days
+Free cancellation
+from $1,416
+9. Private Memorable Tokyo Tour with English Speaking Driver
+(19)
+4WD Tours
+10h
+Free cancellation
+from $600
+10. Tokyo Full Day Customize Private City Tour
+(4)
+Car Tours
+10h
+Free cancellation
+from $389
+11. Tokyo Shinjuku Night Tour with English-Speaking Driver
+(1)
+Day Trips
+6h
+Free cancellation
+from $149
+12. 4 Day Tour - Mount. Fuji, Tokyo, Hakone, Kamakura and Yokohama
+(18)
+Multi-day Tours
+4 days
+Free cancellation
+from $3,000
+13. Tokyo Private Tour by Car/Van with English Speaking Driver
+(27)
+4WD Tours
+10h
+Free cancellation
+from $343
+Special Offer
+14. Tokyo Private Sightseeing Tour by Car and English Speaking Driver
+(18)
+Day Trips
+9h
+Free cancellation
+from $374 $299
+15. Tokyo's Private Tour : From Ancient Temples to modern tokyo
+(1)
+Day Trips
+8–9 hours
+Free cancellation
+from $400
+16. Tokyo City and Ashikaga Flowers Park or Kawagoe Private Day Tour
+(1)
+Day Trips
+12h
+Free cancellation
+from $600
+17. Private Adventures into Greater Tokyo, Hakone and Mt. Fuji
+Multi-day Tours
+4 days
+Free cancellation
+from $900
+18. 10-Day Private Sightseeing Tour in Japan more than 60 Attractions
+Multi-day Tours
+10 days
+Free cancellation
+from $6,800
+19. Full Day Private Tokyo Sightseeing Tour
+Day Trips
+9–10 hours
+Free cancellation
+from $540
+20. Tokyo Private City Tour With English Driver
+4WD Tours
+8–9 hours
+Free cancellation
+from $399
+Sake Tasting
+Special Offer
+1. 3-Hour Shibuya Local Bar and Izakaya Crawl Tour
+(135)
+Walking Tours
+3h
+Free cancellation
+from $42 $34
+2. Full-Day Private Guided Tour in Tokyo
+(27)
+Rail Tours
+6h
+Free cancellation
+from $360
+Likely To Sell Out*
+3. Japan Classic 10 Day - One Life Adventures
+(110)
+Rail Tours
+10 days
+from $2,295
+4. Tokyo: Shibuya Food Tour with 15 Dishes at 4 Eateries
+(1)
+Culinary Tours
+3h
+Free cancellation
+from $108
+5. 3 Hours Local Night Out in Shibuya Hidden Gems
+(12)
+Beer & Brewery Tours
+3h
+Free cancellation
+from $123
+6. Tokyo: Shibuya Food Tour (13 dishes and 4 Eateries)
+(362)
+Walking Tours
+3h
+Free cancellation
+from $88
+7. Tokyo: Best dishes & drinks tour at Japanese bar in Shibuya!
+(8)
+Beer & Brewery Tours
+3h
+Free cancellation
+from $108
+Special Offer
+8. Private Tokyo, Fully Customized — Your Day, Your Pace
+(1)
+Private and Luxury
+4–6 hours
+Free cancellation
+from $485 $388
+9. Shibuya Highlights & a Sip
+(1)
+Food & Drink
+1h
+Free cancellation
+from $35
+10. Shibuya Food & Drink Tour (5 dishes & 3 drinks at 3 local spots)
+Culinary Tours
+3h 30m
+Free cancellation
+from $111
+11. Shibuya Nightlife Highlights : Izakaya, Karaoke bar, Ramen
+Music Tours
+3h
+Free cancellation
+from $45
+Show more
+The area
+2 Chome-2-1 Dogenzaka, Shibuya 150-0043 Tokyo Prefecture
+Neighborhood: Shibuya / Harajuku / Ebisu
+There are countless opportunities to shop in the Shibuya and Harajuku districts, especially in shops that focus on Japan's "Kawaii" culture. The trendiest areas are around Shibuya’s Center district, Harajuku's Takeshita-dori and in Omotesando. If you need to recharge from all the shopping, you can easily refresh yourself in Meiji Jingu or Sasaki Park. In contrast, Ebisu has a more grown up ambiance of calm and cool. At the Museum of Yebisu Beer you can learn about the beer that was responsible for the town’s name, and enjoy dining at the popular noodle shops in the surrounding area.
+Read more
+Best nearby
+Restaurants
+10,000 within 3 miles
+Dining Darts Bar Bee Shibuya
+5.0
+(93)
+0.1 mi$$ - $$$ • Bar • Pizza
+Lad's Dining Shibuya Udagawacho
+5.0
+(103)
+0.1 mi$$ - $$$ • Bar • Pizza
+Nabezo Shibuya Koendori
+4.8
+(569)
+0.1 mi$$ - $$$ • Japanese • Asian • Vegetarian friendly
+See all
+Attractions
+5,310 within 6 miles
+Shibuya Sky
+4.4
+(252)
+0.1 miObservation Decks & Towers
+Hachiko
+4.0
+(4,061)
+107 ftPoints of Interest & Landmarks • Monuments & Statues
+Meiji Jingu Shrine
+4.4
+(8,424)
+1.2 miPoints of Interest & Landmarks
+See all
+Find things to do near Shibuya Crossing
+Sights, experiences, and restaurants picked just for you.
+See what travelers are saying
+Learn more
+Emma Bachmann
+Copenhagen, Denmark48 contributions
+Definitely a must-visit if you’re in Tokyo — it’s one of the most iconic and busiest pedestrian crossings in the world. When the light turns green, you’ll see hundreds of people flowing from every direction at once. It’s a surreal experience, especially at night when the neon lights and giant screens light up the intersection. There’s always something going on around the area too — street performers, pop-up ads, and people filming content. For one of the best views from above, head to the Magnet mall building. On the rooftop, there’s a small bar with a terrace that overlooks the crossing — a perfect spot for taking photos or videos. The bar itself isn’t anything special and entry requires you to buy at least one drink, but the view makes it absolutely worth it. Tip: Try visiting at around 5-7pm or after sunset for the most dramatic visuals. And if the Magnet rooftop feels too crowded, other viewpoints include the Starbucks in Tsutaya or the Shibuya Sky observation deck — though those might be busier or more expensive.
+Read more
+Review of: Shibuya Crossing
+Visited August 2025
+Traveled as a couple
+Written August 2, 2025
+Jeanette R
+Wrington, United Kingdom29 contributions
+A definite must stop in Tokyo and there are a number of viewing spots from above. You can view for free from the walkway in the shopping centre, go to Starbucks and compete with the crowds for the window, pay a fortune to go up the Shibuya scramble tower (which may be too high???) or go to the Magnet bar - in the block on the right next to Starbucks (as you look at Starbucks). Take the lift to the top floor and for a small fee there is a small bar where you get a drink (coffee/beer/soft drink) included in the price. Plenty of space and a lovely place for an early evening beer to watch the crossing.
+Read more
+Review of: Shibuya Crossing
+Visited July 2025
+Traveled with family
+Written July 19, 2025
+TheMonster1981, rompiscatole di natura!
+Carpaneto Piacentino, Italy514 contributions
+I admit it: I arrived very charged. A thousand videos watched, epic scenes in movies, skyrocketing expectations. I imagined a giant intersection, like Times Square with Godzilla crossing the stripes. Instead... eh. It's big, yes, but not HUGE. Live it almost looks like a normal crossing... only with more people, lights and selfie sticks per square meter. But be careful: it's not a scam. It's a perfectly choreographed little mess. When the green shoots in and hundreds of people cross at once from every direction, you feel part of an urban musical in which everyone acts without knowing they are doing it. The real show? Look at it from above: Starbucks or one of the various viewpoints around. That's where you get the magic. On the ground you're just a guy trying not to get hit by a tourist on a scooter. In summary: – Mythical? Yes. – Giant as in the videos? Not really. – To see at least once? Absolutely not. Shibuya Crossing: small, crowded, a bit overrated, but in the end... it gets to your heart. And in Instagram stories. 📸✨
+Read more
+Review of: Shibuya Crossing
+Visited June 2025
+Traveled with family
+Written July 17, 2025
+Princes of travel
+Paris, France8,681 contributions
+The Shibuya Crossing is a must-see pedestrian crossing in Tokyo, photographed from all angles. A human tide passes through it alternately with cars, whether diagonally or horizontally. Do not hesitate to go day or night, the effect will not be the same! You can observe it for free from many places, such as Shibuya Station tonight, shops nearby or for a fee from buildings like ShibuyaSky for example.
+Read more
+Review of: Shibuya Crossing
+Visited November 2024
+Traveled as a couple
+Written December 1, 2024
+Defne Ertuna
+Istanbul, Türkiye68 contributions
+Stepping into Shibuya Crossing is like stepping into the pulse of Tokyo. When the lights turn red for cars, hundreds (sometimes thousands) of pedestrians flood the intersection from all directions. It’s a mesmerizing sight to see people moving in perfect synchronization, crossing in every direction, yet it’s incredibly organized despite the chaos. It is a must see sight for sure. Also the shops nearby are very nice options to buy sourveniers and gifts from Japan.
+Read more
+Review of: Shibuya Crossing
+Visited April 2024
+Traveled with family
+Written November 19, 2024
+Vera A
+Brampton, Canada37 contributions
+This is very busy but it's unnecessarily filled with tourists stopping to take pics and video. Surprisingly the traffic moves smooth regardless of the crowd. No cars are honking (not allowed). No cars get "stuck" in the middle of the intersection. It's overcrowded b/c the Shibuya train station is also at that intersection and it was under constructions in Oct 2024.
+Read more
+Review of: Shibuya Crossing
+Visited October 2024
+Traveled as a couple
+Written March 5, 2025
+pika92
+Salon-de-Provence, France811 contributions
+too well known beyond tokyo to ignore a lot of people a constant tingle you have to go around the neighborhood photos at the top can be taken of the Starbuck or the café l'occitane remember to book in advance if you want to climb to the observatory at the top of the neighboring tower
+Read more
+Review of: Shibuya Crossing
+Visited May 2025
+Traveled as a couple
+Written May 23, 2025
+browncondo2102
+Kitchener, Canada1,933 contributions
+Shibuya Crossing is an amazing place where thousands of people cross the street in every direction every few minutes. We got to cross the street and then we went up into a building a few floors to take some pictures of the crowds below. It is the bussiest street crossing in the world.
+Review of: Shibuya Crossing
+Visited April 2025
+Traveled as a couple
+Written May 21, 2025
+duomo2
+Taunton, United Kingdom673 contributions
+Lots of shops and restaurants in Shibuya, but the crossing was a bit disappointing to me as I realised - it's just a road crossing! OK there's lots of stripes diagonally but that't because Japanese people have to follow the rules and they would not cross diagonally until you draw a crossing on the road. Good for a photo but not much else, I went up to the Starbucks for a free photo otherwise there are some restaurants/bars that have a view higher up.
+Read more
+Review of: Shibuya Crossing
+Visited July 2025
+Traveled with family
+Written August 8, 2025
+PBPG
+Yorkshire, United Kingdom12,062 contributions
+This is a must see if you are in Tokyo. Go on the subway/JR lines it is right outside the subway exit. It is like a ballet with cars halting people swarming across is all directions then suddenly stopping and cars going again. I could watch it for hours.
+Review of: Shibuya Crossing
+Visited March 2025
+Traveled as a couple
+Written April 15, 2025
+These reviews are the subjective opinion of Tripadvisor members and not of Tripadvisor LLC. Tripadvisor performs checks on reviews.
+Contribute
+Write a review
+Upload a photo
+Reviews
+Q&A
+Filters
+English
+Most Recent
+Popular mentions
+rush hour
+second floor
+busy intersection
+times square
+fun to watch
+every direction
+vantage point
+neon lights
+people watching
+hachiko statue
+train station
+take photos
+visiting tokyo
+starbucks
+directions
+crowd
+ants
+street
+chaos
+video
+4.2
+(7,807)
+Excellent
+3,609
+Very good
+2,610
+Average
+1,363
+Poor
+167
+Terrible
+58
+These reviews have been automatically translated from their original language.
+Show original reviews
+Karim Maarouf
+Cairo, Egypt1,009 contributions
+0
+One of the main Landmarks of Tokyo
+May 2025 • Friends
+This is one of the main landmarks of Tokyo. It is just a square, but I think it's so iconic that it's worth a visit. You should definitely cross the diagonal crosswalk and take a picture or two. There are quite a few options to view the crossing from above. We booked the shibuya sky, which is pretty high up and you have to book well in advance, right when the tickets are released. But there are plenty of other options to view the crossing from a bit closer. What's also fun is to take a timelapse video of people crossing the crosswalks. All in all, I think it's a touristy thing to do but still worth it.
+Written August 20, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+Rui André
+Fundao, Portugal818 contributions
+0
+5*
+Aug 2025 • Couples
+It's right in front of the subway station. It's a very well-known place where hundreds of people pass by at the same time without anyone hitting. It's a place where many Japanese fixed cars go by. Known for the movie Fast and Furious Tokyo
+Automatically translated
+Written August 15, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+PavlaPavla
+Chrudim, Czech Republic8,003 contributions
+8
+Fun while crossing
+Jul 2025 • Couples
+We first saw Shibuya Crossing a few minutes after arriving by bus from the airport to Tokyo, still with our suitcases. And then we returned here several more times during our stay in Tokyo.
+
+It was fun to watch people (mostly tourists, Japanese people just crossing) taking pictures, filming and posing while crossing. We did the same. :-) Yes, it is an iconic place and if you are in Tokyo, you definitely shouldn't miss it.
+Written August 11, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+Suzanne & Giles
+Exeter, UK39 contributions
+0
+More than just a crossing...
+Aug 2025 • Family
+Shibuya is more than just a crossing. It's an experience. The surrounding area has some good shopping too, so it's worth making time to see this world famous scene.
+Written August 11, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+Cherry O
+Apeldoorn, The Netherlands159 contributions
+0
+Pressure, pressure EN more pressure
+Jul 2025
+Very busy intersection, in itself not so special but nice to have walked over once.
+Many nice shops in DE neighborhood. At DE Shibuya crossing is a restaurant/bar where you have a view over the intersection.
+Automatically translated
+Written August 10, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+dogussankir
+Adana Province, Türkiye280 contributions
+0
+Sibuya
+Aug 2025 • Family
+Our iconic neighborhood where thousands of people run to the right to the left, with shops that appeal mostly to under 20, where the nightlife is bustling...
+Going with a kid can be torture,even with hundreds in the subway.
+Going just to see one day, it’s probably the cheapest Shopping and dining in Tokyo.
+If you’re staying in the center, you can get around 15dk from Tokyo Station with one line.
+Automatically translated
+Written August 9, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+duomo2
+Taunton, UK673 contributions
+0
+Looks disappointing in real life
+Jul 2025 • Family
+Lots of shops and restaurants in Shibuya, but the crossing was a bit disappointing to me as I realised - it's just a road crossing! OK there's lots of stripes diagonally but that't because Japanese people have to follow the rules and they would not cross diagonally until you draw a crossing on the road. Good for a photo but not much else, I went up to the Starbucks for a free photo otherwise there are some restaurants/bars that have a view higher up.
+Written August 8, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+RPAPKPMP
+Stourbridge, UK204 contributions
+0
+Great buzz in the streets around...
+Jun 2025 • Family
+The reality is that its a series of zebra crossings with very bright bill boards surrounding it and loads of people around. That said it was fun to see and worth a visit if you are heading to Tokyo just for the buzz in the streets around it, which is the bit we enjoyed most
+Written August 4, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+AlbertSalichs
+Manresa, Spain28,111 contributions
+0
+Zebra crossing in all directions
+Sep 2024 • Friends
+Shibuya Crossing is one of the most known sightseeing points in Tokyo, the main city in Japan. In fact, it is a place, where some roads link and there are some zebra crossings and you can see, how a lot of people cross the roads in all directions. Really stress! All full of people! A curious place in a very modern city. Not more.
+Written August 2, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+Emma Bachmann
+Copenhagen, Denmark48 contributions
+0
+Must see when in Tokyo!
+Aug 2025 • Couples
+Definitely a must-visit if you’re in Tokyo — it’s one of the most iconic and busiest pedestrian crossings in the world. When the light turns green, you’ll see hundreds of people flowing from every direction at once. It’s a surreal experience, especially at night when the neon lights and giant screens light up the intersection. There’s always something going on around the area too — street performers, pop-up ads, and people filming content.
+
+For one of the best views from above, head to the Magnet mall building. On the rooftop, there’s a small bar with a terrace that overlooks the crossing — a perfect spot for taking photos or videos. The bar itself isn’t anything special and entry requires you to buy at least one drink, but the view makes it absolutely worth it.
+
+Tip: Try visiting at around 5-7pm or after sunset for the most dramatic visuals. And if the Magnet rooftop feels too crowded, other viewpoints include the Starbucks in Tsutaya or the Shibuya Sky observation deck — though those might be busier or more expensive.
+Read more
+Written August 2, 2025
+This review is the subjective opinion of a Tripadvisor member and not of Tripadvisor LLC. Tripadvisor performs checks on reviews as part of our industry-leading trust & safety standards. Read our transparency report to learn more.
+1
+2
+3
+4
+5
+6
+…
+Showing results 1-10 of 4,661
+Also popular with travelers
+See all
+Meiji Jingu Shrine
+4.4
+(8,424)
+Points of Interest & Landmarks
+Shibuya / Harajuku / Ebisu
+Tokyo Camii & Turkish Culture Center
+4.5
+(259)
+Religious Sites
+Open now
+Shibuya Sky
+4.4
+(252)
+Observation Decks & Towers
+Open now • Shibuya / Harajuku / Ebisu
+Meiji Shrine Imperial Garden
+4.4
+(255)
+Points of Interest & Landmarks • Gardens
+Shibuya / Harajuku / Ebisu
+Omotesando
+4.2
+(1,950)
+Neighborhoods • Points of Interest & Landmarks
+Shibuya / Harajuku / Ebisu
+Shibuya Cat Street
+4.1
+(529)
+Points of Interest & Landmarks
+Shibuya / Harajuku / Ebisu
+Hachiko
+4.0
+(4,061)
+Points of Interest & Landmarks • Monuments & Statues
+Shibuya / Harajuku / Ebisu
+Takeshita Street
+4.0
+(4,510)
+Points of Interest & Landmarks
+Shibuya / Harajuku / Ebisu
+Shibuya Center-gai
+4.0
+(1,187)
+Neighborhoods • Points of Interest & Landmarks
+Shibuya / Harajuku / Ebisu
+Harajuku Station
+3.8
+(503)
+Architectural Buildings
+Shibuya / Harajuku / Ebisu
+Related Stories
+The perfect 3 days in Tokyo
+Jul 5, 2025 • 12 min read
+When you visit Tokyo for the first time, you can’t just wing it. You’ll definitely need a plan to see the fabulous fashions of Ginza, the colorful anime of Akihabara, the effortless cool of Shibuya, and the many-tiered temples of Asakusa—all essentials for first-time visitors—in three days.
+By Deborah Gaines
+The perfect 3 days in Tokyo
+Jul 5, 2025 • 12 min read
+When you visit Tokyo for the first time, you can’t just wing it. You’ll definitely need a plan to see the fabulous fashions of Ginza, the colorful anime of Akihabara, the effortless cool of Shibuya, and the many-tiered temples of Asakusa—all essentials for first-time visitors—in three days.
+By Deborah Gaines
+10 Tokyo dishes you need to try
+Jul 4, 2025 • 8 min read
+Ten dishes to get in Tokyo, from Sushi and soba to (surprise) even pizza.
+By Yukari Sakamoto
+*Likely to sell out: Based on Viator’s booking data and information from the provider from the past 30 days, it seems likely this experience will sell out through Viator, a Tripadvisor company.
+Is this your business?
+Claim this free listing to unlock its full potential to amplify your business’s presence, including the ability to respond to reviews, update business info, add photos, and much more.
+Claim this listing
+Shibuya Crossing (2025) - All You Need to Know BEFORE You Go (with Reviews & Photos)
+Shibuya
+Hotels
+Things to Do
+Restaurants
+Flights
+Vacation Rentals
+Travel Stories
+Cruises
+More
+© 2025 Tripadvisor LLC All rights reserved.
+Terms of Use
+Privacy and Cookies Statement
+Cookie consent
+Site Map
+How the site works
+Contact us
+Accessibility Statement
+
+Tripadvisor LLC makes no guarantees for availability of prices advertised on our sites and applications. Listed prices may require a stay of a particular length or have blackout dates, qualifications or other applicable restrictions. Tripadvisor LLC is not responsible for any content on external web sites that are not owned or operated by Tripadvisor . Indicative hotel prices displayed on our “Explore” pages are estimates extrapolated from historic pricing data.
+
+Tripadvisor LLC is not a booking agent or tour operator. When you book with one of our partners, please be sure to check their site for a full disclosure of all applicable fees.
+
+Read more
+$ USD
+United States
+Unlock the best of Tripadvisor
+
+Sign in to get the most out of Tripadvisor
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Attraction_Review-g1066456-d4403399-Reviews-Shibuya_Crossing-Shibuya_Tokyo_Tokyo_Prefecture_Kanto.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:12] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Restaurants-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:12] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/HotelsNearMe)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:13] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Attractions-g1066456-Activities-Shibuya_Tokyo_Tokyo_Prefecture_Kanto.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:13] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Hotels-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto-Hotels.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:14] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/SmartDeals-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto-Hotel-Deals.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:17] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/HotelsNearMe)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:19] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Restaurants-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:22] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Hotels-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto-Hotels.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:26] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/SmartDeals-g1066456-Shibuya_Tokyo_Tokyo_Prefecture_Kanto-Hotel-Deals.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 12:59:28] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: hotels near me
+(Page URL: https://www.tripadvisor.com/Attractions-g1066456-Activities-Shibuya_Tokyo_Tokyo_Prefecture_Kanto.html)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:16] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+JP
+Skip navigation
+Create
+9+
+3:21:15 / 6:08:09
+TL vs. GX - VCT EMEA 2025 Stage 2 Upper Round 2
+VALORANT Champions Tour EMEA
+
+179K subscribers
+Subscribe
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+.
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+K
+ 
+Share
+Download
+Clip
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+,
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ views  
+Streamed live 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ 
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+ 
+ hours ago  
+#VALORANTChampionsTour #VCT #VCTEMEA
+Welcome to VCT EMEA Stage 2, where the top teams in the region battle for glory and a shot at VALORANT Champions Paris. We have some of the biggest names in the game loo …
+...more
+
+Live chat replay
+See what others said about this video while it was live.
+Open panel
+Valorant
+2020
+BROWSE GAME
+Gaming
+BROWSE ALL GAMING
+7 Comments
+Sort by
+Add a comment...
+@praveenrt5300
+8 hours ago
+TL vs GX starts at 3:09:30
+4
+Reply
+@stellarbytesYT
+5 hours ago
+Both matches were bangers 
+1
+Reply
+@ilolami5399
+8 hours ago
+Game starts at 51:30
+1
+Reply
+@aldi_munaqib
+44 minutes ago
+anyone know song title at 20:56? i can't find it on spotify & yt
+Reply
+@kadayadi_fam
+8 hours ago
+!score
+Reply
+@GaryNolan-j5g4w
+3 hours ago
+TH overated af...
+Translate to English
+Reply
+1 reply
+All
+From VALORANT Champions Tour EMEA
+Valorant Champions Tour
+Valorant
+Related
+For you
+Recently uploaded
+Watched
+Shorts
+Welcome to Trash Talk 101, here is your instructor 👨‍🏫 #VCTAmericas
+11K views
+Ghost Is Ruthless 💀
+3.5M views
+Mike Shinoda Reveals His Daughter Has No Idea He’s a Rock Star 🤯 #MikeShinoda #shorts
+5M views
+S0M vs the World #VCTAmericas
+4.9K views
+Search “flex player” and you’ll see a picture of f0rsakeN #valorant #vct #shorts
+108K views
+Why The Mask? #shorts #cod
+2.3M views
+22:44
+Top 10 Greatest VALORANT Players of All Time
+Commend
+51K views
+•
+1 day ago
+New
+45:18
+The Lost World is a PERFECT Jurassic Park Sequel
+FilmSpeak
+145K views
+•
+1 month ago
+5:19
+Quitting Valorant to Fix My Aim – Day 14 | Too Much Caffeine for Aim?
+Yoka FF
+16 views
+•
+11 hours ago
+New
+59:04
+How Good Was Roman Reigns' 1,316 Day Reign? (2020-2024)
+SuperkickStudios
+486K views
+•
+6 months ago
+41:09
+The best of Luca Manfe Masterchef US season 4 2013
+Tri.L
+12M views
+•
+11 years ago
+1:03:06
+The COMPLETE Jurassic Park Timeline
+Nerdist
+438K views
+•
+2 months ago
+18:46
+18 minutes of Unbelievable Moments from G2 VS NRG
+Art of Valorant
+3.1K views
+•
+1 hour ago
+New
+3:26:27
+CALL OF DUTY: MODERN WARFARE 2 All Cutscenes (2022) Full Game Movie 4K 60FPS Ultra HD
+Gamer's Little Playground
+5.7M views
+•
+2 years ago
+41:46
+FULL EPISODE: Brock Lesnar – The Next Big Thing | Ruthless Aggression
+WWE Vault
+312K views
+•
+8 days ago
+1:06:52
+How to Tank a Franchise in 11 Movies: The History of the DCEU
+ScreenCrush
+482K views
+•
+1 month ago
+13:31
+VALORANT Pros Build VCT Fantasy 5-Stacks
+VALORANT Champions Tour
+197K views
+•
+4 days ago
+New
+13:55
+The Perfect Valorant Combo Doesn't Exi...
+VALORANT - Protatomonster
+17K views
+•
+1 day ago
+New
+37:34
+FNS reacts to 'Top 10 Greatest VALORANT Players of All Time' by Commend
+commend 2
+1.8K views
+•
+1 day ago
+New
+2:53:28
+The Complete Jurassic Park Timeline, Story & World Explained (Including Rebirth, TV Shows & Comics)
+Movie Balls Deep
+256K views
+•
+1 month ago
+9:50
+Cody Rhodes makes Paul Heyman cry (1/2) - WWE RAW February 06, 2023
+Wrestling Full HD
+1.2M views
+•
+2 years ago
+23:43
+50 IMPOSSIBLE 1v5 Clutches in Valorant
+VALORANT - Protatomonster
+15K views
+•
+18 hours ago
+New
+56:52
+Jurassic World Rebirth Is Unsurprisingly Bad
+FishStickOnAStick
+274K views
+•
+1 month ago
+38:24
+WWE Most Savage Insults Last 5 Years (2021-2025)
+APEX Predator Series
+361K views
+•
+4 months ago
+17:30
+17 minutes of Unbelievable Moments from SEN VS C9
+Art of Valorant
+3.1K views
+•
+4 hours ago
+New
+58:14
+JURASSIC PARK III (2001) MOVIE REACTION - FIRST TIME WATCHING - REVIEW
+The Media Knights
+469K views
+•
+1 year ago
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=2zrWnhk13mQ)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:35] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=whNJUaBDxG4)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:36] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=9A6YyqLaP48)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:38] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=XlCSilR6o0k)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:39] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=f2LOJCIlqDI)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:39] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=xY5fEl6Hymc)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:41] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=XlCSilR6o0k)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:44] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=9A6YyqLaP48)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:53] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=sunP3N9mWNY)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:54] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=vBLlMiOM7qQ)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:18:56] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=whNJUaBDxG4)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:04] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=xvnJM3dzrKk)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:05] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=FRaDoga-Buk)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:07] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=f2LOJCIlqDI)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:16] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=Ukcrhxn2fDQ)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:19] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=xY5fEl6Hymc)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:22] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=sunP3N9mWNY)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:25] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=vBLlMiOM7qQ)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:28] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=FRaDoga-Buk)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:36] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/channel/UCdlvbGGgwfF97wlH7rC8Qng)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:37] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=ynfY0RDcO3g)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:40] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=xvnJM3dzrKk)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:47] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=bhayi3YcYFw)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:48] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=Ukcrhxn2fDQ)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:56] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=8G4wsF7Bz2s)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:19:58] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=ynfY0RDcO3g)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:20:00] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/channel/UCdlvbGGgwfF97wlH7rC8Qng)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:20:02] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=bhayi3YcYFw)
+----------------------------------------
+
+
+========================================
+[2025-08-23 14:20:05] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+© 2025 Google LLC
+
+USER QUESTION: who do the comments support
+(Page URL: https://www.youtube.com/watch?v=8G4wsF7Bz2s)
+----------------------------------------
+

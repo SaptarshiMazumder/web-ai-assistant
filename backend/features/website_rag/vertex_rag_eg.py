@@ -1,12 +1,4 @@
-# smart_rag_console.py
-# Usage: python smart_rag_console.py
-#
-# Flow:
-#   - Decide if the question is complex (gate)
-#   - If simple: one-shot (internal retrieval; fast & usually solid)
-#   - If complex: PLAN (subqueries) → RETRIEVE (per subquery, with logs) → ANALYZE (final synthesis)
-#   - Verify the final answer against evidence; if weak, re-synthesize grounded; if still weak, fall back to one-shot
-
+import os, json, re, asyncio
 from google import genai
 from google.genai import types
 
@@ -436,3 +428,5 @@ def run_vertex_rag(question: str) -> Dict[str, Any]:
 
 
 # run_vertex_rag("List all open positions in China at Riot games")
+
+

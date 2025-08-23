@@ -365,3 +365,4 @@ embedding_config = rag.RagEmbeddingModelConfig(
 from utils import get_or_create_rag_corpus
 rag_corpus = get_or_create_rag_corpus()
 
+
