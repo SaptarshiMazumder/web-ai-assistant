@@ -16704,3 +16704,2973 @@ USER QUESTION: tell me the featyures of the app
 (Page URL: https://macrofactorapp.com/macrofactor/)
 ----------------------------------------
 
+
+========================================
+[2025-08-23 15:52:55] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Jump to Main Content
+Jump to Primary Navigation
+
+WHO WE ARE
+
+WORK WITH US
+
+NEWS
+
+SIGN IN
+
+What's happening?
+SEE MORE
+TFT Pro Circuit: Everything You Need to Know
+NEWS
+Roo's Lantern (Pt 1) | Spirit Blossom: First Bloom | Cinematic Trailer
+NEWS
+How to buy Riftbound
+NEWS
+Minions, Servers, and Progression – The Tech Behind Swarm
+TECH BLOG
+Know Before You Go - 2XKO at Evo 2025
+NEWS
+Games
+
+windows
+apple
+
+windows
+playstation
+xbox
+windows
+apple
+mobile
+mobile
+windows
+mobile
+Esports & Entertainment
+We’re hiring!
+
+Team up with Riot to forge your path and craft unforgettable experiences for players
+
+155
+Open positions
+26
+Offices
+Explore Careers
+Riot Games
+PRESSSECURITYLEGALLEADERSHIPCANDIDATE PRIVACYTERMS OF SERVICEPRIVACY NOTICEPLAYER SUPPORTE-VERIFYACCESSIBILITYANNUAL REPORTSPEERING INFORMATION
+Follow us on Twitter
+Follow us on Instagram
+Follow us on Tiktok
+Share this on LinkedIn
+Follow us on Facebook
+Watch on YouTube
+Cookie Preferences© 2025 Riot Games, Inc. All Rights Reserved.
+TO THE SURFACE
+
+USER QUESTION: find and list all open positions in shanghai at riot games
+(Page URL: https://www.riotgames.com/en)
+----------------------------------------
+
+
+========================================
+[2025-08-23 15:53:07] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+![](
+
+# Unleash Play
+
+[See Open Roles](#job-list)
+
+## We turn passion into play. We’re looking for S-tier pros to join us in shaping unforgettable experiences for players.
+
+[Life at Riot](/en/work-with-us/life-at-riot)
+
+### Life at Riot
+
+[Learn more](/en/work-with-us/life-at-riot)
+
+[Learn more](/en/work-with-us/life-at-riot)
+
+[Interviewing at Riot](/en/work-with-us/interviewing-at-riot)
+
+### Interviewing at Riot
+
+[Learn more](/en/work-with-us/interviewing-at-riot)
+
+[Learn more](/en/work-with-us/interviewing-at-riot)
+
+[Offices](/en/work-with-us/offices)
+
+### Offices
+
+[Learn more](/en/work-with-us/offices)
+
+[Learn more](/en/work-with-us/offices)
+
+[University Programs](/en/university-programs)
+
+### University Programs
+
+[Learn more](/en/university-programs)
+
+[Learn more](/en/university-programs)
+
+## Work with us
+
+Open Positions: **155**
+
+* [Senior Game Designer - Legends of Runeterra
+
+  Design
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7164070)
+* [1st Party Platform Partnerships Strategist III
+
+  Business Development
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7104443)
+* [Administrative Specialist - League Studio, Operations Services Team (12month Contract)
+
+  Admin
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7170894)
+* [Animation Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7116699)
+* [Broadcast Engineer - Esports Event Technology
+
+  Esports
+
+  Esports
+
+  Berlin, Germany](/en/j/7163935)
+* [Business Systems Analyst II, Finance Technology
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6879113)
+* [Director of Publishing Content and Community Strategy - VALORANT
+
+  Publishing
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7074943)
+* [Director, Brand Management - Unpublished R&D Product
+
+  Brand Management
+
+  Development Studios
+
+  Los Angeles, USA](/en/j/7126233)
+* [Director, Insights - WILD RIFT
+
+  Insights
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6683346)
+* [Director, Marketing Creative Direction - Unpublished R&D Product
+
+  Creative Direction & Management
+
+  Development Studios
+
+  Los Angeles, USA](/en/j/7126180)
+* [Director, Publishing Product Management, LOL APAC
+
+  Product Management Group
+
+  League of Legends
+
+  Singapore](/en/j/6750158)
+* [Diversity & Inclusion Advisor, People & Processes
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7158328)
+* [Game Designer - Legends of Runeterra
+
+  Design
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7164077)
+* [Game Designer III - VALORANT, Competitive Systems
+
+  Design
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7012037)
+* [Game Designer, Combat (Contract)
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102266)
+* [Game Producer (Contract)
+
+  Production Group
+
+  Riot Discovery
+
+  Guangzhou, China](/en/j/7116711)
+* [Game Producer III, Characters and Agents - VALORANT
+
+  Production Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7095177)
+* [Generative AI Research Intern (PhD or Master’s), Singapore Efficiency Team (Contract)
+
+  Data
+
+  Riot Operations & Support
+
+  Singapore](/en/j/6812455)
+* [HRBP - China
+
+  People
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6879174)
+* [Insights Analyst Coordinator, 金铲铲之战(Contract)
+
+  Insights
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/6202178)
+* [Insights Analyst III - BizOps & Strategy
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6902106)
+* [Interactive Music Designer III - League Studios, Creative eXpressions
+
+  Audio
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7088632)
+* [Legal Counsel EMEA (Employment Law) 10 months contract
+
+  Legal
+
+  Riot Game Operations
+
+  Dublin, Ireland](/en/j/7057006)
+* [Live Event Producer (Contractor 6 months)
+
+  Publishing
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7160926)
+* [Localization QA
+
+  QA Group
+
+  Riftbound
+
+  Shanghai, China](/en/j/7134094)
+* [Manager Infrastructure Engineering
+
+  Infrastructure
+
+  Esports
+
+  Los Angeles, USA](/en/j/6277551)
+* [Manager, Accounting
+
+  Accounting
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/6814970)
+* [Manager, Game Product Management, Metasystem - Wild Rift Shanghai(英雄联盟手游）
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6679850)
+* [Manager, Game Production - Competitive Systems, VALORANT
+
+  Production Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7163936)
+* [Manager, Software Engineering
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6701531)
+* [Manager, Software Engineering (UI/UX)- LPC.HEX, Hextech Engine, Player Experience
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7088660)
+* [Manager, Software Engineering - Content Access Platform
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7005607)
+* [Manager, Software Engineering - Legends of Runeterra
+
+  Software Engineering Group
+
+  Legends of Runeterra
+
+  Sydney, Australia](/en/j/7167374)
+* [Manager, Software Engineering - Teamfight Tactics - Core Tech
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Sydney, Australia](/en/j/6908627)
+* [Manager, Software Engineering - Unreal Ecosystem
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Sydney, Australia](/en/j/6975941)
+* [Manager, Software Engineering - Unreal Ecosystem (UnEco)
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6569520)
+* [Manager, Sound Design - League of Legends
+
+  Audio
+
+  Development Studios
+
+  Singapore](/en/j/6781423)
+* [Manager, VFX Art - League of Legends
+
+  Art
+
+  League of Legends
+
+  Singapore](/en/j/6908404)
+* [Network Engineer
+
+  Infrastructure
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/7053455)
+* [Outsourcing Manager (Game Production)
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7053502)
+* [Principal Concept Artist (Character) - VALORANT
+
+  Art
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6908903)
+* [Principal Concept Artist (Characters) - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6879135)
+* [Principal Data Engineer - GS.VAL, 2XKO, Analytics Team
+
+  Data
+
+  2XKO
+
+  Los Angeles, USA](/en/j/7126335)
+* [Principal Data Engineer - Unpublished R&D Product
+
+  Data
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7091915)
+* [Principal Data Scientist, ML Bots - Game Tech Group
+
+  Data
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177099)
+* [Principal Game Designer, Levels - Unpublished R&D Product
+
+  Design
+
+  MMO
+
+  Los Angeles, USA](/en/j/7009290)
+* [Principal Game Designer, Progression and Economy - Unpublished R&D Product
+
+  Design
+
+  MMO
+
+  Los Angeles, USA](/en/j/6969260)
+* [Principal Game Producer – League of Legends
+
+  Production Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6913465)
+* [Principal Game Product Manager, Metagame & Monetization - Unpublished R&D Product
+
+  Product Management Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7012628)
+* [Principal Insights Analyst - League of Legends
+
+  Insights
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7117233)
+* [Principal Insights Analyst - Unpublished R&D Product
+
+  Insights
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7005449)
+* [Principal Program Manager, Contingent Workforce
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6996975)
+* [Principal QA Engineer, Gameplay - TFT
+
+  QA Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/6908931)
+* [Principal Researcher (R&D Publishing) - Central Product Insights
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7159544)
+* [Principal Software Engineer, Core Tech - Teamfight Tactics
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/7138089)
+* [Principal Software Engineer, ML Platform - Game Tech Group
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177101)
+* [Principal Software Engineer, Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/5905246)
+* [Principal Software Engineer, VALORANT - Foundations Developer Experience & Workflows
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6889307)
+* [Principal Technical Producer, Launch & Integrations - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7172718)
+* [Principal Technical Product Manager, Game Understanding Agents
+
+  Product Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177109)
+* [Principal Technical Program Manager - Central Game Tech
+
+  Program Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7078020)
+* [Principal UX Designer, Riot Client
+
+  Design
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6899074)
+* [Principal VFX Artist - Unpublished R&D Product
+
+  Art
+
+  MMO
+
+  Los Angeles, USA](/en/j/6996831)
+* [Principal, Publishing Content Strategy (Editor in Chief)
+
+  Publishing
+
+  Legends of Runeterra
+
+  Los Angeles, USA](/en/j/7167123)
+* [Procurement Specialist
+
+  Finance
+
+  Riot Operations & Support
+
+  Seoul, Korea](/en/j/6798316)
+* [Program Manager III - Quantitative Research Operations
+
+  Program Management Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6879172)
+* [Publishing Coordinator, 金铲铲之战 (Contract)
+
+  Publishing
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/7137448)
+* [QA Engineer - LiveOps & SDK
+
+  QA Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7015284)
+* [QA Engineer – Compliance & Release
+
+  QA Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7009294)
+* [Recruiting Coordinator (Contract)
+
+  People
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/7155224)
+* [Regional D&I Advisor
+
+  People
+
+  Riot Operations & Support
+
+  Dublin, Ireland](/en/j/6996887)
+* [Rendering Technical Artist II - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6996860)
+* [Researcher III - Central Product Insights
+
+  Insights
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6991947)
+* [Senior Technical Artist - Singapore Efficiency Team
+
+  Art
+
+  Development Studios
+
+  Singapore](/en/j/7005393)
+* [Senior 3D Character Artist - League of Legends, Summoners Rift
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7138435)
+* [Senior 3D Environment Artist
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6928277)
+* [Senior 3D Environment Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102224)
+* [Senior Accountant
+
+  Accounting
+
+  Riot Operations & Support
+
+  Singapore](/en/j/7053979)
+* [Senior Business Operations Manager, China Studio
+
+  Corporate
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6781429)
+* [Senior Concept Artist (Characters) - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7103434)
+* [Senior Concept Artist, Environment (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102219)
+* [Senior Data Scientist - Singapore Efficiency Team
+
+  Data
+
+  Development Studios
+
+  Singapore](/en/j/6580972)
+* [Senior Data Scientist, Skill & Matchmaking - VALORANT Data Ops
+
+  Data
+
+  VALORANT
+
+  SF Bay Area, USA](/en/j/7078979)
+* [Senior Game Designer, Combat 资深战斗策划
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6324724)
+* [Senior Game Producer - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6843438)
+* [Senior Game Product Manager (Monetization and Growth) - FFGS(金铲铲之战)
+
+  Product Management Group
+
+  Teamfight Tactics
+
+  Shanghai, China](/en/j/6197738)
+* [Senior Game Product Manager - Teamfight Tactics
+
+  Product Management Group
+
+  Development Studios
+
+  Singapore](/en/j/6879075)
+* [Senior Game Product Manager, Monetization, VALORANT Mobile
+
+  Product Management Group
+
+  VALORANT
+
+  Shanghai, China](/en/j/7053923)
+* [Senior Integration Specialist, Enterprise
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6357129)
+* [Senior Internal Audit
+
+  Accounting
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6991957)
+* [Senior Manager, Accounting
+
+  Accounting
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/6948671)
+* [Senior Manager, Art Direction - Teamfight Tactics
+
+  Art
+
+  Development Studios
+
+  Singapore](/en/j/6188875)
+* [Senior Manager, Art Management - Wild Rift
+
+  Art
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7103618)
+* [Senior Manager, Content Production- Wild Rift Publishing
+
+  Production Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6798319)
+* [Senior Manager, Equity Administration
+
+  Accounting
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6231178)
+* [Senior Manager, HRBP
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6996888)
+* [Senior Manager, Insights - League of Legends
+
+  Insights
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7116877)
+* [Senior Manager, Software Engineering
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6975400)
+* [Senior Manager, Software Engineering (UI) - League of Legends
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6557586)
+* [Senior Manager, Software Engineering, Services - VALORANT
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/7181933)
+* [Senior Manager, Technical Program Management - Data Foundations
+
+  Program Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6892749)
+* [Senior Motion Graphics Artist - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6863444)
+* [Senior OneStream Application Engineer, Finance Technology
+
+  Information Technology
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7126070)
+* [Senior Product Category Manager, Consumer Products
+
+  Entertainment
+
+  Riot Operations & Support
+
+  Shanghai, China](/en/j/7009292)
+* [Senior Product Manager - Product Accessibility
+
+  Product Management Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6338534)
+* [Senior Product Manager - VALORANT Mobile
+
+  Product Management Group
+
+  VALORANT
+
+  Shanghai, China](/en/j/7104399)
+* [Senior QA Engineer - Unpublished R&D Product
+
+  QA Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7115147)
+* [Senior Rendering Technical Artist - League of Legends
+
+  Art
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/7103432)
+* [Senior Researcher, WR
+
+  Insights
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6710152)
+* [Senior Software Engineer - Hextech, Gameplay
+
+  Software Engineering Group
+
+  League of Legends
+
+  Sydney, Australia](/en/j/7182012)
+* [Senior Software Engineer - Live Operations Observability Pipeline (LOOP)
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7167903)
+* [Senior Software Engineer - Player Platform, Revenue Protection
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6899146)
+* [Senior Software Engineer - Teamfight Tactics, Core Tech (Contract, 12 months)
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Sydney, Australia](/en/j/7178365)
+* [Senior Software Engineer - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7069639)
+* [Senior Technical Producer (Release Management) - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058299)
+* [Senior Technical Producer - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7061266)
+* [Senior VFX Artist - VALORANT, Expressions
+
+  Art
+
+  VALORANT
+
+  Mercer Island, USA](/en/j/6908905)
+* [Software Engineer, Gameplay (Contract)
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/6362205)
+* [Software Engineering Manager - Metagame Features, 2XKO
+
+  Software Engineering Group
+
+  Development Studios
+
+  Singapore](/en/j/6879125)
+* [Sr. HR Business Partner
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7097384)
+* [Sr. HR Business Partner (Rotational Coverage)
+
+  People
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7118614)
+* [Sr. Manager, Creative Direction
+
+  Creative Direction & Management
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7053453)
+* [Sr. Manager, Game Product Manager (Gameplay)-Wild Rift
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/7093485)
+* [Sr. Manager, Game Production - Unpublished R&D Product
+
+  Production Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6952691)
+* [Sr. Manager, Publishing Product Management, 2XKO AMER
+
+  Product Management Group
+
+  2XKO
+
+  Los Angeles, USA](/en/j/6750150)
+* [Sr. Manager, Publishing Product Management, 2XKO APAC
+
+  Product Management Group
+
+  2XKO
+
+  Singapore](/en/j/6752859)
+* [Sr. Manager, Publishing Product Management, WildRift EMEA
+
+  Product Management Group
+
+  League of Legends: Wild Rift
+
+  Istanbul, Turkey](/en/j/6750139)
+* [Sr. Manager, Software Engineering - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6580958)
+* [Sr. Manager, Software Engineering, ML Platform - Game Tech Group
+
+  Software Engineering Group
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7177104)
+* [Sr. Manager, Technical Game Design - Unpublished R&D Product
+
+  Design
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6813889)
+* [Sr.Manager, Game Production
+
+  Production Group
+
+  League of Legends: Wild Rift
+
+  Shanghai, China](/en/j/6825847)
+* [Staff Software Engineer (Graphics) - League Studios, Hextech Graphics
+
+  Software Engineering Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6635781)
+* [Staff Software Engineer - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Sydney, Australia](/en/j/7061304)
+* [Staff Software Engineer - VALORANT, Foundations, Build Platforms
+
+  Software Engineering Group
+
+  VALORANT
+
+  Los Angeles, USA](/en/j/6918315)
+* [Staff Software Engineer, Audio - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Mercer Island, USA](/en/j/6879137)
+* [Staff Software Engineer, Game UI - Teamfight Tactics
+
+  Software Engineering Group
+
+  Teamfight Tactics
+
+  Los Angeles, USA](/en/j/6489845)
+* [Staff Software Engineer, Gameplay Systems - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6274023)
+* [Staff Software Engineer, Player Expressions - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/6824551)
+* [Staff Software Engineer, Rendering 渲染工程师
+
+  Software Engineering Group
+
+  Development Studios
+
+  Shanghai, China](/en/j/7154094)
+* [Staff Software Engineer, SRE Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058302)
+* [Staff Software Engineer, Server Systems - Unpublished R&D Product
+
+  Software Engineering Group
+
+  MMO
+
+  Los Angeles, USA](/en/j/6969256)
+* [Staff Software Engineer, Services
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/4519009)
+* [Staff Software Engineer, Services - Unpublished R&D Product
+
+  Software Engineering Group
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7053985)
+* [Staff Software Engineer, Web - Esports Platform & Experiences
+
+  Software Engineering Group
+
+  Esports
+
+  Los Angeles, USA](/en/j/6852885)
+* [Technical Animator II - Unpublished R&D Product
+
+  Art
+
+  Riot Discovery
+
+  Los Angeles, USA](/en/j/7058275)
+* [Technical Art Director - Central Creative Team
+
+  Art
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6333564)
+* [Technical Artist, Rendering (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102244)
+* [Technical Game Designer III - AI Foundations (Contract)
+
+  Design
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/7079595)
+* [Technical Producer, VALORANT - Release Engineering & China Coordination
+
+  Production Group
+
+  VALORANT
+
+  Sydney, Australia](/en/j/6975579)
+* [Technical Product Manager II - League Studios, Platform Services
+
+  Product Management Group
+
+  League of Legends
+
+  Los Angeles, USA](/en/j/6879115)
+* [VFX Artist (Contract)
+
+  Art
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7102256)
+* [Workplace Experience Partner
+
+  Workplace Experience
+
+  Riot Operations & Support
+
+  Sao Paulo, Brazil](/en/j/7053426)
+* [Workplace Program Partner
+
+  Workplace Experience
+
+  Riot Operations & Support
+
+  Los Angeles, USA](/en/j/6917768)
+* [系统策划 – R&D 产品（Contract)
+
+  Design
+
+  Research & Development
+
+  Shanghai, China](/en/j/7055812)
+* [资深策划 (Contract)
+
+  Design
+
+  Riot Discovery
+
+  Shanghai, China](/en/j/7051868)
+
+USER QUESTION: find and list all open positions in shanghai at riot games
+(Page URL: https://www.riotgames.com/en/work-with-us)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:10] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+Crawl4AI Documentation (v0.7.x)
+Home
+Ask AI
+Quick Start
+Code Examples
+ Search
+unclecode/crawl4ai
+ 51.4k
+ 5.1k
+Home
+Ask AI
+Quick Start
+Code Examples
+Apps
+Demo Apps
+C4A-Script Editor
+LLM Context Builder
+Setup & Installation
+Installation
+Docker Deployment
+Blog & Changelog
+Blog Home
+Changelog
+Core
+Command Line Interface
+Simple Crawling
+Deep Crawling
+Adaptive Crawling
+URL Seeding
+C4A-Script
+Crawler Result
+Browser, Crawler & LLM Config
+Markdown Generation
+Fit Markdown
+Page Interaction
+Content Selection
+Cache Modes
+Local Files & Raw HTML
+Link & Media
+Advanced
+Overview
+Adaptive Strategies
+Virtual Scroll
+File Downloading
+Lazy Loading
+Hooks & Auth
+Proxy & Security
+Undetected Browser
+Session Management
+Multi-URL Crawling
+Crawl Dispatcher
+Identity Based Crawling
+SSL Certificate
+Network & Console Capture
+PDF Parsing
+Extraction
+LLM-Free Strategies
+LLM Strategies
+Clustering Strategies
+Chunking
+API Reference
+AsyncWebCrawler
+arun()
+arun_many()
+Browser, Crawler & LLM Config
+CrawlResult
+Strategies
+C4A-Script Reference
+🚀🤖 Crawl4AI: Open-Source LLM-Friendly Web Crawler & Scraper
+🎯 New: Adaptive Web Crawling
+Quick Start
+Video Tutorial
+What Does Crawl4AI Do?
+Documentation Structure
+How You Can Support
+Quick Links
+🚀🤖 Crawl4AI: Open-Source LLM-Friendly Web Crawler & Scraper
+
+  
+
+  
+
+  
+
+Crawl4AI is the #1 trending GitHub repository, actively maintained by a vibrant community. It delivers blazing-fast, AI-ready web crawling tailored for large language models, AI agents, and data pipelines. Fully open source, flexible, and built for real-time performance, Crawl4AI empowers developers with unmatched speed, precision, and deployment ease.
+
+Note: If you're looking for the old documentation, you can access it here.
+
+🎯 New: Adaptive Web Crawling
+
+Crawl4AI now features intelligent adaptive crawling that knows when to stop! Using advanced information foraging algorithms, it determines when sufficient information has been gathered to answer your query.
+
+Learn more about Adaptive Crawling →
+
+Quick Start
+
+Here's a quick example to show you how easy it is to use Crawl4AI with its asynchronous capabilities:
+
+import asyncio
+from crawl4ai import AsyncWebCrawler
+
+async def main():
+    # Create an instance of AsyncWebCrawler
+    async with AsyncWebCrawler() as crawler:
+        # Run the crawler on a URL
+        result = await crawler.arun(url="
+
+        # Print the extracted content
+        print(result.markdown)
+
+# Run the async main function
+asyncio.run(main())
+
+Copy
+Video Tutorial
+What Does Crawl4AI Do?
+
+Crawl4AI is a feature-rich crawler and scraper that aims to:
+
+1. Generate Clean Markdown: Perfect for RAG pipelines or direct ingestion into LLMs.
+2. Structured Extraction: Parse repeated patterns with CSS, XPath, or LLM-based extraction.
+3. Advanced Browser Control: Hooks, proxies, stealth modes, session re-use—fine-grained control.
+4. High Performance: Parallel crawling, chunk-based extraction, real-time use cases.
+5. Open Source: No forced API keys, no paywalls—everyone can access their data.
+
+Core Philosophies: - Democratize Data: Free to use, transparent, and highly configurable.
+- LLM Friendly: Minimally processed, well-structured text, images, and metadata, so AI models can easily consume it.
+
+Documentation Structure
+
+To help you get started, we’ve organized our docs into clear sections:
+
+Setup & Installation
+Basic instructions to install Crawl4AI via pip or Docker.
+Quick Start
+A hands-on introduction showing how to do your first crawl, generate Markdown, and do a simple extraction.
+Core
+Deeper guides on single-page crawling, advanced browser/crawler parameters, content filtering, and caching.
+Advanced
+Explore link & media handling, lazy loading, hooking & authentication, proxies, session management, and more.
+Extraction
+Detailed references for no-LLM (CSS, XPath) vs. LLM-based strategies, chunking, and clustering approaches.
+API Reference
+Find the technical specifics of each class and method, including AsyncWebCrawler, arun(), and CrawlResult.
+
+Throughout these sections, you’ll find code samples you can copy-paste into your environment. If something is missing or unclear, raise an issue or PR.
+
+How You Can Support
+Star & Fork: If you find Crawl4AI helpful, star the repo on GitHub or fork it to add your own features.
+File Issues: Encounter a bug or missing feature? Let us know by filing an issue, so we can improve.
+Pull Requests: Whether it’s a small fix, a big feature, or better docs—contributions are always welcome.
+Join Discord: Come chat about web scraping, crawling tips, or AI workflows with the community.
+Spread the Word: Mention Crawl4AI in your blog posts, talks, or on social media.
+
+Our mission: to empower everyone—students, researchers, entrepreneurs, data scientists—to access, parse, and shape the world’s data with speed, cost-efficiency, and creative freedom.
+
+Quick Links
+GitHub Repo
+Installation Guide
+Quick Start
+API Reference
+Changelog
+
+Thank you for joining me on this journey. Let’s keep building an open, democratic approach to data extraction and AI together.
+
+Happy Crawling!
+— Unclecode, Founder & Maintainer of Crawl4AI
+
+On this page
+🎯 New: Adaptive Web Crawling
+Quick Start
+Video Tutorial
+What Does Crawl4AI Do?
+Documentation Structure
+How You Can Support
+Quick Links
+> Feedback
+Ask AI
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:26] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Simple Crawling
+
+This guide covers the basics of web crawling with Crawl4AI. You'll learn how to set up a crawler, make your first request, and understand the response.
+
+## Basic Usage
+
+Set up a simple crawl using `BrowserConfig` and `CrawlerRunConfig`:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig
+
+async def main():
+    browser_config = BrowserConfig()  # Default browser configuration
+    run_config = CrawlerRunConfig()   # Default crawl run configuration
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(
+            url="
+            config=run_config
+        )
+        print(result.markdown)  # Print clean markdown content
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+## Understanding the Response
+
+The `arun()` method returns a `CrawlResult` object with several useful properties. Here's a quick overview (see [CrawlResult](../../api/crawl-result/) for complete details):
+
+```
+config = CrawlerRunConfig(
+    markdown_generator=DefaultMarkdownGenerator(
+        content_filter=PruningContentFilter(threshold=0.6),
+        options={"ignore_links": True}
+    )
+)
+
+result = await crawler.arun(
+    url="
+    config=config
+)
+
+# Different content formats
+print(result.html)         # Raw HTML
+print(result.cleaned_html) # Cleaned HTML
+print(result.markdown.raw_markdown) # Raw markdown from cleaned html
+print(result.markdown.fit_markdown) # Most relevant content in markdown
+
+# Check success status
+print(result.success)      # True if crawl succeeded
+print(result.status_code)  # HTTP status code (e.g., 200, 404)
+
+# Access extracted media and links
+print(result.media)        # Dictionary of found media (images, videos, audio)
+print(result.links)        # Dictionary of internal and external links
+Copy
+```
+
+## Adding Basic Options
+
+Customize your crawl using `CrawlerRunConfig`:
+
+```
+run_config = CrawlerRunConfig(
+    word_count_threshold=10,        # Minimum words per content block
+    exclude_external_links=True,    # Remove external links
+    remove_overlay_elements=True,   # Remove popups/modals
+    process_iframes=True           # Process iframe content
+)
+
+result = await crawler.arun(
+    url="
+    config=run_config
+)
+Copy
+```
+
+## Handling Errors
+
+Always check if the crawl was successful:
+
+```
+run_config = CrawlerRunConfig()
+result = await crawler.arun(url=" config=run_config)
+
+if not result.success:
+    print(f"Crawl failed: {result.error_message}")
+    print(f"Status code: {result.status_code}")
+Copy
+```
+
+## Logging and Debugging
+
+Enable verbose logging in `BrowserConfig`:
+
+```
+browser_config = BrowserConfig(verbose=True)
+
+async with AsyncWebCrawler(config=browser_config) as crawler:
+    run_config = CrawlerRunConfig()
+    result = await crawler.arun(url=" config=run_config)
+Copy
+```
+
+## Complete Example
+
+Here's a more comprehensive example demonstrating common usage patterns:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler
+from crawl4ai.async_configs import BrowserConfig, CrawlerRunConfig, CacheMode
+
+async def main():
+    browser_config = BrowserConfig(verbose=True)
+    run_config = CrawlerRunConfig(
+        # Content filtering
+        word_count_threshold=10,
+        excluded_tags=['form', 'header'],
+        exclude_external_links=True,
+
+        # Content processing
+        process_iframes=True,
+        remove_overlay_elements=True,
+
+        # Cache control
+        cache_mode=CacheMode.ENABLED  # Use cache if available
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(
+            url="
+            config=run_config
+        )
+
+        if result.success:
+            # Print clean content
+            print("Content:", result.markdown[:500])  # First 500 chars
+
+            # Process images
+            for image in result.media["images"]:
+                print(f"Found image: {image['src']}")
+
+            # Process links
+            for link in result.links["internal"]:
+                print(f"Internal link: {link['href']}")
+
+        else:
+            print(f"Crawl failed: {result.error_message}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/core/simple-crawling/)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:26] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Crawl Dispatcher
+
+We’re excited to announce a **Crawl Dispatcher** module that can handle **thousands** of crawling tasks simultaneously. By efficiently managing system resources (memory, CPU, network), this dispatcher ensures high-performance data extraction at scale. It also provides **real-time monitoring** of each crawler’s status, memory usage, and overall progress.
+
+Stay tuned—this feature is **coming soon** in an upcoming release of Crawl4AI! For the latest news, keep an eye on our changelogs and follow @unclecode on X.
+
+Below is a **sample** of how the dispatcher’s performance monitor might look in action:
+
+![Crawl Dispatcher Performance Monitor](../../assets/images/dispatcher.png)
+
+We can’t wait to bring you this streamlined, **scalable** approach to multi-URL crawling—**watch this space** for updates!
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/advanced/crawl-dispatcher/)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:27] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Deep Crawling
+
+One of Crawl4AI's most powerful features is its ability to perform **configurable deep crawling** that can explore websites beyond a single page. With fine-tuned control over crawl depth, domain boundaries, and content filtering, Crawl4AI gives you the tools to extract precisely the content you need.
+
+In this tutorial, you'll learn:
+
+1. How to set up a **Basic Deep Crawler** with BFS strategy
+2. Understanding the difference between **streamed and non-streamed** output
+3. Implementing **filters and scorers** to target specific content
+4. Creating **advanced filtering chains** for sophisticated crawls
+5. Using **BestFirstCrawling** for intelligent exploration prioritization
+
+> **Prerequisites**  
+> - You’ve completed or read [AsyncWebCrawler Basics](../simple-crawling/) to understand how to run a simple crawl.  
+> - You know how to configure `CrawlerRunConfig`.
+
+---
+
+## 1. Quick Example
+
+Here's a minimal code snippet that implements a basic deep crawl using the **BFSDeepCrawlStrategy**:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+
+async def main():
+    # Configure a 2-level deep crawl
+    config = CrawlerRunConfig(
+        deep_crawl_strategy=BFSDeepCrawlStrategy(
+            max_depth=2, 
+            include_external=False
+        ),
+        scraping_strategy=LXMLWebScrapingStrategy(),
+        verbose=True
+    )
+
+    async with AsyncWebCrawler() as crawler:
+        results = await crawler.arun(" config=config)
+
+        print(f"Crawled {len(results)} pages in total")
+
+        # Access individual results
+        for result in results[:3]:  # Show first 3 results
+            print(f"URL: {result.url}")
+            print(f"Depth: {result.metadata.get('depth', 0)}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+**What's happening?**  
+- `BFSDeepCrawlStrategy(max_depth=2, include_external=False)` instructs Crawl4AI to:
+- Crawl the starting page (depth 0) plus 2 more levels
+- Stay within the same domain (don't follow external links)
+- Each result contains metadata like the crawl depth
+- Results are returned as a list after all crawling is complete
+
+---
+
+## 2. Understanding Deep Crawling Strategy Options
+
+### 2.1 BFSDeepCrawlStrategy (Breadth-First Search)
+
+The **BFSDeepCrawlStrategy** uses a breadth-first approach, exploring all links at one depth before moving deeper:
+
+```
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+
+# Basic configuration
+strategy = BFSDeepCrawlStrategy(
+    max_depth=2,               # Crawl initial page + 2 levels deep
+    include_external=False,    # Stay within the same domain
+    max_pages=50,              # Maximum number of pages to crawl (optional)
+    score_threshold=0.3,       # Minimum score for URLs to be crawled (optional)
+)
+Copy
+```
+
+**Key parameters:**
+- **`max_depth`**: Number of levels to crawl beyond the starting page
+- **`include_external`**: Whether to follow links to other domains
+- **`max_pages`**: Maximum number of pages to crawl (default: infinite)
+- **`score_threshold`**: Minimum score for URLs to be crawled (default: -inf)
+- **`filter_chain`**: FilterChain instance for URL filtering
+- **`url_scorer`**: Scorer instance for evaluating URLs
+
+### 2.2 DFSDeepCrawlStrategy (Depth-First Search)
+
+The **DFSDeepCrawlStrategy** uses a depth-first approach, explores as far down a branch as possible before backtracking.
+
+```
+from crawl4ai.deep_crawling import DFSDeepCrawlStrategy
+
+# Basic configuration
+strategy = DFSDeepCrawlStrategy(
+    max_depth=2,               # Crawl initial page + 2 levels deep
+    include_external=False,    # Stay within the same domain
+    max_pages=30,              # Maximum number of pages to crawl (optional)
+    score_threshold=0.5,       # Minimum score for URLs to be crawled (optional)
+)
+Copy
+```
+
+**Key parameters:**
+- **`max_depth`**: Number of levels to crawl beyond the starting page
+- **`include_external`**: Whether to follow links to other domains
+- **`max_pages`**: Maximum number of pages to crawl (default: infinite)
+- **`score_threshold`**: Minimum score for URLs to be crawled (default: -inf)
+- **`filter_chain`**: FilterChain instance for URL filtering
+- **`url_scorer`**: Scorer instance for evaluating URLs
+
+### 2.3 BestFirstCrawlingStrategy (⭐️ - Recommended Deep crawl strategy)
+
+For more intelligent crawling, use **BestFirstCrawlingStrategy** with scorers to prioritize the most relevant pages:
+
+```
+from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
+
+# Create a scorer
+scorer = KeywordRelevanceScorer(
+    keywords=["crawl", "example", "async", "configuration"],
+    weight=0.7
+)
+
+# Configure the strategy
+strategy = BestFirstCrawlingStrategy(
+    max_depth=2,
+    include_external=False,
+    url_scorer=scorer,
+    max_pages=25,              # Maximum number of pages to crawl (optional)
+)
+Copy
+```
+
+This crawling approach:
+- Evaluates each discovered URL based on scorer criteria
+- Visits higher-scoring pages first
+- Helps focus crawl resources on the most relevant content
+- Can limit total pages crawled with `max_pages`
+- Does not need `score_threshold` as it naturally prioritizes by score
+
+---
+
+## 3. Streaming vs. Non-Streaming Results
+
+Crawl4AI can return results in two modes:
+
+### 3.1 Non-Streaming Mode (Default)
+
+```
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=1),
+    stream=False  # Default behavior
+)
+
+async with AsyncWebCrawler() as crawler:
+    # Wait for ALL results to be collected before returning
+    results = await crawler.arun(" config=config)
+
+    for result in results:
+        process_result(result)
+Copy
+```
+
+**When to use non-streaming mode:**
+- You need the complete dataset before processing
+- You're performing batch operations on all results together
+- Crawl time isn't a critical factor
+
+### 3.2 Streaming Mode
+
+```
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(max_depth=1),
+    stream=True  # Enable streaming
+)
+
+async with AsyncWebCrawler() as crawler:
+    # Returns an async iterator
+    async for result in await crawler.arun(" config=config):
+        # Process each result as it becomes available
+        process_result(result)
+Copy
+```
+
+**Benefits of streaming mode:**
+- Process results immediately as they're discovered
+- Start working with early results while crawling continues
+- Better for real-time applications or progressive display
+- Reduces memory pressure when handling many pages
+
+---
+
+## 4. Filtering Content with Filter Chains
+
+Filters help you narrow down which pages to crawl. Combine multiple filters using **FilterChain** for powerful targeting.
+
+### 4.1 Basic URL Pattern Filter
+
+```
+from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
+
+# Only follow URLs containing "blog" or "docs"
+url_filter = URLPatternFilter(patterns=["*blog*", "*docs*"])
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(
+        max_depth=1,
+        filter_chain=FilterChain([url_filter])
+    )
+)
+Copy
+```
+
+### 4.2 Combining Multiple Filters
+
+```
+from crawl4ai.deep_crawling.filters import (
+    FilterChain,
+    URLPatternFilter,
+    DomainFilter,
+    ContentTypeFilter
+)
+
+# Create a chain of filters
+filter_chain = FilterChain([
+    # Only follow URLs with specific patterns
+    URLPatternFilter(patterns=["*guide*", "*tutorial*"]),
+
+    # Only crawl specific domains
+    DomainFilter(
+        allowed_domains=["docs.example.com"],
+        blocked_domains=["old.docs.example.com"]
+    ),
+
+    # Only include specific content types
+    ContentTypeFilter(allowed_types=["text/html"])
+])
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(
+        max_depth=2,
+        filter_chain=filter_chain
+    )
+)
+Copy
+```
+
+### 4.3 Available Filter Types
+
+Crawl4AI includes several specialized filters:
+
+* **`URLPatternFilter`**: Matches URL patterns using wildcard syntax
+* **`DomainFilter`**: Controls which domains to include or exclude
+* **`ContentTypeFilter`**: Filters based on HTTP Content-Type
+* **`ContentRelevanceFilter`**: Uses similarity to a text query
+* **`SEOFilter`**: Evaluates SEO elements (meta tags, headers, etc.)
+
+---
+
+## 5. Using Scorers for Prioritized Crawling
+
+Scorers assign priority values to discovered URLs, helping the crawler focus on the most relevant content first.
+
+### 5.1 KeywordRelevanceScorer
+
+```
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
+from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
+
+# Create a keyword relevance scorer
+keyword_scorer = KeywordRelevanceScorer(
+    keywords=["crawl", "example", "async", "configuration"],
+    weight=0.7  # Importance of this scorer (0.0 to 1.0)
+)
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BestFirstCrawlingStrategy(
+        max_depth=2,
+        url_scorer=keyword_scorer
+    ),
+    stream=True  # Recommended with BestFirstCrawling
+)
+
+# Results will come in order of relevance score
+async with AsyncWebCrawler() as crawler:
+    async for result in await crawler.arun(" config=config):
+        score = result.metadata.get("score", 0)
+        print(f"Score: {score:.2f} | {result.url}")
+Copy
+```
+
+**How scorers work:**
+- Evaluate each discovered URL before crawling
+- Calculate relevance based on various signals
+- Help the crawler make intelligent choices about traversal order
+
+---
+
+## 6. Advanced Filtering Techniques
+
+### 6.1 SEO Filter for Quality Assessment
+
+The **SEOFilter** helps you identify pages with strong SEO characteristics:
+
+```
+from crawl4ai.deep_crawling.filters import FilterChain, SEOFilter
+
+# Create an SEO filter that looks for specific keywords in page metadata
+seo_filter = SEOFilter(
+    threshold=0.5,  # Minimum score (0.0 to 1.0)
+    keywords=["tutorial", "guide", "documentation"]
+)
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(
+        max_depth=1,
+        filter_chain=FilterChain([seo_filter])
+    )
+)
+Copy
+```
+
+### 6.2 Content Relevance Filter
+
+The **ContentRelevanceFilter** analyzes the actual content of pages:
+
+```
+from crawl4ai.deep_crawling.filters import FilterChain, ContentRelevanceFilter
+
+# Create a content relevance filter
+relevance_filter = ContentRelevanceFilter(
+    query="Web crawling and data extraction with Python",
+    threshold=0.7  # Minimum similarity score (0.0 to 1.0)
+)
+
+config = CrawlerRunConfig(
+    deep_crawl_strategy=BFSDeepCrawlStrategy(
+        max_depth=1,
+        filter_chain=FilterChain([relevance_filter])
+    )
+)
+Copy
+```
+
+This filter:
+- Measures semantic similarity between query and page content
+- It's a BM25-based relevance filter using head section content
+
+---
+
+## 7. Building a Complete Advanced Crawler
+
+This example combines multiple techniques for a sophisticated crawl:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+from crawl4ai.deep_crawling import BestFirstCrawlingStrategy
+from crawl4ai.deep_crawling.filters import (
+    FilterChain,
+    DomainFilter,
+    URLPatternFilter,
+    ContentTypeFilter
+)
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
+
+async def run_advanced_crawler():
+    # Create a sophisticated filter chain
+    filter_chain = FilterChain([
+        # Domain boundaries
+        DomainFilter(
+            allowed_domains=["docs.example.com"],
+            blocked_domains=["old.docs.example.com"]
+        ),
+
+        # URL patterns to include
+        URLPatternFilter(patterns=["*guide*", "*tutorial*", "*blog*"]),
+
+        # Content type filtering
+        ContentTypeFilter(allowed_types=["text/html"])
+    ])
+
+    # Create a relevance scorer
+    keyword_scorer = KeywordRelevanceScorer(
+        keywords=["crawl", "example", "async", "configuration"],
+        weight=0.7
+    )
+
+    # Set up the configuration
+    config = CrawlerRunConfig(
+        deep_crawl_strategy=BestFirstCrawlingStrategy(
+            max_depth=2,
+            include_external=False,
+            filter_chain=filter_chain,
+            url_scorer=keyword_scorer
+        ),
+        scraping_strategy=LXMLWebScrapingStrategy(),
+        stream=True,
+        verbose=True
+    )
+
+    # Execute the crawl
+    results = []
+    async with AsyncWebCrawler() as crawler:
+        async for result in await crawler.arun(" config=config):
+            results.append(result)
+            score = result.metadata.get("score", 0)
+            depth = result.metadata.get("depth", 0)
+            print(f"Depth: {depth} | Score: {score:.2f} | {result.url}")
+
+    # Analyze the results
+    print(f"Crawled {len(results)} high-value pages")
+    print(f"Average score: {sum(r.metadata.get('score', 0) for r in results) / len(results):.2f}")
+
+    # Group by depth
+    depth_counts = {}
+    for result in results:
+        depth = result.metadata.get("depth", 0)
+        depth_counts[depth] = depth_counts.get(depth, 0) + 1
+
+    print("Pages crawled by depth:")
+    for depth, count in sorted(depth_counts.items()):
+        print(f"  Depth {depth}: {count} pages")
+
+if __name__ == "__main__":
+    asyncio.run(run_advanced_crawler())
+Copy
+```
+
+---
+
+## 8. Limiting and Controlling Crawl Size
+
+### 8.1 Using max\_pages
+
+You can limit the total number of pages crawled with the `max_pages` parameter:
+
+```
+# Limit to exactly 20 pages regardless of depth
+strategy = BFSDeepCrawlStrategy(
+    max_depth=3,
+    max_pages=20
+)
+Copy
+```
+
+This feature is useful for:
+- Controlling API costs
+- Setting predictable execution times
+- Focusing on the most important content
+- Testing crawl configurations before full execution
+
+### 8.2 Using score\_threshold
+
+For BFS and DFS strategies, you can set a minimum score threshold to only crawl high-quality pages:
+
+```
+# Only follow links with scores above 0.4
+strategy = DFSDeepCrawlStrategy(
+    max_depth=2,
+    url_scorer=KeywordRelevanceScorer(keywords=["api", "guide", "reference"]),
+    score_threshold=0.4  # Skip URLs with scores below this value
+)
+Copy
+```
+
+Note that for BestFirstCrawlingStrategy, score\_threshold is not needed since pages are already processed in order of highest score first.
+
+## 9. Common Pitfalls & Tips
+
+1.**Set realistic limits.** Be cautious with `max_depth` values > 3, which can exponentially increase crawl size. Use `max_pages` to set hard limits.
+
+2.**Don't neglect the scoring component.** BestFirstCrawling works best with well-tuned scorers. Experiment with keyword weights for optimal prioritization.
+
+3.**Be a good web citizen.** Respect robots.txt. (disabled by default)
+
+4.**Handle page errors gracefully.** Not all pages will be accessible. Check `result.status` when processing results.
+
+5.**Balance breadth vs. depth.** Choose your strategy wisely - BFS for comprehensive coverage, DFS for deep exploration, BestFirst for focused relevance-based crawling.
+
+---
+
+## 10. Summary & Next Steps
+
+In this **Deep Crawling with Crawl4AI** tutorial, you learned to:
+
+* Configure **BFSDeepCrawlStrategy**, **DFSDeepCrawlStrategy**, and **BestFirstCrawlingStrategy**
+* Process results in streaming or non-streaming mode
+* Apply filters to target specific content
+* Use scorers to prioritize the most relevant pages
+* Limit crawls with `max_pages` and `score_threshold` parameters
+* Build a complete advanced crawler with combined techniques
+
+With these tools, you can efficiently extract structured data from websites at scale, focusing precisely on the content you need for your specific use case.
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/core/deep-crawling/)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:28] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Adaptive Web Crawling
+
+## Introduction
+
+Traditional web crawlers follow predetermined patterns, crawling pages blindly without knowing when they've gathered enough information. **Adaptive Crawling** changes this paradigm by introducing intelligence into the crawling process.
+
+Think of it like research: when you're looking for information, you don't read every book in the library. You stop when you've found sufficient information to answer your question. That's exactly what Adaptive Crawling does for web scraping.
+
+## Key Concepts
+
+### The Problem It Solves
+
+When crawling websites for specific information, you face two challenges:
+1. **Under-crawling**: Stopping too early and missing crucial information
+2. **Over-crawling**: Wasting resources by crawling irrelevant pages
+
+Adaptive Crawling solves both by using a three-layer scoring system that determines when you have "enough" information.
+
+### How It Works
+
+The AdaptiveCrawler uses three metrics to measure information sufficiency:
+
+* **Coverage**: How well your collected pages cover the query terms
+* **Consistency**: Whether the information is coherent across pages
+* **Saturation**: Detecting when new pages aren't adding new information
+
+When these metrics indicate sufficient information has been gathered, crawling stops automatically.
+
+## Quick Start
+
+### Basic Usage
+
+```
+from crawl4ai import AsyncWebCrawler, AdaptiveCrawler
+
+async def main():
+    async with AsyncWebCrawler() as crawler:
+        # Create an adaptive crawler (config is optional)
+        adaptive = AdaptiveCrawler(crawler)
+
+        # Start crawling with a query
+        result = await adaptive.digest(
+            start_url="
+            query="async context managers"
+        )
+
+        # View statistics
+        adaptive.print_stats()
+
+        # Get the most relevant content
+        relevant_pages = adaptive.get_relevant_content(top_k=5)
+        for page in relevant_pages:
+            print(f"- {page['url']} (score: {page['score']:.2f})")
+Copy
+```
+
+### Configuration Options
+
+```
+from crawl4ai import AdaptiveConfig
+
+config = AdaptiveConfig(
+    confidence_threshold=0.8,    # Stop when 80% confident (default: 0.7)
+    max_pages=30,               # Maximum pages to crawl (default: 20)
+    top_k_links=5,              # Links to follow per page (default: 3)
+    min_gain_threshold=0.05     # Minimum expected gain to continue (default: 0.1)
+)
+
+adaptive = AdaptiveCrawler(crawler, config)
+Copy
+```
+
+## Crawling Strategies
+
+Adaptive Crawling supports two distinct strategies for determining information sufficiency:
+
+### Statistical Strategy (Default)
+
+The statistical strategy uses pure information theory and term-based analysis:
+
+* **Fast and efficient** - No API calls or model loading
+* **Term-based coverage** - Analyzes query term presence and distribution
+* **No external dependencies** - Works offline
+* **Best for**: Well-defined queries with specific terminology
+
+```
+# Default configuration uses statistical strategy
+config = AdaptiveConfig(
+    strategy="statistical",  # This is the default
+    confidence_threshold=0.8
+)
+Copy
+```
+
+### Embedding Strategy
+
+The embedding strategy uses semantic embeddings for deeper understanding:
+
+* **Semantic understanding** - Captures meaning beyond exact term matches
+* **Query expansion** - Automatically generates query variations
+* **Gap-driven selection** - Identifies semantic gaps in knowledge
+* **Validation-based stopping** - Uses held-out queries to validate coverage
+* **Best for**: Complex queries, ambiguous topics, conceptual understanding
+
+```
+# Configure embedding strategy
+config = AdaptiveConfig(
+    strategy="embedding",
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",  # Default
+    n_query_variations=10,  # Generate 10 query variations
+    embedding_min_confidence_threshold=0.1  # Stop if completely irrelevant
+)
+
+# With custom embedding provider (e.g., OpenAI)
+config = AdaptiveConfig(
+    strategy="embedding",
+    embedding_llm_config={
+        'provider': 'openai/text-embedding-3-small',
+        'api_token': 'your-api-key'
+    }
+)
+Copy
+```
+
+### Strategy Comparison
+
+| Feature | Statistical | Embedding |
+| --- | --- | --- |
+| **Speed** | Very fast | Moderate (API calls) |
+| **Cost** | Free | Depends on provider |
+| **Accuracy** | Good for exact terms | Excellent for concepts |
+| **Dependencies** | None | Embedding model/API |
+| **Query Understanding** | Literal | Semantic |
+| **Best Use Case** | Technical docs, specific terms | Research, broad topics |
+
+### Embedding Strategy Configuration
+
+The embedding strategy offers fine-tuned control through several parameters:
+
+```
+config = AdaptiveConfig(
+    strategy="embedding",
+
+    # Model configuration
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+    embedding_llm_config=None,  # Use for API-based embeddings
+
+    # Query expansion
+    n_query_variations=10,  # Number of query variations to generate
+
+    # Coverage parameters
+    embedding_coverage_radius=0.2,  # Distance threshold for coverage
+    embedding_k_exp=3.0,  # Exponential decay factor (higher = stricter)
+
+    # Stopping criteria
+    embedding_min_relative_improvement=0.1,  # Min improvement to continue
+    embedding_validation_min_score=0.3,  # Min validation score
+    embedding_min_confidence_threshold=0.1,  # Below this = irrelevant
+
+    # Link selection
+    embedding_overlap_threshold=0.85,  # Similarity for deduplication
+
+    # Display confidence mapping
+    embedding_quality_min_confidence=0.7,  # Min displayed confidence
+    embedding_quality_max_confidence=0.95  # Max displayed confidence
+)
+Copy
+```
+
+### Handling Irrelevant Queries
+
+The embedding strategy can detect when a query is completely unrelated to the content:
+
+```
+# This will stop quickly with low confidence
+result = await adaptive.digest(
+    start_url="
+    query="how to cook pasta"  # Irrelevant to Python docs
+)
+
+# Check if query was irrelevant
+if result.metrics.get('is_irrelevant', False):
+    print("Query is unrelated to the content!")
+Copy
+```
+
+## When to Use Adaptive Crawling
+
+### Perfect For:
+
+* **Research Tasks**: Finding comprehensive information about a topic
+* **Question Answering**: Gathering sufficient context to answer specific queries
+* **Knowledge Base Building**: Creating focused datasets for AI/ML applications
+* **Competitive Intelligence**: Collecting complete information about specific products/features
+
+### Not Recommended For:
+
+* **Full Site Archiving**: When you need every page regardless of content
+* **Structured Data Extraction**: When targeting specific, known page patterns
+* **Real-time Monitoring**: When you need continuous updates
+
+## Understanding the Output
+
+### Confidence Score
+
+The confidence score (0-1) indicates how sufficient the gathered information is:
+- **0.0-0.3**: Insufficient information, needs more crawling
+- **0.3-0.6**: Partial information, may answer basic queries
+- **0.6-0.7**: Good coverage, can answer most queries
+- **0.7-1.0**: Excellent coverage, comprehensive information
+
+### Statistics Display
+
+```
+adaptive.print_stats(detailed=False)  # Summary table
+adaptive.print_stats(detailed=True)   # Detailed metrics
+Copy
+```
+
+The summary shows:
+- Pages crawled vs. confidence achieved
+- Coverage, consistency, and saturation scores
+- Crawling efficiency metrics
+
+## Persistence and Resumption
+
+### Saving Progress
+
+```
+config = AdaptiveConfig(
+    save_state=True,
+    state_path="my_crawl_state.json"
+)
+
+# Crawl will auto-save progress
+result = await adaptive.digest(start_url, query)
+Copy
+```
+
+### Resuming a Crawl
+
+```
+# Resume from saved state
+result = await adaptive.digest(
+    start_url,
+    query,
+    resume_from="my_crawl_state.json"
+)
+Copy
+```
+
+### Exporting Knowledge Base
+
+```
+# Export collected pages to JSONL
+adaptive.export_knowledge_base("knowledge_base.jsonl")
+
+# Import into another session
+new_adaptive = AdaptiveCrawler(crawler)
+new_adaptive.import_knowledge_base("knowledge_base.jsonl")
+Copy
+```
+
+## Best Practices
+
+### 1. Query Formulation
+
+* Use specific, descriptive queries
+* Include key terms you expect to find
+* Avoid overly broad queries
+
+### 2. Threshold Tuning
+
+* Start with default (0.7) for general use
+* Lower to 0.5-0.6 for exploratory crawling
+* Raise to 0.8+ for exhaustive coverage
+
+### 3. Performance Optimization
+
+* Use appropriate `max_pages` limits
+* Adjust `top_k_links` based on site structure
+* Enable caching for repeat crawls
+
+### 4. Link Selection
+
+* The crawler prioritizes links based on:
+* Relevance to query
+* Expected information gain
+* URL structure and depth
+
+## Examples
+
+### Research Assistant
+
+```
+# Gather information about a programming concept
+result = await adaptive.digest(
+    start_url="
+    query="python decorators implementation patterns"
+)
+
+# Get the most relevant excerpts
+for doc in adaptive.get_relevant_content(top_k=3):
+    print(f"\nFrom: {doc['url']}")
+    print(f"Relevance: {doc['score']:.2%}")
+    print(doc['content'][:500] + "...")
+Copy
+```
+
+### Knowledge Base Builder
+
+```
+# Build a focused knowledge base about machine learning
+queries = [
+    "supervised learning algorithms",
+    "neural network architectures", 
+    "model evaluation metrics"
+]
+
+for query in queries:
+    await adaptive.digest(
+        start_url="
+        query=query
+    )
+
+# Export combined knowledge base
+adaptive.export_knowledge_base("ml_knowledge.jsonl")
+Copy
+```
+
+### API Documentation Crawler
+
+```
+# Intelligently crawl API documentation
+config = AdaptiveConfig(
+    confidence_threshold=0.85,  # Higher threshold for completeness
+    max_pages=30
+)
+
+adaptive = AdaptiveCrawler(crawler, config)
+result = await adaptive.digest(
+    start_url="
+    query="authentication endpoints rate limits"
+)
+Copy
+```
+
+## Next Steps
+
+* Learn about [Advanced Adaptive Strategies](../../advanced/adaptive-strategies/)
+* Explore the [AdaptiveCrawler API Reference](../../api/adaptive-crawler/)
+* See more Examples
+
+## FAQ
+
+**Q: How is this different from traditional crawling?**
+A: Traditional crawling follows fixed patterns (BFS/DFS). Adaptive crawling makes intelligent decisions about which links to follow and when to stop based on information gain.
+
+**Q: Can I use this with JavaScript-heavy sites?**
+A: Yes! AdaptiveCrawler inherits all capabilities from AsyncWebCrawler, including JavaScript execution.
+
+**Q: How does it handle large websites?**
+A: The algorithm naturally limits crawling to relevant sections. Use `max_pages` as a safety limit.
+
+**Q: Can I customize the scoring algorithms?**
+A: Advanced users can implement custom strategies. See [Adaptive Strategies](../../advanced/adaptive-strategies/).
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/core/adaptive-crawling/)
+----------------------------------------
+
+
+========================================
+[2025-08-23 16:12:29] LLM PROMPT SENT
+========================================
+You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' If you cite information from a source, always include the full URL shown in the source.If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. Do not hallucinate.At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'. Write 'Full info or more info: <URL>' 
+
+CONTENT:
+# Getting Started with Crawl4AI
+
+Welcome to **Crawl4AI**, an open-source LLM-friendly Web Crawler & Scraper. In this tutorial, you’ll:
+
+1. Run your **first crawl** using minimal configuration.
+2. Generate **Markdown** output (and learn how it’s influenced by content filters).
+3. Experiment with a simple **CSS-based extraction** strategy.
+4. See a glimpse of **LLM-based extraction** (including open-source and closed-source model options).
+5. Crawl a **dynamic** page that loads content via JavaScript.
+
+---
+
+## 1. Introduction
+
+Crawl4AI provides:
+
+* An asynchronous crawler, **`AsyncWebCrawler`**.
+* Configurable browser and run settings via **`BrowserConfig`** and **`CrawlerRunConfig`**.
+* Automatic HTML-to-Markdown conversion via **`DefaultMarkdownGenerator`** (supports optional filters).
+* Multiple extraction strategies (LLM-based or “traditional” CSS/XPath-based).
+
+By the end of this guide, you’ll have performed a basic crawl, generated Markdown, tried out two extraction strategies, and crawled a dynamic page that uses “Load More” buttons or JavaScript updates.
+
+---
+
+## 2. Your First Crawl
+
+Here’s a minimal Python script that creates an **`AsyncWebCrawler`**, fetches a webpage, and prints the first 300 characters of its Markdown output:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler
+
+async def main():
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun("
+        print(result.markdown[:300])  # Print first 300 chars
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+**What’s happening?**
+- **`AsyncWebCrawler`** launches a headless browser (Chromium by default).
+- It fetches `
+- Crawl4AI automatically converts the HTML into Markdown.
+
+You now have a simple, working crawl!
+
+---
+
+## 3. Basic Configuration (Light Introduction)
+
+Crawl4AI’s crawler can be heavily customized using two main classes:
+
+1. **`BrowserConfig`**: Controls browser behavior (headless or full UI, user agent, JavaScript toggles, etc.).  
+2. **`CrawlerRunConfig`**: Controls how each crawl runs (caching, extraction, timeouts, hooking, etc.).
+
+Below is an example with minimal usage:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+
+async def main():
+    browser_conf = BrowserConfig(headless=True)  # or False to see the browser
+    run_conf = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS
+    )
+
+    async with AsyncWebCrawler(config=browser_conf) as crawler:
+        result = await crawler.arun(
+            url="
+            config=run_conf
+        )
+        print(result.markdown)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+> IMPORTANT: By default cache mode is set to `CacheMode.ENABLED`. So to have fresh content, you need to set it to `CacheMode.BYPASS`
+
+We’ll explore more advanced config in later tutorials (like enabling proxies, PDF output, multi-tab sessions, etc.). For now, just note how you pass these objects to manage crawling.
+
+---
+
+## 4. Generating Markdown Output
+
+By default, Crawl4AI automatically generates Markdown from each crawled page. However, the exact output depends on whether you specify a **markdown generator** or **content filter**.
+
+* **`result.markdown`**:  
+  The direct HTML-to-Markdown conversion.
+* **`result.markdown.fit_markdown`**:  
+  The same content after applying any configured **content filter** (e.g., `PruningContentFilter`).
+
+### Example: Using a Filter with `DefaultMarkdownGenerator`
+
+```
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+
+md_generator = DefaultMarkdownGenerator(
+    content_filter=PruningContentFilter(threshold=0.4, threshold_type="fixed")
+)
+
+config = CrawlerRunConfig(
+    cache_mode=CacheMode.BYPASS,
+    markdown_generator=md_generator
+)
+
+async with AsyncWebCrawler() as crawler:
+    result = await crawler.arun(" config=config)
+    print("Raw Markdown length:", len(result.markdown.raw_markdown))
+    print("Fit Markdown length:", len(result.markdown.fit_markdown))
+Copy
+```
+
+**Note**: If you do **not** specify a content filter or markdown generator, you’ll typically see only the raw Markdown. `PruningContentFilter` may adds around `50ms` in processing time. We’ll dive deeper into these strategies in a dedicated **Markdown Generation** tutorial.
+
+---
+
+## 5. Simple Data Extraction (CSS-based)
+
+Crawl4AI can also extract structured data (JSON) using CSS or XPath selectors. Below is a minimal CSS-based example:
+
+> **New!** Crawl4AI now provides a powerful utility to automatically generate extraction schemas using LLM. This is a one-time cost that gives you a reusable schema for fast, LLM-free extractions:
+
+```
+from crawl4ai import JsonCssExtractionStrategy
+from crawl4ai import LLMConfig
+
+# Generate a schema (one-time cost)
+html = "<div class='product'><h2>Gaming Laptop</h2><span class='price'>$999.99</span></div>"
+
+# Using OpenAI (requires API token)
+schema = JsonCssExtractionStrategy.generate_schema(
+    html,
+    llm_config = LLMConfig(provider="openai/gpt-4o",api_token="your-openai-token")  # Required for OpenAI
+)
+
+# Or using Ollama (open source, no token needed)
+schema = JsonCssExtractionStrategy.generate_schema(
+    html,
+    llm_config = LLMConfig(provider="ollama/llama3.3", api_token=None)  # Not needed for Ollama
+)
+
+# Use the schema for fast, repeated extractions
+strategy = JsonCssExtractionStrategy(schema)
+Copy
+```
+
+For a complete guide on schema generation and advanced usage, see [No-LLM Extraction Strategies](../../extraction/no-llm-strategies/).
+
+Here's a basic extraction example:
+
+```
+import asyncio
+import json
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
+from crawl4ai import JsonCssExtractionStrategy
+
+async def main():
+    schema = {
+        "name": "Example Items",
+        "baseSelector": "div.item",
+        "fields": [
+            {"name": "title", "selector": "h2", "type": "text"},
+            {"name": "link", "selector": "a", "type": "attribute", "attribute": "href"}
+        ]
+    }
+
+    raw_html = "<div class='item'><h2>Item 1</h2><a href=' 1</a></div>"
+
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun(
+            url="raw://" + raw_html,
+            config=CrawlerRunConfig(
+                cache_mode=CacheMode.BYPASS,
+                extraction_strategy=JsonCssExtractionStrategy(schema)
+            )
+        )
+        # The JSON output is stored in 'extracted_content'
+        data = json.loads(result.extracted_content)
+        print(data)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+**Why is this helpful?**
+- Great for repetitive page structures (e.g., item listings, articles).
+- No AI usage or costs.
+- The crawler returns a JSON string you can parse or store.
+
+> Tips: You can pass raw HTML to the crawler instead of a URL. To do so, prefix the HTML with `raw://`.
+
+---
+
+## 6. Simple Data Extraction (LLM-based)
+
+For more complex or irregular pages, a language model can parse text intelligently into a structure you define. Crawl4AI supports **open-source** or **closed-source** providers:
+
+* **Open-Source Models** (e.g., `ollama/llama3.3`, `no_token`)
+* **OpenAI Models** (e.g., `openai/gpt-4`, requires `api_token`)
+* Or any provider supported by the underlying library
+
+Below is an example using **open-source** style (no token) and closed-source:
+
+```
+import os
+import json
+import asyncio
+from pydantic import BaseModel, Field
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, LLMConfig
+from crawl4ai import LLMExtractionStrategy
+
+class OpenAIModelFee(BaseModel):
+    model_name: str = Field(..., description="Name of the OpenAI model.")
+    input_fee: str = Field(..., description="Fee for input token for the OpenAI model.")
+    output_fee: str = Field(
+        ..., description="Fee for output token for the OpenAI model."
+    )
+
+async def extract_structured_data_using_llm(
+    provider: str, api_token: str = None, extra_headers: Dict[str, str] = None
+):
+    print(f"\n--- Extracting Structured Data with {provider} ---")
+
+    if api_token is None and provider != "ollama":
+        print(f"API token is required for {provider}. Skipping this example.")
+        return
+
+    browser_config = BrowserConfig(headless=True)
+
+    extra_args = {"temperature": 0, "top_p": 0.9, "max_tokens": 2000}
+    if extra_headers:
+        extra_args["extra_headers"] = extra_headers
+
+    crawler_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        word_count_threshold=1,
+        page_timeout=80000,
+        extraction_strategy=LLMExtractionStrategy(
+            llm_config = LLMConfig(provider=provider,api_token=api_token),
+            schema=OpenAIModelFee.model_json_schema(),
+            extraction_type="schema",
+            instruction="""From the crawled content, extract all mentioned model names along with their fees for input and output tokens. 
+            Do not miss any models in the entire content.""",
+            extra_args=extra_args,
+        ),
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(
+            url=" config=crawler_config
+        )
+        print(result.extracted_content)
+
+if __name__ == "__main__":
+
+    asyncio.run(
+        extract_structured_data_using_llm(
+            provider="openai/gpt-4o", api_token=os.getenv("OPENAI_API_KEY")
+        )
+    )
+Copy
+```
+
+**What’s happening?**
+- We define a Pydantic schema (`PricingInfo`) describing the fields we want.
+- The LLM extraction strategy uses that schema and your instructions to transform raw text into structured JSON.
+- Depending on the **provider** and **api\_token**, you can use local models or a remote API.
+
+---
+
+## 7. Adaptive Crawling (New!)
+
+Crawl4AI now includes intelligent adaptive crawling that automatically determines when sufficient information has been gathered. Here's a quick example:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, AdaptiveCrawler
+
+async def adaptive_example():
+    async with AsyncWebCrawler() as crawler:
+        adaptive = AdaptiveCrawler(crawler)
+
+        # Start adaptive crawling
+        result = await adaptive.digest(
+            start_url="
+            query="async context managers"
+        )
+
+        # View results
+        adaptive.print_stats()
+        print(f"Crawled {len(result.crawled_urls)} pages")
+        print(f"Achieved {adaptive.confidence:.0%} confidence")
+
+if __name__ == "__main__":
+    asyncio.run(adaptive_example())
+Copy
+```
+
+**What's special about adaptive crawling?**
+- **Automatic stopping**: Stops when sufficient information is gathered
+- **Intelligent link selection**: Follows only relevant links
+- **Confidence scoring**: Know how complete your information is
+
+[Learn more about Adaptive Crawling →](../adaptive-crawling/)
+
+---
+
+## 8. Multi-URL Concurrency (Preview)
+
+If you need to crawl multiple URLs in **parallel**, you can use `arun_many()`. By default, Crawl4AI employs a **MemoryAdaptiveDispatcher**, automatically adjusting concurrency based on system resources. Here’s a quick glimpse:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig, CacheMode
+
+async def quick_parallel_example():
+    urls = [
+        "
+        "
+        "
+    ]
+
+    run_conf = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=True  # Enable streaming mode
+    )
+
+    async with AsyncWebCrawler() as crawler:
+        # Stream results as they complete
+        async for result in await crawler.arun_many(urls, config=run_conf):
+            if result.success:
+                print(f"[OK] {result.url}, length: {len(result.markdown.raw_markdown)}")
+            else:
+                print(f"[ERROR] {result.url} => {result.error_message}")
+
+        # Or get all results at once (default behavior)
+        run_conf = run_conf.clone(stream=False)
+        results = await crawler.arun_many(urls, config=run_conf)
+        for res in results:
+            if res.success:
+                print(f"[OK] {res.url}, length: {len(res.markdown.raw_markdown)}")
+            else:
+                print(f"[ERROR] {res.url} => {res.error_message}")
+
+if __name__ == "__main__":
+    asyncio.run(quick_parallel_example())
+Copy
+```
+
+The example above shows two ways to handle multiple URLs:
+1. **Streaming mode** (`stream=True`): Process results as they become available using `async for`
+2. **Batch mode** (`stream=False`): Wait for all results to complete
+
+For more advanced concurrency (e.g., a **semaphore-based** approach, **adaptive memory usage throttling**, or customized rate limiting), see [Advanced Multi-URL Crawling](../../advanced/multi-url-crawling/).
+
+---
+
+## 8. Dynamic Content Example
+
+Some sites require multiple “page clicks” or dynamic JavaScript updates. Below is an example showing how to **click** a “Next Page” button and wait for new commits to load on GitHub, using **`BrowserConfig`** and **`CrawlerRunConfig`**:
+
+```
+import asyncio
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+from crawl4ai import JsonCssExtractionStrategy
+
+async def extract_structured_data_using_css_extractor():
+    print("\n--- Using JsonCssExtractionStrategy for Fast Structured Output ---")
+    schema = {
+        "name": "KidoCode Courses",
+        "baseSelector": "section.charge-methodology .w-tab-content > div",
+        "fields": [
+            {
+                "name": "section_title",
+                "selector": "h3.heading-50",
+                "type": "text",
+            },
+            {
+                "name": "section_description",
+                "selector": ".charge-content",
+                "type": "text",
+            },
+            {
+                "name": "course_name",
+                "selector": ".text-block-93",
+                "type": "text",
+            },
+            {
+                "name": "course_description",
+                "selector": ".course-content-text",
+                "type": "text",
+            },
+            {
+                "name": "course_icon",
+                "selector": ".image-92",
+                "type": "attribute",
+                "attribute": "src",
+            },
+        ],
+    }
+
+    browser_config = BrowserConfig(headless=True, java_script_enabled=True)
+
+    js_click_tabs = """
+    (async () => {
+        const tabs = document.querySelectorAll("section.charge-methodology .tabs-menu-3 > div");
+        for(let tab of tabs) {
+            tab.scrollIntoView();
+            tab.click();
+            await new Promise(r => setTimeout(r, 500));
+        }
+    })();
+    """
+
+    crawler_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        extraction_strategy=JsonCssExtractionStrategy(schema),
+        js_code=[js_click_tabs],
+    )
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        result = await crawler.arun(
+            url=" config=crawler_config
+        )
+
+        companies = json.loads(result.extracted_content)
+        print(f"Successfully extracted {len(companies)} companies")
+        print(json.dumps(companies[0], indent=2))
+
+async def main():
+    await extract_structured_data_using_css_extractor()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+Copy
+```
+
+**Key Points**:
+
+* **`BrowserConfig(headless=False)`**: We want to watch it click “Next Page.”
+* **`CrawlerRunConfig(...)`**: We specify the extraction strategy, pass `session_id` to reuse the same page.
+* **`js_code`** and **`wait_for`** are used for subsequent pages (`page > 0`) to click the “Next” button and wait for new commits to load.
+* **`js_only=True`** indicates we’re not re-navigating but continuing the existing session.
+* Finally, we call `kill_session()` to clean up the page and browser session.
+
+---
+
+## 9. Next Steps
+
+Congratulations! You have:
+
+1. Performed a basic crawl and printed Markdown.
+2. Used **content filters** with a markdown generator.
+3. Extracted JSON via **CSS** or **LLM** strategies.
+4. Handled **dynamic** pages with JavaScript triggers.
+
+If you’re ready for more, check out:
+
+* **Installation**: A deeper dive into advanced installs, Docker usage (experimental), or optional dependencies.
+* **Hooks & Auth**: Learn how to run custom JavaScript or handle logins with cookies, local storage, etc.
+* **Deployment**: Explore ephemeral testing in Docker or plan for the upcoming stable Docker release.
+* **Browser Management**: Delve into user simulation, stealth modes, and concurrency best practices.
+
+Crawl4AI is a powerful, flexible tool. Enjoy building out your scrapers, data pipelines, or AI-driven extraction flows. Happy crawling!
+
+USER QUESTION: give me code for how to crawl all pages of a website
+(Page URL: https://docs.crawl4ai.com/core/quickstart/)
+----------------------------------------
+

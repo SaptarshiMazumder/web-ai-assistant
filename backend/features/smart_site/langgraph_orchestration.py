@@ -1,6 +1,6 @@
 from langgraph.graph import StateGraph, END
 from state import AssistantState
-from features.smart_site.web_qa_service import webpage_answer_node
+from .web_qa_service import webpage_answer_node
 
 # LangGraph setup — just one node now!
 qa_builder = StateGraph(AssistantState)
