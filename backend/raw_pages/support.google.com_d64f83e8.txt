@@ -1,0 +1,41 @@
+# Change Google Calendar settings
+
+To change the way Calendar looks or works, update your settings.
+
+Computer AndroidiPhone & iPad
+
+## Update your settings
+
+1. On your computer, open [Google Calendar](https://www.google.com/calendar).
+2. At the top right, click Settings ![](//lh3.googleusercontent.com/esYvnQYqTY6dRiUgxyCc8kInS5FCVNfiYr_o9fDccm9xtXYU5Oq_z7eDAH-iIfbqMg=h36) ![and then](//lh3.googleusercontent.com/3_l97rr0GvhSP2XV5OoCkV2ZDTIisAOczrSdzNCBxhIKWrjXjHucxNwocghoUa39gw=w36-h36) **Settings**.
+3. On the left, click **General**.
+
+[Open Settings](https://calendar.google.com/calendar/u/0/r/settings)
+
+## Learn about general settings
+
+| **Setting name** | **Description** |
+| --- | --- |
+| **Language and region** | Change the display language, region, and date and time format on your calendar. [Learn more about language settings](/calendar/answer/50640). |
+| **Time zone** | Choose a primary time zone for your calendar. You can also set up a secondary time zone. [Learn how to change time zones](/calendar/answer/37064). |
+| **World clock** | In the main menu of Calendar, you can show the current time in different locations around the world. This makes it easier to [schedule meetings across time zones](/calendar/answer/37064). |
+| **Event settings** | When you create a new event, you can set a default duration and guest permissions. You can also [manage incoming invitations from senders](/calendar/answer/13159188). |
+| **Notification settings** | Change notification settings and sounds for upcoming events. [Learn how to change notifications](/calendar/answer/37242). |
+| **View options** | Update the look of your calendar, such as [the first day of your week](/calendar/answer/6110849). |
+| **Google Workspace smart features** | Choose to personalize your experience with smart features across Workspace and other Google products. Workspace includes Google apps for businesses and school, such as Calendar, Gmail, Chat, Meet, and Drive. [Learn about Google Workspace smart features](/calendar/answer/15604322).    After you turn on smart features, you can allow Gmail to automatically create events based on flight confirmations, restaurant reservations, and more. [Learn about events from Gmail](/calendar/answer/6084018). |
+| **Working hours & location** | If you have a work or school account with an eligible Google Workspace subscription, you can let others know your availability when they try to schedule a meeting with you. [Show your working hours and location](/calendar/answer/7638168). |
+| **Appointment schedules** | If you have a work or school account with an eligible Google Workspace subscription, after you connect to Stripe, you can [require payments for appointments that you create](/calendar/answer/13762729). |
+| **Keyboard shortcuts** | To navigate around your calendar, use your keyboard. To show a list of available shortcuts, on your keyboard, press **?**. [Learn more about keyboard shortcuts](/calendar/answer/37034). |
+| **Offline** | Use your primary calendar when you’re offline. You can’t use other calendars or Tasks without an internet connection. [Learn how to use Calendar offline](/calendar/answer/1340696). |
+
+## Related resources
+
+* [Use Dark theme in Calendar](/calendar/answer/15240542)
+* [Delete or unsubscribe from a calendar](https://support.google.com/calendar/answer/37188)
+* [View your day, week, or month](https://support.google.com/calendar/answer/37189)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CKSw8wISKkNoYW5nZSBHb29nbGUgQ2FsZW5kYXIgc2V0dGluZ3MgLSBDb21wdXRlcg)
+
+true

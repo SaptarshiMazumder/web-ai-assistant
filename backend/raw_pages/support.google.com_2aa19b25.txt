@@ -1,0 +1,19 @@
+# Change your language setting
+
+You can choose which language you want to use with Google Calendar.
+
+Computer AndroidiPhone & iPad
+
+![Change your language settings](//storage.googleapis.com/support-kms-prod/ZsMn2ev5ivhTwF40BjtDaOVvhdtNOHh3OJKp)
+
+1. Open [Google Calendar](https://calendar.google.com/).
+2. In the top right corner, click Settings ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36) ![and then](//lh3.googleusercontent.com/QbWcYKta5vh_4-OgUeFmK-JOB0YgLLoGh69P478nE6mKdfpWQniiBabjF7FVoCVXI0g=h36)  **Settings**.
+3. In the "Language" section, choose the language you want to use from the drop-down menu. Changes are automatically saved.
+
+**Tip:** You can also [change other Google Calendar settings](/calendar/answer/6084644), like notifications and time zones.
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CNCLAxInQ2hhbmdlIHlvdXIgbGFuZ3VhZ2Ugc2V0dGluZyAtIENvbXB1dGVy)
+
+true

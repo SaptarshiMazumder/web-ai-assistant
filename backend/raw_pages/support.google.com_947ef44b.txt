@@ -1,0 +1,46 @@
+# Get started with Google Calendar
+
+With Google Calendar, you can:
+
+* Schedule meetings and events.
+* Assign tasks.
+* Share your schedule.
+* Create multiple calendars.
+
+Computer AndroidiPhone & iPad
+
+## Learn about supported browsers for Calendar
+
+**Important:** To use Calendar in your browser, turn on JavaScript and cookies.
+
+When you open Google Calendar in a browser, make sure the browser is supported and up-to-date.
+
+To download a supported browser, select it from the list:
+
+* [Google Chrome](http://www.google.com/chrome/)
+* [Firefox](https://www.mozilla.org/firefox/new/)
+* [Safari](http://www.apple.com/safari/)
+* [Microsoft Edge](http://www.microsoft.com/microsoft-edge)
+
+## Open Calendar in your browser
+
+1. From a web browser, visit [calendar.google.com](http://calendar.google.com).
+2. Sign in to your Google Account.
+3. To change your settings, at the top right corner, click Settings menu ![Settings](//lh3.googleusercontent.com/p3J-ZSPOLtuBBR_ofWTFDfdgAYQgi8mR5c76ie8XQ2wjegk7-yyU5zdRVHKybQgUlQ=w36-h36).
+
+[Open Google Calendar](https://calendar.google.com)
+
+**Tip:** While you can’t download and install Calendar on your computer, you can use it offline. [Learn how to use Calendar offline](/calendar/answer/1340696).
+
+## Related resources
+
+* [Learn about supported browsers for Google Calendar](/calendar/answer/15494354)
+* [Change your Calendar settings](/calendar/answer/6084644?hl=en&co=GENIE.Platform%3DAndroid)
+* [Share your Calendar with someone](/calendar/answer/37082?hl=en)
+* [Create an event](/calendar/answer/72143)
+
+Give feedback about this article
+
+[Post to the help community   Get answers from community members](/calendar/community?hl=en&help_center_link=CPC_lgESK0dldCBzdGFydGVkIHdpdGggR29vZ2xlIENhbGVuZGFyIC0gQ29tcHV0ZXI)
+
+true

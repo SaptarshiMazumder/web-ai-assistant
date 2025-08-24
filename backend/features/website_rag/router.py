@@ -29,7 +29,6 @@ async def ask_website_rag(request: WebsiteRagRequest):
 async def is_indexed(url: str):
     print("Checking indexed or not...")
     from urllib.parse import urlparse as _urlparse
-    import os
     host = ""
     try:
         parsed = _urlparse(url)
@@ -69,22 +68,8 @@ async def is_indexed(url: str):
     except Exception:
         pass
 
-    try:
-        raw_dir = os.path.join(os.path.dirname(__file__), "..", "..", "raw_pages")
-        if os.path.isdir(raw_dir) and variants:
-            for fname in os.listdir(raw_dir):
-                file_host = fname.split("_", 1)[0].lower()
-                for hv in variants:
-                    if (
-                        file_host == hv
-                        or file_host.endswith("." + hv)
-                        or hv.endswith("." + file_host)
-                        or hv in file_host
-                    ):
-                        return {"indexed": True, "host": host, "source": "local_raw_pages"}
-        return {"indexed": False, "host": host, "source": "local_raw_pages"}
-    except Exception:
-        return {"indexed": False, "host": host, "source": "local_raw_pages"}
+    # Only use GCS status; do not fall back to local raw_pages
+    return {"indexed": False, "host": host, "source": "gcs"}
 
 
 @router.post("/index-site")

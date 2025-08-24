@@ -9,6 +9,7 @@ from google import genai
 from google.genai import types
 from config import config
 from state import AssistantState
+import uuid
 
 configure(api_key=config.GOOGLE_API_KEY)
 openai_api_key = config.OPENAI_API_KEY
@@ -47,6 +48,7 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
         "Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. "
         "If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. "
         "If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. "
+        "If the question asks for a specific figure, comparison, change, count, average, percentage, or any analytical summary, always give a DIRECT ANSWER (bullets or a tiny table OK).\n"
         "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' "
         "If you cite information from a source, always include the full URL shown in the source."
         "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. "
@@ -63,14 +65,16 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
     # Stream tokens to frontend via SmartQA log websocket
     full_text_accum = ""
     streamed_answer_sent_len = 0
+    stream_id = page_url or f"stream-{uuid.uuid4().hex}"
     try:
         if ENABLE_ANSWER_STREAMING:
-            smartqa_log_relay.log(json.dumps({"type": "answer_reset"}))
+            smartqa_log_relay.log(json.dumps({"type": "answer_reset", "stream_id": stream_id}))
             smartqa_log_relay.log(json.dumps({
                 "type": "stage",
                 "stage": "generation_stream_start",
                 "node": "webpage_answer",
                 "page_url": page_url,
+                "stream_id": stream_id,
             }))
         for chunk in llm.stream([{ "role": "user", "content": prompt }]):
             try:
@@ -91,6 +95,7 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
                     smartqa_log_relay.log(json.dumps({
                         "type": "answer_delta",
                         "text": delta_to_send,
+                        "stream_id": stream_id,      
                     }))
                     streamed_answer_sent_len = len(display_text)
                 # Yield to the event loop so websocket messages can be sent immediately
@@ -122,6 +127,7 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
                 "type": "answer_done",
                 "sufficient": sufficient,
                 "confidence": confidence,
+                "stream_id": stream_id,  
             }))
         smartqa_log_relay.log(json.dumps({
             "type": "stage",
@@ -133,7 +139,7 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
         }))
     except Exception:
         pass
-    answer = answer_full
+    # answer = answer_full
     state.answer = answer
     state.used_chunks = []
     state.sufficient = sufficient

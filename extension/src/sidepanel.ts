@@ -146,7 +146,7 @@ async function updateIndexStatus() {
     indexStatus.textContent = '';
   }
 }
-
+let finalStreamId: string | null = null;
 // --- SmartQA log streaming ---
 let smartqaLogSocket: WebSocket | null = null;
 let streamingActive = false;
@@ -158,6 +158,23 @@ let typewriterInterval: number | null = null;
 let acceptStreaming = false;
 // Incremented per ask; used to tag DOM nodes for cleanup
 let currentSessionId = 0;
+
+const streamBoxes: Record<string, HTMLElement> = {};
+function getOrCreateStreamBox(parent: HTMLElement, streamId: string): HTMLElement {
+  const id = `answer-stream-${streamId}`;
+  let box = parent.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+  if (!box) {
+    box = document.createElement('div');
+    box.id = id;
+    box.style.borderRadius = '8px';
+    box.style.padding = '8px';
+    box.style.margin = '8px 0';
+    parent.appendChild(box);
+    streamBoxes[streamId] = box;
+  }
+  return box;
+}
+
 
 function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[], sessionId?: number) {
     const prev = document.getElementById('llm-links-block');
@@ -233,58 +250,81 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
   if (smartqaLogSocket) {
     smartqaLogSocket.close();
   }
+
+  // Per-connection state
+  const streamBoxes: Record<string, HTMLElement> = {};
+  const streamBuffers: Record<string, string> = {};
+  const streamActive: Record<string, boolean> = {};
+  let finalStreamId: string | null = null;
+
+  function getOrCreateStreamBox(parent: HTMLElement, streamId: string): HTMLElement {
+    const id = `answer-stream-${streamId}`;
+    let box = parent.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
+    if (!box) {
+      box = document.createElement('div');
+      box.id = id;
+      box.style.borderRadius = '8px';
+      box.style.padding = '8px';
+      box.style.margin = '8px 0';
+      parent.appendChild(box);
+      streamBoxes[streamId] = box;
+    }
+    return box;
+  }
+
   // Allow streaming for the newly initiated request
   acceptStreaming = true;
   smartqaLogSocket = new WebSocket("ws://localhost:5000/ws/smartqa-logs");
-smartqaLogSocket.onmessage = (event) => {
+
+  smartqaLogSocket.onmessage = (event) => {
     let isJSON = false;
     let msg: any;
     try {
-        msg = JSON.parse(event.data);
-        isJSON = true;
+      msg = JSON.parse(event.data);
+      isJSON = true;
     } catch (e) {}
 
-    // 1. LLM links (streaming-aware)
+    // 1) LLM links (streaming-aware) — unchanged
     if (isJSON && msg && msg.type === "llm_links_reset") {
-        if (!acceptStreaming) return;
-        // Create/reset the streaming block with provided links, empty message
-        renderLLMLinksMessage("", (msg.links || []), currentSessionId);
-        return;
+      if (!acceptStreaming) return;
+      renderLLMLinksMessage("", (msg.links || []), currentSessionId);
+      return;
     }
     if (isJSON && msg && msg.type === "llm_links_delta") {
-        if (!acceptStreaming) return;
-        const block = document.getElementById('llm-links-block');
-        if (!block) return;
-        let span = document.getElementById('llm-links-message-span');
-        if (!span) {
-          span = document.createElement('div');
-          span.id = 'llm-links-message-span';
-          block.insertBefore(span, block.firstChild);
-        }
-        span.textContent = (span.textContent || "") + (msg.text || "");
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-        return;
+      if (!acceptStreaming) return;
+      const block = document.getElementById('llm-links-block');
+      if (!block) return;
+      let span = document.getElementById('llm-links-message-span');
+      if (!span) {
+        span = document.createElement('div');
+        span.id = 'llm-links-message-span';
+        block.insertBefore(span, block.firstChild);
+      }
+      span.textContent = (span.textContent || "") + (msg.text || "");
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+      return;
     }
     if (isJSON && msg && msg.type === "llm_links_done") {
-        if (!acceptStreaming) return;
-        // Optionally mark final state
-        const block = document.getElementById('llm-links-block');
-        if (block) block.classList.add('final');
-        return;
+      if (!acceptStreaming) return;
+      const block = document.getElementById('llm-links-block');
+      if (block) block.classList.add('final');
+      return;
     }
     if (isJSON && msg && msg.type === "llm_links_message") {
-        // Fallback non-streaming single-shot
-        renderLLMLinksMessage(msg.message, msg.links, currentSessionId);
-        return;
+      renderLLMLinksMessage(msg.message, msg.links, currentSessionId);
+      return;
     }
     if (isJSON && msg && msg.type === "selected_links") {
-        renderUsefulLinks(msg.links, currentSessionId);
-        return;
+      renderUsefulLinks(msg.links, currentSessionId);
+      return;
     }
 
-    // 2. Streamed answer events
+    // 2) Streamed answer events (group by stream_id)
     if (isJSON && msg && msg.type === "answer_reset") {
       if (!acceptStreaming) return;
+      if (finalStreamId) return; // already have a winner; ignore new streams
+
+      // Reset global throttling (kept from your code)
       streamingActive = true;
       currentAnswerBuffer = "";
       pendingDeltaQueue = "";
@@ -292,55 +332,111 @@ smartqaLogSocket.onmessage = (event) => {
         clearInterval(typewriterInterval);
         typewriterInterval = null;
       }
-      // Ensure a streaming bubble exists but do NOT clear existing content.
-      // This allows new data to be appended rather than replacing prior content.
-      ensureStreamingBubble();
-      return;
-    }
-    if (isJSON && msg && msg.type === "answer_delta") {
-      if (!acceptStreaming) return;
-      if (!streamingActive) return;
-      const delta = msg.text || "";
-      // Append immediately without throttling to avoid UI delay
-      currentAnswerBuffer += delta;
-      const bubble = ensureStreamingBubble();
-      let span = bubble.querySelector('span.stream-text') as HTMLElement | null;
-      if (!span) {
-        span = document.createElement('span');
-        span.className = 'stream-text';
-        bubble.appendChild(span);
-      }
-      span.textContent += delta;
-      chatDiv.scrollTop = chatDiv.scrollHeight;
-      return;
-    }
-    if (isJSON && msg && msg.type === "answer_done") {
-      if (!acceptStreaming) return;
-      if (!streamingActive) return;
-      streamingActive = false;
-      // If queue is empty, finalize immediately. Otherwise the interval will finalize when drained.
-      // Since we append immediately, there may be no pending queue or interval to drain
-      if (typewriterInterval !== null) {
-        clearInterval(typewriterInterval);
-        typewriterInterval = null;
-      }
-      // Do not modify the streaming bubble on done; final HTTP answer will be a separate bubble
+
+      // Big gray bubble (parent) stays the same
+      const parentBubble = ensureStreamingBubble();
+      if (!parentBubble) return;
+
+      // Ensure per-stream child box
+      const streamId: string = msg.stream_id || `default-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const box = getOrCreateStreamBox(parentBubble, streamId);
+      box.innerHTML = ""; // reset only this stream's box
+      streamBuffers[streamId] = "";
+      streamActive[streamId] = true;
       return;
     }
 
-    // 3. All other logs: append as a <div> (NOT with innerText)
+    if (isJSON && msg && msg.type === "answer_delta") {
+      if (!acceptStreaming) return;
+
+      const parentBubble = ensureStreamingBubble();
+      if (!parentBubble) return;
+
+      const streamId: string = msg.stream_id || `default-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+      // If we already locked a final, ignore all others
+      if (finalStreamId && streamId !== finalStreamId) return;
+
+      // Only accept deltas for active streams
+      if (!streamActive[streamId]) return;
+
+      const box = getOrCreateStreamBox(parentBubble, streamId);
+      const delta = msg.text || "";
+      // Accumulate and render markdown, stripping meta lines like 'sufficient:' or 'confidence:'
+      const sanitizedDelta = String(delta).replace(/^(\s*(sufficient|confidence)\s*:\s*.*?$)/gim, "");
+      streamBuffers[streamId] = (streamBuffers[streamId] || "") + sanitizedDelta;
+      const parsed = marked.parse(streamBuffers[streamId]);
+      if (parsed instanceof Promise) {
+        parsed.then(html => {
+          box.innerHTML = html;
+          box.querySelectorAll("pre code").forEach((block) => {
+            hljs.highlightElement(block as HTMLElement);
+          });
+          chatDiv.scrollTop = chatDiv.scrollHeight;
+        });
+      } else {
+        box.innerHTML = parsed;
+        box.querySelectorAll("pre code").forEach((block) => {
+          hljs.highlightElement(block as HTMLElement);
+        });
+      }
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+      return;
+    }
+
+    if (isJSON && msg && msg.type === "answer_done") {
+      if (!acceptStreaming) return;
+
+      const streamId: string = msg.stream_id || `default-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      streamActive[streamId] = false;
+
+      // Keep global semantics for your existing timers
+      if (streamingActive) {
+        streamingActive = false;
+        if (typewriterInterval !== null) {
+          clearInterval(typewriterInterval);
+          typewriterInterval = null;
+        }
+      }
+
+      // If this stream is sufficient and we haven't chosen a final yet:
+      if (msg.sufficient === true && !finalStreamId) {
+        finalStreamId = streamId;
+
+        const parentBubble = ensureStreamingBubble();
+        if (parentBubble) {
+          // ❗ FIX: HTMLCollection isn't iterable; use Array.from(...)
+          Array.from(parentBubble.children).forEach((child) => {
+            const keep = (child as HTMLElement).id === `answer-stream-${finalStreamId}`;
+            if (!keep) parentBubble.removeChild(child);
+          });
+
+          // Optional subtle highlight for the winner
+          const winner = streamBoxes[finalStreamId];
+          if (winner) {
+            winner.style.boxShadow = '';
+            winner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+      }
+      // If not sufficient, do nothing; its box remains until a winner arrives (then it's purged)
+      return;
+    }
+
+    // 3) All other logs: append as a <div> (NOT with innerText)
     const logLine = document.createElement("div");
     logLine.textContent = event.data;
     logContainer.appendChild(logLine);
     logContainer.scrollTop = logContainer.scrollHeight;
-};
-
+  };
 
   smartqaLogSocket.onclose = () => {
     // Optionally reconnect or clear
     acceptStreaming = false;
   };
 }
+
+
 
 // --- DROPDOWN to toggle between Ask and Ask Smart ---
 // Remove dropdown and options
