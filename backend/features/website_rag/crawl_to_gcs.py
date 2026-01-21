@@ -14,7 +14,7 @@ import re
 import hashlib
 from datetime import datetime
 import time
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional, Callable
 from urllib.parse import urlparse, urldefrag
 
 from google.cloud import storage
@@ -206,7 +206,14 @@ def choose_prefix_interactively(prefixes: List[str]) -> str | None:
 # =========================
 # ---- CRAWLER ------------
 # =========================
-async def crawl_site_bfs(root_url: str, max_depth: int, max_concurrent: int) -> List[Dict[str, Any]]:
+async def crawl_site_bfs(
+    root_url: str,
+    max_depth: int,
+    max_concurrent: int,
+    *,
+    stop_event: Optional[asyncio.Event] = None,
+    progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> List[Dict[str, Any]]:
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
     dispatcher = MemoryAdaptiveDispatcher(
@@ -224,26 +231,50 @@ async def crawl_site_bfs(root_url: str, max_depth: int, max_concurrent: int) -> 
     def is_internal(url: str) -> bool:
         return urlparse(url).netloc == root_netloc
 
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        for depth in range(max_depth):
-            urls_to_crawl = [u for u in current_urls if u not in visited]
-            if not urls_to_crawl:
-                break
+    try:
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            for depth in range(max_depth):
+                if stop_event and stop_event.is_set():
+                    print(f"[crawl] Stop requested; returning {len(all_results)} crawled page(s) so far.")
+                    break
+                urls_to_crawl = [u for u in current_urls if u not in visited]
+                if not urls_to_crawl:
+                    break
 
-            print(f"[Depth {depth}] Crawling {len(urls_to_crawl)} page(s)...")
-            results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
-            next_level_urls = set()
+                print(f"[Depth {depth}] Crawling {len(urls_to_crawl)} page(s)...")
+                try:
+                    results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
+                except asyncio.CancelledError:
+                    # Graceful cancel: keep what we already crawled
+                    print(f"[crawl] Cancelled; returning {len(all_results)} crawled page(s) so far.")
+                    return all_results
 
-            for result in results:
-                norm = _normalize_url(result.url)
-                visited.add(norm)
-                if result.success and result.markdown:
-                    all_results.append({"url": result.url, "markdown": result.markdown})
-                    for link in result.links.get("internal", []):
-                        href = _normalize_url(link.get("href", ""))
-                        if href and href not in visited and is_internal(href):
-                            next_level_urls.add(href)
-            current_urls = next_level_urls
+                next_level_urls = set()
+
+                for result in results:
+                    norm = _normalize_url(result.url)
+                    visited.add(norm)
+                    if result.success and result.markdown:
+                        all_results.append({"url": result.url, "markdown": result.markdown})
+                        if progress_cb:
+                            try:
+                                progress_cb({
+                                    "type": "page_crawled",
+                                    "count": len(all_results),
+                                    "url": result.url,
+                                    "depth": depth,
+                                })
+                            except Exception:
+                                pass
+                        for link in result.links.get("internal", []):
+                            href = _normalize_url(link.get("href", ""))
+                            if href and href not in visited and is_internal(href):
+                                next_level_urls.add(href)
+                current_urls = next_level_urls
+    except asyncio.CancelledError:
+        # If cancellation happens while entering/exiting crawler context, still return partials.
+        print(f"[crawl] Cancelled during setup/teardown; returning {len(all_results)} crawled page(s) so far.")
+        return all_results
 
     return all_results
 

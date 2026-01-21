@@ -7,6 +7,8 @@ import { crawlEntireSite, debugLog } from "./siteCrawler";
 
 const BACKEND_BASE_URL = "http://localhost:5000";
 let indexPollTimer: number | null = null;
+let indexingInProgress = false;
+let lastIndexUrl: string | null = null;
 
 function ensureContentScript(tabId: number, cb: () => void) {
   debugLog(`Ensuring content script is injected for tab ${tabId}`);
@@ -29,25 +31,25 @@ function ensureContentScript(tabId: number, cb: () => void) {
   });
 }
 
-function renderUsefulLinks(links: {text: string, href: string}[], sessionId?: number) {
-    // Remove previous block if you want only one set of links at a time
-    const prev = document.getElementById('useful-links-block');
-    if (prev) prev.remove();
+function renderUsefulLinks(links: { text: string, href: string }[], sessionId?: number) {
+  // Remove previous block if you want only one set of links at a time
+  const prev = document.getElementById('useful-links-block');
+  if (prev) prev.remove();
 
-    if (!links || !links.length) return;
-    const chatDiv = document.getElementById("chat")!;
-    const block = document.createElement('div');
-    if (sessionId !== undefined) {
-      block.setAttribute('data-session-id', String(sessionId));
-    }
-    block.id = 'useful-links-block';
-    block.className = 'system-message';
-    block.style.margin = '16px 0';
-    block.innerHTML = `<b>You may find these links useful:</b><ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
+  if (!links || !links.length) return;
+  const chatDiv = document.getElementById("chat")!;
+  const block = document.createElement('div');
+  if (sessionId !== undefined) {
+    block.setAttribute('data-session-id', String(sessionId));
+  }
+  block.id = 'useful-links-block';
+  block.className = 'system-message';
+  block.style.margin = '16px 0';
+  block.innerHTML = `<b>You may find these links useful:</b><ul style="margin-top:4px;margin-bottom:4px;padding-left:16px;">
         ${links.map(link => `<li><a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a></li>`).join('')}
     </ul>`;
-    chatDiv.appendChild(block);
-    block.scrollIntoView({behavior: "smooth"});
+  chatDiv.appendChild(block);
+  block.scrollIntoView({ behavior: "smooth" });
 }
 
 
@@ -79,12 +81,32 @@ async function updateIndexStatus() {
       indexStatus.textContent = '';
       return;
     }
+    lastIndexUrl = url;
+
+    // If an index job is running, show best-effort progress.
+    if (indexingInProgress) {
+      try {
+        const st = await fetch(`${BACKEND_BASE_URL}/index-job-status?url=${encodeURIComponent(url)}`);
+        const sd = await st.json();
+        if (sd && sd.status === "ok") {
+          const stage = sd.stage || "crawling";
+          const count = typeof sd.pages_crawled === "number" ? sd.pages_crawled : 0;
+          const depth = typeof sd.last_depth === "number" ? sd.last_depth : -1;
+          // Keep the stop button, but add a small status label beside it.
+          // We reuse indexStatus container; button is re-rendered below.
+          indexStatus.setAttribute("data-progress", `${stage}|${count}|${depth}`);
+        }
+      } catch {
+        // ignore
+      }
+    }
     const resp = await fetch(`${BACKEND_BASE_URL}/is-indexed?url=${encodeURIComponent(url)}`);
     const data = await resp.json();
     const indexed = !!data?.indexed;
     const host = data?.host || '';
     indexStatus.innerHTML = '';
     if (indexed) {
+      indexingInProgress = false;
       if (indexPollTimer !== null) {
         clearInterval(indexPollTimer);
         indexPollTimer = null;
@@ -101,7 +123,7 @@ async function updateIndexStatus() {
     } else {
       const btn = document.createElement('button');
       btn.id = 'btn-index-site';
-      btn.textContent = 'Index this site';
+      btn.textContent = indexingInProgress ? 'Stop crawling' : 'Index this site';
       btn.style.background = '#fff';
       btn.style.color = '#222';
       btn.style.border = '1px solid #b0b0b0';
@@ -110,13 +132,34 @@ async function updateIndexStatus() {
       btn.style.cursor = 'pointer';
       btn.onclick = async () => {
         try {
+          if (indexingInProgress) {
+            // Request a graceful stop; backend will upload whatever has been crawled so far.
+            btn.disabled = true;
+            btn.textContent = 'Stopping crawl...';
+            await fetch(`${BACKEND_BASE_URL}/cancel-index-site`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+            indexingInProgress = false;
+            btn.disabled = false;
+            btn.textContent = 'Index this site';
+            return;
+          }
+
+          indexingInProgress = true;
           btn.disabled = true;
-          btn.textContent = 'Indexing...';
+          btn.textContent = 'Crawling...';
           await fetch(`${BACKEND_BASE_URL}/index-site`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url }),
           });
+
+          // Switch to "Stop indexing" state immediately
+          btn.disabled = false;
+          btn.textContent = 'Stop crawling';
+
           // Start polling until indexed
           if (indexPollTimer !== null) {
             clearInterval(indexPollTimer);
@@ -127,19 +170,40 @@ async function updateIndexStatus() {
               const r = await fetch(`${BACKEND_BASE_URL}/is-indexed?url=${encodeURIComponent(url)}`);
               const d = await r.json();
               if (d && d.indexed) {
+                indexingInProgress = false;
                 clearInterval(indexPollTimer!);
                 indexPollTimer = null;
                 updateIndexStatus();
               }
-            } catch {}
+            } catch { }
           }, 5000);
         } catch (e) {
+          indexingInProgress = false;
           btn.disabled = false;
           btn.textContent = 'Index this site';
           console.error('Failed to start indexing', e);
         }
       };
       indexStatus.appendChild(btn);
+
+      // Optional progress text (only while job is running)
+      if (indexingInProgress) {
+        const prog = document.createElement("span");
+        prog.style.marginLeft = "6px";
+        prog.style.fontSize = "12px";
+        prog.style.color = "#666";
+        const packed = indexStatus.getAttribute("data-progress") || "";
+        const [stage, countStr, depthStr] = packed.split("|");
+        const count = countStr ? Number(countStr) : 0;
+        const depth = depthStr ? Number(depthStr) : -1;
+        const stageLabel =
+          stage === "uploading" ? "Uploading…" :
+            stage === "importing" ? "Sending to Vertex RAG…" :
+              stage === "import_submitted" ? "Vertex indexing…" :
+                stage ? `${stage}…` : "Crawling…";
+        prog.textContent = depth >= 0 ? `${stageLabel} (pages: ${count}, depth: ${depth})` : `${stageLabel} (pages: ${count})`;
+        indexStatus.appendChild(prog);
+      }
     }
   } catch (e) {
     // Silent fail; leave status empty
@@ -166,9 +230,11 @@ function getOrCreateStreamBox(parent: HTMLElement, streamId: string): HTMLElemen
   if (!box) {
     box = document.createElement('div');
     box.id = id;
+    box.classList.add('streamed-raw-data');
     box.style.borderRadius = '8px';
     box.style.padding = '8px';
     box.style.margin = '8px 0';
+
     parent.appendChild(box);
     streamBoxes[streamId] = box;
   }
@@ -176,37 +242,37 @@ function getOrCreateStreamBox(parent: HTMLElement, streamId: string): HTMLElemen
 }
 
 
-function renderLLMLinksMessage(llmMessage: string, links: {text: string, href: string}[], sessionId?: number) {
-    const prev = document.getElementById('llm-links-block');
-    if (prev) prev.remove();
+function renderLLMLinksMessage(llmMessage: string, links: { text: string, href: string }[], sessionId?: number) {
+  const prev = document.getElementById('llm-links-block');
+  if (prev) prev.remove();
 
-    const chatDiv = document.getElementById("chat")!;
-    const block = document.createElement('div');
-    if (sessionId !== undefined) {
-      block.setAttribute('data-session-id', String(sessionId));
-    }
-    block.id = 'llm-links-block';
-    block.className = 'system-message';
-    block.style.margin = '16px 0';
-    const messageDiv = document.createElement('div');
-    messageDiv.style.marginBottom = '6px';
-    messageDiv.id = 'llm-links-message-span';
-    messageDiv.textContent = llmMessage;
-    const list = document.createElement('ul');
-    list.style.marginTop = '4px';
-    list.style.marginBottom = '4px';
-    list.style.paddingLeft = '16px';
-    list.innerHTML = links.map(link => `
+  const chatDiv = document.getElementById("chat")!;
+  const block = document.createElement('div');
+  if (sessionId !== undefined) {
+    block.setAttribute('data-session-id', String(sessionId));
+  }
+  block.id = 'llm-links-block';
+  block.className = 'system-message';
+  block.style.margin = '16px 0';
+  const messageDiv = document.createElement('div');
+  messageDiv.style.marginBottom = '6px';
+  messageDiv.id = 'llm-links-message-span';
+  messageDiv.textContent = llmMessage;
+  const list = document.createElement('ul');
+  list.style.marginTop = '4px';
+  list.style.marginBottom = '4px';
+  list.style.paddingLeft = '16px';
+  list.innerHTML = links.map(link => `
       <li>
         <a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text || link.href}</a>
         <br>
         <small style="color:#888;">${link.href}</small>
       </li>
     `).join('');
-    block.appendChild(messageDiv);
-    block.appendChild(list);
-    chatDiv.appendChild(block);
-    block.scrollIntoView({behavior: "smooth"});
+  block.appendChild(messageDiv);
+  block.appendChild(list);
+  chatDiv.appendChild(block);
+  block.scrollIntoView({ behavior: "smooth" });
 }
 
 
@@ -263,6 +329,7 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
     if (!box) {
       box = document.createElement('div');
       box.id = id;
+      box.classList.add('streamed-raw-data');
       box.style.borderRadius = '8px';
       box.style.padding = '8px';
       box.style.margin = '8px 0';
@@ -282,7 +349,7 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
     try {
       msg = JSON.parse(event.data);
       isJSON = true;
-    } catch (e) {}
+    } catch (e) { }
 
     // 1) LLM links (streaming-aware) — unchanged
     if (isJSON && msg && msg.type === "llm_links_reset") {
@@ -362,10 +429,56 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
 
       const box = getOrCreateStreamBox(parentBubble, streamId);
       const delta = msg.text || "";
-      // Accumulate and render markdown, stripping meta lines like 'sufficient:' or 'confidence:'
-      const sanitizedDelta = String(delta).replace(/^(\s*(sufficient|confidence)\s*:\s*.*?$)/gim, "");
+      // Accumulate and render markdown. If any footer marker appears, stop accepting further deltas for this stream.
+      if (/(^|\n)\s*(SUFFICIENT|CONFIDENCE|FULL\s*INFO)\b/i.test(streamBuffers[streamId] + delta)) {
+        // Lock this stream and avoid appending footer markers
+        streamActive[streamId] = false;
+        // Truncate any existing buffer before the first footer marker
+        const combined = streamBuffers[streamId] + delta;
+        const cut = combined.search(/(^|\n)\s*(SUFFICIENT|CONFIDENCE|FULL\s*INFO)\b/i);
+        streamBuffers[streamId] = cut !== -1 ? combined.slice(0, cut) : streamBuffers[streamId];
+        // Render the truncated buffer once
+        const safeRendered = streamBuffers[streamId]
+          .replace(/(^|\n)\s*sufficient(\s*:.*)?(?=$|\n)/gim, "")
+          .replace(/(^|\n)\s*confidence(\s*:.*)?(?=$|\n)/gim, "")
+          .replace(/(^|\n)\s*full\s*info(\s*:.*)?(?=$|\n)/gim, "");
+        const parsedNow = marked.parse(safeRendered);
+        if (parsedNow instanceof Promise) {
+          parsedNow.then(html => {
+            box.innerHTML = html;
+            box.querySelectorAll("pre code").forEach((block) => {
+              hljs.highlightElement(block as HTMLElement);
+            });
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+          });
+        } else {
+          box.innerHTML = parsedNow;
+          box.querySelectorAll("pre code").forEach((block) => {
+            hljs.highlightElement(block as HTMLElement);
+          });
+          chatDiv.scrollTop = chatDiv.scrollHeight;
+        }
+        return;
+      }
+
+      // Strip footer/meta lines from this chunk anyway
+      const sanitizedDelta = String(delta)
+        // remove SUFFICIENT/CONFIDENCE/Full info lines
+        .replace(/(^|\n)\s*sufficient(\s*:.*)?(?=$|\n)/gim, "")
+        .replace(/(^|\n)\s*confidence(\s*:.*)?(?=$|\n)/gim, "")
+        .replace(/(^|\n)\s*full\s*info(\s*:.*)?(?=$|\n)/gim, "")
+        // remove placeholder or generic visit lines
+        .replace(/^\s*please\s+visit\s*(\[?page url\]?|page url|\[page url\])\s*.*?$/gim, "")
+        .replace(/^\s*please\s+visit\s*\[?page url\]?\s*for\s+the\s+full\s+details\.?\s*$/gim, "");
       streamBuffers[streamId] = (streamBuffers[streamId] || "") + sanitizedDelta;
-      const parsed = marked.parse(streamBuffers[streamId]);
+      // Sanitize entire accumulated buffer to ensure footer lines never appear mid-stream
+      // Ensure final rendering also excludes any footer/meta lines
+      const fullySanitized = streamBuffers[streamId]
+        .replace(/(^|\n)\s*sufficient(\s*:.*)?(?=$|\n)/gim, "")
+        .replace(/(^|\n)\s*confidence(\s*:.*)?(?=$|\n)/gim, "")
+        .replace(/(^|\n)\s*full\s*info(\s*:.*)?(?=$|\n)/gim, "")
+        .replace(/(^|\n)\s*please\s+visit\s*(\[?page url\]?|page url|\[page url\]).*$/gim, "");
+      const parsed = marked.parse(fullySanitized);
       if (parsed instanceof Promise) {
         parsed.then(html => {
           box.innerHTML = html;
@@ -405,13 +518,12 @@ function connectSmartQALogSocket(logContainer: HTMLElement) {
 
         const parentBubble = ensureStreamingBubble();
         if (parentBubble) {
-          // ❗ FIX: HTMLCollection isn't iterable; use Array.from(...)
+          // Remove non-winning child boxes directly under the bubble
           Array.from(parentBubble.children).forEach((child) => {
             const keep = (child as HTMLElement).id === `answer-stream-${finalStreamId}`;
             if (!keep) parentBubble.removeChild(child);
           });
 
-          // Optional subtle highlight for the winner
           const winner = streamBoxes[finalStreamId];
           if (winner) {
             winner.style.boxShadow = '';
@@ -573,22 +685,22 @@ function getPageDataFromActiveTab(): Promise<{
 }> {
   console.log("getting page data from active tab");
   return new Promise((resolve) => {
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  const tabId = tabs[0]?.id;
-  if (typeof tabId === "number") {
-    ensureContentScript(tabId, () => {
-      chrome.tabs.sendMessage(
-        tabId,
-        { type: "GET_PAGE_DATA" },
-        (resp) => {
-          resolve(resp || { text: "", tables: [], links: [], images: [] });
-        }
-      );
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id;
+      if (typeof tabId === "number") {
+        ensureContentScript(tabId, () => {
+          chrome.tabs.sendMessage(
+            tabId,
+            { type: "GET_PAGE_DATA" },
+            (resp) => {
+              resolve(resp || { text: "", tables: [], links: [], images: [] });
+            }
+          );
+        });
+      } else {
+        resolve({ text: "", tables: [], links: [], images: [] });
+      }
     });
-  } else {
-    resolve({ text: "", tables: [], links: [], images: [] });
-  }
-});
   });
 }
 
@@ -638,7 +750,6 @@ function appendMessage(text: string, sender: 'user' | 'bot' | 'thinking', sessio
     const parsed = marked.parse(text);
     if (parsed instanceof Promise) {
       parsed.then(html => {
-        // Only set innerHTML for non-streaming appended messages (final answers, info)
         bubble.innerHTML = html;
         bubble.querySelectorAll("pre code").forEach((block) => {
           hljs.highlightElement(block as HTMLElement);
@@ -690,7 +801,7 @@ function renderSources(sources: Array<{ excerpt: string; title?: string; url?: s
 smartBtn.onclick = async function () {
   // Start a new session for this question
   currentSessionId += 1;
-  
+
   const question = questionInput.value.trim();
   if (!question) return;
 
@@ -727,7 +838,7 @@ smartBtn.onclick = async function () {
     let domain = "";
     try {
       domain = page_url ? new URL(page_url).hostname : "";
-    } catch {}
+    } catch { }
     const body: any = {
       text: pageData.text,
       question,

@@ -6,11 +6,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 import sys
-import asyncio
 from markdownify import markdownify
 from urllib.parse import urlparse
-if sys.platform.startswith("win"):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from playwright.sync_api import sync_playwright
 
@@ -66,7 +63,7 @@ async def llm_select_relevant_links_parallel(
     from utils import extract_json_from_text
     import asyncio
 
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-5", temperature=1)
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def run_on_chunk(chunk: List[Dict[str, str]], chunk_id: int):

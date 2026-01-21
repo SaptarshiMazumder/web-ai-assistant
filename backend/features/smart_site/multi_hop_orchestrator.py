@@ -274,7 +274,7 @@ async def multi_hop_qa_orchestrator(
         }
     else:
         return {
-            "answer": "Sorry, I couldn't find a sufficient answer on the pages I visited.",
+            "answer": "No exact answer found on the pages visited.",
             "sources": [],
             "visited_urls": list(visited),
             "sufficient": False

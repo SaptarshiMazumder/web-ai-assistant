@@ -11,6 +11,8 @@ load_dotenv()
 import sys
 import asyncio
 if sys.platform.startswith("win"):
+    # Playwright / crawl4ai launch browser subprocesses; on Windows this requires
+    # the Proactor event loop (Selector loop raises NotImplementedError for subprocess).
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 def force_exit(*args, **kwargs):

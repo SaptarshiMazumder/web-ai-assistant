@@ -43,25 +43,23 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
         pass
 
     prompt = (
-        "You are an expert assistant. Using only the current webpage content below, answer the user's question by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. "
-        "DO NOT paraphrase, summarize, or shorten ANY part of the quoted answer, unless absolutely necessary. "
-        "Prioritize giving the most detailed answer possible by quoting the all relevant text from the content. "
-        "If the content has numbers, prices, code, tables, or other specific details, quote them exactly as they appear. "
-        "If multiple relevant passages are found, include ALL of them in their entirety, word-for-word. "
-        "If the question asks for a specific figure, comparison, change, count, average, percentage, or any analytical summary, always give a DIRECT ANSWER (bullets or a tiny table OK).\n"
-        "ALWAYS provide which page they should visit to find the exact information they are looking for, if possible, by saying 'Please visit [page URL] for the full details.' "
-        "If you cite information from a source, always include the full URL shown in the source."
-        "If no answer is found, summarize anything related, and politely inform the user that the answer does not appear to be present, suggest a related page by URL if present in the content. "
-        "Do not hallucinate."
-        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not."
-        " Write 'CONFIDENCE: <0-100>%, based on how confident you are that this answers the question fully'."
-        " Write 'Full info or more info: <URL>' \n\n"
+        "You are an expert assistant. Use only the current page's content below. Answer by quoting the relevant passage, code block, or table WORD-FOR-WORD, including ALL formatting, indentation, and line breaks. "
+        "Do not paraphrase, summarize, or shorten quoted material unless absolutely necessary. "
+        "Prioritize giving the most detailed answer possible by quoting all relevant text from the page. "
+        "If the page has numbers, prices, code, tables, or other specifics, quote them exactly. "
+        "If multiple relevant passages are found, include ALL of them word-for-word. "
+        "If the question asks for a figure, comparison, change, count, average, percentage, or similar, also provide a DIRECT ANSWER (bullets or a small table are OK).\n"
+        "If you cite a source, include the full URL as shown in the source. "
+        "If the answer is not on this page, briefly say that the information isn't on this page {page_url}. Do not apologize. Do not use phrases like 'provided content' or 'the provided context'. "
+        "Do not hallucinate. "
+        "At the end, write 'SUFFICIENT: YES' if the answer fully resolves the question, or 'SUFFICIENT: NO' if not. "
+        "Write 'CONFIDENCE: <0-100>%'. "
         f"CONTENT:\n{clean_text}\n\n"
         f"USER QUESTION: {question}\n"
         f"(Page URL: {page_url})"
     )
     log_llm_prompt(prompt)
-    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o-mini", temperature=0.2)
+    llm = ChatOpenAI(api_key=openai_api_key, model="gpt-4o", temperature=1)
     # Stream tokens to frontend via SmartQA log websocket
     full_text_accum = ""
     streamed_answer_sent_len = 0
@@ -84,10 +82,9 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
                     await asyncio.sleep(0)
                     continue
                 full_text_accum += delta_text
-                # Exclude footer from streamed content
-                idx_yes = full_text_accum.find("\nSUFFICIENT: YES")
-                idx_no = full_text_accum.find("\nSUFFICIENT: NO")
-                cut_idxs = [i for i in (idx_yes, idx_no) if i != -1]
+                # Exclude footer/meta markers (e.g., SUFFICIENT/CONFIDENCE/FULL INFO) from streamed content
+                m_any = re.search(r"\b(SUFFICIENT|CONFIDENCE|FULL\s*INFO)\s*:", full_text_accum, flags=re.IGNORECASE)
+                cut_idxs = [m_any.start()] if m_any else []
                 cut_idx = min(cut_idxs) if cut_idxs else len(full_text_accum)
                 display_text = full_text_accum[:cut_idx]
                 if ENABLE_ANSWER_STREAMING and len(display_text) > streamed_answer_sent_len:
@@ -110,17 +107,17 @@ async def webpage_answer_node(state: BaseModel) -> BaseModel:
         full_text_accum = (result.content or "").strip()
 
     answer_full = full_text_accum.strip()
-    confidence_match = re.search(r'CONFIDENCE: (\d+)%', answer_full)
-    confidence = int(confidence_match.group(1)) if confidence_match else 0
-    if "\nSUFFICIENT: YES" in answer_full:
-        answer = answer_full.split("\nSUFFICIENT: YES")[0].strip()
-        sufficient = True
-    elif "\nSUFFICIENT: NO" in answer_full:
-        answer = answer_full.split("\nSUFFICIENT: NO")[0].strip()
-        sufficient = False
+    # Extract SUFFICIENT marker anywhere in the text (not just after a newline)
+    m_sufficient = re.search(r'\bSUFFICIENT\s*:\s*(YES|NO)\b', answer_full, flags=re.IGNORECASE)
+    if m_sufficient:
+        answer = answer_full[:m_sufficient.start()].rstrip()
+        sufficient = (m_sufficient.group(1).upper() == 'YES')
     else:
         answer = answer_full
         sufficient = False
+    # Extract confidence anywhere in the text
+    confidence_match = re.search(r'\bCONFIDENCE\s*:\s*(\d+)%', answer_full, flags=re.IGNORECASE)
+    confidence = int(confidence_match.group(1)) if confidence_match else 0
     try:
         if ENABLE_ANSWER_STREAMING:
             smartqa_log_relay.log(json.dumps({

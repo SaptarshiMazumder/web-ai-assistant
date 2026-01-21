@@ -14,7 +14,7 @@
 
 /* AI Bubble (Bot): full width minus some margin */
 .bubble.bot {
-    background: #f3f3f6;
+    /* background: #ffffff; */
     color: #222;
     margin-right: 0;
     margin-left: 0;
@@ -33,6 +33,9 @@
     background: #e8f7ec; /* light green */
     border: 1px solid #b7e3c3;
 }
+
+/* Collapsible streamed raw data container */
+/* streamed-raw-data reverted to default bubble styling */
 
 /* Streaming/processing bubble: lighter text to indicate in-progress */
 .bubble.bot.processing {
@@ -58,7 +61,7 @@
 .bubble.thinking {
     background: #fffbe6;
     color: #888;
-    border: 1px dashed #eed700;
+    border: none;
     font-style: italic;
     margin-right: 20%;
 }

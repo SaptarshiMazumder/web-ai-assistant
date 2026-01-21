@@ -33,3 +33,7 @@ backend/chroma_db/
 **/*.db-wal
 **/*.pkl
 
+# Crawled raw pages
+backend/raw_pages/
+**/raw_pages/
+
