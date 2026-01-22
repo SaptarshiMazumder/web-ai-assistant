@@ -356,7 +356,7 @@ async def scrape_and_qa_many(
 # --- Create corpus once ---
 embedding_config = rag.RagEmbeddingModelConfig(
     vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-        publisher_model="projects/google/models/text-embedding-005"
+        publisher_model="publishers/google/models/text-embedding-005"
     )
 )
 from utils import get_or_create_rag_corpus

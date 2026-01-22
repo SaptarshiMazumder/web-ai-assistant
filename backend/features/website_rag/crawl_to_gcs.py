@@ -69,7 +69,18 @@ def _ensure_url(s: str) -> str:
     return s
 
 def _site_slug_from_url(url: str) -> str:
+    # NOTE: kept for backwards compatibility, but indexing now prefers exact-host prefixes.
     return _slugify(urlparse(url).netloc or "site")
+
+
+def host_prefix_from_url(url: str) -> str:
+    """
+    Exact-hostname isolation prefix.
+    Example: raw_pages/host=www.example.com/<timestamp>/...
+    """
+    host = (urlparse(url).hostname or "").strip().lower()
+    host = host.split(":")[0]
+    return f"host={host or 'unknown-host'}"
 
 # =========================
 # ---- RAG HELPERS --------
@@ -140,8 +151,8 @@ def upload_markdown_docs_to_gcs(bucket_name: str, base_prefix: str, docs: List[D
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     first_url = docs[0]["url"]
-    netloc = urlparse(first_url).netloc or "site"
-    prefix = f"{base_prefix}/{_slugify(netloc)}/{timestamp}"
+    host_prefix = host_prefix_from_url(first_url)
+    prefix = f"{base_prefix}/{host_prefix}/{timestamp}"
 
     for doc in docs:
         url = doc["url"]
@@ -163,16 +174,17 @@ def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: st
     """
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    site_slug = _site_slug_from_url(site_url)
-    site_root = f"{base_prefix}/{site_slug}/"
+    # Exact-host isolation: list only this hostname’s prefixes.
+    site_root = f"{base_prefix}/{host_prefix_from_url(site_url)}/"
 
     prefixes = set()
     for blob in bucket.list_blobs(prefix=site_root):
         parts = blob.name.split("/")
-        if len(parts) >= 3 and parts[0] == base_prefix and parts[1] == site_slug:
+        # Expected: <base_prefix>/host=<hostname>/<timestamp>/file.md
+        if len(parts) >= 3 and parts[0] == base_prefix and parts[1].startswith("host="):
             ts = parts[2]
             if ts:
-                prefixes.add(f"{base_prefix}/{site_slug}/{ts}")
+                prefixes.add(f"{base_prefix}/{parts[1]}/{ts}")
 
     def _ts_key(pref: str) -> Tuple[datetime, str]:
         ts = pref.rstrip("/").split("/")[-1]

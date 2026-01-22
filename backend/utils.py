@@ -45,7 +45,7 @@ aiplatform.init(project=config.PROJECT_ID, location=config.LOCATION)
 def get_or_create_rag_corpus():
     embedding_config = rag.RagEmbeddingModelConfig(
         vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-            publisher_model="projects/google/models/text-embedding-005"
+            publisher_model="publishers/google/models/text-embedding-005"
         )
     )
 

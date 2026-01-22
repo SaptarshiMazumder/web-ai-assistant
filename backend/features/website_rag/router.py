@@ -10,10 +10,10 @@ from .crawl_to_gcs import (
     crawl_site_bfs,
     upload_markdown_docs_to_gcs,
     import_gcs_prefix_into_corpus,
-    RAG_CORPUS,
     CRAWL_MAX_DEPTH,
     CRAWL_MAX_CONCURRENCY,
 )
+from .domain_registry import get_corpus_for_host, get_or_create_corpus_for_host, delete_corpus_mapping_for_host
 import asyncio
 import traceback
 import uuid
@@ -41,7 +41,22 @@ class _IndexJob:
 _index_jobs_by_url: Dict[str, _IndexJob] = {}
 
 def _job_key(url: str) -> str:
-    return (url or "").strip()
+    """
+    Key index jobs by exact hostname (hard isolation), not full URL.
+
+    This ensures stop/status work even if the current tab URL path/query changes
+    while a crawl is running (redirects, navigation, etc.).
+    """
+    u = (url or "").strip()
+    if not u:
+        return ""
+    try:
+        if not u.startswith(("http://", "https://")):
+            u = f"https://{u}"
+        host = (urlparse(u).hostname or "").strip().lower()
+        return host.split(":")[0]
+    except Exception:
+        return u
 
 def _attach_task_exception_sink(task: asyncio.Task) -> None:
     # Prevent "Task exception was never retrieved" by consuming exceptions.
@@ -67,8 +82,36 @@ async def ask_website_rag(request: WebsiteRagRequest):
     except Exception:
         pass
     print(f"[Website RAG] domain: {domain}")
-    result = run_vertex_rag(request.question)
-    return result
+    hostname = (domain or "").strip().lower()
+    corpus = get_corpus_for_host(hostname) if hostname else None
+    if not corpus:
+        return {
+            "answer": f"No index found for host '{hostname}'. Index the site first (or wait for Vertex indexing).",
+            "sources": [],
+            "sufficient": False,
+            "selected_links": [],
+            "visited_urls": [],
+        }
+    try:
+        result = run_vertex_rag(request.question, rag_corpus=corpus)
+        return result
+    except Exception as e:
+        # Most common runtime issue is Vertex/Gemini quota (429 RESOURCE_EXHAUSTED).
+        # Return a structured response instead of 500 so the extension can display it.
+        msg = str(e)
+        if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+            msg = "Vertex/Gemini quota exhausted (429). Wait a bit or increase quota/billing, then retry."
+        elif "INVALID_ARGUMENT" in msg and ("maxOutputTokens" in msg or "max_output_tokens" in msg):
+            msg = "Model rejected the request due to an output token limit. I’ve lowered the configured max output; restart the backend and retry."
+        elif "INVALID_ARGUMENT" in msg and "thinking is not supported" in msg:
+            msg = "This model doesn’t support thinking mode. I disabled thinking by default; restart the backend and retry."
+        return {
+            "answer": msg,
+            "sources": [],
+            "sufficient": False,
+            "selected_links": [],
+            "visited_urls": [],
+        }
 
 
 @router.get("/is-indexed")
@@ -83,34 +126,21 @@ async def is_indexed(url: str):
         host = ""
     if not host and url:
         host = url.strip()
-
-    def host_variants(h: str):
-        if not h:
-            return []
-        base = h.split(":")[0].lower()
-        nowww = base[4:] if base.startswith("www.") else base
-        parts = nowww.split(".")
-        apex = nowww if len(parts) < 2 else ".".join(parts[-2:])
-        return [v for v in {base, nowww, apex, f"www.{apex}"} if v]
-
-    variants = host_variants(host)
+    # Hard isolation: exact hostname only (no www/apex variants).
+    host = host.split(":")[0].lower()
     try:
         bucket_and_prefix = (config.GCS_BUCKET or '').strip('/').split('/', 1)
         if len(bucket_and_prefix) == 2:
             bucket_name, base_prefix = bucket_and_prefix[0], bucket_and_prefix[1]
         else:
             bucket_name, base_prefix = bucket_and_prefix[0], ''
-        for hv in variants:
-            try:
-                prefixes = list_existing_site_prefixes(
-                    bucket_name=bucket_name,
-                    base_prefix=base_prefix,
-                    site_url=f"https://{hv}",
-                )
-                if prefixes:
-                    return {"indexed": True, "host": host, "source": "gcs"}
-            except Exception:
-                pass
+        prefixes = list_existing_site_prefixes(
+            bucket_name=bucket_name,
+            base_prefix=base_prefix,
+            site_url=f"https://{host}",
+        )
+        if prefixes:
+            return {"indexed": True, "host": host, "source": "gcs"}
     except Exception:
         pass
 
@@ -125,6 +155,12 @@ async def index_site(payload: Dict[str, Any]):
         return {"status": "error", "message": "Missing 'url' in request body."}
     if not url.startswith(("http://", "https://")):
         url = f"https://{url}"
+    try:
+        hostname = (urlparse(url).hostname or "").strip().lower()
+    except Exception:
+        hostname = ""
+    if not hostname:
+        return {"status": "error", "message": "Could not parse hostname from url."}
 
     try:
         bucket_and_prefix = (config.GCS_BUCKET or '').strip('/').split('/', 1)
@@ -186,8 +222,9 @@ async def index_site(payload: Dict[str, Any]):
                 # Make uploaded pages searchable by Website RAG (Vertex RAG corpus).
                 # Note: import is async on the Vertex side; it can take a few minutes to become queryable.
                 try:
+                    corpus = get_or_create_corpus_for_host(hostname)
                     import_gcs_prefix_into_corpus(
-                        corpus_resource=RAG_CORPUS,
+                        corpus_resource=corpus,
                         bucket_name=bucket_name,
                         prefix=gcs_prefix,
                     )
@@ -198,6 +235,13 @@ async def index_site(payload: Dict[str, Any]):
                 except Exception as e:
                     # Don't fail the whole job if import fails; GCS upload succeeded.
                     print(f"[index-site] Warning: RAG import failed for {gcs_prefix}: {e}")
+                    # If the corpus was created with an invalid embedding model config (old bug),
+                    # drop the mapping so a fresh corpus can be created on next run.
+                    try:
+                        if "publisher_model must be of the format" in str(e):
+                            delete_corpus_mapping_for_host(hostname)
+                    except Exception:
+                        pass
                     cur = _index_jobs_by_url.get(key)
                     if cur and cur.job_id == job_id:
                         cur.stage = "error"

@@ -19,10 +19,15 @@ PROJECT_ID     = "gen-lang-client-0545494042"
 GENAI_LOCATION = "global"      # google.genai client
 RAG_LOCATION   = "us-central1" # Vertex RAG region
 
-RAG_CORPUS = "projects/gen-lang-client-0545494042/locations/us-central1/ragCorpora/4611686018427387904"
+DEFAULT_RAG_CORPUS = "projects/gen-lang-client-0545494042/locations/us-central1/ragCorpora/4611686018427387904"
 
-MODEL_NAME        = "gemini-2.5-pro"
-THINK_BUDGET      = 1024
+MODEL_NAME        = os.environ.get("VERTEX_RAG_MODEL", "gemini-2.0-flash-001")
+# Keep thinking small to reduce quota pressure and latency for web QA.
+THINK_BUDGET      = int(os.environ.get("VERTEX_RAG_THINK_BUDGET", "256"))
+# Many Gemini endpoints have ~8k max output token limits; keep a safe default.
+MAX_OUTPUT_TOKENS = int(os.environ.get("VERTEX_RAG_MAX_OUTPUT_TOKENS", "2048"))
+# Some models/endpoints reject thinking_config. Default off; opt-in via env var.
+ENABLE_THINKING   = os.environ.get("VERTEX_RAG_ENABLE_THINKING", "").strip().lower() in ("1", "true", "yes", "y")
 RETRIEVAL_TOP_K   = 16         # per subquery; increase to 24–32 for broader recall
 MAX_SUBQUERIES    = 5
 MAX_STEPS         = 1          # keep 1 for simplicity; raise if you want re-plan loops
@@ -211,28 +216,31 @@ def retrieve_for_subquery(corpus_name: str, subquery: str, top_k: int) -> List[D
 # =========================
 # One-shot mode (fast path)
 # =========================
-def one_shot_answer(client: genai.Client, question: str):
+def one_shot_answer(client: genai.Client, question: str, *, rag_corpus: str):
     tools = [
         types.Tool(
             retrieval=types.Retrieval(
                 vertex_rag_store=types.VertexRagStore(
-                    rag_resources=[types.VertexRagStoreRagResource(rag_corpus=RAG_CORPUS)],
+                    rag_resources=[types.VertexRagStoreRagResource(rag_corpus=rag_corpus)],
                     similarity_top_k=ONESHOT_TOP_K,
                 )
             )
         )
     ]
-    cfg = types.GenerateContentConfig(
+    cfg_kwargs = dict(
         temperature=0.2,
         top_p=0.9,
-        max_output_tokens=32768,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
         tools=tools,
-        thinking_config=types.ThinkingConfig(thinking_budget=256),
         system_instruction=(
             "Answer using the RAG tool. Retrieve before answering. "
             "Be concise and include 2–6 bullet citations with URLs at the end."
         ),
     )
+    if ENABLE_THINKING:
+        cfg_kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
+
+    cfg = types.GenerateContentConfig(**cfg_kwargs)
     for ch in client.models.generate_content_stream(
         model=MODEL_NAME,
         contents=[types.Content(role="user", parts=[types.Part.from_text(text=question)])],
@@ -331,7 +339,7 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 # =========================
 # Main
 # =========================
-def run_vertex_rag(question: str) -> Dict[str, Any]:
+def run_vertex_rag(question: str, *, rag_corpus: str = DEFAULT_RAG_CORPUS) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
     It captures any printed streaming output to assemble the final answer text without
@@ -345,23 +353,20 @@ def run_vertex_rag(question: str) -> Dict[str, Any]:
     sources: List[Dict[str, str]] = []
     sufficient = True
 
-    # Decide path
-    complex_q = is_complex_question(client, question)
-    if not complex_q:
-        # Fast path: capture streaming prints from one_shot_answer
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            one_shot_answer(client, question)
-        captured = buf.getvalue().strip()
-        answer_text_parts.append(captured)
-        print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
-        return {
-            "answer": "".join(answer_text_parts).strip(),
-            "sources": sources,
-            "sufficient": sufficient,
-            "selected_links": [],
-            "visited_urls": [],
-        }
+    # Always use the one-shot path by default to minimize model calls (reduces 429 risk).
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        one_shot_answer(client, question, rag_corpus=rag_corpus)
+    captured = buf.getvalue().strip()
+    answer_text_parts.append(captured)
+    print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+    return {
+        "answer": "".join(answer_text_parts).strip(),
+        "sources": sources,
+        "sufficient": sufficient,
+        "selected_links": [],
+        "visited_urls": [],
+    }
 
     # PLAN
     subqueries = plan_subqueries(client, question)
@@ -372,7 +377,7 @@ def run_vertex_rag(question: str) -> Dict[str, Any]:
     evidence: List[Dict[str, str]] = []
     for step in range(MAX_STEPS):
         for sq in subqueries:
-            chunks = retrieve_for_subquery(RAG_CORPUS, sq, top_k=RETRIEVAL_TOP_K)
+            chunks = retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
             evidence.extend(chunks)
         break
 
@@ -381,7 +386,7 @@ def run_vertex_rag(question: str) -> Dict[str, Any]:
         # Fallback to one-shot; capture streaming
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            one_shot_answer(client, question)
+            one_shot_answer(client, question, rag_corpus=rag_corpus)
         captured = buf.getvalue().strip()
         answer_text_parts.append(captured)
         print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
