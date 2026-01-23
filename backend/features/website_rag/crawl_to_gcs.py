@@ -45,8 +45,8 @@ CRAWL_MAX_CONCURRENCY = 25
 HEADLESS = True
 
 # RAG import (chunking) config
-CHUNK_SIZE = 1024
-CHUNK_OVERLAP = 200
+CHUNK_SIZE = 256
+CHUNK_OVERLAP = 64
 
 # =========================
 # ---- UTILITIES ----------
@@ -142,11 +142,17 @@ def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix
 # =========================
 # ---- GCS HELPERS --------
 # =========================
-def upload_markdown_docs_to_gcs(bucket_name: str, base_prefix: str, docs: List[Dict[str, Any]]) -> str:
+def upload_markdown_docs_to_gcs(
+    bucket_name: str,
+    base_prefix: str,
+    docs: List[Dict[str, Any]],
+    *,
+    storage_client: "storage.Client | None" = None,
+) -> str:
     """Uploads docs as markdown files to GCS and returns the prefix used (without trailing slash)."""
     if not docs:
         raise ValueError("No docs to upload to GCS.")
-    client = storage.Client()
+    client = storage_client or storage.Client()
     bucket = client.bucket(bucket_name)
 
     timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -174,17 +180,20 @@ def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: st
     """
     client = storage.Client()
     bucket = client.bucket(bucket_name)
+    base_prefix = (base_prefix or "").strip("/")
     # Exact-host isolation: list only this hostname’s prefixes.
     site_root = f"{base_prefix}/{host_prefix_from_url(site_url)}/"
 
     prefixes = set()
     for blob in bucket.list_blobs(prefix=site_root):
-        parts = blob.name.split("/")
-        # Expected: <base_prefix>/host=<hostname>/<timestamp>/file.md
-        if len(parts) >= 3 and parts[0] == base_prefix and parts[1].startswith("host="):
-            ts = parts[2]
-            if ts:
-                prefixes.add(f"{base_prefix}/{parts[1]}/{ts}")
+        name = blob.name or ""
+        if not name.startswith(site_root):
+            continue
+        # Expected: {base_prefix}/host=<hostname>/<timestamp>/file.md
+        rel = name[len(site_root):]
+        ts = rel.split("/", 1)[0]
+        if ts:
+            prefixes.add(f"{site_root.rstrip('/')}/{ts}")
 
     def _ts_key(pref: str) -> Tuple[datetime, str]:
         ts = pref.rstrip("/").split("/")[-1]
@@ -240,6 +249,75 @@ async def crawl_site_bfs(
     current_urls = set([_normalize_url(root_url)])
     all_results: List[Dict[str, Any]] = []
 
+    _MAX_DOC_CHARS = 120_000
+
+    def _get_str(result: Any, attr: str) -> str:
+        try:
+            v = getattr(result, attr, None)
+        except Exception:
+            v = None
+        return v if isinstance(v, str) else ""
+
+    def _best_text(result: Any) -> Tuple[str, str]:
+        """
+        crawl4ai sometimes returns empty markdown even when the fetch succeeded.
+        Use fallbacks so we don't end up with docs_count=0 for successful pages.
+        """
+        md = _get_str(result, "markdown").strip()
+        extracted = _get_str(result, "extracted_text").strip()
+        text = _get_str(result, "text").strip()
+
+        # Prefer markdown if it's reasonably complete; otherwise use extracted/text.
+        primary = md
+        primary_src = "markdown" if md else ""
+        if (len(md) < 400 and len(extracted) > len(md)) or (len(extracted) > len(md) * 1.5):
+            primary, primary_src = extracted, "extracted_text"
+        elif (len(md) < 400 and len(text) > len(md)) or (len(text) > len(md) * 1.5):
+            primary, primary_src = text, "text"
+
+        # If we have both markdown and extracted_text and they differ, concatenate to
+        # catch content that markdown conversion might drop (e.g. accordions/FAQ).
+        parts: List[str] = []
+        used_src = primary_src
+        if md:
+            parts.append(md)
+        if extracted and extracted not in md and extracted not in primary:
+            parts.append("\n\n---\n\n" + extracted)
+            used_src = used_src or "markdown+extracted_text"
+        elif extracted and extracted not in md and primary_src == "extracted_text":
+            # primary is extracted; still append markdown if it has unique bits
+            if md and md not in extracted:
+                parts.append("\n\n---\n\n" + md)
+                used_src = "extracted_text+markdown"
+
+        if not parts:
+            # Last resort: HTML variants (can be large).
+            for attr in ("cleaned_html", "html", "raw_html", "content"):
+                v = _get_str(result, attr).strip()
+                if v:
+                    return v[:_MAX_DOC_CHARS], attr
+            return "", ""
+
+        combined = "\n".join(parts).strip()
+        if len(combined) > _MAX_DOC_CHARS:
+            combined = combined[:_MAX_DOC_CHARS]
+        return combined, used_src or primary_src or ""
+
+    def _len_attr(result: Any, attr: str) -> int:
+        try:
+            v = getattr(result, attr, None)
+        except Exception:
+            v = None
+        if isinstance(v, str):
+            return len(v)
+        return 0
+
+    def _meta_attr(result: Any, attr: str) -> Any:
+        try:
+            return getattr(result, attr, None)
+        except Exception:
+            return None
+
     def is_internal(url: str) -> bool:
         return urlparse(url).netloc == root_netloc
 
@@ -266,8 +344,41 @@ async def crawl_site_bfs(
                 for result in results:
                     norm = _normalize_url(result.url)
                     visited.add(norm)
-                    if result.success and result.markdown:
-                        all_results.append({"url": result.url, "markdown": result.markdown})
+                    if result.success:
+                        content, src = _best_text(result)
+                        if content:
+                            # Prefix the content with its source URL so retrieval can match vague queries
+                            # without the user having to type the site/service name.
+                            all_results.append({"url": result.url, "markdown": f"Source URL: {result.url}\n\n{content}"})
+                            if src != "markdown":
+                                # Helpful when debugging "0 pages" issues.
+                                print(f"[crawl] Used fallback content '{src}' for {result.url}")
+                        # Emit per-fetch diagnostics (even if content is empty) so callers
+                        # can see why docs_count is 0 (blocked, empty render, etc.).
+                        if progress_cb:
+                            try:
+                                progress_cb(
+                                    {
+                                        "type": "fetch",
+                                        "url": result.url,
+                                        "success": True,
+                                        "status_code": _meta_attr(result, "status_code")
+                                        or _meta_attr(result, "http_status")
+                                        or _meta_attr(result, "status"),
+                                        "error": _meta_attr(result, "error")
+                                        or _meta_attr(result, "error_message")
+                                        or _meta_attr(result, "message"),
+                                        "content_source": src or "",
+                                        "markdown_len": _len_attr(result, "markdown"),
+                                        "text_len": _len_attr(result, "text"),
+                                        "extracted_text_len": _len_attr(result, "extracted_text"),
+                                        "cleaned_html_len": _len_attr(result, "cleaned_html"),
+                                        "html_len": _len_attr(result, "html"),
+                                        "raw_html_len": _len_attr(result, "raw_html"),
+                                    }
+                                )
+                            except Exception:
+                                pass
                         if progress_cb:
                             try:
                                 progress_cb({
@@ -282,6 +393,31 @@ async def crawl_site_bfs(
                             href = _normalize_url(link.get("href", ""))
                             if href and href not in visited and is_internal(href):
                                 next_level_urls.add(href)
+                    else:
+                        if progress_cb:
+                            try:
+                                progress_cb(
+                                    {
+                                        "type": "fetch",
+                                        "url": getattr(result, "url", ""),
+                                        "success": False,
+                                        "status_code": _meta_attr(result, "status_code")
+                                        or _meta_attr(result, "http_status")
+                                        or _meta_attr(result, "status"),
+                                        "error": _meta_attr(result, "error")
+                                        or _meta_attr(result, "error_message")
+                                        or _meta_attr(result, "message"),
+                                        "content_source": "",
+                                        "markdown_len": _len_attr(result, "markdown"),
+                                        "text_len": _len_attr(result, "text"),
+                                        "extracted_text_len": _len_attr(result, "extracted_text"),
+                                        "cleaned_html_len": _len_attr(result, "cleaned_html"),
+                                        "html_len": _len_attr(result, "html"),
+                                        "raw_html_len": _len_attr(result, "raw_html"),
+                                    }
+                                )
+                            except Exception:
+                                pass
                 current_urls = next_level_urls
     except asyncio.CancelledError:
         # If cancellation happens while entering/exiting crawler context, still return partials.

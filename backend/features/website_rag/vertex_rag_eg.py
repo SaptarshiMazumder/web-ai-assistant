@@ -8,9 +8,10 @@ import vertexai
 import json
 import re
 import hashlib
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Callable
 import io
 import contextlib
+from urllib.parse import urlparse
 
 # =========================
 # Config
@@ -79,6 +80,36 @@ def dedupe_evidence(evidence: List[Dict[str, str]]) -> List[Dict[str, str]]:
         seen.add(key)
         out.append(e)
     return out
+
+
+def _normalize_host(host: str) -> str:
+    h = (host or "").strip().lower()
+    if not h:
+        return ""
+    # Allow passing full URLs too.
+    if h.startswith(("http://", "https://")):
+        try:
+            h = (urlparse(h).hostname or "").lower()
+        except Exception:
+            pass
+    return h.split(":")[0]
+
+
+def _evidence_matches_host(e: Dict[str, str], host: str) -> bool:
+    """
+    Enforce per-site demarcation: only accept snippets whose source URL/GCS URI
+    clearly belongs to the current host.
+    """
+    h = _normalize_host(host)
+    if not h:
+        return True
+    u = (e.get("url") or "").lower()
+    if not u:
+        return False
+    # Covers:
+    # - direct website URLs: https://example.com/...
+    # - GCS URIs from our upload prefixes: gs://.../host=example.com/...
+    return (h in u) or (f"host={h}" in u)
 
 # =========================
 # Robust JSON extraction
@@ -211,7 +242,18 @@ def retrieve_for_subquery(corpus_name: str, subquery: str, top_k: int) -> List[D
         url  = _ctx_uri(c)
         if text:
             out.append({"snippet": text, "url": url})
-    return out
+    # De-dupe and cap per URL to avoid repeated full-page chunks.
+    out = dedupe_evidence(out)
+    per_url: Dict[str, int] = {}
+    capped: List[Dict[str, str]] = []
+    for e in out:
+        u = e.get("url", "") or ""
+        count = per_url.get(u, 0)
+        if count >= 3:
+            continue
+        per_url[u] = count + 1
+        capped.append(e)
+    return capped
 
 # =========================
 # One-shot mode (fast path)
@@ -337,96 +379,126 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
     return "".join(out).strip()
 
 # =========================
+# Simple (non-streaming) synthesis
+# =========================
+def synthesize_with_evidence(client: genai.Client, question: str, evidence: List[Dict[str, str]]) -> str:
+    SYSTEM = (
+        "Answer the user's question using ONLY the provided evidence snippets.\n"
+        "If the evidence is insufficient, say so and ask a clarifying question.\n"
+        "Keep it concise.\n"
+        "End with 2–6 bullet citations using the source URLs."
+    )
+    user_block = (
+        f"QUESTION:\n{question}\n\n"
+        f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
+        "TASK: Write the best possible grounded answer."
+    )
+    cfg = types.GenerateContentConfig(
+        temperature=0.2,
+        top_p=0.9,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        system_instruction=SYSTEM,
+    )
+    if ENABLE_THINKING:
+        cfg.thinking_config = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
+    resp = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_block)])],
+        config=cfg,
+    )
+    return (resp.text or "").strip()
+
+# =========================
 # Main
 # =========================
-def run_vertex_rag(question: str, *, rag_corpus: str = DEFAULT_RAG_CORPUS) -> Dict[str, Any]:
+def run_vertex_rag(
+    question: str,
+    *,
+    rag_corpus: str = DEFAULT_RAG_CORPUS,
+    allowed_host: Optional[str] = None,
+    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
     It captures any printed streaming output to assemble the final answer text without
     changing the underlying logic functions.
     """
-    print(f"\n[RAG] Running Vertex RAG for question: {question}\n")
+    def _dbg(evt: Dict[str, Any]) -> None:
+        if debug_cb is None:
+            return
+        try:
+            debug_cb(evt)
+        except Exception:
+            pass
+
+    _dbg(
+        {
+            "type": "rag_start",
+            "rag_corpus": rag_corpus,
+            "allowed_host": allowed_host or "",
+            "question": question,
+            "model": MODEL_NAME,
+            "rag_location": RAG_LOCATION,
+            "genai_location": GENAI_LOCATION,
+        }
+    )
     vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
     client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
 
-    answer_text_parts: List[str] = []
     sources: List[Dict[str, str]] = []
-    sufficient = True
 
-    # Always use the one-shot path by default to minimize model calls (reduces 429 risk).
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        one_shot_answer(client, question, rag_corpus=rag_corpus)
-    captured = buf.getvalue().strip()
-    answer_text_parts.append(captured)
-    print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
-    return {
-        "answer": "".join(answer_text_parts).strip(),
-        "sources": sources,
-        "sufficient": sufficient,
-        "selected_links": [],
-        "visited_urls": [],
-    }
-
-    # PLAN
-    subqueries = plan_subqueries(client, question)
-    if not subqueries:
-        subqueries = [question]
-
-    # RETRIEVE
-    evidence: List[Dict[str, str]] = []
-    for step in range(MAX_STEPS):
-        for sq in subqueries:
-            chunks = retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
-            evidence.extend(chunks)
-        break
-
+    # Simple, deterministic flow:
+    # 1) Retrieve from THIS corpus (high top_k)
+    # 2) Optionally filter to the allowed host
+    # 3) Synthesize answer ONLY from snippets
+    top_k = max(ONESHOT_TOP_K, 80)
+    _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
+    evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
     evidence = dedupe_evidence(evidence)
+    _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
+    for i, e in enumerate(evidence, 1):
+        _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+    if allowed_host:
+        evidence = [e for e in evidence if _evidence_matches_host(e, allowed_host)]
+        _dbg({"type": "host_filter_done", "allowed_host": allowed_host, "evidence_count": len(evidence)})
+        for i, e in enumerate(evidence, 1):
+            _dbg({"type": "filtered_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+
     if not evidence:
-        # Fallback to one-shot; capture streaming
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            one_shot_answer(client, question, rag_corpus=rag_corpus)
-        captured = buf.getvalue().strip()
-        answer_text_parts.append(captured)
-        print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+        _dbg({"type": "rag_no_evidence", "answer": "", "sources": []})
         return {
-            "answer": "".join(answer_text_parts).strip(),
-            "sources": sources,
-            "sufficient": sufficient,
+            "answer": "",
+            "sources": [],
+            "sufficient": False,
             "selected_links": [],
             "visited_urls": [],
         }
 
-    # ANALYZE (capture any incidental prints)
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        final_answer = analyze_with_evidence(client, question, evidence)
-    if final_answer:
-        answer_text_parts.append(final_answer)
-    else:
-        answer_text_parts.append(buf.getvalue())
-
-    # VERIFY and optionally re-synthesize
-    ver = verify_answer_supported(client, question, evidence, "".join(answer_text_parts).strip())
-    if (not ver.get("supported")) or (ver.get("confidence", 0) < 0.6):
-        sufficient = False
-        fixed = resynthesize_grounded(client, question, evidence)
-        if fixed:
-            answer_text_parts = [fixed]
+    # Build a grounded answer from snippets.
+    # Log the exact prompt we send to the model.
+    prompt = (
+        "SYSTEM:\n"
+        "Answer the user's question using ONLY the provided evidence snippets.\n"
+        "If the evidence is insufficient, say so and ask a clarifying question.\n"
+        "Keep it concise.\n"
+        "End with 2–6 bullet citations using the source URLs.\n\n"
+        f"QUESTION:\n{question}\n\n"
+        f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
+        "TASK: Write the best possible grounded answer."
+    )
+    _dbg({"type": "model_prompt", "prompt": prompt})
+    answer = synthesize_with_evidence(client, question, evidence)
+    _dbg({"type": "model_answer", "answer": answer})
 
     # Prepare sources from evidence
     for e in evidence:
-        sources.append({
-            "excerpt": e.get("snippet", ""),
-            "url": e.get("url", ""),
-        })
+        sources.append({"excerpt": e.get("snippet", ""), "url": e.get("url", "")})
 
-    print(f"\n[RAG] Final answer:\n{''.join(answer_text_parts).strip()}\n")
+    _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
     return {
-        "answer": "".join(answer_text_parts).strip(),
+        "answer": answer,
         "sources": sources,
-        "sufficient": sufficient,
+        "sufficient": True,
         "selected_links": [],
         "visited_urls": [],
     }

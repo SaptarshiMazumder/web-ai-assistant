@@ -1,0 +1,146 @@
+<!doctype html>
+<html>
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web AI Widget</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      }
+
+      .wrap {
+        height: 100%;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        padding: 12px 12px;
+        background: #1976d2;
+        color: #fff;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .header small {
+        opacity: 0.9;
+        font-weight: 500;
+      }
+
+      .chat {
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+        background: #f7f8fa;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        background: #fff;
+        border-top: 1px solid #e6e6e6;
+      }
+
+      input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid #d0d0d0;
+        border-radius: 10px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      button {
+        padding: 10px 12px;
+        border: 0;
+        background: #1976d2;
+        color: #fff;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .bubble {
+        max-width: 92%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        margin: 8px 0;
+        line-height: 1.35;
+        font-size: 14px;
+        white-space: pre-wrap;
+      }
+
+      .user {
+        background: #1976d2;
+        color: #fff;
+        margin-left: auto;
+        border-bottom-right-radius: 4px;
+      }
+
+      .bot {
+        background: #fff;
+        color: #111;
+        border: 1px solid #eee;
+        margin-right: auto;
+        border-bottom-left-radius: 4px;
+      }
+
+      .meta {
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+      }
+
+      a {
+        color: #1976d2;
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <div>Chat</div>
+        <small id="status">Ready</small>
+      </div>
+      <div class="row" style="border-top:0;border-bottom:1px solid #e6e6e6;">
+        <button id="crawl" style="background:#111;">Crawl site</button>
+        <button id="cancelCrawl" style="background:#777;" disabled>Cancel</button>
+        <div style="margin-left:auto;font-size:12px;color:#555;align-self:center;" id="crawlStatus"></div>
+      </div>
+      <div id="chat" class="chat"></div>
+      <div class="row">
+        <input id="msg" placeholder="Ask a question..." />
+        <button id="send">Send</button>
+      </div>
+    </div>
+    <script src="./iframe.js"></script>
+  </body>
+
+</html>
