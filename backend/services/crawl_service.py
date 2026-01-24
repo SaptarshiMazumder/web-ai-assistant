@@ -28,7 +28,7 @@ RAG_CORPUS = "projects/gen-lang-client-0545494042/locations/us-central1/ragCorpo
 EMBEDDING_PUBLISHER_MODEL = "publishers/google/models/text-embedding-005"
 
 BUCKET_NAME = "web-assistant-test-bucket-1"
-GCS_SUBPATH = "raw_pages"              # final prefix: raw_pages/<site>/<timestamp>/
+GCS_SUBPATH = "saas"              # final prefix: saas/<tenant>/bots/<bot_id>/hosts/<host>/<timestamp>/
 CRAWL_MAX_DEPTH = 8
 CRAWL_MAX_CONCURRENCY = 25
 HEADLESS = True
@@ -64,11 +64,11 @@ def _site_slug_from_url(url: str) -> str:
 def host_prefix_from_url(url: str) -> str:
     """
     Exact-hostname isolation prefix.
-    Example: raw_pages/host=www.example.com/<timestamp>/...
+    Example: saas/<tenant>/bots/<bot_id>/hosts/www.example.com/<timestamp>/...
     """
     host = (urlparse(url).hostname or "").strip().lower()
     host = host.split(":")[0]
-    return f"host={host or 'unknown-host'}"
+    return f"hosts/{host or 'unknown-host'}"
 
 # =========================
 # ---- RAG HELPERS --------
@@ -159,12 +159,12 @@ def upload_markdown_docs_to_gcs(
         blob = bucket.blob(blob_name)
         blob.upload_from_string(md, content_type="text/markdown")
 
-    return prefix  # e.g., raw_pages/example-com/20250814-010203
+    return prefix  # e.g., saas/<tenant>/bots/<bot_id>/hosts/example.com/20250814-010203
 
 def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: str) -> List[str]:
     """
     Returns sorted list of GCS prefixes for previous crawls of this site.
-    Format: {base_prefix}/{site-slug}/{timestamp}
+    Format: {base_prefix}/hosts/<host>/<timestamp>
     """
     client = storage.Client()
     bucket = client.bucket(bucket_name)
@@ -177,7 +177,7 @@ def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: st
         name = blob.name or ""
         if not name.startswith(site_root):
             continue
-        # Expected: {base_prefix}/host=<hostname>/<timestamp>/file.md
+        # Expected: {base_prefix}/hosts/<hostname>/<timestamp>/file.md
         rel = name[len(site_root):]
         ts = rel.split("/", 1)[0]
         if ts:

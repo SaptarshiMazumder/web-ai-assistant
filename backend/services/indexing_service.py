@@ -4,6 +4,8 @@ import os
 import sys
 import subprocess
 import uuid
+import hashlib
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Tuple
@@ -13,6 +15,7 @@ import vertexai
 from vertexai import rag as vx_rag
 
 from bot_registry import (
+    get_bot,
     get_bot_corpus,
     list_verified_hosts,
     upsert_bot_corpus,
@@ -74,11 +77,45 @@ def _parse_bucket_and_prefix() -> Tuple[str, str]:
     raise ValueError("Invalid GCS_BUCKET configuration")
 
 
+def _tenant_slug() -> str:
+    key = (config.ADMIN_API_KEY or "").strip()
+    if not key:
+        return "default"
+    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+    return f"t-{digest}"
+
+
+def _slugify_name(text: str) -> str:
+    s = (text or "").strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s or "bot"
+
+
+def _env_slug() -> str:
+    raw = (os.environ.get("ENVIRONMENT") or os.environ.get("ENV") or "dev").strip()
+    return _slugify_name(raw)
+
+
+def _rag_display_name(bot_id: str) -> str:
+    bot = get_bot(bot_id)
+    bot_slug = _slugify_name(bot.display_name if bot else "")
+    env = _env_slug()
+    tenant = _tenant_slug()
+    prefix = f"web-rag-bot-{env}-{tenant}-"
+    suffix = f"-{bot_id}"
+    max_total = 120
+    max_slug_len = max(12, max_total - len(prefix) - len(suffix))
+    bot_slug = bot_slug[:max_slug_len]
+    return f"{prefix}{bot_slug}{suffix}"
+
+
 def _bot_base_prefix(base_prefix_root: str, bot_id: str) -> str:
     base_prefix_root = (base_prefix_root or "").strip("/")
+    tenant = _tenant_slug()
     if base_prefix_root:
-        return f"{base_prefix_root}/bot={bot_id}"
-    return f"bot={bot_id}"
+        return f"{base_prefix_root}/{tenant}/bots/{bot_id}"
+    return f"{tenant}/bots/{bot_id}"
 
 
 def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
@@ -97,7 +134,7 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
             # If validation fails, fall back to creating a new corpus.
             pass
     vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
-    display_name = f"web-rag-bot-{bot_id[:40]}"
+    display_name = _rag_display_name(bot_id)
     emb_cfg = vx_rag.RagEmbeddingModelConfig(
         vertex_prediction_endpoint=vx_rag.VertexPredictionEndpoint(
             publisher_model="publishers/google/models/text-embedding-005"

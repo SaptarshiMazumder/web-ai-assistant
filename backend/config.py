@@ -39,8 +39,8 @@ class Config:
     LOCATION = os.environ.get("LOCATION", "us-central1")
     # Chroma DB path
     CHROMA_DB_DIR = os.environ.get("CHROMA_DB_DIR", "backend/chroma_db/")
-    # GCS bucket for RAG
-    GCS_BUCKET = os.environ.get("GCS_BUCKET", "web-assistant-test-bucket-1/raw_pages/")
+    # GCS bucket for RAG (default prefix uses the new multi-tenant layout)
+    GCS_BUCKET = os.environ.get("GCS_BUCKET", "web-assistant-test-bucket-1/saas/")
     # Prompt log path
     PROMPT_LOG_PATH = os.environ.get("PROMPT_LOG_PATH", "llm_prompt_log.txt")
 
