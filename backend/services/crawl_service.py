@@ -1,139 +1,3 @@
-"""
-Compatibility wrapper for historical imports.
-Core crawl/upload/import logic lives in backend/services/crawl_service.py.
-"""
-
-from services.crawl_service import (
-    PROJECT_ID,
-    VERTEX_LOCATION,
-    RAG_CORPUS,
-    EMBEDDING_PUBLISHER_MODEL,
-    BUCKET_NAME,
-    GCS_SUBPATH,
-    CRAWL_MAX_DEPTH,
-    CRAWL_MAX_CONCURRENCY,
-    HEADLESS,
-    CHUNK_SIZE,
-    CHUNK_OVERLAP,
-    _normalize_url,
-    _slugify,
-    _ensure_url,
-    _site_slug_from_url,
-    host_prefix_from_url,
-    get_or_create_corpus,
-    import_gcs_prefix_into_corpus,
-    upload_markdown_docs_to_gcs,
-    list_existing_site_prefixes,
-    choose_prefix_interactively,
-    crawl_site_bfs,
-)
-
-import asyncio
-from datetime import datetime
-import time
-
-
-def main():
-    corpus_name = get_or_create_corpus(PROJECT_ID, VERTEX_LOCATION, RAG_CORPUS)
-    print(f"[RAG] Using corpus: {corpus_name}\n")
-
-    print("Crawl → GCS → RAG importer")
-    print("Type a website or URL to crawl (e.g., 'tmobile.com' or 'https://www.t-mobile.com').")
-    print("Type 'exit' to quit.\n")
-
-    while True:
-        user_input = input("Site or URL > ").strip()
-        if not user_input:
-            continue
-        if user_input.lower() in ("exit", "quit", "q"):
-            print("Goodbye.")
-            break
-
-        url = _ensure_url(user_input)
-
-        try:
-            # --- Timing start ---
-            start_wall_utc = datetime.utcnow()
-            start_perf = time.perf_counter()
-            # Reuse?
-            existing = list_existing_site_prefixes(BUCKET_NAME, GCS_SUBPATH, url)
-            if existing:
-                latest = existing[-1]
-                ans = input(
-                    f"Found {len(existing)} previous crawls.\n"
-                    f"Reuse latest gs://{BUCKET_NAME}/{latest}/ ? [Y/n/i=list] "
-                ).strip().lower()
-
-                chosen = None
-                if ans in ("", "y", "yes"):
-                    chosen = latest
-                elif ans in ("i", "list", "l"):
-                    chosen = choose_prefix_interactively(existing)
-
-                if chosen:
-                    print(f"Reusing: gs://{BUCKET_NAME}/{chosen}/")
-                    import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, chosen)
-                    # --- Timing end (reuse path) ---
-                    end_wall_utc = datetime.utcnow()
-                    elapsed_s = time.perf_counter() - start_perf
-                    print("Done.\n")
-                    print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
-                    print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
-                    print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
-                    continue
-                else:
-                    print("Proceeding to fresh crawl.\n")
-
-            # Fresh crawl
-            print(f"Crawling site (BFS): {url}")
-            docs = asyncio.run(
-                crawl_site_bfs(url, max_depth=CRAWL_MAX_DEPTH, max_concurrent=CRAWL_MAX_CONCURRENCY)
-            )
-            if not docs:
-                print("No pages crawled.\n")
-                continue
-
-            crawl_done_perf = time.perf_counter()
-            print(f"Crawled {len(docs)} pages. Uploading to gs://{BUCKET_NAME}/{GCS_SUBPATH}/ ...")
-            gcs_prefix = upload_markdown_docs_to_gcs(BUCKET_NAME, GCS_SUBPATH, docs)
-            upload_done_perf = time.perf_counter()
-            print(f"Uploaded to: gs://{BUCKET_NAME}/{gcs_prefix}/")
-
-            # Import into RAG corpus
-            print("[RAG] Importing uploaded pages into corpus...")
-            import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, gcs_prefix)
-            # --- Timing end (fresh crawl path) ---
-            end_wall_utc = datetime.utcnow()
-            import_done_perf = time.perf_counter()
-            elapsed_s = import_done_perf - start_perf
-            crawl_s = crawl_done_perf - start_perf
-            upload_s = upload_done_perf - crawl_done_perf
-            import_s = import_done_perf - upload_done_perf
-            print("Import complete.\n")
-            print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
-            print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
-            print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
-            print("[TIMING] Breakdown:")
-            print(f"  - Crawl:  {crawl_s:.2f} s")
-            print(f"  - Upload: {upload_s:.2f} s")
-            print(f"  - Import: {import_s:.2f} s\n")
-
-        except Exception as e:
-            print(f"Error: {e}\n")
-
-
-if __name__ == "__main__":
-    main()
-# save as: crawl_site_to_gcs.py
-# Usage: python crawl_site_to_gcs.py
-# Type a website (e.g., "tmobile.com" or "https://www.t-mobile.com") or "exit"
-# Behavior:
-#   - Crawls all internal pages with crawl4ai
-#   - Uploads markdown to GCS under raw_pages/<site>/<timestamp>/
-#   - Reuses a previous crawl if you choose it
-#   - Imports the (reused or freshly crawled) GCS prefix into a Vertex RAG corpus
-#   - Auto-creates the RAG corpus if missing
-
 import asyncio
 import os
 import re
@@ -151,7 +15,7 @@ from vertexai import rag as vx_rag
 import vertexai
 
 # =========================
-# ---- CONFIG (edit) ------
+# ---- CONFIG -------------
 # =========================
 PROJECT_ID = "gen-lang-client-0545494042"
 VERTEX_LOCATION = "us-central1"  # RAG lives in a regional Vertex location
@@ -159,7 +23,6 @@ VERTEX_LOCATION = "us-central1"  # RAG lives in a regional Vertex location
 # If you already have a corpus, put its full resource name here.
 # Else leave empty ("") and the script will create one and print its name.
 RAG_CORPUS = "projects/gen-lang-client-0545494042/locations/us-central1/ragCorpora/4611686018427387904"
-
 
 # Embedding model used by the RAG index
 EMBEDDING_PUBLISHER_MODEL = "publishers/google/models/text-embedding-005"
@@ -197,7 +60,6 @@ def _ensure_url(s: str) -> str:
 def _site_slug_from_url(url: str) -> str:
     # NOTE: kept for backwards compatibility, but indexing now prefers exact-host prefixes.
     return _slugify(urlparse(url).netloc or "site")
-
 
 def host_prefix_from_url(url: str) -> str:
     """
@@ -551,99 +413,3 @@ async def crawl_site_bfs(
         return all_results
 
     return all_results
-
-# =========================
-# ---- MAIN LOOP ----------
-# =========================
-def main():
-    corpus_name = get_or_create_corpus(PROJECT_ID, VERTEX_LOCATION, RAG_CORPUS)
-    print(f"[RAG] Using corpus: {corpus_name}\n")
-
-    print("Crawl → GCS → RAG importer")
-    print("Type a website or URL to crawl (e.g., 'tmobile.com' or 'https://www.t-mobile.com').")
-    print("Type 'exit' to quit.\n")
-
-    while True:
-        user_input = input("Site or URL > ").strip()
-        if not user_input:
-            continue
-        if user_input.lower() in ("exit", "quit", "q"):
-            print("Goodbye.")
-            break
-
-        url = _ensure_url(user_input)
-
-        try:
-            # --- Timing start ---
-            start_wall_utc = datetime.utcnow()
-            start_perf = time.perf_counter()
-            # Reuse?
-            existing = list_existing_site_prefixes(BUCKET_NAME, GCS_SUBPATH, url)
-            if existing:
-                latest = existing[-1]
-                ans = input(
-                    f"Found {len(existing)} previous crawls.\n"
-                    f"Reuse latest gs://{BUCKET_NAME}/{latest}/ ? [Y/n/i=list] "
-                ).strip().lower()
-
-                chosen = None
-                if ans in ("", "y", "yes"):
-                    chosen = latest
-                elif ans in ("i", "list", "l"):
-                    chosen = choose_prefix_interactively(existing)
-
-                if chosen:
-                    print(f"Reusing: gs://{BUCKET_NAME}/{chosen}/")
-                    import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, chosen)
-                    # --- Timing end (reuse path) ---
-                    end_wall_utc = datetime.utcnow()
-                    elapsed_s = time.perf_counter() - start_perf
-                    print("Done.\n")
-                    print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
-                    print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
-                    print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
-                    continue
-                else:
-                    print("Proceeding to fresh crawl.\n")
-
-            # Fresh crawl
-            print(f"Crawling site (BFS): {url}")
-            docs = asyncio.run(
-                crawl_site_bfs(url, max_depth=CRAWL_MAX_DEPTH, max_concurrent=CRAWL_MAX_CONCURRENCY)
-            )
-            if not docs:
-                print("No pages crawled.\n")
-                continue
-
-            crawl_done_perf = time.perf_counter()
-            print(f"Crawled {len(docs)} pages. Uploading to gs://{BUCKET_NAME}/{GCS_SUBPATH}/ ...")
-            gcs_prefix = upload_markdown_docs_to_gcs(BUCKET_NAME, GCS_SUBPATH, docs)
-            upload_done_perf = time.perf_counter()
-            print(f"Uploaded to: gs://{BUCKET_NAME}/{gcs_prefix}/")
-
-            # Import into RAG corpus
-            print("[RAG] Importing uploaded pages into corpus...")
-            import_gcs_prefix_into_corpus(corpus_name, BUCKET_NAME, gcs_prefix)
-            # --- Timing end (fresh crawl path) ---
-            end_wall_utc = datetime.utcnow()
-            import_done_perf = time.perf_counter()
-            elapsed_s = import_done_perf - start_perf
-            crawl_s = crawl_done_perf - start_perf
-            upload_s = upload_done_perf - crawl_done_perf
-            import_s = import_done_perf - upload_done_perf
-            print("Import complete.\n")
-            print(f"[TIMING] Start:   {start_wall_utc.isoformat()}Z")
-            print(f"[TIMING] End:     {end_wall_utc.isoformat()}Z")
-            print(f"[TIMING] Elapsed: {elapsed_s:.2f} seconds\n")
-            print("[TIMING] Breakdown:")
-            print(f"  - Crawl:  {crawl_s:.2f} s")
-            print(f"  - Upload: {upload_s:.2f} s")
-            print(f"  - Import: {import_s:.2f} s\n")
-
-        except Exception as e:
-            print(f"Error: {e}\n")
-
-if __name__ == "__main__":
-    main()
-
-

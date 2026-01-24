@@ -1,47 +1,3 @@
-"""
-Compatibility wrapper for historical imports.
-All implementation has moved to backend/clients/rag_client.py.
-"""
-
-from clients.rag_client import (
-    PROJECT_ID,
-    GENAI_LOCATION,
-    RAG_LOCATION,
-    DEFAULT_RAG_CORPUS,
-    MODEL_NAME,
-    THINK_BUDGET,
-    MAX_OUTPUT_TOKENS,
-    ENABLE_THINKING,
-    RETRIEVAL_TOP_K,
-    MAX_SUBQUERIES,
-    MAX_STEPS,
-    ONESHOT_TOP_K,
-    format_evidence_block,
-    dedupe_evidence,
-    retrieve_for_subquery,
-    synthesize_with_evidence,
-    run_vertex_rag,
-)
-
-__all__ = [
-    "PROJECT_ID",
-    "GENAI_LOCATION",
-    "RAG_LOCATION",
-    "DEFAULT_RAG_CORPUS",
-    "MODEL_NAME",
-    "THINK_BUDGET",
-    "MAX_OUTPUT_TOKENS",
-    "ENABLE_THINKING",
-    "RETRIEVAL_TOP_K",
-    "MAX_SUBQUERIES",
-    "MAX_STEPS",
-    "ONESHOT_TOP_K",
-    "format_evidence_block",
-    "dedupe_evidence",
-    "retrieve_for_subquery",
-    "synthesize_with_evidence",
-    "run_vertex_rag",
-]
 import os, json, re, asyncio
 from google import genai
 from google.genai import types
@@ -549,5 +505,3 @@ def run_vertex_rag(
 
 
 # run_vertex_rag("List all open positions in China at Riot games")
-
-
