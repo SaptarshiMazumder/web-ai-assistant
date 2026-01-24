@@ -1,7 +1,8 @@
 import os, signal
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from logging_relay import smartqa_log_relay
 
@@ -90,6 +91,39 @@ app.mount(
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "widget"), html=True),
     name="widget",
 )
+
+
+def _dashboard_dist_path() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dashboard", "dist"))
+
+
+def _dashboard_index_path() -> str:
+    return os.path.join(_dashboard_dist_path(), "index.html")
+
+
+@app.get("/dashboard")
+@app.get("/dashboard/")
+async def dashboard_index():
+    index_path = _dashboard_index_path()
+    if not os.path.isfile(index_path):
+        raise HTTPException(status_code=404, detail="Dashboard not built. Run `npm run build` in /dashboard.")
+    return FileResponse(index_path)
+
+
+@app.get("/dashboard/{full_path:path}")
+async def dashboard_assets(full_path: str):
+    dist_root = _dashboard_dist_path()
+    if not os.path.isdir(dist_root):
+        raise HTTPException(status_code=404, detail="Dashboard not built. Run `npm run build` in /dashboard.")
+    candidate = os.path.abspath(os.path.join(dist_root, full_path))
+    if not candidate.startswith(dist_root):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if os.path.isfile(candidate):
+        return FileResponse(candidate)
+    index_path = _dashboard_index_path()
+    if not os.path.isfile(index_path):
+        raise HTTPException(status_code=404, detail="Dashboard not built. Run `npm run build` in /dashboard.")
+    return FileResponse(index_path)
 
 
 @app.websocket("/ws/smartqa-logs")

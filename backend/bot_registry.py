@@ -89,6 +89,27 @@ class Bot:
     secret_key: str
 
 
+@dataclass
+class BotRecord:
+    bot_id: str
+    display_name: str
+    publishable_key: str
+    secret_key: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass
+class BotDomainRecord:
+    bot_id: str
+    hostname: str
+    status: str
+    verification_token: str
+    verified_at: Optional[str]
+    created_at: str
+    updated_at: str
+
+
 def create_bot(display_name: str) -> Bot:
     bot_id = _new_bot_id()
     pk = _new_publishable_key()
@@ -156,6 +177,59 @@ def get_bot(bot_id: str) -> Optional[Bot]:
         if not row:
             return None
         return Bot(bot_id=row[0], display_name=row[1], publishable_key=row[2], secret_key=row[3])
+    finally:
+        con.close()
+
+
+def get_bot_record(bot_id: str) -> Optional[BotRecord]:
+    bid = (bot_id or "").strip()
+    if not bid:
+        return None
+    con = _connect()
+    try:
+        row = con.execute(
+            """
+            SELECT bot_id, display_name, publishable_key, secret_key, created_at, updated_at
+            FROM bots
+            WHERE bot_id = ?
+            """,
+            (bid,),
+        ).fetchone()
+        if not row:
+            return None
+        return BotRecord(
+            bot_id=row[0],
+            display_name=row[1],
+            publishable_key=row[2],
+            secret_key=row[3],
+            created_at=row[4],
+            updated_at=row[5],
+        )
+    finally:
+        con.close()
+
+
+def list_bots() -> List[BotRecord]:
+    con = _connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT bot_id, display_name, publishable_key, secret_key, created_at, updated_at
+            FROM bots
+            ORDER BY created_at DESC
+            """
+        ).fetchall()
+        return [
+            BotRecord(
+                bot_id=row[0],
+                display_name=row[1],
+                publishable_key=row[2],
+                secret_key=row[3],
+                created_at=row[4],
+                updated_at=row[5],
+            )
+            for row in (rows or [])
+        ]
     finally:
         con.close()
 
@@ -241,6 +315,37 @@ def mark_domain_verified(bot_id: str, hostname: str) -> None:
             (now, now, bid, host),
         )
         con.commit()
+    finally:
+        con.close()
+
+
+def list_domains(bot_id: str) -> List[BotDomainRecord]:
+    bid = (bot_id or "").strip()
+    if not bid:
+        return []
+    con = _connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT bot_id, hostname, status, verification_token, verified_at, created_at, updated_at
+            FROM bot_domains
+            WHERE bot_id = ?
+            ORDER BY created_at DESC
+            """,
+            (bid,),
+        ).fetchall()
+        return [
+            BotDomainRecord(
+                bot_id=row[0],
+                hostname=row[1],
+                status=row[2],
+                verification_token=row[3],
+                verified_at=row[4],
+                created_at=row[5],
+                updated_at=row[6],
+            )
+            for row in (rows or [])
+        ]
     finally:
         con.close()
 

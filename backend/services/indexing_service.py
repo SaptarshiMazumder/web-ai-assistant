@@ -8,7 +8,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 from urllib.parse import urlparse
 
 import vertexai
@@ -351,3 +351,11 @@ def cancel_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     job.stage = "cancelled"
     _touch(job)
     return {"status": "stopping", "job_id": job.job_id, "hostname": job.hostname}
+
+
+def list_index_jobs_for_bot(bot_id: str) -> List[IndexJob]:
+    bid = (bot_id or "").strip()
+    if not bid:
+        return []
+    jobs = [job for job in _index_jobs_by_key.values() if job.bot_id == bid]
+    return sorted(jobs, key=lambda j: j.updated_at, reverse=True)

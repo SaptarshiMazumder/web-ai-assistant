@@ -12,6 +12,9 @@ from bot_registry import (
     add_domain,
     get_bot_by_publishable_key,
     get_bot_by_secret_key,
+    get_bot_record,
+    list_bots,
+    list_domains,
     list_verified_hosts,
     mark_domain_verified,
 )
@@ -19,12 +22,19 @@ from config import config
 from models import (
     BotCreateRequest,
     BotCreateResponse,
+    BotDetailResponse,
     BotDomainAddRequest,
     BotDomainAddResponse,
+    BotDomainListResponse,
+    BotDomainRecordResponse,
     BotDomainVerifyResponse,
+    BotIndexJobListResponse,
+    BotIndexJobResponse,
     WidgetChatRequest,
     WidgetChatResponse,
     Citation,
+    BotListResponse,
+    BotSummary,
     BotIndexRequest,
 )
 from features.website_rag.vertex_rag_eg import run_vertex_rag
@@ -33,6 +43,7 @@ from services.indexing_service import (
     start_index_for_bot,
     get_index_status_for_bot,
     cancel_index_for_bot,
+    list_index_jobs_for_bot,
 )
 from utils.chat_debug import chat_debug_emit
 
@@ -125,6 +136,43 @@ async def v1_create_bot(payload: BotCreateRequest, x_admin_key: Optional[str] = 
     )
 
 
+@router.get("/v1/bots", response_model=BotListResponse)
+async def v1_list_bots(x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    bots = list_bots()
+    return BotListResponse(
+        bots=[
+            BotSummary(
+                bot_id=b.bot_id,
+                display_name=b.display_name,
+                publishable_key=b.publishable_key,
+                secret_key=b.secret_key,
+                created_at=b.created_at,
+                updated_at=b.updated_at,
+            )
+            for b in bots
+        ]
+    )
+
+
+@router.get("/v1/bots/{bot_id}", response_model=BotDetailResponse)
+async def v1_get_bot(bot_id: str, x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    bot = get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    return BotDetailResponse(
+        bot=BotSummary(
+            bot_id=bot.bot_id,
+            display_name=bot.display_name,
+            publishable_key=bot.publishable_key,
+            secret_key=bot.secret_key,
+            created_at=bot.created_at,
+            updated_at=bot.updated_at,
+        )
+    )
+
+
 @router.post("/v1/bots/{bot_id}/domains", response_model=BotDomainAddResponse)
 async def v1_add_domain(
     bot_id: str,
@@ -142,6 +190,27 @@ async def v1_add_domain(
         status=status,
         verification_token=token,
         verification_url=_verification_url(hostname, token),
+    )
+
+
+@router.get("/v1/bots/{bot_id}/domains", response_model=BotDomainListResponse)
+async def v1_list_domains(bot_id: str, x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    domains = list_domains(bot_id)
+    return BotDomainListResponse(
+        bot_id=bot_id,
+        domains=[
+            BotDomainRecordResponse(
+                bot_id=d.bot_id,
+                hostname=d.hostname,
+                status=d.status,
+                verification_token=d.verification_token,
+                verified_at=d.verified_at,
+                created_at=d.created_at,
+                updated_at=d.updated_at,
+            )
+            for d in domains
+        ],
     )
 
 
@@ -183,6 +252,30 @@ async def v1_start_index(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/v1/bots/{bot_id}/jobs", response_model=BotIndexJobListResponse)
+async def v1_list_jobs(bot_id: str, x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    jobs = list_index_jobs_for_bot(bot_id)
+    return BotIndexJobListResponse(
+        bot_id=bot_id,
+        jobs=[
+            BotIndexJobResponse(
+                job_id=j.job_id,
+                url=j.url,
+                hostname=j.hostname,
+                stage=j.stage,
+                pages_crawled=j.pages_crawled,
+                docs_count=j.docs_count,
+                gcs_prefix=j.gcs_prefix,
+                last_error=j.last_error,
+                created_at=j.created_at,
+                updated_at=j.updated_at,
+            )
+            for j in jobs
+        ],
+    )
 
 
 @router.get("/v1/bots/{bot_id}/index/status")

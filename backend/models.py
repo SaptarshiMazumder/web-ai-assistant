@@ -38,6 +38,23 @@ class BotCreateResponse(BaseModel):
     secret_key: str
 
 
+class BotSummary(BaseModel):
+    bot_id: str
+    display_name: str
+    publishable_key: str
+    secret_key: str
+    created_at: str
+    updated_at: str
+
+
+class BotListResponse(BaseModel):
+    bots: List[BotSummary]
+
+
+class BotDetailResponse(BaseModel):
+    bot: BotSummary
+
+
 class BotDomainAddRequest(BaseModel):
     hostname: str
 
@@ -58,8 +75,41 @@ class BotDomainVerifyResponse(BaseModel):
     message: str
 
 
+class BotDomainRecordResponse(BaseModel):
+    bot_id: str
+    hostname: str
+    status: str  # pending|verified
+    verification_token: str
+    verified_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class BotDomainListResponse(BaseModel):
+    bot_id: str
+    domains: List[BotDomainRecordResponse] = []
+
+
 class BotIndexRequest(BaseModel):
     url: str
+
+
+class BotIndexJobResponse(BaseModel):
+    job_id: str
+    url: str
+    hostname: str
+    stage: str
+    pages_crawled: int
+    docs_count: int
+    gcs_prefix: str
+    last_error: str
+    created_at: str
+    updated_at: str
+
+
+class BotIndexJobListResponse(BaseModel):
+    bot_id: str
+    jobs: List[BotIndexJobResponse] = []
 
 
 class WidgetChatRequest(BaseModel):
