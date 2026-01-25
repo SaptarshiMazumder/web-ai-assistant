@@ -1,14 +1,12 @@
-import os
 import re
-import sqlite3
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Optional
 
 import vertexai
 from vertexai import rag as vx_rag
 
 from config import config
+from db import get_connection
 
 
 def _utc_now() -> str:
@@ -26,26 +24,8 @@ def _slugify_hostname(hostname: str) -> str:
     return h or "unknown-host"
 
 
-def _db_path() -> str:
-    # Local persistent registry. For production you’d swap this to Postgres/etc.
-    root = os.path.join(os.path.dirname(__file__), "_data")
-    os.makedirs(root, exist_ok=True)
-    return os.path.join(root, "domain_registry.sqlite3")
-
-
-def _connect() -> sqlite3.Connection:
-    con = sqlite3.connect(_db_path())
-    con.execute(
-        """
-        CREATE TABLE IF NOT EXISTS domain_corpora (
-          hostname TEXT PRIMARY KEY,
-          corpus_resource TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-        """
-    )
-    return con
+def _connect():
+    return get_connection()
 
 
 def get_corpus_for_host(hostname: str) -> Optional[str]:
@@ -55,7 +35,7 @@ def get_corpus_for_host(hostname: str) -> Optional[str]:
     con = _connect()
     try:
         row = con.execute(
-            "SELECT corpus_resource FROM domain_corpora WHERE hostname = ?",
+            "SELECT corpus_resource FROM domain_corpora WHERE hostname = %s",
             (h,),
         ).fetchone()
         return row[0] if row else None
@@ -73,7 +53,7 @@ def upsert_corpus_for_host(hostname: str, corpus_resource: str) -> None:
         con.execute(
             """
             INSERT INTO domain_corpora(hostname, corpus_resource, created_at, updated_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
             ON CONFLICT(hostname) DO UPDATE SET
               corpus_resource=excluded.corpus_resource,
               updated_at=excluded.updated_at
@@ -91,7 +71,7 @@ def delete_corpus_mapping_for_host(hostname: str) -> None:
         return
     con = _connect()
     try:
-        con.execute("DELETE FROM domain_corpora WHERE hostname = ?", (h,))
+        con.execute("DELETE FROM domain_corpora WHERE hostname = %s", (h,))
         con.commit()
     finally:
         con.close()

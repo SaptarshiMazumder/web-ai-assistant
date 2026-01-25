@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "5000:5000"
     env_file:
@@ -11,7 +14,6 @@ services:
       PORT: "5000"
       GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
     volumes:
-      - ./backend/_data:/app/backend/_data
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
   dashboard:
     build:
@@ -27,3 +29,21 @@ services:
         VITE_SUPER_ADMIN_EMAILS: "${VITE_SUPER_ADMIN_EMAILS:-}"
     ports:
       - "5173:80"
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: webai
+      POSTGRES_USER: webai
+      POSTGRES_PASSWORD: Madrid2018
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U webai -d webai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

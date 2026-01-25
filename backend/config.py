@@ -55,6 +55,9 @@ class Config:
     AUTH_ORG_CLAIM = os.environ.get("AUTH_ORG_CLAIM", "")
     SUPER_ADMIN_EMAILS = os.environ.get("SUPER_ADMIN_EMAILS", "")
 
+    # Postgres
+    DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
     # If true, enforce verified-domain checks + tight widget CORS.
     # For now (per request), default is OFF.
     REQUIRE_DOMAIN_VERIFICATION = os.environ.get("REQUIRE_DOMAIN_VERIFICATION", "").strip().lower() in ("1", "true", "yes", "y")

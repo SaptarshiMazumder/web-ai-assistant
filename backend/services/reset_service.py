@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Iterable, List, Tuple
 
 import vertexai
@@ -5,6 +6,7 @@ from google.cloud import storage
 from vertexai import rag as vx_rag
 
 from bot_registry import _connect
+from db import ensure_default_org
 from config import config
 
 
@@ -64,3 +66,28 @@ def delete_rag_corpora(corpora: Iterable[str] | None = None) -> int:
             pass
     _clear_corpora_table()
     return deleted
+
+
+def reset_postgres_data() -> None:
+    """
+    Fresh reset for Postgres-backed local dev. Truncates core tables and
+    recreates the default org.
+    """
+    con = _connect()
+    try:
+        con.execute(
+            """
+            TRUNCATE TABLE
+              bot_domains,
+              bot_corpora,
+              bots,
+              org_memberships,
+              users,
+              organizations,
+              domain_corpora
+            """
+        )
+        con.commit()
+        ensure_default_org(con, datetime.now(timezone.utc).isoformat())
+    finally:
+        con.close()
