@@ -20,5 +20,10 @@ services:
       args:
         VITE_API_BASE: "http://localhost:5000"
         VITE_DASHBOARD_BASE: "/"
+        VITE_AUTH0_DOMAIN: "${VITE_AUTH0_DOMAIN:-}"
+        VITE_AUTH0_CLIENT_ID: "${VITE_AUTH0_CLIENT_ID:-}"
+        VITE_AUTH0_AUDIENCE: "${VITE_AUTH0_AUDIENCE:-}"
+        VITE_AUTH_ORG_CLAIM: "${VITE_AUTH_ORG_CLAIM:-}"
+        VITE_SUPER_ADMIN_EMAILS: "${VITE_SUPER_ADMIN_EMAILS:-}"
     ports:
       - "5173:80"

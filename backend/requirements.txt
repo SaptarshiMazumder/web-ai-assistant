@@ -13,3 +13,4 @@ beautifulsoup4
 playwright
 requests
 markdownify
+PyJWT[crypto]

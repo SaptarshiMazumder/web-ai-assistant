@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
 
 type BotSummary = {
   bot_id: string
+  org_id?: string
   display_name: string
   publishable_key: string
   secret_key: string
@@ -51,11 +53,29 @@ type IndexStatus = {
   updated_at?: string
 }
 
+type OrgSummary = {
+  org_id: string
+  name: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+type OrgMember = {
+  user_id: string
+  email: string
+  role: string
+  created_at: string
+  updated_at: string
+}
+
+type TokenClaims = Record<string, unknown>
+
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 
 const terminalStages = new Set(['done', 'error', 'cancelled', 'import_submitted'])
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function fetchJson<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
   const initHeaders = init?.headers
   const headerEntries =
     initHeaders instanceof Headers ? Object.fromEntries(initHeaders.entries()) : (initHeaders as Record<string, string> | undefined)
@@ -64,6 +84,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...(headerEntries || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
   if (!res.ok) {
@@ -93,27 +114,53 @@ export default function App() {
   const [newDomain, setNewDomain] = useState('')
   const [crawlUrl, setCrawlUrl] = useState('')
   const [activeCrawlUrl, setActiveCrawlUrl] = useState('')
-  const [adminKey, setAdminKey] = useState(() => {
-    try {
-      return window.localStorage.getItem('web-ai-admin-key') || ''
-    } catch {
-      return ''
-    }
-  })
+  const [orgs, setOrgs] = useState<OrgSummary[]>([])
+  const [activeOrgId, setActiveOrgId] = useState<string | null>(null)
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
+  const [newOrgName, setNewOrgName] = useState('')
+  const [orgDisplayName, setOrgDisplayName] = useState('')
+  const [orgDisplayNameInput, setOrgDisplayNameInput] = useState('')
+  const [newMemberEmail, setNewMemberEmail] = useState('')
+  const [newMemberRole, setNewMemberRole] = useState('org_admin')
+
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    loginWithRedirect,
+    logout,
+    getAccessTokenSilently,
+    getIdTokenClaims,
+    user,
+  } = useAuth0()
 
   const embedSnippet = useMemo(() => {
     if (!selectedBot) return ''
     return `<script async src="${API_BASE}/widget/widget.js" data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"></script>`
   }, [selectedBot])
 
+  async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const token = await getAccessTokenSilently()
+    return fetchJson<T>(path, init, token)
+  }
+
+  function withOrgParam(path: string) {
+    if (!activeOrgId) return path
+    const suffix = `org_id=${encodeURIComponent(activeOrgId)}`
+    return path.includes('?') ? `${path}&${suffix}` : `${path}?${suffix}`
+  }
+
   async function loadBots() {
+    if (isSuperAdmin && !activeOrgId) return
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchJson<{ bots: BotSummary[] }>('/v1/bots', {
-        headers: adminKey ? { 'X-Admin-Key': adminKey } : {},
-      })
+      const data = await fetchAuthedJson<{ bots: BotSummary[] }>(withOrgParam('/v1/org/bots'))
       setBots(data.bots)
+      if (!activeOrgId && data.bots.length) {
+        setActiveOrgId(data.bots[0].org_id || null)
+      }
       if (data.bots.length && !selectedBotId) {
         setSelectedBotId(data.bots[0].bot_id)
       }
@@ -125,12 +172,14 @@ export default function App() {
   }
 
   async function loadBotDetail(botId: string) {
+    if (isSuperAdmin && !activeOrgId) return
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchJson<{ bot: BotSummary }>(`/v1/bots/${botId}`, {
-        headers: adminKey ? { 'X-Admin-Key': adminKey } : {},
-      })
+      const data = await fetchAuthedJson<{ bot: BotSummary }>(withOrgParam(`/v1/org/bots/${botId}`))
+      if (!activeOrgId && data.bot.org_id) {
+        setActiveOrgId(data.bot.org_id)
+      }
       setSelectedBot(data.bot)
     } catch (err) {
       setError((err as Error).message)
@@ -141,10 +190,11 @@ export default function App() {
   }
 
   async function loadDomains(botId: string) {
+    if (isSuperAdmin && !activeOrgId) return
     try {
-      const data = await fetchJson<{ bot_id: string; domains: DomainRecord[] }>(`/v1/bots/${botId}/domains`, {
-        headers: adminKey ? { 'X-Admin-Key': adminKey } : {},
-      })
+      const data = await fetchAuthedJson<{ bot_id: string; domains: DomainRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/domains`)
+      )
       setDomains(data.domains)
     } catch (err) {
       setError((err as Error).message)
@@ -152,10 +202,11 @@ export default function App() {
   }
 
   async function loadJobs(botId: string) {
+    if (isSuperAdmin && !activeOrgId) return
     try {
-      const data = await fetchJson<{ bot_id: string; jobs: JobRecord[] }>(`/v1/bots/${botId}/jobs`, {
-        headers: adminKey ? { 'X-Admin-Key': adminKey } : {},
-      })
+      const data = await fetchAuthedJson<{ bot_id: string; jobs: JobRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/jobs`)
+      )
       setJobs(data.jobs)
     } catch (err) {
       setError((err as Error).message)
@@ -163,13 +214,12 @@ export default function App() {
   }
 
   async function createBot() {
-    if (!newBotName.trim()) return
+    if (!newBotName.trim() || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchJson<BotCreateResponse>('/v1/bots', {
+      const data = await fetchAuthedJson<BotCreateResponse>(withOrgParam('/v1/org/bots'), {
         method: 'POST',
-        headers: adminKey ? { 'X-Admin-Key': adminKey } : {},
         body: JSON.stringify({ display_name: newBotName.trim() }),
       })
       setNewBotName('')
@@ -182,21 +232,156 @@ export default function App() {
     }
   }
 
-  async function clearGcs() {
-    if (!adminKey) {
-      setError('Admin key required to clear GCS data')
-      return
+  async function loadOrgs() {
+    if (!isSuperAdmin) return
+    try {
+      const data = await fetchAuthedJson<{ orgs: OrgSummary[] }>('/v1/admin/orgs')
+      setOrgs(data.orgs)
+      if (!activeOrgId && data.orgs.length) {
+        setActiveOrgId(data.orgs[0].org_id)
+      }
+    } catch (err) {
+      setError((err as Error).message)
     }
+  }
+
+  async function loadSelfOrgs() {
+    if (isSuperAdmin) return
+    try {
+      const data = await fetchAuthedJson<{ org_ids: string[] }>('/v1/org/self')
+      const ids = data.org_ids || []
+      if (!activeOrgId && ids.length) {
+        setActiveOrgId(ids[0])
+      }
+      if (ids.length) {
+        const orgList = await Promise.all(
+          ids.map(async (orgId) => {
+            try {
+              return await fetchAuthedJson<OrgSummary>(`/v1/org/info?org_id=${encodeURIComponent(orgId)}`)
+            } catch {
+              return {
+                org_id: orgId,
+                name: orgId,
+                status: 'active',
+                created_at: '',
+                updated_at: '',
+              } as OrgSummary
+            }
+          })
+        )
+        setOrgs(orgList)
+      } else {
+        setOrgs([])
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function loadOrgInfo(orgId: string) {
+    if (isSuperAdmin) return
+    try {
+      const data = await fetchAuthedJson<OrgSummary>(`/v1/org/info?org_id=${encodeURIComponent(orgId)}`)
+      setOrgDisplayName(data.name)
+      setOrgDisplayNameInput(data.name)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function saveOrgName() {
+    if (!activeOrgId || !orgDisplayNameInput.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchAuthedJson<OrgSummary>(
+        `/v1/org/name?org_id=${encodeURIComponent(activeOrgId)}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ name: orgDisplayNameInput.trim() }),
+        }
+      )
+      setOrgDisplayName(data.name)
+      setOrgDisplayNameInput(data.name)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function createOrg() {
+    if (!newOrgName.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      await fetchAuthedJson('/v1/admin/orgs', {
+        method: 'POST',
+        body: JSON.stringify({ name: newOrgName.trim() }),
+      })
+      setNewOrgName('')
+      await loadOrgs()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function setOrgStatus(orgId: string, status: 'active' | 'disabled') {
+    if (!isSuperAdmin) return
+    setLoading(true)
+    setError(null)
+    try {
+      await fetchAuthedJson(`/v1/admin/orgs/${orgId}/${status === 'active' ? 'enable' : 'disable'}`, {
+        method: 'POST',
+      })
+      await loadOrgs()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadOrgMembers(orgId: string) {
+    try {
+      const path = isSuperAdmin ? `/v1/admin/orgs/${orgId}/members` : `/v1/org/members?org_id=${encodeURIComponent(orgId)}`
+      const data = await fetchAuthedJson<{ org_id: string; members: OrgMember[] }>(path)
+      setOrgMembers(data.members)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function addOrgMember() {
+    if (!activeOrgId || !newMemberEmail.trim()) return
+    setLoading(true)
+    setError(null)
+    try {
+      const path = isSuperAdmin ? `/v1/admin/orgs/${activeOrgId}/members` : `/v1/org/members?org_id=${encodeURIComponent(activeOrgId)}`
+      await fetchAuthedJson(path, {
+        method: 'POST',
+        body: JSON.stringify({ email: newMemberEmail.trim(), role: newMemberRole }),
+      })
+      setNewMemberEmail('')
+      await loadOrgMembers(activeOrgId)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function clearGcs() {
+    if (!isSuperAdmin) return
     if (!window.confirm('Delete all crawled content from GCS? This cannot be undone.')) {
       return
     }
     setLoading(true)
     setError(null)
     try {
-      await fetchJson('/v1/admin/reset/gcs', {
-        method: 'POST',
-        headers: { 'X-Admin-Key': adminKey },
-      })
+      await fetchAuthedJson('/v1/admin/reset/gcs', { method: 'POST' })
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -205,20 +390,14 @@ export default function App() {
   }
 
   async function clearRag() {
-    if (!adminKey) {
-      setError('Admin key required to clear RAG corpora')
-      return
-    }
+    if (!isSuperAdmin) return
     if (!window.confirm('Delete all RAG corpora? This cannot be undone.')) {
       return
     }
     setLoading(true)
     setError(null)
     try {
-      await fetchJson('/v1/admin/reset/rag', {
-        method: 'POST',
-        headers: { 'X-Admin-Key': adminKey },
-      })
+      await fetchAuthedJson('/v1/admin/reset/rag', { method: 'POST' })
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -227,13 +406,12 @@ export default function App() {
   }
 
   async function addDomain() {
-    if (!selectedBot || !newDomain.trim()) return
+    if (!selectedBot || !newDomain.trim() || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
     setError(null)
     try {
-      await fetchJson(`/v1/bots/${selectedBot.bot_id}/domains`, {
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains`), {
         method: 'POST',
-        headers: { Authorization: `Bearer ${selectedBot.secret_key}` },
         body: JSON.stringify({ hostname: newDomain.trim() }),
       })
       setNewDomain('')
@@ -246,13 +424,12 @@ export default function App() {
   }
 
   async function verifyDomain(hostname: string) {
-    if (!selectedBot) return
+    if (!selectedBot || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
     setError(null)
     try {
-      await fetchJson(`/v1/bots/${selectedBot.bot_id}/domains/${hostname}/verify`, {
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains/${hostname}/verify`), {
         method: 'POST',
-        headers: { Authorization: `Bearer ${selectedBot.secret_key}` },
       })
       await loadDomains(selectedBot.bot_id)
     } catch (err) {
@@ -263,13 +440,12 @@ export default function App() {
   }
 
   async function startCrawl() {
-    if (!selectedBot || !crawlUrl.trim()) return
+    if (!selectedBot || !crawlUrl.trim() || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
     setError(null)
     try {
-      await fetchJson(`/v1/bots/${selectedBot.bot_id}/index`, {
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index`), {
         method: 'POST',
-        headers: { Authorization: `Bearer ${selectedBot.secret_key}` },
         body: JSON.stringify({ url: crawlUrl.trim() }),
       })
       setActiveCrawlUrl(crawlUrl.trim())
@@ -283,13 +459,12 @@ export default function App() {
   }
 
   async function cancelCrawl() {
-    if (!selectedBot || !activeCrawlUrl) return
+    if (!selectedBot || !activeCrawlUrl || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
     setError(null)
     try {
-      await fetchJson(`/v1/bots/${selectedBot.bot_id}/index/cancel`, {
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/cancel`), {
         method: 'POST',
-        headers: { Authorization: `Bearer ${selectedBot.secret_key}` },
         body: JSON.stringify({ url: activeCrawlUrl }),
       })
       await refreshStatus(activeCrawlUrl)
@@ -302,12 +477,10 @@ export default function App() {
   }
 
   async function refreshStatus(url: string) {
-    if (!selectedBot) return
+    if (!selectedBot || (isSuperAdmin && !activeOrgId)) return
     try {
-      const status = await fetchJson<IndexStatus>(
-        `/v1/bots/${selectedBot.bot_id}/index/status?url=${encodeURIComponent(url)}`,
-        { headers: { Authorization: `Bearer ${selectedBot.secret_key}` } }
-      )
+      const path = withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/status?url=${encodeURIComponent(url)}`)
+      const status = await fetchAuthedJson<IndexStatus>(path)
       setIndexStatus(status)
     } catch (err) {
       setError((err as Error).message)
@@ -315,29 +488,85 @@ export default function App() {
   }
 
   useEffect(() => {
-    void loadBots()
-  }, [])
+    if (!isAuthenticated) return
+    void getIdTokenClaims().then((claims: TokenClaims | undefined) => {
+      const roles =
+        (claims?.roles as string[]) ||
+        (claims?.permissions as string[]) ||
+        (claims && (claims['https://web-ai/roles'] as string[])) ||
+        []
+      const env = (import.meta as { env: Record<string, string> }).env
+      const adminEmails = (env.VITE_SUPER_ADMIN_EMAILS || '')
+        .split(',')
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean)
+      const claimEmail = (claims?.email as string | undefined)?.toLowerCase()
+      const superAdmin =
+        roles.includes('super_admin') || roles.includes('owner') || (claimEmail ? adminEmails.includes(claimEmail) : false)
+      setIsSuperAdmin(superAdmin)
 
-  useEffect(() => {
-    try {
-      if (adminKey) {
-        window.localStorage.setItem('web-ai-admin-key', adminKey)
-      } else {
-        window.localStorage.removeItem('web-ai-admin-key')
+      const orgClaimKey = (import.meta as { env: Record<string, string> }).env.VITE_AUTH_ORG_CLAIM
+      const claimValue = orgClaimKey ? (claims?.[orgClaimKey] as string | string[] | undefined) : undefined
+      const orgsFromClaim =
+        claimValue ||
+        (claims?.org_id as string | string[] | undefined) ||
+        (claims?.org as string | string[] | undefined) ||
+        (claims?.organization_id as string | string[] | undefined)
+      const ids = Array.isArray(orgsFromClaim) ? orgsFromClaim : orgsFromClaim ? [orgsFromClaim] : []
+      if (!activeOrgId && ids.length === 1) {
+        setActiveOrgId(ids[0])
       }
-    } catch {
-      // ignore storage errors
-    }
-  }, [adminKey])
+    })
+  }, [isAuthenticated, getIdTokenClaims, activeOrgId])
 
   useEffect(() => {
-    if (!selectedBotId) return
+    if (!isAuthenticated) return
+    if (isSuperAdmin) {
+      void loadOrgs()
+    } else {
+      void loadSelfOrgs()
+    }
+  }, [isAuthenticated, isSuperAdmin])
+
+  useEffect(() => {
+    if (!isAuthenticated || (isSuperAdmin && !activeOrgId)) return
+    void loadBots()
+  }, [isAuthenticated, activeOrgId, isSuperAdmin])
+
+  useEffect(() => {
+    if (activeOrgId) {
+      setError(null)
+    }
+  }, [activeOrgId])
+
+  useEffect(() => {
+    if (!activeOrgId) return
+    setSelectedBotId(null)
+    setSelectedBot(null)
+    setDomains([])
+    setJobs([])
+    setIndexStatus(null)
+    setActiveCrawlUrl('')
+  }, [activeOrgId])
+
+  useEffect(() => {
+    if (!activeOrgId) return
+    void loadOrgMembers(activeOrgId)
+  }, [isSuperAdmin, activeOrgId])
+
+  useEffect(() => {
+    if (!activeOrgId || isSuperAdmin) return
+    void loadOrgInfo(activeOrgId)
+  }, [activeOrgId, isSuperAdmin])
+
+  useEffect(() => {
+    if (!selectedBotId || (isSuperAdmin && !activeOrgId)) return
     void loadBotDetail(selectedBotId)
     void loadDomains(selectedBotId)
     void loadJobs(selectedBotId)
     setIndexStatus(null)
     setActiveCrawlUrl('')
-  }, [selectedBotId])
+  }, [selectedBotId, activeOrgId])
 
   useEffect(() => {
     if (!selectedBot || !activeCrawlUrl) return
@@ -357,6 +586,48 @@ export default function App() {
     }
   }
 
+  function handleRefresh() {
+    if (activeOrgId || !isSuperAdmin) {
+      void loadBots()
+      if (selectedBotId) {
+        void loadBotDetail(selectedBotId)
+        void loadDomains(selectedBotId)
+        void loadJobs(selectedBotId)
+      }
+    }
+    if (isSuperAdmin) {
+      void loadOrgs()
+      if (activeOrgId) {
+        void loadOrgMembers(activeOrgId)
+      }
+    }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="app-shell">
+        <main className="content">
+          <div className="empty-panel">Loading authentication…</div>
+        </main>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app-shell">
+        <main className="content">
+          <div className="empty-panel">
+            <div className="title">Sign in to Web AI Admin</div>
+            <button className="primary" onClick={() => loginWithRedirect()}>
+              Sign in
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -369,40 +640,150 @@ export default function App() {
         </div>
 
         <div className="section">
-          <div className="section-title">Admin access</div>
+          <div className="section-title">Account</div>
           <div className="stack">
-            <input
-              value={adminKey}
-              onChange={(event) => setAdminKey(event.target.value)}
-              placeholder="Admin key (X-Admin-Key)"
-              type="password"
-            />
+            <div className="muted">{user?.email || 'Signed in'}</div>
+            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              Sign out
+            </button>
           </div>
         </div>
+
         <div className="section">
-          <div className="section-title">Create bot</div>
+          <div className="section-title">Active org</div>
           <div className="stack">
-            <input
-              value={newBotName}
-              onChange={(event) => setNewBotName(event.target.value)}
-              placeholder="Bot display name"
-            />
-            <button className="primary" onClick={createBot} disabled={loading || !newBotName.trim()}>
-              Create bot
-            </button>
+            {isSuperAdmin ? (
+              <select value={activeOrgId || ''} onChange={(event) => setActiveOrgId(event.target.value)}>
+                <option value="" disabled>
+                  Select org
+                </option>
+                {orgs.map((org) => (
+                  <option key={org.org_id} value={org.org_id}>
+                    {org.name} ({org.org_id})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="muted">{orgDisplayName || activeOrgId || 'No org assigned'}</div>
+            )}
           </div>
         </div>
-        <div className="section">
-          <div className="section-title">Danger zone</div>
-          <div className="stack">
-            <button className="ghost" onClick={clearGcs} disabled={loading}>
-              Clear all GCS crawls
-            </button>
-            <button className="ghost" onClick={clearRag} disabled={loading}>
-              Clear all RAG corpora
-            </button>
+
+        {isSuperAdmin && (
+          <div className="section">
+            <div className="section-title">Organizations</div>
+            <div className="stack">
+              <input
+                value={newOrgName}
+                onChange={(event) => setNewOrgName(event.target.value)}
+                placeholder="Org name"
+              />
+              <button className="primary" onClick={createOrg} disabled={loading || !newOrgName.trim()}>
+                Create org
+              </button>
+            </div>
+            <div className="bot-list">
+              {orgs.map((org) => (
+                <div key={org.org_id} className="bot-item">
+                  <div className="bot-name">{org.name}</div>
+                  <div className="bot-id">{org.org_id}</div>
+                  <div className="row">
+                    <button className="ghost" onClick={() => setActiveOrgId(org.org_id)}>
+                      Use
+                    </button>
+                    {org.status === 'active' ? (
+                      <button className="ghost" onClick={() => setOrgStatus(org.org_id, 'disabled')}>
+                        Disable
+                      </button>
+                    ) : (
+                      <button className="ghost" onClick={() => setOrgStatus(org.org_id, 'active')}>
+                        Enable
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!orgs.length && <div className="empty">No orgs yet</div>}
+            </div>
           </div>
-        </div>
+        )}
+
+        {!isSuperAdmin && activeOrgId && (
+          <div className="section">
+            <div className="section-title">Org settings</div>
+            <div className="stack">
+              <input
+                value={orgDisplayNameInput}
+                onChange={(event) => setOrgDisplayNameInput(event.target.value)}
+                placeholder="Organization name"
+              />
+              <button className="secondary" onClick={saveOrgName} disabled={loading || !orgDisplayNameInput.trim()}>
+                Save org name
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeOrgId && (
+          <div className="section">
+            <div className="section-title">Org members</div>
+            <div className="stack">
+              <input
+                value={newMemberEmail}
+                onChange={(event) => setNewMemberEmail(event.target.value)}
+                placeholder="user@company.com"
+              />
+              <select value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value)}>
+                <option value="org_admin">org_admin</option>
+                <option value="org_member">org_member</option>
+              </select>
+              <button className="secondary" onClick={addOrgMember} disabled={loading || !newMemberEmail.trim()}>
+                Add member
+              </button>
+            </div>
+            <div className="domain-list">
+              {orgMembers.map((member) => (
+                <div key={member.user_id} className="domain-row">
+                  <div>
+                    <div className="domain-host">{member.email}</div>
+                    <div className="muted">{member.role}</div>
+                  </div>
+                </div>
+              ))}
+              {!orgMembers.length && <div className="empty">No members yet.</div>}
+            </div>
+          </div>
+        )}
+
+        {(!isSuperAdmin || activeOrgId) && (
+          <div className="section">
+            <div className="section-title">Create bot</div>
+            <div className="stack">
+              <input
+                value={newBotName}
+                onChange={(event) => setNewBotName(event.target.value)}
+                placeholder="Bot display name"
+              />
+              <button className="primary" onClick={createBot} disabled={loading || !newBotName.trim()}>
+                Create bot
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isSuperAdmin && (
+          <div className="section">
+            <div className="section-title">Danger zone</div>
+            <div className="stack">
+              <button className="ghost" onClick={clearGcs} disabled={loading}>
+                Clear all GCS crawls
+              </button>
+              <button className="ghost" onClick={clearRag} disabled={loading}>
+                Clear all RAG corpora
+              </button>
+            </div>
+          </div>
+        )}
         <div className="section">
           <div className="section-title">Bots</div>
           <div className="bot-list">
@@ -427,7 +808,7 @@ export default function App() {
             <div className="title">Admin Dashboard</div>
             <div className="subtitle">Manage bots, domains, and crawls.</div>
           </div>
-          <button className="ghost" onClick={loadBots} disabled={loading}>
+          <button className="ghost" onClick={handleRefresh} disabled={loading}>
             Refresh
           </button>
         </header>
@@ -435,7 +816,8 @@ export default function App() {
         {error && <div className="alert error">{error}</div>}
         {loading && <div className="alert">Working...</div>}
 
-        {!selectedBot && <div className="empty-panel">Select a bot to view details.</div>}
+        {!activeOrgId && <div className="empty-panel">Select an organization to view details.</div>}
+        {activeOrgId && !selectedBot && <div className="empty-panel">Select a bot to view details.</div>}
 
         {selectedBot && (
           <div className="grid">

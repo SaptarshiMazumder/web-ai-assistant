@@ -47,6 +47,14 @@ class Config:
     # Optional: protects bot creation endpoint. If unset, /v1/bots is open (dev bootstrap).
     ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
 
+    # Auth (managed IdP / OIDC)
+    AUTH_ISSUER = os.environ.get("AUTH_ISSUER", "")
+    AUTH_AUDIENCE = os.environ.get("AUTH_AUDIENCE", "")
+    AUTH_JWKS_URL = os.environ.get("AUTH_JWKS_URL", "")
+    AUTH_ROLES_CLAIM = os.environ.get("AUTH_ROLES_CLAIM", "")
+    AUTH_ORG_CLAIM = os.environ.get("AUTH_ORG_CLAIM", "")
+    SUPER_ADMIN_EMAILS = os.environ.get("SUPER_ADMIN_EMAILS", "")
+
     # If true, enforce verified-domain checks + tight widget CORS.
     # For now (per request), default is OFF.
     REQUIRE_DOMAIN_VERIFICATION = os.environ.get("REQUIRE_DOMAIN_VERIFICATION", "").strip().lower() in ("1", "true", "yes", "y")

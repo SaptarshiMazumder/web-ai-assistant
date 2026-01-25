@@ -40,6 +40,7 @@ class BotCreateResponse(BaseModel):
 
 class BotSummary(BaseModel):
     bot_id: str
+    org_id: Optional[str] = None
     display_name: str
     publishable_key: str
     secret_key: str
@@ -76,6 +77,7 @@ class BotDomainVerifyResponse(BaseModel):
 
 
 class BotDomainRecordResponse(BaseModel):
+    org_id: Optional[str] = None
     bot_id: str
     hostname: str
     status: str  # pending|verified
@@ -127,5 +129,54 @@ class Citation(BaseModel):
 class WidgetChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+
+
+# ===========================
+# Admin / Org management
+# ===========================
+
+class OrgCreateRequest(BaseModel):
+    name: str
+
+
+class OrgSummary(BaseModel):
+    org_id: str
+    name: str
+    status: str
+    plan: Optional[str] = None
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class OrgListResponse(BaseModel):
+    orgs: List[OrgSummary]
+
+
+class OrgMemberAddRequest(BaseModel):
+    email: str
+    role: str = "org_admin"
+
+
+class OrgMemberResponse(BaseModel):
+    user_id: str
+    email: str
+    role: str
+    created_at: str
+    updated_at: str
+
+
+class OrgMembersListResponse(BaseModel):
+    org_id: str
+    members: List[OrgMemberResponse] = []
+
+
+class OrgSelfResponse(BaseModel):
+    org_ids: List[str] = []
+
+
+class OrgUpdateRequest(BaseModel):
+    name: str
 
 

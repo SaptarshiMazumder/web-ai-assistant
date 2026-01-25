@@ -4,7 +4,6 @@ import os
 import sys
 import subprocess
 import uuid
-import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -77,12 +76,11 @@ def _parse_bucket_and_prefix() -> Tuple[str, str]:
     raise ValueError("Invalid GCS_BUCKET configuration")
 
 
-def _tenant_slug() -> str:
-    key = (config.ADMIN_API_KEY or "").strip()
-    if not key:
-        return "default"
-    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
-    return f"t-{digest}"
+def _org_slug(bot_id: str) -> str:
+    bot = get_bot(bot_id)
+    if not bot or not bot.org_id:
+        return "org_default"
+    return _slugify_name(bot.org_id)
 
 
 def _slugify_name(text: str) -> str:
@@ -101,7 +99,7 @@ def _rag_display_name(bot_id: str) -> str:
     bot = get_bot(bot_id)
     bot_slug = _slugify_name(bot.display_name if bot else "")
     env = _env_slug()
-    tenant = _tenant_slug()
+    tenant = _org_slug(bot_id)
     prefix = f"web-rag-bot-{env}-{tenant}-"
     suffix = f"-{bot_id}"
     max_total = 120
@@ -112,7 +110,7 @@ def _rag_display_name(bot_id: str) -> str:
 
 def _bot_base_prefix(base_prefix_root: str, bot_id: str) -> str:
     base_prefix_root = (base_prefix_root or "").strip("/")
-    tenant = _tenant_slug()
+    tenant = _org_slug(bot_id)
     if base_prefix_root:
         return f"{base_prefix_root}/{tenant}/bots/{bot_id}"
     return f"{tenant}/bots/{bot_id}"

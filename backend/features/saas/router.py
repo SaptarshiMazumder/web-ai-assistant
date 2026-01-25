@@ -3,20 +3,29 @@ import urllib.request
 from typing import Optional, Dict, Any, Tuple
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Request, Depends
 
 import uuid
 
 from bot_registry import (
     create_bot,
     add_domain,
+    add_membership,
+    create_org,
+    create_user_placeholder,
+    get_org_memberships,
+    get_org,
+    update_org_name,
     get_bot_by_publishable_key,
     get_bot_by_secret_key,
     get_bot_record,
     list_bots,
     list_domains,
+    list_org_members,
+    list_orgs,
     list_verified_hosts,
     mark_domain_verified,
+    set_org_status,
 )
 from config import config
 from models import (
@@ -36,6 +45,14 @@ from models import (
     BotListResponse,
     BotSummary,
     BotIndexRequest,
+    OrgCreateRequest,
+    OrgListResponse,
+    OrgSummary,
+    OrgMemberAddRequest,
+    OrgMembersListResponse,
+    OrgMemberResponse,
+    OrgSelfResponse,
+    OrgUpdateRequest,
 )
 from features.website_rag.vertex_rag_eg import run_vertex_rag
 from services.indexing_service import (
@@ -47,6 +64,8 @@ from services.indexing_service import (
 )
 from services.reset_service import delete_gcs_objects, delete_rag_corpora
 from utils.chat_debug import chat_debug_emit
+from auth.deps import get_current_user, require_super_admin, require_org_admin
+from auth.jwt_auth import is_super_admin
 
 
 router = APIRouter()
@@ -70,6 +89,26 @@ def _require_bot_secret(authorization: Optional[str]) -> str:
     if not bot:
         raise HTTPException(status_code=401, detail="Invalid bot secret key")
     return bot.bot_id
+
+
+def _resolve_org_id(user_ctx, org_id: Optional[str]) -> str:
+    if org_id:
+        if org_id in user_ctx.org_ids or is_super_admin(user_ctx.claims):
+            return org_id
+        raise HTTPException(status_code=403, detail="Org membership required")
+    if len(user_ctx.org_ids) == 1:
+        return user_ctx.org_ids[0]
+    if is_super_admin(user_ctx.claims):
+        raise HTTPException(status_code=400, detail="org_id is required for admin")
+    raise HTTPException(status_code=403, detail="Org membership required")
+
+
+def _assert_bot_org(bot_id: str, org_id: str) -> None:
+    bot = get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    if bot.org_id != org_id:
+        raise HTTPException(status_code=403, detail="Bot does not belong to this org")
 
 
 def _origin_host(origin: Optional[str]) -> str:
@@ -128,7 +167,7 @@ def _check_domain_verification(hostname: str, token: str, *, timeout_s: float = 
 @router.post("/v1/bots", response_model=BotCreateResponse)
 async def v1_create_bot(payload: BotCreateRequest, x_admin_key: Optional[str] = Header(default=None)):
     _require_admin_key(x_admin_key)
-    b = create_bot(payload.display_name)
+    b = create_bot(payload.display_name, "org_default")
     return BotCreateResponse(
         bot_id=b.bot_id,
         display_name=b.display_name,
@@ -145,6 +184,7 @@ async def v1_list_bots(x_admin_key: Optional[str] = Header(default=None)):
         bots=[
             BotSummary(
                 bot_id=b.bot_id,
+                org_id=b.org_id,
                 display_name=b.display_name,
                 publishable_key=b.publishable_key,
                 secret_key=b.secret_key,
@@ -165,6 +205,7 @@ async def v1_get_bot(bot_id: str, x_admin_key: Optional[str] = Header(default=No
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,
+            org_id=bot.org_id,
             display_name=bot.display_name,
             publishable_key=bot.publishable_key,
             secret_key=bot.secret_key,
@@ -202,6 +243,7 @@ async def v1_list_domains(bot_id: str, x_admin_key: Optional[str] = Header(defau
         bot_id=bot_id,
         domains=[
             BotDomainRecordResponse(
+                org_id=d.org_id,
                 bot_id=d.bot_id,
                 hostname=d.hostname,
                 status=d.status,
@@ -473,9 +515,297 @@ async def v1_widget_chat(
     return WidgetChatResponse(answer=str(result.get("answer") or ""), citations=citations)
 
 
+# ===========================
+# Admin org management (JWT)
+# ===========================
+
+
+@router.get("/v1/admin/orgs", response_model=OrgListResponse)
+async def v1_admin_list_orgs(user=Depends(require_super_admin)):
+    orgs = list_orgs()
+    return OrgListResponse(
+        orgs=[OrgSummary(**org) for org in orgs],
+    )
+
+
+@router.post("/v1/admin/orgs", response_model=OrgSummary)
+async def v1_admin_create_org(payload: OrgCreateRequest, user=Depends(require_super_admin)):
+    org_id = create_org(payload.name)
+    orgs = list_orgs()
+    org = next((o for o in orgs if o["org_id"] == org_id), None)
+    if not org:
+        raise HTTPException(status_code=500, detail="Failed to create org")
+    return OrgSummary(**org)
+
+
+@router.post("/v1/admin/orgs/{org_id}/disable")
+async def v1_admin_disable_org(org_id: str, user=Depends(require_super_admin)):
+    set_org_status(org_id, "disabled")
+    return {"status": "ok"}
+
+
+@router.post("/v1/admin/orgs/{org_id}/enable")
+async def v1_admin_enable_org(org_id: str, user=Depends(require_super_admin)):
+    set_org_status(org_id, "active")
+    return {"status": "ok"}
+
+
+@router.get("/v1/admin/orgs/{org_id}/members", response_model=OrgMembersListResponse)
+async def v1_admin_list_org_members(org_id: str, user=Depends(require_super_admin)):
+    members = list_org_members(org_id)
+    return OrgMembersListResponse(
+        org_id=org_id,
+        members=[OrgMemberResponse(**m) for m in members],
+    )
+
+
+@router.post("/v1/admin/orgs/{org_id}/members")
+async def v1_admin_add_org_member(org_id: str, payload: OrgMemberAddRequest, user=Depends(require_super_admin)):
+    placeholder = create_user_placeholder(payload.email)
+    add_membership(org_id, placeholder["user_id"], payload.role)
+    return {"status": "ok"}
+
+
+# ===========================
+# Org-scoped endpoints (JWT)
+# ===========================
+
+
+@router.get("/v1/org/self", response_model=OrgSelfResponse)
+async def v1_org_self(user=Depends(get_current_user)):
+    return OrgSelfResponse(org_ids=user.org_ids)
+
+
+@router.get("/v1/org/info", response_model=OrgSummary)
+async def v1_org_info(org_id: str, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    org = get_org(resolved_org)
+    if not org:
+        raise HTTPException(status_code=404, detail="Unknown org_id")
+    return OrgSummary(**org)
+
+
+@router.post("/v1/org/name", response_model=OrgSummary)
+async def v1_org_update_name(org_id: str, payload: OrgUpdateRequest, user=Depends(require_org_admin)):
+    resolved_org = _resolve_org_id(user, org_id)
+    update_org_name(resolved_org, payload.name)
+    org = get_org(resolved_org)
+    if not org:
+        raise HTTPException(status_code=404, detail="Unknown org_id")
+    return OrgSummary(**org)
+
+
+@router.get("/v1/org/members", response_model=OrgMembersListResponse)
+async def v1_org_list_members(org_id: str, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    members = list_org_members(resolved_org)
+    return OrgMembersListResponse(
+        org_id=resolved_org,
+        members=[OrgMemberResponse(**m) for m in members],
+    )
+
+
+@router.post("/v1/org/members")
+async def v1_org_add_member(org_id: str, payload: OrgMemberAddRequest, user=Depends(require_org_admin)):
+    resolved_org = _resolve_org_id(user, org_id)
+    if not is_super_admin(user.claims):
+        memberships = get_org_memberships(user.user_id)
+        role = next((m["role"] for m in memberships if m["org_id"] == resolved_org), "")
+        if role not in {"org_admin", "owner"}:
+            raise HTTPException(status_code=403, detail="Org admin access required")
+    placeholder = create_user_placeholder(payload.email)
+    add_membership(resolved_org, placeholder["user_id"], payload.role)
+    return {"status": "ok"}
+
+
+@router.get("/v1/org/bots", response_model=BotListResponse)
+async def v1_org_list_bots(org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    bots = list_bots(resolved_org)
+    return BotListResponse(
+        bots=[
+            BotSummary(
+                bot_id=b.bot_id,
+                org_id=b.org_id,
+                display_name=b.display_name,
+                publishable_key=b.publishable_key,
+                secret_key=b.secret_key,
+                created_at=b.created_at,
+                updated_at=b.updated_at,
+            )
+            for b in bots
+        ]
+    )
+
+
+@router.post("/v1/org/bots", response_model=BotCreateResponse)
+async def v1_org_create_bot(payload: BotCreateRequest, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    b = create_bot(payload.display_name, resolved_org)
+    return BotCreateResponse(
+        bot_id=b.bot_id,
+        display_name=b.display_name,
+        publishable_key=b.publishable_key,
+        secret_key=b.secret_key,
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}", response_model=BotDetailResponse)
+async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    return BotDetailResponse(
+        bot=BotSummary(
+            bot_id=bot.bot_id,
+            org_id=bot.org_id,
+            display_name=bot.display_name,
+            publishable_key=bot.publishable_key,
+            secret_key=bot.secret_key,
+            created_at=bot.created_at,
+            updated_at=bot.updated_at,
+        )
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/domains", response_model=BotDomainListResponse)
+async def v1_org_list_domains(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    domains = list_domains(bot_id)
+    return BotDomainListResponse(
+        bot_id=bot_id,
+        domains=[
+            BotDomainRecordResponse(
+                org_id=d.org_id,
+                bot_id=d.bot_id,
+                hostname=d.hostname,
+                status=d.status,
+                verification_token=d.verification_token,
+                verified_at=d.verified_at,
+                created_at=d.created_at,
+                updated_at=d.updated_at,
+            )
+            for d in domains
+        ],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/domains", response_model=BotDomainAddResponse)
+async def v1_org_add_domain(
+    bot_id: str,
+    payload: BotDomainAddRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    status, token = add_domain(bot_id, payload.hostname)
+    hostname = payload.hostname.strip().lower().replace("https://", "").replace("http://", "").split("/")[0].split(":")[0]
+    return BotDomainAddResponse(
+        bot_id=bot_id,
+        hostname=hostname,
+        status=status,
+        verification_token=token,
+        verification_url=_verification_url(hostname, token),
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/domains/{hostname}/verify", response_model=BotDomainVerifyResponse)
+async def v1_org_verify_domain(
+    bot_id: str,
+    hostname: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    status, token = add_domain(bot_id, hostname)
+    ok, msg = _check_domain_verification(hostname, token)
+    if ok:
+        mark_domain_verified(bot_id, hostname)
+        return BotDomainVerifyResponse(bot_id=bot_id, hostname=hostname, status="verified", verified=True, message=msg)
+    return BotDomainVerifyResponse(bot_id=bot_id, hostname=hostname, status=status, verified=False, message=msg)
+
+
+@router.get("/v1/org/bots/{bot_id}/jobs", response_model=BotIndexJobListResponse)
+async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    jobs = list_index_jobs_for_bot(bot_id)
+    return BotIndexJobListResponse(
+        bot_id=bot_id,
+        jobs=[
+            BotIndexJobResponse(
+                job_id=j.job_id,
+                url=j.url,
+                hostname=j.hostname,
+                stage=j.stage,
+                pages_crawled=j.pages_crawled,
+                docs_count=j.docs_count,
+                gcs_prefix=j.gcs_prefix,
+                last_error=j.last_error,
+                created_at=j.created_at,
+                updated_at=j.updated_at,
+            )
+            for j in jobs
+        ],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/index")
+async def v1_org_start_index(
+    bot_id: str,
+    payload: BotIndexRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        return await start_index_for_bot(bot_id, payload.url)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/v1/org/bots/{bot_id}/index/status")
+async def v1_org_index_status(
+    bot_id: str,
+    url: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        return get_index_status_for_bot(bot_id, url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/v1/org/bots/{bot_id}/index/cancel")
+async def v1_org_cancel_index(
+    bot_id: str,
+    payload: BotIndexRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        return cancel_index_for_bot(bot_id, payload.url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/v1/admin/reset/gcs")
-async def v1_admin_reset_gcs(x_admin_key: Optional[str] = Header(default=None)):
-    _require_admin_key(x_admin_key)
+async def v1_admin_reset_gcs(user=Depends(require_super_admin)):
     try:
         bucket_name, base_prefix, deleted = delete_gcs_objects(allow_root=False)
     except ValueError as e:
@@ -484,7 +814,6 @@ async def v1_admin_reset_gcs(x_admin_key: Optional[str] = Header(default=None)):
 
 
 @router.post("/v1/admin/reset/rag")
-async def v1_admin_reset_rag(x_admin_key: Optional[str] = Header(default=None)):
-    _require_admin_key(x_admin_key)
+async def v1_admin_reset_rag(user=Depends(require_super_admin)):
     deleted = delete_rag_corpora()
     return {"status": "ok", "deleted_corpora": deleted}
