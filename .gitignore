@@ -37,3 +37,6 @@ backend/chroma_db/
 backend/raw_pages/
 **/raw_pages/
 
+# Local credentials
+backend/creds/
+

@@ -56,12 +56,15 @@ const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_B
 const terminalStages = new Set(['done', 'error', 'cancelled', 'import_submitted'])
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const initHeaders = init?.headers
+  const headerEntries =
+    initHeaders instanceof Headers ? Object.fromEntries(initHeaders.entries()) : (initHeaders as Record<string, string> | undefined)
   const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(init?.headers || {}),
+      ...(headerEntries || {}),
     },
-    ...init,
   })
   if (!res.ok) {
     let detail = res.statusText
@@ -172,6 +175,50 @@ export default function App() {
       setNewBotName('')
       setSelectedBotId(data.bot_id)
       await loadBots()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function clearGcs() {
+    if (!adminKey) {
+      setError('Admin key required to clear GCS data')
+      return
+    }
+    if (!window.confirm('Delete all crawled content from GCS? This cannot be undone.')) {
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      await fetchJson('/v1/admin/reset/gcs', {
+        method: 'POST',
+        headers: { 'X-Admin-Key': adminKey },
+      })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function clearRag() {
+    if (!adminKey) {
+      setError('Admin key required to clear RAG corpora')
+      return
+    }
+    if (!window.confirm('Delete all RAG corpora? This cannot be undone.')) {
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      await fetchJson('/v1/admin/reset/rag', {
+        method: 'POST',
+        headers: { 'X-Admin-Key': adminKey },
+      })
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -322,7 +369,7 @@ export default function App() {
         </div>
 
         <div className="section">
-          <div className="section-title">Create bot</div>
+          <div className="section-title">Admin access</div>
           <div className="stack">
             <input
               value={adminKey}
@@ -330,6 +377,11 @@ export default function App() {
               placeholder="Admin key (X-Admin-Key)"
               type="password"
             />
+          </div>
+        </div>
+        <div className="section">
+          <div className="section-title">Create bot</div>
+          <div className="stack">
             <input
               value={newBotName}
               onChange={(event) => setNewBotName(event.target.value)}
@@ -340,7 +392,17 @@ export default function App() {
             </button>
           </div>
         </div>
-
+        <div className="section">
+          <div className="section-title">Danger zone</div>
+          <div className="stack">
+            <button className="ghost" onClick={clearGcs} disabled={loading}>
+              Clear all GCS crawls
+            </button>
+            <button className="ghost" onClick={clearRag} disabled={loading}>
+              Clear all RAG corpora
+            </button>
+          </div>
+        </div>
         <div className="section">
           <div className="section-title">Bots</div>
           <div className="bot-list">

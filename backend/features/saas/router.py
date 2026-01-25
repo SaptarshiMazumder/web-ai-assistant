@@ -45,6 +45,7 @@ from services.indexing_service import (
     cancel_index_for_bot,
     list_index_jobs_for_bot,
 )
+from services.reset_service import delete_gcs_objects, delete_rag_corpora
 from utils.chat_debug import chat_debug_emit
 
 
@@ -470,3 +471,20 @@ async def v1_widget_chat(
         }
     )
     return WidgetChatResponse(answer=str(result.get("answer") or ""), citations=citations)
+
+
+@router.post("/v1/admin/reset/gcs")
+async def v1_admin_reset_gcs(x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    try:
+        bucket_name, base_prefix, deleted = delete_gcs_objects(allow_root=False)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"status": "ok", "bucket": bucket_name, "prefix": base_prefix, "deleted_objects": deleted}
+
+
+@router.post("/v1/admin/reset/rag")
+async def v1_admin_reset_rag(x_admin_key: Optional[str] = Header(default=None)):
+    _require_admin_key(x_admin_key)
+    deleted = delete_rag_corpora()
+    return {"status": "ok", "deleted_corpora": deleted}

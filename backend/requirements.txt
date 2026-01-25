@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+google-cloud-storage
+google-cloud-aiplatform
+google-generativeai
+google-genai
+crawl4ai
+langchain-openai
+langgraph
+beautifulsoup4
+playwright
+requests
+markdownify

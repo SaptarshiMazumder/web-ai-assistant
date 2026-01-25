@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: "5000"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
+    volumes:
+      - ./backend/_data:/app/backend/_data
+      - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: "http://localhost:5000"
+        VITE_DASHBOARD_BASE: "/"
+    ports:
+      - "5173:80"
