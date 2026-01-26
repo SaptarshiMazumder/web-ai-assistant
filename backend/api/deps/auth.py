@@ -46,7 +46,8 @@ def _org_name_for_user(email: str, subject: str) -> str:
         return domain
     em = (email or "").strip().lower()
     if em:
-        return f"Personal Org - {em}"
+        local_part = em.split("@", 1)[0].strip() if "@" in em else em
+        return f"Personal Org - {local_part}"
     sub = (subject or "").strip()
     if sub:
         return f"Personal Org - {sub}"

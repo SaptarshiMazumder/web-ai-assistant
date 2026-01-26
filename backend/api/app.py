@@ -3,8 +3,9 @@ import logging
 import os
 import signal
 import sys
+import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 from api.router import api_router
 from api.middleware.dynamic_cors import DynamicWidgetCORSMiddleware
 from common.config import config
-
+from infrastructure.db.connection import get_connection
 load_dotenv()
 
 
@@ -69,6 +70,31 @@ def create_app() -> FastAPI:
         raise RuntimeError("Set OPENAI_API_KEY environment variable.")
 
     app = FastAPI()
+    app.state.db_ready = False
+
+    @app.on_event("startup")
+    def _startup_db_check() -> None:
+        for _ in range(4):
+            try:
+                con = get_connection()
+                try:
+                    con.execute("SELECT 1")
+                finally:
+                    con.close()
+                app.state.db_ready = True
+                return
+            except Exception as e:
+                time.sleep(0.5)
+                raise HTTPException(status_code=503, detail=f"Database unavailable: {e}") from e
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    @app.middleware("http")
+    async def _readiness_gate(request: Request, call_next):
+        if request.url.path in {"/live", "/health"}:
+            return await call_next(request)
+        if not app.state.db_ready:
+            raise HTTPException(status_code=503, detail="Service not ready")
+        return await call_next(request)
 
     @app.on_event("startup")
     async def _startup_log_creds() -> None:

@@ -185,6 +185,7 @@ async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     )
     worker_path = os.path.abspath(worker_path)
 
+    backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     proc = subprocess.Popen(
         [
             (config.WORKER_PYTHON or sys.executable),
@@ -211,6 +212,8 @@ async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
             # Force the worker to use the same credential file as the API process.
             "GOOGLE_APPLICATION_CREDENTIALS": (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
             "LOCATION": (config.LOCATION or "us-central1"),
+            # Ensure the worker can import backend packages (api, infrastructure, etc).
+            "PYTHONPATH": backend_root,
             # Ensure unicode output doesn't crash on Windows codepages.
             "PYTHONIOENCODING": "utf-8",
             "PYTHONUTF8": "1",
