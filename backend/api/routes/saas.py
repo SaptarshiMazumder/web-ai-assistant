@@ -141,9 +141,16 @@ def _check_domain_verification(hostname: str, token: str, *, timeout_s: float = 
 
 
 @router.post("/v1/bots", response_model=BotCreateResponse)
-async def v1_create_bot(payload: BotCreateRequest, x_admin_key: Optional[str] = Header(default=None)):
+async def v1_create_bot(
+    payload: BotCreateRequest,
+    x_admin_key: Optional[str] = Header(default=None),
+    org_id: Optional[str] = None,
+):
     _require_admin_key(x_admin_key)
-    b = bot_service().create_bot(payload.display_name, "org_default")
+    resolved_org_id = (payload.org_id or org_id or "").strip()
+    if not resolved_org_id:
+        raise HTTPException(status_code=400, detail="org_id is required")
+    b = bot_service().create_bot(payload.display_name, resolved_org_id)
     return BotCreateResponse(
         bot_id=b.bot_id,
         display_name=b.display_name,

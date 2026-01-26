@@ -6,7 +6,7 @@ from google.cloud import storage
 from vertexai import rag as vx_rag
 
 from common.config import config
-from infrastructure.db.connection import ensure_default_org, get_connection
+from infrastructure.db.connection import  get_connection
 
 
 def _parse_bucket_and_prefix() -> Tuple[str, str]:
@@ -87,6 +87,6 @@ def reset_postgres_data() -> None:
             """
         )
         con.commit()
-        ensure_default_org(con, datetime.now(timezone.utc).isoformat())
+        
     finally:
         con.close()

@@ -1,4 +1,4 @@
-from .connection import ensure_default_org, get_connection
+from .connection import get_connection
 from .repositories import (
     PostgresBotRepository,
     PostgresBotCorpusRepository,
@@ -10,7 +10,6 @@ from .repositories import (
 )
 
 __all__ = [
-    "ensure_default_org",
     "get_connection",
     "PostgresBotRepository",
     "PostgresBotDomainRepository",

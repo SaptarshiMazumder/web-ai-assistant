@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from psycopg import errors as pg_errors
 
 from domain.entities import Bot, BotDomainRecord, BotRecord, OrgMemberRecord, OrgRecord, UserRecord
-from infrastructure.db.connection import ensure_default_org, get_connection
+from infrastructure.db.connection import get_connection
 
 
 def _utc_now() -> str:
@@ -15,9 +15,7 @@ def _utc_now() -> str:
 
 
 def _connect():
-    con = get_connection()
-    ensure_default_org(con, _utc_now())
-    return con
+    return get_connection()
 
 
 def _normalize_hostname(hostname: str) -> str:
@@ -46,7 +44,9 @@ class PostgresBotRepository:
         pk = _new_publishable_key()
         sk = _new_secret_key()
         now = _utc_now()
-        oid = (org_id or "").strip() or "org_default"
+        oid = (org_id or "").strip()
+        if not oid:
+            raise ValueError("org_id is required")
         con = _connect()
         try:
             con.execute(

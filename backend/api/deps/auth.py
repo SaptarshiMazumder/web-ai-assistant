@@ -1,7 +1,9 @@
+import time
 from typing import Optional
 
 import jwt
 from fastapi import Header, HTTPException
+from psycopg.errors import OperationalError
 
 from application.auth.jwt_auth import UserContext, build_user_context, is_super_admin, verify_token
 from common.di.deps import get_org_service, get_user_service
@@ -62,24 +64,32 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Use
     user_service = get_user_service()
     org_service = get_org_service()
 
-    user = user_service.get_user_by_subject(ctx.subject)
-    if not user:
-        user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
-    if ctx.email:
-        user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
+    for attempt in range(2):
+        try:
+            user = user_service.get_user_by_subject(ctx.subject)
+            if not user:
+                user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
+            if ctx.email:
+                user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
 
-    ctx.user_id = user.user_id
-    memberships = org_service.get_org_memberships(ctx.user_id)
-    if not memberships:
-        org_name = _org_name_for_user(ctx.email, ctx.subject)
-        org = org_service.get_org_by_name(org_name)
-        if org and org.status == "active":
-            org_id = org.org_id
-        else:
-            org_id = org_service.create_org(org_name)
-        org_service.add_membership(org_id, ctx.user_id, "org_admin")
-        memberships = org_service.get_org_memberships(ctx.user_id)
-    ctx.org_ids = sorted(set(ctx.org_ids + [m["org_id"] for m in memberships]))
+            ctx.user_id = user.user_id
+            memberships = org_service.get_org_memberships(ctx.user_id)
+            if not memberships:
+                org_name = _org_name_for_user(ctx.email, ctx.subject)
+                org = org_service.get_org_by_name(org_name)
+                if org and org.status == "active":
+                    org_id = org.org_id
+                else:
+                    org_id = org_service.create_org(org_name)
+                org_service.add_membership(org_id, ctx.user_id, "org_admin")
+                memberships = org_service.get_org_memberships(ctx.user_id)
+            ctx.org_ids = sorted(set(ctx.org_ids + [m["org_id"] for m in memberships]))
+            break
+        except OperationalError as exc:
+            if attempt == 0:
+                time.sleep(0.5)
+                continue
+            raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
     return ctx
 
 

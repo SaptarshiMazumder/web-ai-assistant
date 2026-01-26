@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class BotCreateRequest(BaseModel):
     display_name: str
+    org_id: Optional[str] = None
 
 
 class BotCreateResponse(BaseModel):

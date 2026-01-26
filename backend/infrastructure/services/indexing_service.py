@@ -82,7 +82,7 @@ def _parse_bucket_and_prefix() -> Tuple[str, str]:
 def _org_slug(bot_id: str) -> str:
     bot = _bot_repo.get_bot(bot_id)
     if not bot or not bot.org_id:
-        return "org_default"
+        raise ValueError("Missing org_id for bot")
     return _slugify_name(bot.org_id)
 
 

@@ -82,12 +82,6 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 
-_DEFAULT_ORG_SQL = """
-INSERT INTO organizations(org_id, name, status, created_at, updated_at)
-VALUES ('org_default', 'Default Org', 'active', %s, %s)
-ON CONFLICT (org_id) DO NOTHING
-"""
-
 _SCHEMA_INITIALIZED = False
 
 
@@ -118,14 +112,6 @@ def _ensure_schema(con: "Connection") -> None:
             cur.execute(stmt)
     con.commit()
     _SCHEMA_INITIALIZED = True
-
-
-def ensure_default_org(con: "Connection", now: str) -> None:
-    with con.cursor() as cur:
-        cur.execute(_DEFAULT_ORG_SQL, (now, now))
-        cur.execute("UPDATE bots SET org_id = 'org_default' WHERE org_id IS NULL OR org_id = ''")
-        cur.execute("UPDATE bot_domains SET org_id = 'org_default' WHERE org_id IS NULL OR org_id = ''")
-    con.commit()
 
 
 def get_connection() -> "Connection":
