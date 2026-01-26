@@ -25,39 +25,29 @@ export default function BotsPage() {
         </div>
       </div>
 
-      <section className="card">
-        <div className="card-title">Create bot</div>
-        <div className="stack">
-          <input value={newBotName} onChange={(event) => setNewBotName(event.target.value)} placeholder="Bot display name" />
-          <button className="primary" onClick={handleCreate} disabled={loading || !newBotName.trim()}>
-            Create bot
-          </button>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="card-title">Bots list</div>
-        {!bots.length ? (
-          <div className="empty-panel">
-            No bots yet.
-            <div className="spacer-sm" />
-            <button className="primary" onClick={handleCreate} disabled={loading || !newBotName.trim()}>
+      <div className="bot-row">
+        <div className="bot-card bot-create-card">
+          <div className="list-title">Create bot</div>
+          <div className="stack">
+            <input
+              className="bot-input"
+              value={newBotName}
+              onChange={(event) => setNewBotName(event.target.value)}
+              placeholder="Bot display name"
+            />
+            <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim()}>
               Create bot
             </button>
           </div>
-        ) : (
-          <div className="list">
-            {bots.map((bot) => (
-              <button key={bot.bot_id} className="list-row button-row" onClick={() => navigate(`/bots/${bot.bot_id}/overview`)}>
-                <div>
-                  <div className="list-title">{bot.display_name}</div>
-                  <div className="muted">{bot.bot_id}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
+        </div>
+
+        {bots.map((bot) => (
+          <button key={bot.bot_id} className="bot-card" onClick={() => navigate(`/bots/${bot.bot_id}/overview`)}>
+            <div className="list-title">{bot.display_name}</div>
+            <div className="muted">{bot.bot_id}</div>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

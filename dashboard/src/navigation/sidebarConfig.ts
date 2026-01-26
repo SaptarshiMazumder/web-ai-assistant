@@ -24,7 +24,6 @@ export const sidebarConfig: SidebarItem[] = [
     id: 'bots',
     label: 'Bots',
     to: '/bots',
-    children: [{ id: 'bots-list', label: 'Bots list', to: '/bots' }],
   },
   {
     id: 'users',

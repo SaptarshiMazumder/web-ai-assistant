@@ -28,16 +28,6 @@ export default function DashboardLayout() {
         </div>
 
         <div className="sidebar-section">
-          <div className="section-title">Account</div>
-          <div className="stack">
-            <div className="muted">{user?.email || 'Signed in'}</div>
-            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        <div className="sidebar-section">
           <div className="section-title">Active org</div>
           <div className="stack">
             {isSuperAdmin ? (
@@ -93,6 +83,16 @@ export default function DashboardLayout() {
             )
           })}
         </nav>
+
+        <div className="sidebar-section sidebar-account">
+          <div className="section-title">Account</div>
+          <div className="stack">
+            <div className="muted">{user?.email || 'Signed in'}</div>
+            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              Sign out
+            </button>
+          </div>
+        </div>
       </aside>
 
       <main className="content">

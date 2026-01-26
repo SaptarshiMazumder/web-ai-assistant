@@ -84,7 +84,7 @@ button:disabled {
 }
 
 .sidebar {
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 2rem;
   background: #0f172a;
   color: #e2e8f0;
   display: flex;
@@ -118,6 +118,10 @@ button:disabled {
 .sidebar-section {
   display: grid;
   gap: 0.75rem;
+}
+
+.sidebar-account {
+  margin-top: auto;
 }
 
 .section-title {
@@ -185,7 +189,7 @@ button:disabled {
 }
 
 .content {
-  padding: 2.5rem 3rem;
+  padding: 3.5rem 4rem;
 }
 
 .content-toolbar {
@@ -266,6 +270,36 @@ button:disabled {
   gap: 0.75rem;
 }
 
+.bot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.4rem;
+}
+
+.bot-card {
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+  min-height: 88px;
+  flex: 1 1 320px;
+  max-width: calc((100% - 1.8rem) / 3);
+}
+
+.bot-card:hover {
+  border-color: #cbd5f5;
+}
+
+.bot-create-card .stack {
+  margin-top: 0.75rem;
+}
+
+.bot-action,
+.bot-input {
+  width: 100%;
+}
+
 .list-row {
   display: flex;
   justify-content: space-between;
@@ -290,6 +324,7 @@ button:disabled {
 
 .list-title {
   font-weight: 600;
+  font-size: 1.3rem;
 }
 
 .list-meta {
