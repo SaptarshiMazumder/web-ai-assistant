@@ -38,18 +38,10 @@ from api.schemas import (
 )
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
-from common.di.container import bot_service, org_service, user_service
+from common.di.container import bot_service, indexing_service, org_service, user_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag
-from infrastructure.services.indexing_service import (
-    cancel_index_for_bot,
-    ensure_bot_corpus,
-    get_index_status_by_job_id,
-    get_index_status_for_bot,
-    list_index_jobs_for_bot,
-    start_index_for_bot,
-    start_index_for_bot_batch,
-)
+from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.rag.url_discovery_service import discover_urls
 
@@ -275,7 +267,7 @@ async def v1_start_index(
         raise HTTPException(status_code=403, detail="Bot secret does not match bot_id")
 
     try:
-        return await start_index_for_bot(bot_id, payload.url)
+        return await indexing_service().start_indexing_for_bot(bot_id, payload.url)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -287,7 +279,7 @@ async def v1_start_index(
 @router.get("/v1/bots/{bot_id}/jobs", response_model=BotIndexJobListResponse)
 async def v1_list_jobs(bot_id: str, x_admin_key: Optional[str] = Header(default=None)):
     _require_admin_key(x_admin_key)
-    jobs = list_index_jobs_for_bot(bot_id)
+    jobs = indexing_service().list_jobs_for_bot(bot_id)
     return BotIndexJobListResponse(
         bot_id=bot_id,
         jobs=[
@@ -318,7 +310,7 @@ async def v1_index_status(
     if owner_bot_id != bot_id:
         raise HTTPException(status_code=403, detail="Bot secret does not match bot_id")
     try:
-        return get_index_status_for_bot(bot_id, url)
+        return indexing_service().get_job_status_by_hostname(bot_id, url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -333,7 +325,7 @@ async def v1_cancel_index(
     if owner_bot_id != bot_id:
         raise HTTPException(status_code=403, detail="Bot secret does not match bot_id")
     try:
-        return cancel_index_for_bot(bot_id, payload.url)
+        return indexing_service().cancel_job(bot_id, payload.url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -350,7 +342,7 @@ async def v1_pk_start_index(
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     _rate_limit(bot.bot_id)
     try:
-        return await start_index_for_bot(bot.bot_id, payload.url)
+        return await indexing_service().start_indexing_for_bot(bot.bot_id, payload.url)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -370,7 +362,7 @@ async def v1_pk_index_status(
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     try:
-        return get_index_status_for_bot(bot.bot_id, url)
+        return indexing_service().get_job_status_by_hostname(bot.bot_id, url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -386,7 +378,7 @@ async def v1_pk_cancel_index(
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     try:
-        return cancel_index_for_bot(bot.bot_id, payload.url)
+        return indexing_service().cancel_job(bot.bot_id, payload.url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -768,7 +760,7 @@ async def v1_org_verify_domain(
 async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
-    jobs = list_index_jobs_for_bot(bot_id)
+    jobs = indexing_service().list_jobs_for_bot(bot_id)
     return BotIndexJobListResponse(
         bot_id=bot_id,
         jobs=[
@@ -815,7 +807,7 @@ async def v1_org_start_index(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     try:
-        return await start_index_for_bot(bot_id, payload.url)
+        return await indexing_service().start_indexing_for_bot(bot_id, payload.url)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -834,7 +826,7 @@ async def v1_org_start_index_batch(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     try:
-        return await start_index_for_bot_batch(bot_id, payload.urls)
+        return await indexing_service().start_indexing_batch_for_bot(bot_id, payload.urls)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -855,9 +847,9 @@ async def v1_org_index_status(
     _assert_bot_org(bot_id, resolved_org)
     try:
         if job_id:
-            return get_index_status_by_job_id(bot_id, job_id)
+            return indexing_service().get_job_status(bot_id, job_id)
         if url:
-            return get_index_status_for_bot(bot_id, url)
+            return indexing_service().get_job_status_by_hostname(bot_id, url)
         raise HTTPException(status_code=400, detail="Missing url or job_id parameter")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -873,7 +865,7 @@ async def v1_org_cancel_index(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     try:
-        return cancel_index_for_bot(bot_id, payload.url)
+        return indexing_service().cancel_job(bot_id, payload.url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -16,22 +16,18 @@ def _emit(obj: Dict[str, Any]) -> None:
 
 
 async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, base_prefix: str, corpus_resource: str) -> None:
-    from infrastructure.rag.crawl_service import (
-        crawl_urls,
-        crawl_site_bfs,
-        upload_markdown_docs_to_gcs,
-        import_gcs_prefix_into_corpus,
-        CRAWL_MAX_DEPTH,
-        CRAWL_MAX_CONCURRENCY,
-    )
-    import google.auth
+    from infrastructure.rag.crawl_service import CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
+    from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
     from google.cloud import storage
+    import google.auth
     import vertexai
 
     _emit({"type": "stage", "stage": "starting_browser"})
     # Some crawlers only emit progress after the first successful page; send a heartbeat.
     _emit({"type": "progress", "pages_crawled": 0, "url": (url or ""), "depth": 0})
     _emit({"type": "stage", "stage": "crawling"})
+
+    crawler_repo = Crawl4AICrawlerRepository()
 
     def _on_progress(evt: Dict[str, Any]):
         if evt.get("type") == "page_crawled":
@@ -64,13 +60,13 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
 
     try:
         if urls:
-            docs = await crawl_urls(
+            docs = await crawler_repo.crawl_urls_list(
                 urls,
                 max_concurrent=CRAWL_MAX_CONCURRENCY,
                 progress_cb=_on_progress,
             )
         else:
-            docs = await crawl_site_bfs(
+            docs = await crawler_repo.crawl_urls_bfs(
                 url or "",
                 max_depth=CRAWL_MAX_DEPTH,
                 max_concurrent=CRAWL_MAX_CONCURRENCY,
@@ -98,13 +94,20 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
     creds_type = "service_account" if getattr(creds, "service_account_email", None) else "non_service_account"
     _emit({"type": "auth", "creds_path": creds_path, "creds_type": creds_type, "project": proj})
 
+    # Extract bot_id from base_prefix (format: <tenant>/bots/<bot_id> or just <tenant>/bots/<bot_id>)
+    # base_prefix already includes tenant/bots/bot_id, so we just need the bot_id part
+    bot_id = ""
+    if "/bots/" in base_prefix:
+        parts = base_prefix.split("/bots/")
+        if len(parts) > 1:
+            bot_id = parts[1].split("/")[0]
+    
+    # For storage, we need to pass the base_prefix that includes tenant/bots/bot_id
+    # The storage repo will append the host prefix and timestamp
+    # Use the same credentials as loaded for Vertex AI
     storage_client = storage.Client(credentials=creds, project=proj)
-    gcs_prefix = upload_markdown_docs_to_gcs(
-        bucket_name=bucket_name,
-        base_prefix=base_prefix,
-        docs=docs,
-        storage_client=storage_client,
-    )
+    storage_repo = GCSDocumentStorageRepository(bucket_name, base_prefix, storage_client=storage_client)
+    gcs_prefix = storage_repo.save_documents(bot_id, docs)
     _emit({"type": "gcs_prefix", "gcs_prefix": gcs_prefix})
 
     _emit({"type": "stage", "stage": "importing"})
@@ -114,7 +117,8 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
     except Exception:
         # If init fails, import may still work via env; surface in logs if it errors later.
         pass
-    import_gcs_prefix_into_corpus(corpus_resource=corpus_resource, bucket_name=bucket_name, prefix=gcs_prefix)
+    rag_repo = VertexRAGRepository()
+    rag_repo.import_documents(corpus_resource, gcs_prefix)
 
     # Vertex import is async on the Google side.
     _emit({"type": "stage", "stage": "import_submitted"})

@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
-from .entities import Bot, BotDomainRecord, BotRecord, OrgMemberRecord, OrgRecord, UserRecord
+from .entities import Bot, BotDomainRecord, BotRecord, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
 
 
 class BotRepository(Protocol):
@@ -102,4 +102,72 @@ class DomainCorpusRepository(Protocol):
         ...
 
     def delete_corpus_mapping_for_host(self, hostname: str) -> None:
+        ...
+
+
+class IndexJobRepository(Protocol):
+    def create_job(self, job: IndexJob) -> None:
+        ...
+
+    def get_job(self, bot_id: str, job_key: str) -> Optional[IndexJob]:
+        ...
+
+    def update_job(self, job: IndexJob) -> None:
+        ...
+
+    def list_jobs_for_bot(self, bot_id: str) -> List[IndexJob]:
+        ...
+
+
+class CrawlerRepository(Protocol):
+    async def crawl_urls_bfs(
+        self,
+        root_url: str,
+        max_depth: int,
+        max_concurrent: int,
+        *,
+        stop_event: Optional[Any] = None,
+        progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> List[Document]:
+        ...
+
+    async def crawl_urls_list(
+        self,
+        urls: List[str],
+        *,
+        max_concurrent: int,
+        progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ) -> List[Document]:
+        ...
+
+    async def discover_internal_urls(
+        self,
+        root_url: str,
+        max_depth: int,
+        max_concurrent: int,
+        *,
+        max_urls: int = 2000,
+    ) -> List[str]:
+        ...
+
+
+class DocumentStorageRepository(Protocol):
+    def save_documents(self, bot_id: str, documents: List[Document]) -> str:
+        """
+        Save documents to storage and return the storage prefix/path.
+        """
+        ...
+
+
+class RAGRepository(Protocol):
+    def ensure_corpus(self, bot_id: str, *, force_new: bool = False) -> str:
+        """
+        Ensure a RAG corpus exists for the bot, return corpus resource name.
+        """
+        ...
+
+    def import_documents(self, corpus_resource: str, storage_prefix: str) -> None:
+        """
+        Import documents from storage prefix into the RAG corpus.
+        """
         ...

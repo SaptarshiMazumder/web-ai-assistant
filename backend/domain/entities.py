@@ -64,3 +64,27 @@ class UserRecord:
     email: Optional[str]
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
+
+@dataclass
+class Document:
+    url: str
+    content: str
+    metadata: Optional[dict] = None
+
+
+@dataclass
+class IndexJob:
+    job_id: str
+    bot_id: str
+    url: str
+    hostname: str
+    stage: str  # queued|crawling|uploading|importing|import_submitted|cancelled|error|done
+    pages_crawled: int
+    docs_count: int
+    last_crawled_url: str
+    last_depth: int
+    gcs_prefix: str
+    last_error: str
+    created_at: str
+    updated_at: str
