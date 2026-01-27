@@ -552,6 +552,8 @@ async def v1_admin_list_org_members(org_id: str, user=Depends(require_super_admi
             OrgMemberResponse(
                 user_id=m.user_id,
                 email=m.email,
+                first_name=m.first_name,
+                last_name=m.last_name,
                 role=m.role,
                 created_at=m.created_at,
                 updated_at=m.updated_at,
@@ -620,6 +622,8 @@ async def v1_org_list_members(org_id: str, user=Depends(get_current_user)):
             OrgMemberResponse(
                 user_id=m.user_id,
                 email=m.email,
+                first_name=m.first_name,
+                last_name=m.last_name,
                 role=m.role,
                 created_at=m.created_at,
                 updated_at=m.updated_at,

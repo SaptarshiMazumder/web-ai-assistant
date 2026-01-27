@@ -448,35 +448,52 @@ class PostgresOrgRepository:
 
 
 class PostgresUserRepository:
-    def upsert_user_from_claims(self, *, subject: str, email: str) -> UserRecord:
+    def upsert_user_from_claims(
+        self,
+        *,
+        subject: str,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> UserRecord:
         now = _utc_now()
         con = _connect()
         try:
             existing = con.execute(
-                "SELECT user_id, idp_subject, email FROM users WHERE idp_subject = %s OR email = %s",
+                "SELECT user_id, idp_subject, email, first_name, last_name FROM users WHERE idp_subject = %s OR email = %s",
                 (subject, email),
             ).fetchone()
             if existing:
                 user_id = existing[0]
+                existing_first = existing[3]
+                existing_last = existing[4]
+                resolved_first = first_name or existing_first
+                resolved_last = last_name or existing_last
                 con.execute(
                     """
-                    UPDATE users SET idp_subject = %s, email = %s, updated_at = %s
+                    UPDATE users SET idp_subject = %s, email = %s, first_name = %s, last_name = %s, updated_at = %s
                     WHERE user_id = %s
                     """,
-                    (subject, email, now, user_id),
+                    (subject, email, resolved_first, resolved_last, now, user_id),
                 )
                 con.commit()
-                return UserRecord(user_id=user_id, idp_subject=subject, email=email)
+                return UserRecord(
+                    user_id=user_id,
+                    idp_subject=subject,
+                    email=email,
+                    first_name=resolved_first,
+                    last_name=resolved_last,
+                )
             user_id = "user_" + secrets.token_urlsafe(10).replace("-", "_").replace(".", "_")
             con.execute(
                 """
-                INSERT INTO users(user_id, idp_subject, email, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO users(user_id, idp_subject, email, first_name, last_name, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
-                (user_id, subject, email, now, now),
+                (user_id, subject, email, first_name, last_name, now, now),
             )
             con.commit()
-            return UserRecord(user_id=user_id, idp_subject=subject, email=email)
+            return UserRecord(user_id=user_id, idp_subject=subject, email=email, first_name=first_name, last_name=last_name)
         finally:
             con.close()
 
@@ -488,21 +505,27 @@ class PostgresUserRepository:
         con = _connect()
         try:
             existing = con.execute(
-                "SELECT user_id, idp_subject, email FROM users WHERE email = %s",
+                "SELECT user_id, idp_subject, email, first_name, last_name FROM users WHERE email = %s",
                 (em,),
             ).fetchone()
             if existing:
-                return UserRecord(user_id=existing[0], idp_subject=existing[1], email=existing[2])
+                return UserRecord(
+                    user_id=existing[0],
+                    idp_subject=existing[1],
+                    email=existing[2],
+                    first_name=existing[3],
+                    last_name=existing[4],
+                )
             user_id = "user_" + secrets.token_urlsafe(10).replace("-", "_").replace(".", "_")
             con.execute(
                 """
-                INSERT INTO users(user_id, idp_subject, email, created_at, updated_at)
-                VALUES (%s, NULL, %s, %s, %s)
+                INSERT INTO users(user_id, idp_subject, email, first_name, last_name, created_at, updated_at)
+                VALUES (%s, NULL, %s, NULL, NULL, %s, %s)
                 """,
                 (user_id, em, now, now),
             )
             con.commit()
-            return UserRecord(user_id=user_id, idp_subject=None, email=em)
+            return UserRecord(user_id=user_id, idp_subject=None, email=em, first_name=None, last_name=None)
         finally:
             con.close()
 
@@ -513,12 +536,12 @@ class PostgresUserRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT user_id, idp_subject, email FROM users WHERE idp_subject = %s",
+                "SELECT user_id, idp_subject, email, first_name, last_name FROM users WHERE idp_subject = %s",
                 (sub,),
             ).fetchone()
             if not row:
                 return None
-            return UserRecord(user_id=row[0], idp_subject=row[1], email=row[2])
+            return UserRecord(user_id=row[0], idp_subject=row[1], email=row[2], first_name=row[3], last_name=row[4])
         finally:
             con.close()
 
@@ -568,7 +591,7 @@ class PostgresOrgMembershipRepository:
         try:
             rows = con.execute(
                 """
-                SELECT u.user_id, u.email, m.role, m.created_at, m.updated_at
+                SELECT u.user_id, u.email, u.first_name, u.last_name, m.role, m.created_at, m.updated_at
                 FROM org_memberships m
                 JOIN users u ON u.user_id = m.user_id
                 WHERE m.org_id = %s
@@ -577,7 +600,15 @@ class PostgresOrgMembershipRepository:
                 (oid,),
             ).fetchall()
             return [
-                OrgMemberRecord(user_id=r[0], email=r[1], role=r[2], created_at=r[3], updated_at=r[4])
+                OrgMemberRecord(
+                    user_id=r[0],
+                    email=r[1],
+                    first_name=r[2],
+                    last_name=r[3],
+                    role=r[4],
+                    created_at=r[5],
+                    updated_at=r[6],
+                )
                 for r in (rows or [])
             ]
         finally:

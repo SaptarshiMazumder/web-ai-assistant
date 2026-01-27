@@ -50,6 +50,8 @@ class OrgRecord:
 class OrgMemberRecord:
     user_id: str
     email: str
+    first_name: Optional[str]
+    last_name: Optional[str]
     role: str
     created_at: str
     updated_at: str
@@ -60,3 +62,5 @@ class UserRecord:
     user_id: str
     idp_subject: Optional[str]
     email: Optional[str]
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None

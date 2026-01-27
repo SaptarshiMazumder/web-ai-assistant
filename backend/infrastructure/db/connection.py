@@ -25,10 +25,14 @@ _SCHEMA_SQL: Iterable[str] = (
       user_id TEXT PRIMARY KEY,
       idp_subject TEXT UNIQUE,
       email TEXT UNIQUE,
+      first_name TEXT,
+      last_name TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
     """,
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT",
     """
     CREATE TABLE IF NOT EXISTS org_memberships (
       user_id TEXT NOT NULL,

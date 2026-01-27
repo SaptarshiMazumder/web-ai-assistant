@@ -54,6 +54,22 @@ def _org_name_for_user(email: str, subject: str) -> str:
     return "Personal Org"
 
 
+def _extract_name_parts(claims: dict) -> tuple[Optional[str], Optional[str]]:
+    given = str(claims.get("given_name") or "").strip()
+    family = str(claims.get("family_name") or "").strip()
+    if given or family:
+        return (given or None, family or None)
+    full = str(claims.get("name") or "").strip()
+    if not full:
+        return (None, None)
+    parts = [p for p in full.replace(",", " ").split(" ") if p]
+    if not parts:
+        return (None, None)
+    if len(parts) == 1:
+        return (parts[0], None)
+    return (parts[0], " ".join(parts[1:]))
+
+
 def get_current_user(authorization: Optional[str] = Header(default=None)) -> UserContext:
     token = _bearer_token(authorization)
     try:
@@ -65,13 +81,25 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Use
     user_service = get_user_service()
     org_service = get_org_service()
 
+    first_name, last_name = _extract_name_parts(claims)
+
     for attempt in range(2):
         try:
             user = user_service.get_user_by_subject(ctx.subject)
             if not user:
-                user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
+                user = user_service.upsert_user_from_claims(
+                    subject=ctx.subject,
+                    email=ctx.email,
+                    first_name=first_name,
+                    last_name=last_name,
+                )
             if ctx.email:
-                user = user_service.upsert_user_from_claims(subject=ctx.subject, email=ctx.email)
+                user = user_service.upsert_user_from_claims(
+                    subject=ctx.subject,
+                    email=ctx.email,
+                    first_name=first_name,
+                    last_name=last_name,
+                )
 
             ctx.user_id = user.user_id
             memberships = org_service.get_org_memberships(ctx.user_id)

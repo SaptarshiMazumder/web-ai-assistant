@@ -5,7 +5,12 @@ export default function BotsPage() {
   const { bots, newBotName, setNewBotName, createBot, loading, isSuperAdmin, activeOrgId } = useDashboardData()
   const navigate = useNavigate()
 
+  const canCreateBot = !isSuperAdmin || (activeOrgId && activeOrgId !== "__all__")
+
   const handleCreate = async () => {
+    if (!canCreateBot) {
+      return
+    }
     const data = await createBot()
     if (data) {
       navigate(`/bots/${data.bot_id}/overview`)
@@ -35,7 +40,7 @@ export default function BotsPage() {
               onChange={(event) => setNewBotName(event.target.value)}
               placeholder="Bot display name"
             />
-            <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim()}>
+            <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim() || !canCreateBot}>
               Create bot
             </button>
           </div>

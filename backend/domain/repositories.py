@@ -77,7 +77,14 @@ class OrgMembershipRepository(Protocol):
 
 
 class UserRepository(Protocol):
-    def upsert_user_from_claims(self, *, subject: str, email: str) -> UserRecord:
+    def upsert_user_from_claims(
+        self,
+        *,
+        subject: str,
+        email: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+    ) -> UserRecord:
         ...
 
     def create_user_placeholder(self, email: str) -> UserRecord:

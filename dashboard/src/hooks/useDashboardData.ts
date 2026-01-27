@@ -64,6 +64,8 @@ export type OrgSummary = {
 export type OrgMember = {
   user_id: string
   email: string
+  first_name?: string | null
+  last_name?: string | null
   role: string
   created_at: string
   updated_at: string
@@ -72,7 +74,15 @@ export type OrgMember = {
 type TokenClaims = Record<string, unknown>
 
 type DashboardData = {
-  user: { email?: string | null } | undefined
+  user:
+    | {
+        email?: string | null
+        name?: string | null
+        given_name?: string | null
+        family_name?: string | null
+        picture?: string | null
+      }
+    | undefined
   logout: (options?: { logoutParams?: { returnTo?: string } }) => void
   bots: BotSummary[]
   selectedBotId: string | null
@@ -132,6 +142,7 @@ type DashboardData = {
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
+const ALL_ORGS_ID = "__all__"
 const terminalStages = new Set(['done', 'error', 'cancelled', 'import_submitted'])
 
 async function fetchJson<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
@@ -196,9 +207,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     return fetchJson<T>(path, init, token)
   }
 
-  function withOrgParam(path: string) {
-    if (!activeOrgId) return path
-    const suffix = `org_id=${encodeURIComponent(activeOrgId)}`
+  function withOrgParam(path: string, orgIdOverride?: string | null) {
+    const orgId = orgIdOverride ?? activeOrgId
+    if (!orgId || orgId === ALL_ORGS_ID) return path
+    const suffix = `org_id=${encodeURIComponent(orgId)}`
     return path.includes('?') ? `${path}&${suffix}` : `${path}?${suffix}`
   }
 
@@ -207,10 +219,27 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchAuthedJson<{ bots: BotSummary[] }>(withOrgParam('/v1/org/bots'))
-      setBots(data.bots)
-      if (!activeOrgId && data.bots.length) {
-        setActiveOrgId(data.bots[0].org_id || null)
+      if (isSuperAdmin && activeOrgId === ALL_ORGS_ID) {
+        const orgIds = orgs.map((org) => org.org_id)
+        const results = await Promise.all(
+          orgIds.map(async (orgId) => {
+            try {
+              const data = await fetchAuthedJson<{ bots: BotSummary[] }>(withOrgParam('/v1/org/bots', orgId))
+              return data.bots
+            } catch {
+              return []
+            }
+          })
+        )
+        const merged = results.flat()
+        const unique = Array.from(new Map(merged.map((bot) => [bot.bot_id, bot])).values())
+        setBots(unique)
+      } else {
+        const data = await fetchAuthedJson<{ bots: BotSummary[] }>(withOrgParam('/v1/org/bots'))
+        setBots(data.bots)
+        if (!activeOrgId && data.bots.length) {
+          setActiveOrgId(data.bots[0].org_id || null)
+        }
       }
     } catch (err) {
       setError((err as Error).message)
@@ -224,7 +253,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchAuthedJson<{ bot: BotSummary }>(withOrgParam(`/v1/org/bots/${botId}`))
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const data = await fetchAuthedJson<{ bot: BotSummary }>(withOrgParam(`/v1/org/bots/${botId}`, orgOverride))
       if (!activeOrgId && data.bot.org_id) {
         setActiveOrgId(data.bot.org_id)
       }
@@ -240,7 +270,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function loadDomains(botId: string) {
     if (isSuperAdmin && !activeOrgId) return
     try {
-      const data = await fetchAuthedJson<{ bot_id: string; domains: DomainRecord[] }>(withOrgParam(`/v1/org/bots/${botId}/domains`))
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<{ bot_id: string; domains: DomainRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/domains`, orgOverride)
+      )
       setDomains(data.domains)
     } catch (err) {
       setError((err as Error).message)
@@ -250,7 +283,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function loadJobs(botId: string) {
     if (isSuperAdmin && !activeOrgId) return
     try {
-      const data = await fetchAuthedJson<{ bot_id: string; jobs: JobRecord[] }>(withOrgParam(`/v1/org/bots/${botId}/jobs`))
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<{ bot_id: string; jobs: JobRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/jobs`, orgOverride)
+      )
       setJobs(data.jobs)
     } catch (err) {
       setError((err as Error).message)
@@ -258,7 +294,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   }
 
   async function createBot(): Promise<BotCreateResponse | null> {
-    if (!newBotName.trim() || (isSuperAdmin && !activeOrgId)) return null
+    if (!newBotName.trim()) return null
+    if (isSuperAdmin && (!activeOrgId || activeOrgId === ALL_ORGS_ID)) {
+      setError("Select an organization to create a bot")
+      return null
+    }
     setLoading(true)
     setError(null)
     try {
@@ -282,8 +322,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     try {
       const data = await fetchAuthedJson<{ orgs: OrgSummary[] }>('/v1/admin/orgs')
       setOrgs(data.orgs)
-      if (!activeOrgId && data.orgs.length) {
-        setActiveOrgId(data.orgs[0].org_id)
+      if (!activeOrgId) {
+        setActiveOrgId(ALL_ORGS_ID)
       }
     } catch (err) {
       setError((err as Error).message)
@@ -388,6 +428,32 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   async function loadOrgMembers(orgId: string) {
     try {
+      if (isSuperAdmin && orgId === ALL_ORGS_ID) {
+        let orgList = orgs
+        if (!orgList.length) {
+          const data = await fetchAuthedJson<{ orgs: OrgSummary[] }>('/v1/admin/orgs')
+          orgList = data.orgs || []
+          setOrgs(orgList)
+        }
+        if (!orgList.length) {
+          setOrgMembers([])
+          return
+        }
+        const responses = await Promise.all(
+          orgList.map(async (org) => {
+            try {
+              const data = await fetchAuthedJson<{ org_id: string; members: OrgMember[] }>(`/v1/admin/orgs/${org.org_id}/members`)
+              return data.members || []
+            } catch {
+              return [] as OrgMember[]
+            }
+          })
+        )
+        const merged = responses.flat()
+        const deduped = Array.from(new Map(merged.map((member) => [member.user_id || member.email, member])).values())
+        setOrgMembers(deduped)
+        return
+      }
       const path = isSuperAdmin ? `/v1/admin/orgs/${orgId}/members` : `/v1/org/members?org_id=${encodeURIComponent(orgId)}`
       const data = await fetchAuthedJson<{ org_id: string; members: OrgMember[] }>(path)
       setOrgMembers(data.members)
@@ -452,7 +518,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains`), {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains`, orgOverride), {
         method: 'POST',
         body: JSON.stringify({ hostname: newDomain.trim() }),
       })
@@ -470,7 +537,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains/${hostname}/verify`), {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/domains/${hostname}/verify`, orgOverride), {
         method: 'POST',
       })
       await loadDomains(selectedBot.bot_id)
@@ -486,7 +554,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index`), {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index`, orgOverride), {
         method: 'POST',
         body: JSON.stringify({ url: crawlUrl.trim() }),
       })
@@ -505,7 +574,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setLoading(true)
     setError(null)
     try {
-      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/cancel`), {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/cancel`, orgOverride), {
         method: 'POST',
         body: JSON.stringify({ url: activeCrawlUrl }),
       })
@@ -521,7 +591,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function refreshStatus(url: string) {
     if (!selectedBot || (isSuperAdmin && !activeOrgId)) return
     try {
-      const path = withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/status?url=${encodeURIComponent(url)}`)
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/index/status?url=${encodeURIComponent(url)}`, orgOverride)
       const status = await fetchAuthedJson<IndexStatus>(path)
       setIndexStatus(status)
     } catch (err) {
@@ -599,7 +670,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!isAuthenticated || (isSuperAdmin && !activeOrgId)) return
     void loadBots()
-  }, [isAuthenticated, activeOrgId, isSuperAdmin])
+  }, [isAuthenticated, activeOrgId, isSuperAdmin, orgs.length])
 
   useEffect(() => {
     if (activeOrgId) {
@@ -609,6 +680,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!activeOrgId) return
+    setBots([])
     setSelectedBotId(null)
     setSelectedBot(null)
     setDomains([])

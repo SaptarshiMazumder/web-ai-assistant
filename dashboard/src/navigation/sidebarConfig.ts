@@ -15,25 +15,11 @@ export const sidebarConfig: SidebarItem[] = [
     id: 'org',
     label: 'Org',
     to: '/org',
-    children: [
-      { id: 'org-overview', label: 'Overview', to: '/org' },
-      { id: 'org-users', label: 'Users', to: '/org/members' },
-    ],
   },
   {
     id: 'bots',
     label: 'Bots',
     to: '/bots',
-  },
-  {
-    id: 'users',
-    label: 'Users',
-    to: '/users',
-  },
-  {
-    id: 'domain',
-    label: 'Domain',
-    to: '/domain',
   },
   {
     id: 'account',

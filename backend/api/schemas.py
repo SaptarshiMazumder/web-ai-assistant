@@ -142,6 +142,8 @@ class OrgMemberAddRequest(BaseModel):
 class OrgMemberResponse(BaseModel):
     user_id: str
     email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     role: str
     created_at: str
     updated_at: str

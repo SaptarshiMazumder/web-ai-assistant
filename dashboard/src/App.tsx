@@ -6,7 +6,6 @@ import AccountPage from './pages/AccountPage'
 import BotsPage from './pages/BotsPage'
 import DashboardPage from './pages/DashboardPage'
 import DomainPage from './pages/DomainPage'
-import OrgMembersPage from './pages/OrgMembersPage'
 import OrgPage from './pages/OrgPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
@@ -53,7 +52,7 @@ export default function App() {
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="org" element={<OrgPage />} />
-            <Route path="org/members" element={<OrgMembersPage />} />
+            <Route path="org/members" element={<Navigate to="/org" replace />} />
             <Route path="bots" element={<BotsPage />} />
             <Route path="bots/:botId" element={<BotDetailLayout />}>
               <Route index element={<Navigate to="overview" replace />} />
