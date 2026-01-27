@@ -1,3 +1,4 @@
+import { Building2 } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 
 export default function OrgPage() {
@@ -22,6 +23,7 @@ export default function OrgPage() {
     saveOrgName,
     loading,
     user,
+    refreshAll,
   } = useDashboardData()
 
   const activeOrg = orgs.find((org) => org.org_id === activeOrgId)
@@ -74,10 +76,21 @@ export default function OrgPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <div className="page-title">Organization</div>
-          <div className="page-subtitle">Manage org settings and visibility.</div>
+          <div className="page-title">
+            <span className="page-title-row">
+              <Building2 className="page-title-icon" aria-hidden="true" />
+              <span className="page-title-divider">|</span>
+              <span className="page-title-text">Organization</span>
+            </span>
+          </div>
+        </div>
+        <div className="page-actions">
+          <button className="ghost" onClick={refreshAll} disabled={loading}>
+            Refresh
+          </button>
         </div>
       </div>
+      <div className="page-divider" />
 
       <div className="org-grid">
         <section className="card">
@@ -158,10 +171,11 @@ export default function OrgPage() {
               </div>
             </div>
 
-            <div className="members-header-row members-columns">
+            <div className={`members-header-row members-columns ${isSuperAdmin ? 'members-columns-admin' : ''}`}>
               <div className="muted">Name</div>
               <div className="muted">Email</div>
               <div className="muted">Role</div>
+              {isSuperAdmin && <div className="muted">Org</div>}
             </div>
             <div className="list">
               {orgMembers.map((member) => {
@@ -177,8 +191,9 @@ export default function OrgPage() {
                   .map((part) => part[0].toUpperCase())
                   .join('')
                 const avatarUrl = isCurrentUser && currentUserPicture ? currentUserPicture : avatarUrlForMember(name, member.email)
+                const orgLabel = member.org_name || member.org_id || currentOrgName
                 return (
-                  <div key={member.user_id} className="member-row members-columns">
+                  <div key={`${member.user_id}-${member.org_id || 'org'}`} className={`member-row members-columns ${isSuperAdmin ? 'members-columns-admin' : ''}`}>
                     <div className="member-info">
                       <div className="avatar">
                         <img
@@ -196,6 +211,7 @@ export default function OrgPage() {
                     </div>
                     <div className="muted">{member.email}</div>
                     <div className="member-role">{displayRole(member.role)}</div>
+                    {isSuperAdmin && <div className="muted">{orgLabel}</div>}
                   </div>
                 )
               })}

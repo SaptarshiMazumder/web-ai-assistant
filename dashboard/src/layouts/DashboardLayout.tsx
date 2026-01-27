@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Bot, Building2, LayoutDashboard, Settings, UserCircle, type LucideIcon } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { sidebarConfig } from '../navigation/sidebarConfig'
 
 export default function DashboardLayout() {
-  const { user, logout, loading, error, refreshAll } = useDashboardData()
+  const { user, loading, error } = useDashboardData()
   const location = useLocation()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
@@ -34,6 +35,14 @@ export default function DashboardLayout() {
     (user as { picture?: string | null } | undefined)?.picture?.trim() ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(profileName || profileEmail || 'User')}&background=0f172a&color=fff&size=128`
 
+  const navIcons: Record<string, LucideIcon> = {
+    dashboard: LayoutDashboard,
+    org: Building2,
+    bots: Bot,
+    account: UserCircle,
+    settings: Settings,
+  }
+
   const activePaths = useMemo(() => {
     return sidebarConfig.map((item) => ({
       id: item.id,
@@ -62,7 +71,13 @@ export default function DashboardLayout() {
               <div key={item.id} className={`nav-group ${isActive ? 'active' : ''}`}>
                 <div className="nav-row">
                   <NavLink className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} to={item.to} end={item.to === '/'}>
-                    {item.label}
+                    <span className="nav-link-content">
+                      {navIcons[item.id] && (() => {
+                        const Icon = navIcons[item.id]
+                        return <Icon className="nav-icon" aria-hidden="true" />
+                      })()}
+                      {item.label}
+                    </span>
                   </NavLink>
                   {hasChildren && (
                     <button
@@ -90,39 +105,34 @@ export default function DashboardLayout() {
         </nav>
 
         <div className="sidebar-section sidebar-account">
-          <div className="section-title">Account</div>
           <div className="stack">
-            <div className="account-row">
-              <div className="avatar avatar-lg">
-                <img
-                  src={profilePicture}
-                  alt={profileName || 'Profile'}
-                  onLoad={(event) => event.currentTarget.parentElement?.classList.add('avatar-loaded')}
-                  onError={(event) => event.currentTarget.parentElement?.classList.remove('avatar-loaded')}
-                />
-                <span className="avatar-fallback">{profileInitials}</span>
+            <NavLink className="account-link" to="/account">
+              <div className="account-row">
+                <div className="avatar avatar-lg">
+                  <img
+                    src={profilePicture}
+                    alt={profileName || 'Profile'}
+                    onLoad={(event) => event.currentTarget.parentElement?.classList.add('avatar-loaded')}
+                    onError={(event) => event.currentTarget.parentElement?.classList.remove('avatar-loaded')}
+                  />
+                  <span className="avatar-fallback">{profileInitials}</span>
+                </div>
+                <div className="account-meta">
+                  <div className="account-name">{profileName || 'Signed in'}</div>
+                  {profileEmail && <div className="account-email">{profileEmail}</div>}
+                </div>
               </div>
-              <div className="account-meta">
-                <div className="account-name">{profileName || 'Signed in'}</div>
-                {profileEmail && <div className="account-email">{profileEmail}</div>}
-              </div>
-            </div>
-            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-              Sign out
-            </button>
+            </NavLink>
           </div>
         </div>
       </aside>
 
       <main className="content">
-        <div className="content-toolbar">
-          <button className="ghost" onClick={refreshAll} disabled={loading}>
-            Refresh
-          </button>
+        <div className="content-shell">
+          {error && <div className="alert error">{error}</div>}
+          {loading && <div className="alert">Working...</div>}
+          <Outlet />
         </div>
-        {error && <div className="alert error">{error}</div>}
-        {loading && <div className="alert">Working...</div>}
-        <Outlet />
       </main>
     </div>
   )

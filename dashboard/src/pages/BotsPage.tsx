@@ -1,8 +1,9 @@
+import { Bot } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardData } from '../hooks/useDashboardData'
 
 export default function BotsPage() {
-  const { bots, newBotName, setNewBotName, createBot, loading, isSuperAdmin, activeOrgId } = useDashboardData()
+  const { bots, newBotName, setNewBotName, createBot, loading, isSuperAdmin, activeOrgId, refreshAll } = useDashboardData()
   const navigate = useNavigate()
 
   const canCreateBot = !isSuperAdmin || (activeOrgId && activeOrgId !== "__all__")
@@ -25,10 +26,21 @@ export default function BotsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <div className="page-title">Bots</div>
-          <div className="page-subtitle">Create, select, and manage bots.</div>
+          <div className="page-title">
+            <span className="page-title-row">
+              <Bot className="page-title-icon" aria-hidden="true" />
+              <span className="page-title-divider">|</span>
+              <span className="page-title-text">Bots</span>
+            </span>
+          </div>
+        </div>
+        <div className="page-actions">
+          <button className="ghost" onClick={refreshAll} disabled={loading}>
+            Refresh
+          </button>
         </div>
       </div>
+      <div className="page-divider" />
 
       <div className="bot-row">
         <div className="bot-card bot-create-card">

@@ -67,6 +67,8 @@ export type OrgMember = {
   first_name?: string | null
   last_name?: string | null
   role: string
+  org_id?: string
+  org_name?: string
   created_at: string
   updated_at: string
 }
@@ -443,20 +445,34 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
           orgList.map(async (org) => {
             try {
               const data = await fetchAuthedJson<{ org_id: string; members: OrgMember[] }>(`/v1/admin/orgs/${org.org_id}/members`)
-              return data.members || []
+              return (data.members || []).map((member) => ({
+                ...member,
+                org_id: org.org_id,
+                org_name: org.name,
+              }))
             } catch {
               return [] as OrgMember[]
             }
           })
         )
         const merged = responses.flat()
-        const deduped = Array.from(new Map(merged.map((member) => [member.user_id || member.email, member])).values())
-        setOrgMembers(deduped)
+        setOrgMembers(merged)
         return
       }
       const path = isSuperAdmin ? `/v1/admin/orgs/${orgId}/members` : `/v1/org/members?org_id=${encodeURIComponent(orgId)}`
       const data = await fetchAuthedJson<{ org_id: string; members: OrgMember[] }>(path)
-      setOrgMembers(data.members)
+      if (isSuperAdmin) {
+        const org = orgs.find((entry) => entry.org_id === orgId)
+        setOrgMembers(
+          (data.members || []).map((member) => ({
+            ...member,
+            org_id: orgId,
+            org_name: org?.name,
+          }))
+        )
+      } else {
+        setOrgMembers(data.members)
+      }
     } catch (err) {
       setError((err as Error).message)
     }
