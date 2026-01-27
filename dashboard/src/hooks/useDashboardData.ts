@@ -134,11 +134,14 @@ type DashboardData = {
   addDomain: () => Promise<void>
   verifyDomain: (hostname: string) => Promise<void>
   startCrawl: () => Promise<void>
+  queueCrawlUrls: (botId: string, urls: string[]) => Promise<string | null>
   cancelCrawl: () => Promise<void>
   refreshStatus: (url: string) => Promise<void>
+  getJobStatus: (botId: string, jobId: string) => Promise<IndexStatus | null>
   copySnippet: () => Promise<void>
   refreshAll: () => void
   setSelectedBotId: (value: string | null) => void
+  discoverUrls: (url: string) => Promise<string[]>
 }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -585,6 +588,45 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function queueCrawlUrls(botId: string, urls: string[]): Promise<string | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const cleaned = urls.map((url) => url.trim()).filter(Boolean)
+      const data = await fetchAuthedJson<{ job_id: string }>(withOrgParam(`/v1/org/bots/${botId}/index/batch`, orgOverride), {
+        method: 'POST',
+        body: JSON.stringify({ urls: cleaned }),
+      })
+      return data.job_id || null
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function discoverUrls(url: string) {
+    if (isSuperAdmin && !activeOrgId) return []
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const data = await fetchAuthedJson<{ urls: string[] }>(withOrgParam('/v1/org/url-discovery', orgOverride), {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      })
+      return data.urls || []
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function cancelCrawl() {
     if (!selectedBot || !activeCrawlUrl || (isSuperAdmin && !activeOrgId)) return
     setLoading(true)
@@ -613,6 +655,19 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setIndexStatus(status)
     } catch (err) {
       setError((err as Error).message)
+    }
+  }
+
+  async function getJobStatus(botId: string, jobId: string): Promise<IndexStatus | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/index/status?job_id=${encodeURIComponent(jobId)}`, orgOverride)
+      const status = await fetchAuthedJson<IndexStatus>(path)
+      return status
+    } catch (err) {
+      setError((err as Error).message)
+      return null
     }
   }
 
@@ -784,11 +839,14 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     addDomain,
     verifyDomain,
     startCrawl,
+    queueCrawlUrls,
     cancelCrawl,
     refreshStatus,
+    getJobStatus,
     copySnippet,
     refreshAll,
     setSelectedBotId,
+    discoverUrls,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

@@ -9,6 +9,10 @@ import DomainPage from './pages/DomainPage'
 import OrgPage from './pages/OrgPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
+import CreateBotDetailsPage from './pages/createBot/CreateBotDetailsPage'
+import CreateBotLayout from './pages/createBot/CreateBotLayout'
+import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
+import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
 import BotAnalyticsTab from './pages/bot/BotAnalyticsTab'
 import BotDesignTab from './pages/bot/BotDesignTab'
 import BotDetailLayout from './pages/bot/BotDetailLayout'
@@ -49,6 +53,12 @@ export default function App() {
     <DashboardDataProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/create-bot" element={<CreateBotLayout />}>
+            <Route index element={<CreateBotDetailsPage />} />
+            <Route path="urls" element={<CreateBotUrlsPage />} />
+            <Route path="progress" element={<CreateBotProgressPage />} />
+            <Route path="*" element={<Navigate to="/create-bot" replace />} />
+          </Route>
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="org" element={<OrgPage />} />

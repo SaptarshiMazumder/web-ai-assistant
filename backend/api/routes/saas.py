@@ -18,6 +18,7 @@ from api.schemas import (
     BotDomainVerifyResponse,
     BotIndexJobListResponse,
     BotIndexJobResponse,
+    BotIndexBatchRequest,
     BotIndexRequest,
     BotListResponse,
     BotSummary,
@@ -30,6 +31,8 @@ from api.schemas import (
     OrgSelfResponse,
     OrgSummary,
     OrgUpdateRequest,
+    UrlDiscoveryRequest,
+    UrlDiscoveryResponse,
     WidgetChatRequest,
     WidgetChatResponse,
 )
@@ -41,11 +44,14 @@ from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.services.indexing_service import (
     cancel_index_for_bot,
     ensure_bot_corpus,
+    get_index_status_by_job_id,
     get_index_status_for_bot,
     list_index_jobs_for_bot,
     start_index_for_bot,
+    start_index_for_bot_batch,
 )
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
+from infrastructure.rag.url_discovery_service import discover_urls
 
 router = APIRouter()
 
@@ -783,6 +789,22 @@ async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depen
     )
 
 
+@router.post("/v1/org/url-discovery", response_model=UrlDiscoveryResponse)
+async def v1_org_url_discovery(
+    payload: UrlDiscoveryRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    _resolve_org_id(user, org_id)
+    try:
+        urls = await discover_urls(payload.url)
+        return UrlDiscoveryResponse(urls=urls)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/v1/org/bots/{bot_id}/index")
 async def v1_org_start_index(
     bot_id: str,
@@ -802,17 +824,41 @@ async def v1_org_start_index(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/v1/org/bots/{bot_id}/index/status")
-async def v1_org_index_status(
+@router.post("/v1/org/bots/{bot_id}/index/batch")
+async def v1_org_start_index_batch(
     bot_id: str,
-    url: str,
+    payload: BotIndexBatchRequest,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     try:
-        return get_index_status_for_bot(bot_id, url)
+        return await start_index_for_bot_batch(bot_id, payload.urls)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/v1/org/bots/{bot_id}/index/status")
+async def v1_org_index_status(
+    bot_id: str,
+    url: Optional[str] = None,
+    job_id: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        if job_id:
+            return get_index_status_by_job_id(bot_id, job_id)
+        if url:
+            return get_index_status_for_bot(bot_id, url)
+        raise HTTPException(status_code=400, detail="Missing url or job_id parameter")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

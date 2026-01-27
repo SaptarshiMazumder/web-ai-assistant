@@ -587,6 +587,37 @@ button:disabled {
   border-color: #cbd5f5;
 }
 
+.create-bot-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: 12px;
+  border: 2px dashed #cbd5f5;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: left;
+  min-height: 88px;
+  flex: 1 1 clamp(18rem, 30vw, 26rem);
+  max-width: clamp(18rem, 30vw, 26rem);
+}
+
+.create-bot-button:hover:not(:disabled) {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  color: #1e1b4b;
+}
+
+.create-bot-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.create-bot-icon {
+  width: 20px;
+  height: 20px;
+}
+
 .bot-create-card .stack {
   margin-top: 0.75rem;
 }
@@ -725,6 +756,170 @@ button:disabled {
   color: #64748b;
 }
 
+.flow-shell {
+  min-height: 100vh;
+  padding: 2.5rem;
+  background: #fafafa;
+}
+
+.flow-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.flow-eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.flow-title {
+  font-size: 2rem;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.flow-back {
+  align-self: center;
+}
+
+.flow-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.flow-steps {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.flow-step {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 0.75rem;
+  color: #94a3b8;
+}
+
+.flow-step.active {
+  color: #1e1b4b;
+}
+
+.flow-step-number {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #ffffff;
+}
+
+.flow-step.active .flow-step-number {
+  background: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
+.flow-step-title {
+  font-weight: 500;
+}
+
+.flow-step-desc {
+  font-size: 0.85rem;
+}
+
+.flow-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 2rem;
+  min-height: 420px;
+}
+
+.flow-panel-body {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.flow-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.url-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.url-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.url-row.selected {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.url-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.progress-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.progress-label {
+  font-weight: 500;
+}
+
+.progress-track {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  transition: width 0.4s ease;
+}
+
 .spacer-sm {
   height: 0.6rem;
 }
@@ -752,5 +947,18 @@ button:disabled {
     position: sticky;
     top: 0;
     z-index: 2;
+  }
+
+  .flow-shell {
+    padding: 1.5rem;
+  }
+
+  .flow-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .flow-grid {
+    grid-template-columns: 1fr;
   }
 }

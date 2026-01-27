@@ -77,6 +77,18 @@ class BotIndexRequest(BaseModel):
     url: str
 
 
+class BotIndexBatchRequest(BaseModel):
+    urls: List[str]
+
+
+class UrlDiscoveryRequest(BaseModel):
+    url: str
+
+
+class UrlDiscoveryResponse(BaseModel):
+    urls: List[str] = []
+
+
 class BotIndexJobResponse(BaseModel):
     job_id: str
     url: str

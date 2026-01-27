@@ -52,6 +52,77 @@ CHUNK_OVERLAP = 64
 def _normalize_url(url: str) -> str:
     return urldefrag(url)[0]
 
+
+def _get_str(result: Any, attr: str) -> str:
+    try:
+        v = getattr(result, attr, None)
+    except Exception:
+        v = None
+    return v if isinstance(v, str) else ""
+
+
+def _len_attr(result: Any, attr: str) -> int:
+    try:
+        v = getattr(result, attr, None)
+    except Exception:
+        v = None
+    if isinstance(v, str):
+        return len(v)
+    return 0
+
+
+def _meta_attr(result: Any, attr: str) -> Any:
+    try:
+        return getattr(result, attr, None)
+    except Exception:
+        return None
+
+
+def _best_text(result: Any) -> Tuple[str, str]:
+    """
+    crawl4ai sometimes returns empty markdown even when the fetch succeeded.
+    Use fallbacks so we don't end up with docs_count=0 for successful pages.
+    """
+    md = _get_str(result, "markdown").strip()
+    extracted = _get_str(result, "extracted_text").strip()
+    text = _get_str(result, "text").strip()
+
+    # Prefer markdown if it's reasonably complete; otherwise use extracted/text.
+    primary = md
+    primary_src = "markdown" if md else ""
+    if (len(md) < 400 and len(extracted) > len(md)) or (len(extracted) > len(md) * 1.5):
+        primary, primary_src = extracted, "extracted_text"
+    elif (len(md) < 400 and len(text) > len(md)) or (len(text) > len(md) * 1.5):
+        primary, primary_src = text, "text"
+
+    # If we have both markdown and extracted_text and they differ, concatenate to
+    # catch content that markdown conversion might drop (e.g. accordions/FAQ).
+    parts: List[str] = []
+    used_src = primary_src
+    if md:
+        parts.append(md)
+    if extracted and extracted not in md and extracted not in primary:
+        parts.append("\n\n---\n\n" + extracted)
+        used_src = used_src or "markdown+extracted_text"
+    elif extracted and extracted not in md and primary_src == "extracted_text":
+        # primary is extracted; still append markdown if it has unique bits
+        if md and md not in extracted:
+            parts.append("\n\n---\n\n" + md)
+            used_src = "extracted_text+markdown"
+
+    if not parts:
+        # Last resort: HTML variants (can be large).
+        for attr in ("cleaned_html", "html", "raw_html", "content"):
+            v = _get_str(result, attr).strip()
+            if v:
+                return v[:120_000], attr
+        return "", ""
+
+    combined = "\n".join(parts).strip()
+    if len(combined) > 120_000:
+        combined = combined[:120_000]
+    return combined, used_src or primary_src or ""
+
 def _slugify(text: str) -> str:
     text = text.strip().lower()
     text = re.sub(r"[^a-z0-9]+", "-", text)
@@ -246,75 +317,6 @@ async def crawl_site_bfs(
     current_urls = set([_normalize_url(root_url)])
     all_results: List[Dict[str, Any]] = []
 
-    _MAX_DOC_CHARS = 120_000
-
-    def _get_str(result: Any, attr: str) -> str:
-        try:
-            v = getattr(result, attr, None)
-        except Exception:
-            v = None
-        return v if isinstance(v, str) else ""
-
-    def _best_text(result: Any) -> Tuple[str, str]:
-        """
-        crawl4ai sometimes returns empty markdown even when the fetch succeeded.
-        Use fallbacks so we don't end up with docs_count=0 for successful pages.
-        """
-        md = _get_str(result, "markdown").strip()
-        extracted = _get_str(result, "extracted_text").strip()
-        text = _get_str(result, "text").strip()
-
-        # Prefer markdown if it's reasonably complete; otherwise use extracted/text.
-        primary = md
-        primary_src = "markdown" if md else ""
-        if (len(md) < 400 and len(extracted) > len(md)) or (len(extracted) > len(md) * 1.5):
-            primary, primary_src = extracted, "extracted_text"
-        elif (len(md) < 400 and len(text) > len(md)) or (len(text) > len(md) * 1.5):
-            primary, primary_src = text, "text"
-
-        # If we have both markdown and extracted_text and they differ, concatenate to
-        # catch content that markdown conversion might drop (e.g. accordions/FAQ).
-        parts: List[str] = []
-        used_src = primary_src
-        if md:
-            parts.append(md)
-        if extracted and extracted not in md and extracted not in primary:
-            parts.append("\n\n---\n\n" + extracted)
-            used_src = used_src or "markdown+extracted_text"
-        elif extracted and extracted not in md and primary_src == "extracted_text":
-            # primary is extracted; still append markdown if it has unique bits
-            if md and md not in extracted:
-                parts.append("\n\n---\n\n" + md)
-                used_src = "extracted_text+markdown"
-
-        if not parts:
-            # Last resort: HTML variants (can be large).
-            for attr in ("cleaned_html", "html", "raw_html", "content"):
-                v = _get_str(result, attr).strip()
-                if v:
-                    return v[:_MAX_DOC_CHARS], attr
-            return "", ""
-
-        combined = "\n".join(parts).strip()
-        if len(combined) > _MAX_DOC_CHARS:
-            combined = combined[:_MAX_DOC_CHARS]
-        return combined, used_src or primary_src or ""
-
-    def _len_attr(result: Any, attr: str) -> int:
-        try:
-            v = getattr(result, attr, None)
-        except Exception:
-            v = None
-        if isinstance(v, str):
-            return len(v)
-        return 0
-
-    def _meta_attr(result: Any, attr: str) -> Any:
-        try:
-            return getattr(result, attr, None)
-        except Exception:
-            return None
-
     def is_internal(url: str) -> bool:
         return urlparse(url).netloc == root_netloc
 
@@ -422,3 +424,143 @@ async def crawl_site_bfs(
         return all_results
 
     return all_results
+
+
+async def discover_internal_urls(
+    root_url: str,
+    max_depth: int,
+    max_concurrent: int,
+    *,
+    max_urls: int = 2000,
+) -> List[str]:
+    browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=70.0,
+        check_interval=1.0,
+        max_session_permit=max_concurrent,
+    )
+
+    parsed_root = urlparse(root_url)
+    root_netloc = parsed_root.netloc
+    visited = set()
+    current_urls = set([_normalize_url(root_url)])
+    discovered: List[str] = []
+
+    def is_internal(url: str) -> bool:
+        return urlparse(url).netloc == root_netloc
+
+    try:
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            for _depth in range(max_depth):
+                urls_to_crawl = [u for u in current_urls if u not in visited]
+                if not urls_to_crawl:
+                    break
+                if len(discovered) >= max_urls:
+                    break
+                results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
+                next_level_urls = set()
+                for result in results:
+                    norm = _normalize_url(result.url)
+                    visited.add(norm)
+                    if norm and norm not in discovered and is_internal(norm):
+                        discovered.append(norm)
+                        if len(discovered) >= max_urls:
+                            break
+                    for link in result.links.get("internal", []):
+                        href = _normalize_url(link.get("href", ""))
+                        if href and href not in visited and is_internal(href):
+                            next_level_urls.add(href)
+                current_urls = next_level_urls
+    except Exception:
+        return discovered
+
+    return discovered
+
+
+async def crawl_urls(
+    urls: List[str],
+    *,
+    max_concurrent: int,
+    progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> List[Dict[str, Any]]:
+    if not urls:
+        return []
+
+    browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=70.0,
+        check_interval=1.0,
+        max_session_permit=max_concurrent,
+    )
+
+    try:
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            results = await crawler.arun_many(urls=urls, config=run_config, dispatcher=dispatcher)
+    except Exception:
+        return []
+
+    docs: List[Dict[str, Any]] = []
+    for result in results:
+        norm = _normalize_url(result.url)
+        if result.success:
+            content, src = _best_text(result)
+            if content:
+                docs.append({"url": result.url, "markdown": f"Source URL: {result.url}\n\n{content}"})
+            if progress_cb:
+                try:
+                    progress_cb(
+                        {
+                            "type": "fetch",
+                            "url": result.url,
+                            "success": True,
+                            "status_code": _meta_attr(result, "status_code")
+                            or _meta_attr(result, "http_status")
+                            or _meta_attr(result, "status"),
+                            "error": _meta_attr(result, "error")
+                            or _meta_attr(result, "error_message")
+                            or _meta_attr(result, "message"),
+                            "content_source": src or "",
+                            "markdown_len": _len_attr(result, "markdown"),
+                            "text_len": _len_attr(result, "text"),
+                            "extracted_text_len": _len_attr(result, "extracted_text"),
+                            "cleaned_html_len": _len_attr(result, "cleaned_html"),
+                            "html_len": _len_attr(result, "html"),
+                            "raw_html_len": _len_attr(result, "raw_html"),
+                        }
+                    )
+                except Exception:
+                    pass
+            if progress_cb:
+                try:
+                    progress_cb({"type": "page_crawled", "count": len(docs), "url": result.url, "depth": 0})
+                except Exception:
+                    pass
+        else:
+            if progress_cb:
+                try:
+                    progress_cb(
+                        {
+                            "type": "fetch",
+                            "url": norm,
+                            "success": False,
+                            "status_code": _meta_attr(result, "status_code")
+                            or _meta_attr(result, "http_status")
+                            or _meta_attr(result, "status"),
+                            "error": _meta_attr(result, "error")
+                            or _meta_attr(result, "error_message")
+                            or _meta_attr(result, "message"),
+                            "content_source": "",
+                            "markdown_len": _len_attr(result, "markdown"),
+                            "text_len": _len_attr(result, "text"),
+                            "extracted_text_len": _len_attr(result, "extracted_text"),
+                            "cleaned_html_len": _len_attr(result, "cleaned_html"),
+                            "html_len": _len_attr(result, "html"),
+                            "raw_html_len": _len_attr(result, "raw_html"),
+                        }
+                    )
+                except Exception:
+                    pass
+
+    return docs

@@ -15,8 +15,9 @@ def _emit(obj: Dict[str, Any]) -> None:
     sys.stdout.flush()
 
 
-async def _run(url: str, *, bucket_name: str, base_prefix: str, corpus_resource: str) -> None:
+async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, base_prefix: str, corpus_resource: str) -> None:
     from infrastructure.rag.crawl_service import (
+        crawl_urls,
         crawl_site_bfs,
         upload_markdown_docs_to_gcs,
         import_gcs_prefix_into_corpus,
@@ -29,7 +30,7 @@ async def _run(url: str, *, bucket_name: str, base_prefix: str, corpus_resource:
 
     _emit({"type": "stage", "stage": "starting_browser"})
     # Some crawlers only emit progress after the first successful page; send a heartbeat.
-    _emit({"type": "progress", "pages_crawled": 0, "url": url, "depth": 0})
+    _emit({"type": "progress", "pages_crawled": 0, "url": (url or ""), "depth": 0})
     _emit({"type": "stage", "stage": "crawling"})
 
     def _on_progress(evt: Dict[str, Any]):
@@ -62,13 +63,20 @@ async def _run(url: str, *, bucket_name: str, base_prefix: str, corpus_resource:
             )
 
     try:
-        docs = await crawl_site_bfs(
-            url,
-            max_depth=CRAWL_MAX_DEPTH,
-            max_concurrent=CRAWL_MAX_CONCURRENCY,
-            stop_event=None,
-            progress_cb=_on_progress,
-        )
+        if urls:
+            docs = await crawl_urls(
+                urls,
+                max_concurrent=CRAWL_MAX_CONCURRENCY,
+                progress_cb=_on_progress,
+            )
+        else:
+            docs = await crawl_site_bfs(
+                url or "",
+                max_depth=CRAWL_MAX_DEPTH,
+                max_concurrent=CRAWL_MAX_CONCURRENCY,
+                stop_event=None,
+                progress_cb=_on_progress,
+            )
     except Exception as e:
         _emit({"type": "error", "error": str(e)})
         raise
@@ -126,7 +134,8 @@ def main() -> int:
         os.environ.setdefault("PYTHONIOENCODING", "utf-8")
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--url", required=False, default="")
+    parser.add_argument("--urls-json", required=False, default="")
     parser.add_argument("--bucket", required=True)
     parser.add_argument("--base-prefix", required=True)
     parser.add_argument("--corpus", required=True)
@@ -147,7 +156,26 @@ def main() -> int:
                 "virtual_env": os.environ.get("VIRTUAL_ENV", ""),
             }
         )
-        asyncio.run(_run(args.url, bucket_name=args.bucket, base_prefix=args.base_prefix, corpus_resource=args.corpus))
+        url_list = []
+        if args.urls_json:
+            try:
+                parsed = json.loads(args.urls_json)
+                if isinstance(parsed, list):
+                    url_list = [str(item) for item in parsed if str(item).strip()]
+            except Exception:
+                url_list = []
+        if not args.url and not url_list:
+            raise RuntimeError("Missing url(s) for crawl")
+
+        asyncio.run(
+            _run(
+                args.url or None,
+                url_list or None,
+                bucket_name=args.bucket,
+                base_prefix=args.base_prefix,
+                corpus_resource=args.corpus,
+            )
+        )
         return 0
     except Exception as e:
         _emit({"type": "error", "error": str(e)})

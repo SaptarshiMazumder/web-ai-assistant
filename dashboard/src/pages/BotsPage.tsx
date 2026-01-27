@@ -1,22 +1,12 @@
-import { Bot } from 'lucide-react'
+import { Bot, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardData } from '../hooks/useDashboardData'
 
 export default function BotsPage() {
-  const { bots, newBotName, setNewBotName, createBot, loading, isSuperAdmin, activeOrgId, refreshAll } = useDashboardData()
+  const { bots, loading, isSuperAdmin, activeOrgId, refreshAll } = useDashboardData()
   const navigate = useNavigate()
 
-  const canCreateBot = !isSuperAdmin || (activeOrgId && activeOrgId !== "__all__")
-
-  const handleCreate = async () => {
-    if (!canCreateBot) {
-      return
-    }
-    const data = await createBot()
-    if (data) {
-      navigate(`/bots/${data.bot_id}/overview`)
-    }
-  }
+  const canCreateBot = !isSuperAdmin || (activeOrgId && activeOrgId !== '__all__')
 
   if (isSuperAdmin && !activeOrgId) {
     return <div className="empty-panel">Select an organization to view bots.</div>
@@ -44,20 +34,10 @@ export default function BotsPage() {
 
       <div className="page-body page-body-narrow">
         <div className="bot-row">
-          <div className="bot-card bot-create-card">
-            <div className="list-title">Create bot</div>
-            <div className="stack">
-              <input
-                className="bot-input"
-                value={newBotName}
-                onChange={(event) => setNewBotName(event.target.value)}
-                placeholder="Bot display name"
-              />
-              <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim() || !canCreateBot}>
-                Create bot
-              </button>
-            </div>
-          </div>
+          <button className="create-bot-button" onClick={() => navigate('/create-bot')} disabled={!canCreateBot || loading}>
+            <Plus className="create-bot-icon" aria-hidden="true" />
+            <span>Create bot</span>
+          </button>
 
           {bots.map((bot) => (
             <button key={bot.bot_id} className="bot-card" onClick={() => navigate(`/bots/${bot.bot_id}/overview`)}>

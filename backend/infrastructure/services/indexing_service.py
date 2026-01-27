@@ -54,6 +54,10 @@ def _job_key(bot_id: str, hostname: str) -> str:
     return f"{bot_id}::{hostname}"
 
 
+def _batch_job_key(bot_id: str, job_id: str) -> str:
+    return f"{bot_id}::batch::{job_id}"
+
+
 def _touch(job: IndexJob) -> None:
     job.updated_at = datetime.now(timezone.utc).isoformat()
 
@@ -68,6 +72,29 @@ def _parse_and_validate_url(raw_url: str) -> Tuple[str, str]:
     if not host:
         raise ValueError("Could not parse hostname from url")
     return url, host
+
+
+def _validate_urls_for_bot(bot_id: str, urls: List[str]) -> List[str]:
+    cleaned: List[str] = []
+    seen = set()
+    for raw_url in urls:
+        url, host = _parse_and_validate_url(raw_url)
+        if url in seen:
+            continue
+        seen.add(url)
+        cleaned.append(url)
+
+    if not cleaned:
+        raise ValueError("Missing url list")
+
+    if config.REQUIRE_DOMAIN_VERIFICATION:
+        verified_hosts = set(_bot_domain_repo.list_verified_hosts(bot_id))
+        for url in cleaned:
+            host = (urlparse(url).hostname or "").lower().split(":")[0]
+            if host not in verified_hosts:
+                raise PermissionError(f"Domain '{host}' is not verified for this bot")
+
+    return cleaned
 
 
 def _parse_bucket_and_prefix() -> Tuple[str, str]:
@@ -297,11 +324,161 @@ async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     return {"status": "started", "job_id": job_id, "hostname": host}
 
 
+async def start_index_for_bot_batch(bot_id: str, urls: List[str]) -> Dict[str, Any]:
+    cleaned = _validate_urls_for_bot(bot_id, urls)
+
+    # Hard fail early if creds are missing; otherwise the worker may start with
+    # surprising ADC/user credentials depending on environment/reload behavior.
+    if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
+        raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+
+    corpus = ensure_bot_corpus(bot_id)
+    bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+
+    job_id = uuid.uuid4().hex
+    base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+    job_key = _batch_job_key(bot_id, job_id)
+
+    worker_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "workers",
+        "worker_index_job.py",
+    )
+    worker_path = os.path.abspath(worker_path)
+    backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+    proc = subprocess.Popen(
+        [
+            (config.WORKER_PYTHON or sys.executable),
+            worker_path,
+            "--urls-json",
+            json.dumps(cleaned),
+            "--bucket",
+            bucket_name,
+            "--base-prefix",
+            base_prefix,
+            "--corpus",
+            corpus,
+            "--creds",
+            (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+        env={
+            **os.environ,
+            "GOOGLE_APPLICATION_CREDENTIALS": (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
+            "LOCATION": (config.LOCATION or "us-central1"),
+            "PYTHONPATH": backend_root,
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONUTF8": "1",
+        },
+    )
+
+    job = IndexJob(
+        job_id=job_id,
+        bot_id=bot_id,
+        url=cleaned[0],
+        hostname="batch",
+        process=proc,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        stage="queued",
+    )
+    _index_jobs_by_key[job_key] = job
+
+    async def _consume_logs():
+        job.stage = "crawling"
+        _touch(job)
+
+        prefix = "WEB_AI_EVENT "
+        while True:
+            line = await asyncio.to_thread(proc.stdout.readline)  # type: ignore[union-attr]
+            if not line:
+                break
+            s = (line or "").strip()
+            if not s:
+                continue
+            job.last_log_line = s
+            job.log_tail.append(s)
+            if len(job.log_tail) > 200:
+                job.log_tail = job.log_tail[-200:]
+            _touch(job)
+            if prefix not in s:
+                continue
+            payload = s.split(prefix, 1)[1].strip()
+            try:
+                msg = json.loads(payload)
+            except Exception:
+                continue
+            t = msg.get("type")
+            if t == "stage":
+                job.stage = str(msg.get("stage") or job.stage)
+                _touch(job)
+            elif t == "progress":
+                job.pages_crawled = int(msg.get("pages_crawled") or job.pages_crawled)
+                job.last_crawled_url = str(msg.get("url") or job.last_crawled_url)
+                job.last_depth = int(msg.get("depth") if msg.get("depth") is not None else job.last_depth)
+                _touch(job)
+            elif t == "result":
+                job.docs_count = int(msg.get("docs_count") or job.docs_count)
+                _touch(job)
+            elif t == "gcs_prefix":
+                job.gcs_prefix = str(msg.get("gcs_prefix") or job.gcs_prefix)
+                _touch(job)
+            elif t == "runtime":
+                job.worker_runtime = dict(msg)
+                _touch(job)
+            elif t == "error":
+                job.stage = "error"
+                job.last_error = str(msg.get("error") or "")
+                _touch(job)
+
+        rc = proc.poll()
+        if rc is None:
+            return
+        if rc == 0:
+            if job.stage not in ("import_submitted", "done"):
+                job.stage = "done"
+            job.last_error = ""
+            _touch(job)
+        else:
+            if job.stage != "error":
+                job.stage = "error"
+                job.last_error = job.last_error or f"Worker exited with code {rc}"
+            _touch(job)
+
+    job.log_task = asyncio.create_task(_consume_logs())
+
+    return {"status": "started", "job_id": job_id, "hostname": job.hostname}
+
+
 def get_index_status_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     url, host = _parse_and_validate_url(raw_url)
     job = _index_jobs_by_key.get(_job_key(bot_id, host))
     if not job:
         return {"status": "not_found"}
+
+
+def get_index_status_by_job_id(bot_id: str, job_id: str) -> Dict[str, Any]:
+    # Try batch job first
+    batch_key = _batch_job_key(bot_id, job_id)
+    job = _index_jobs_by_key.get(batch_key)
+    if not job:
+        # Fallback: search all jobs for this bot
+        for key, candidate in _index_jobs_by_key.items():
+            if candidate.bot_id == bot_id and candidate.job_id == job_id:
+                job = candidate
+                break
+    if not job:
+        return {"status": "not_found"}
+    return _format_job_status(bot_id, job)
+
+
+def _format_job_status(bot_id: str, job: IndexJob) -> Dict[str, Any]:
     # If the worker exited but we didn't observe a terminal stage yet, surface it.
     try:
         if job.process is not None and job.process.poll() is not None and job.stage not in ("done", "error", "cancelled", "import_submitted"):
