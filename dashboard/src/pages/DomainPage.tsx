@@ -23,7 +23,9 @@ export default function DomainPage() {
       </div>
       <div className="page-divider" />
 
-      <div className="empty-panel">Domain controls will live here.</div>
+      <div className="page-body">
+        <div className="empty-panel">Domain controls will live here.</div>
+      </div>
     </div>
   )
 }

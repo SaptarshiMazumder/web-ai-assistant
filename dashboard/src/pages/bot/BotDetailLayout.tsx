@@ -37,28 +37,30 @@ export default function BotDetailLayout() {
       </div>
       <div className="page-divider" />
 
-      <div className="tab-list">
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="overview">
-          Overview
-        </NavLink>
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="knowledge">
-          Knowledge
-        </NavLink>
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="sources">
-          Sources
-        </NavLink>
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="design">
-          Design
-        </NavLink>
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="settings">
-          Settings
-        </NavLink>
-        <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="analytics">
-          Analytics
-        </NavLink>
-      </div>
+      <div className="page-body">
+        <div className="tab-list">
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="overview">
+            Overview
+          </NavLink>
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="knowledge">
+            Knowledge
+          </NavLink>
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="sources">
+            Sources
+          </NavLink>
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="design">
+            Design
+          </NavLink>
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="settings">
+            Settings
+          </NavLink>
+          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="analytics">
+            Analytics
+          </NavLink>
+        </div>
 
-      <Outlet />
+        <Outlet />
+      </div>
     </div>
   )
 }

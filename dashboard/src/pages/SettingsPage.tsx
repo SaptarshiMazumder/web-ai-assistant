@@ -4,7 +4,7 @@ import { useDashboardData } from '../hooks/useDashboardData'
 export default function SettingsPage() {
   const { refreshAll, loading } = useDashboardData()
   return (
-    <div className="page">
+    <div className="page narrow">
       <div className="page-header">
         <div>
           <div className="page-title">
@@ -23,7 +23,9 @@ export default function SettingsPage() {
       </div>
       <div className="page-divider" />
 
-      <div className="empty-panel">Settings controls will be added here.</div>
+      <div className="page-body page-body-narrow">
+        <div className="empty-panel">Settings controls will be added here.</div>
+      </div>
     </div>
   )
 }

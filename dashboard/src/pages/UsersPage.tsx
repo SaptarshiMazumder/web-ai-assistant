@@ -23,7 +23,9 @@ export default function UsersPage() {
       </div>
       <div className="page-divider" />
 
-      <div className="empty-panel">Add user-level controls here as you expand access policies.</div>
+      <div className="page-body">
+        <div className="empty-panel">Add user-level controls here as you expand access policies.</div>
+      </div>
     </div>
   )
 }

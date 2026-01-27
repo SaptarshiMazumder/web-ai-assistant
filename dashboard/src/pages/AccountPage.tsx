@@ -5,7 +5,7 @@ export default function AccountPage() {
   const { user, logout, refreshAll, loading } = useDashboardData()
 
   return (
-    <div className="page">
+    <div className="page narrow">
       <div className="page-header">
         <div>
           <div className="page-title">
@@ -24,18 +24,20 @@ export default function AccountPage() {
       </div>
       <div className="page-divider" />
 
-      <section className="card">
-        <div className="card-title">Profile</div>
-        <div className="detail-row">
-          <span>Email</span>
-          <span>{user?.email || 'Not available'}</span>
-        </div>
-        <div className="row">
-          <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-            Sign out
-          </button>
-        </div>
-      </section>
+      <div className="page-body page-body-narrow">
+        <section className="card">
+          <div className="card-title">Profile</div>
+          <div className="detail-row">
+            <span>Email</span>
+            <span>{user?.email || 'Not available'}</span>
+          </div>
+          <div className="row">
+            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+              Sign out
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   )
 }

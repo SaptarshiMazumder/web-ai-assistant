@@ -116,7 +116,7 @@ button:disabled {
 
 .brand-title {
   font-weight: 500;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
 }
 
 .brand-subtitle {
@@ -209,6 +209,11 @@ button:disabled {
   flex: 1;
 }
 
+.nav-link:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #1e1b4b;
+}
+
 .nav-link-content {
   display: flex;
   align-items: center;
@@ -222,8 +227,9 @@ button:disabled {
 }
 
 .nav-link.active {
-  background: rgba(99, 102, 241, 0.12);
+  background: #ffffff;
   color: #1e1b4b;
+  border: 1px solid #e2e8f0;
 }
 
 .nav-toggle {
@@ -276,6 +282,20 @@ button:disabled {
   display: grid;
   gap: 1.5rem;
 }
+
+.page-body {
+  display: grid;
+  gap: 1.5rem;
+  
+}
+
+@media (min-width: 1200px) {
+  .page-body.page-body-narrow {
+    width: 70%;
+    margin: 0 auto 0 0;
+  }
+}
+
 
 .page-header {
   display: flex;

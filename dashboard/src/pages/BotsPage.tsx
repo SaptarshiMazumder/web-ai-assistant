@@ -42,28 +42,30 @@ export default function BotsPage() {
       </div>
       <div className="page-divider" />
 
-      <div className="bot-row">
-        <div className="bot-card bot-create-card">
-          <div className="list-title">Create bot</div>
-          <div className="stack">
-            <input
-              className="bot-input"
-              value={newBotName}
-              onChange={(event) => setNewBotName(event.target.value)}
-              placeholder="Bot display name"
-            />
-            <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim() || !canCreateBot}>
-              Create bot
-            </button>
+      <div className="page-body page-body-narrow">
+        <div className="bot-row">
+          <div className="bot-card bot-create-card">
+            <div className="list-title">Create bot</div>
+            <div className="stack">
+              <input
+                className="bot-input"
+                value={newBotName}
+                onChange={(event) => setNewBotName(event.target.value)}
+                placeholder="Bot display name"
+              />
+              <button className="primary bot-action" onClick={handleCreate} disabled={loading || !newBotName.trim() || !canCreateBot}>
+                Create bot
+              </button>
+            </div>
           </div>
-        </div>
 
-        {bots.map((bot) => (
-          <button key={bot.bot_id} className="bot-card" onClick={() => navigate(`/bots/${bot.bot_id}/overview`)}>
-            <div className="list-title">{bot.display_name}</div>
-            <div className="muted">{bot.bot_id}</div>
-          </button>
-        ))}
+          {bots.map((bot) => (
+            <button key={bot.bot_id} className="bot-card" onClick={() => navigate(`/bots/${bot.bot_id}/overview`)}>
+              <div className="list-title">{bot.display_name}</div>
+              <div className="muted">{bot.bot_id}</div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
