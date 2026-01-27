@@ -8,6 +8,7 @@ from infrastructure.db.repositories import (
     PostgresBotCorpusRepository,
     PostgresBotDomainRepository,
     PostgresBotRepository,
+    PostgresIndexJobRepository,
     PostgresOrgMembershipRepository,
     PostgresOrgRepository,
     PostgresUserRepository,
@@ -15,10 +16,8 @@ from infrastructure.db.repositories import (
 from infrastructure.repositories import (
     Crawl4AICrawlerRepository,
     GCSDocumentStorageRepository,
-    InMemoryIndexJobRepository,
     VertexRAGRepository,
 )
-from infrastructure.services.indexing_job_manager import IndexingJobManager
 from infrastructure.services.indexing_service import _parse_bucket_and_prefix
 
 
@@ -42,13 +41,12 @@ def indexing_service() -> IndexingService:
     bot_repo = PostgresBotRepository()
     domain_repo = PostgresBotDomainRepository()
     corpus_repo = PostgresBotCorpusRepository()
-    job_repo = InMemoryIndexJobRepository()
+    job_repo = PostgresIndexJobRepository()
     crawler_repo = Crawl4AICrawlerRepository()
     
     bucket_name, base_prefix_root = _parse_bucket_and_prefix()
     storage_repo = GCSDocumentStorageRepository(bucket_name, base_prefix_root)
     rag_repo = VertexRAGRepository()
-    job_manager = IndexingJobManager(job_repo)
     
     return IndexingService(
         bot_repo=bot_repo,
@@ -58,5 +56,4 @@ def indexing_service() -> IndexingService:
         crawler_repo=crawler_repo,
         storage_repo=storage_repo,
         rag_repo=rag_repo,
-        job_manager=job_manager,
     )

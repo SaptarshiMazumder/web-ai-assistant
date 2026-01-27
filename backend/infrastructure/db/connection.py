@@ -83,6 +83,28 @@ _SCHEMA_SQL: Iterable[str] = (
       updated_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS index_jobs (
+      job_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      url TEXT NOT NULL,
+      hostname TEXT NOT NULL,
+      celery_task_id TEXT,
+      stage TEXT NOT NULL,
+      pages_crawled INTEGER NOT NULL DEFAULT 0,
+      docs_count INTEGER NOT NULL DEFAULT 0,
+      last_crawled_url TEXT NOT NULL DEFAULT '',
+      last_depth INTEGER NOT NULL DEFAULT -1,
+      gcs_prefix TEXT NOT NULL DEFAULT '',
+      last_error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS index_jobs_bot_id ON index_jobs (bot_id)",
+    "CREATE INDEX IF NOT EXISTS index_jobs_bot_hostname ON index_jobs (bot_id, hostname)",
+    "CREATE INDEX IF NOT EXISTS index_jobs_stage ON index_jobs (stage)",
+    "CREATE INDEX IF NOT EXISTS index_jobs_updated_at ON index_jobs (updated_at DESC)",
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 

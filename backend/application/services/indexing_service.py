@@ -19,11 +19,13 @@ from domain.repositories import (
     RAGRepository,
 )
 
-from infrastructure.services.indexing_job_manager import IndexingJobManager
+from infrastructure.celery_app import celery_app
+from infrastructure.tasks.crawl_tasks import crawl_job_task
 from infrastructure.services.indexing_service import (
     _bot_base_prefix,
     _parse_and_validate_url,
     _parse_bucket_and_prefix,
+    _validate_urls_for_bot,
 )
 
 
@@ -37,7 +39,6 @@ class IndexingService:
         crawler_repo: CrawlerRepository,
         storage_repo: DocumentStorageRepository,
         rag_repo: RAGRepository,
-        job_manager: IndexingJobManager,
     ) -> None:
         self._bot_repo = bot_repo
         self._domain_repo = domain_repo
@@ -46,7 +47,6 @@ class IndexingService:
         self._crawler_repo = crawler_repo
         self._storage_repo = storage_repo
         self._rag_repo = rag_repo
-        self._job_manager = job_manager
 
     async def start_indexing_for_bot(self, bot_id: str, raw_url: str) -> Dict[str, Any]:
         """Start BFS crawling from a single URL."""
@@ -89,15 +89,22 @@ class IndexingService:
 
         self._job_repo.create_job(job)
 
-        # Start worker process
-        worker_args, worker_env = self._build_worker_args(job_id, url, None, bucket_name, base_prefix, corpus)
-        self._job_manager.start_job_process(job, worker_args, worker_env)
+        # Queue Celery task
+        try:
+            task = crawl_job_task.delay(job_id, bot_id, url, None, bucket_name, base_prefix, corpus)
+            task_id = task.id if task else None
+        except Exception as e:
+            # If Celery task fails to queue, mark job as error
+            job.stage = "error"
+            job.last_error = f"Failed to queue task: {str(e)}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue crawl task: {str(e)}")
 
-        return {"status": "started", "job_id": job_id, "hostname": host}
+        return {"status": "started", "job_id": job_id, "hostname": host, "task_id": task_id}
 
     async def start_indexing_batch_for_bot(self, bot_id: str, urls: List[str]) -> Dict[str, Any]:
         """Start crawling for a list of URLs (no BFS expansion)."""
-        cleaned = self._validate_urls_for_bot(bot_id, urls)
+        cleaned = _validate_urls_for_bot(bot_id, urls)
 
         if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
             raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
@@ -125,88 +132,18 @@ class IndexingService:
 
         self._job_repo.create_job(job)
 
-        # Start worker process with URL list
-        worker_args, worker_env = self._build_worker_args(job_id, None, cleaned, bucket_name, base_prefix, corpus)
-        self._job_manager.start_job_process(job, worker_args, worker_env)
+        # Queue Celery task with URL list
+        try:
+            task = crawl_job_task.delay(job_id, bot_id, None, cleaned, bucket_name, base_prefix, corpus)
+            task_id = task.id if task else None
+        except Exception as e:
+            # If Celery task fails to queue, mark job as error
+            job.stage = "error"
+            job.last_error = f"Failed to queue task: {str(e)}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue crawl task: {str(e)}")
 
-        return {"status": "started", "job_id": job_id, "hostname": job.hostname}
-
-    def _build_worker_args(
-        self,
-        job_id: str,
-        url: Optional[str],
-        urls: Optional[List[str]],
-        bucket_name: str,
-        base_prefix: str,
-        corpus: str,
-    ) -> Tuple[List[str], Dict[str, str]]:
-        """Build worker process arguments and environment."""
-        worker_path = os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "..",
-            "infrastructure",
-            "workers",
-            "worker_index_job.py",
-        )
-        worker_path = os.path.abspath(worker_path)
-        backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-        args = [
-            (config.WORKER_PYTHON or sys.executable),
-            worker_path,
-            "--bucket",
-            bucket_name,
-            "--base-prefix",
-            base_prefix,
-            "--corpus",
-            corpus,
-            "--creds",
-            (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
-        ]
-
-        if urls:
-            import json
-
-            args.extend(["--urls-json", json.dumps(urls)])
-        else:
-            args.extend(["--url", url or ""])
-
-        env = {
-            **os.environ,
-            "GOOGLE_APPLICATION_CREDENTIALS": (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
-            "LOCATION": (config.LOCATION or "us-central1"),
-            "PYTHONPATH": backend_root,
-            "PYTHONIOENCODING": "utf-8",
-            "PYTHONUTF8": "1",
-        }
-
-        return args, env
-
-    def _validate_urls_for_bot(self, bot_id: str, urls: List[str]) -> List[str]:
-        """Validate and clean URLs for a bot."""
-        from urllib.parse import urlparse
-
-        cleaned: List[str] = []
-        seen = set()
-        for raw_url in urls:
-            url, host = _parse_and_validate_url(raw_url)
-            if url in seen:
-                continue
-            seen.add(url)
-            cleaned.append(url)
-
-        if not cleaned:
-            raise ValueError("Missing url list")
-
-        if config.REQUIRE_DOMAIN_VERIFICATION:
-            verified_hosts = set(self._domain_repo.list_verified_hosts(bot_id))
-            for url in cleaned:
-                host = (urlparse(url).hostname or "").lower().split(":")[0]
-                if host not in verified_hosts:
-                    raise PermissionError(f"Domain '{host}' is not verified for this bot")
-
-        return cleaned
+        return {"status": "started", "job_id": job_id, "hostname": job.hostname, "task_id": task_id}
 
     def get_job_status(self, bot_id: str, job_key: str) -> Dict[str, Any]:
         """Get job status by job_id or hostname."""
@@ -259,7 +196,13 @@ class IndexingService:
         if not job:
             return {"status": "not_found"}
 
-        self._job_manager.cancel_job_process(job.job_id)
+        # Revoke Celery task if it has a task_id
+        if job.celery_task_id:
+            try:
+                celery_app.control.revoke(job.celery_task_id, terminate=True)
+            except Exception:
+                pass  # Task may already be done
+
         job.stage = "cancelled"
         self._job_repo.update_job(job)
 

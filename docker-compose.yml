@@ -6,6 +6,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     ports:
       - "5000:5000"
     env_file:
@@ -13,8 +15,37 @@ services:
     environment:
       PORT: "5000"
       GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - ./backend/.env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
+      CELERY_BROKER_URL: "redis://redis:6379/0"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+    volumes:
+      - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
+    command: celery -A infrastructure.celery_app worker --loglevel=info --concurrency=10
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   dashboard:
     build:
       context: ./dashboard

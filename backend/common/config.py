@@ -66,5 +66,10 @@ class Config:
     # Optional override for the Python executable used to spawn the indexing worker.
     WORKER_PYTHON = (os.environ.get("WORKER_PYTHON") or _DEFAULT_WORKER_PYTHON).strip()
 
+    # Celery configuration
+    CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0").strip()
+    CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "").strip() or CELERY_BROKER_URL
+    CELERY_WORKER_CONCURRENCY = int(os.environ.get("CELERY_WORKER_CONCURRENCY", "10"))
+
 
 config = Config()

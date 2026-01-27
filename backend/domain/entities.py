@@ -88,3 +88,4 @@ class IndexJob:
     last_error: str
     created_at: str
     updated_at: str
+    celery_task_id: Optional[str] = None

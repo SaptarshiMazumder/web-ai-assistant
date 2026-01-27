@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
 
-from domain.entities import Bot, BotDomainRecord, BotRecord, OrgMemberRecord, OrgRecord, UserRecord
+from domain.entities import Bot, BotDomainRecord, BotRecord, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from domain.repositories import IndexJobRepository
 from infrastructure.db.connection import get_connection
 
 
@@ -659,5 +660,215 @@ class PostgresDomainCorpusRepository:
         try:
             con.execute("DELETE FROM domain_corpora WHERE hostname = %s", (h,))
             con.commit()
+        finally:
+            con.close()
+
+
+class PostgresIndexJobRepository(IndexJobRepository):
+    def create_job(self, job: IndexJob) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO index_jobs(
+                  job_id, bot_id, url, hostname, celery_task_id, stage,
+                  pages_crawled, docs_count, last_crawled_url, last_depth,
+                  gcs_prefix, last_error, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id,
+                    job.bot_id,
+                    job.url,
+                    job.hostname,
+                    job.celery_task_id,
+                    job.stage,
+                    job.pages_crawled,
+                    job.docs_count,
+                    job.last_crawled_url,
+                    job.last_depth,
+                    job.gcs_prefix,
+                    job.last_error,
+                    job.created_at,
+                    job.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_job(self, bot_id: str, job_key: str) -> Optional[IndexJob]:
+        bid = (bot_id or "").strip()
+        key = (job_key or "").strip()
+        if not bid or not key:
+            return None
+        con = _connect()
+        try:
+            # Try by job_id first
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                       pages_crawled, docs_count, last_crawled_url, last_depth,
+                       gcs_prefix, last_error, created_at, updated_at
+                FROM index_jobs
+                WHERE bot_id = %s AND job_id = %s
+                """,
+                (bid, key),
+            ).fetchone()
+            if row:
+                return IndexJob(
+                    job_id=row[0],
+                    bot_id=row[1],
+                    url=row[2],
+                    hostname=row[3],
+                    stage=row[5],
+                    pages_crawled=row[6] or 0,
+                    docs_count=row[7] or 0,
+                    last_crawled_url=row[8] or "",
+                    last_depth=row[9] or -1,
+                    gcs_prefix=row[10] or "",
+                    last_error=row[11] or "",
+                    created_at=row[12],
+                    updated_at=row[13],
+                )
+            # Try by hostname (for backward compatibility)
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                       pages_crawled, docs_count, last_crawled_url, last_depth,
+                       gcs_prefix, last_error, created_at, updated_at
+                FROM index_jobs
+                WHERE bot_id = %s AND hostname = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (bid, key),
+            ).fetchone()
+            if row:
+                return IndexJob(
+                    job_id=row[0],
+                    bot_id=row[1],
+                    url=row[2],
+                    hostname=row[3],
+                    stage=row[5],
+                    pages_crawled=row[6] or 0,
+                    docs_count=row[7] or 0,
+                    last_crawled_url=row[8] or "",
+                    last_depth=row[9] or -1,
+                    gcs_prefix=row[10] or "",
+                    last_error=row[11] or "",
+                    created_at=row[12],
+                    updated_at=row[13],
+                )
+            return None
+        finally:
+            con.close()
+
+    def get_job_by_hostname(self, bot_id: str, hostname: str) -> Optional[IndexJob]:
+        bid = (bot_id or "").strip()
+        host = (hostname or "").strip().lower()
+        if not bid or not host:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                       pages_crawled, docs_count, last_crawled_url, last_depth,
+                       gcs_prefix, last_error, created_at, updated_at
+                FROM index_jobs
+                WHERE bot_id = %s AND hostname = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (bid, host),
+            ).fetchone()
+            if not row:
+                return None
+            return IndexJob(
+                job_id=row[0],
+                bot_id=row[1],
+                url=row[2],
+                hostname=row[3],
+                stage=row[5],
+                pages_crawled=row[6] or 0,
+                docs_count=row[7] or 0,
+                last_crawled_url=row[8] or "",
+                last_depth=row[9] or -1,
+                gcs_prefix=row[10] or "",
+                last_error=row[11] or "",
+                created_at=row[12],
+                updated_at=row[13],
+                celery_task_id=row[4],
+            )
+        finally:
+            con.close()
+
+    def update_job(self, job: IndexJob) -> None:
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE index_jobs
+                SET stage = %s, pages_crawled = %s, docs_count = %s,
+                    last_crawled_url = %s, last_depth = %s, gcs_prefix = %s,
+                    last_error = %s, updated_at = %s,
+                    celery_task_id = COALESCE(%s, celery_task_id)
+                WHERE job_id = %s
+                """,
+                (
+                    job.stage,
+                    job.pages_crawled,
+                    job.docs_count,
+                    job.last_crawled_url,
+                    job.last_depth,
+                    job.gcs_prefix,
+                    job.last_error,
+                    now,
+                    job.celery_task_id,
+                    job.job_id,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def list_jobs_for_bot(self, bot_id: str) -> List[IndexJob]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                       pages_crawled, docs_count, last_crawled_url, last_depth,
+                       gcs_prefix, last_error, created_at, updated_at
+                FROM index_jobs
+                WHERE bot_id = %s
+                ORDER BY updated_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            return [
+                IndexJob(
+                    job_id=row[0],
+                    bot_id=row[1],
+                    url=row[2],
+                    hostname=row[3],
+                    stage=row[5],
+                    pages_crawled=row[6] or 0,
+                    docs_count=row[7] or 0,
+                    last_crawled_url=row[8] or "",
+                    last_depth=row[9] or -1,
+                    gcs_prefix=row[10] or "",
+                    last_error=row[11] or "",
+                    created_at=row[12],
+                    updated_at=row[13],
+                )
+                for row in rows
+            ]
         finally:
             con.close()
