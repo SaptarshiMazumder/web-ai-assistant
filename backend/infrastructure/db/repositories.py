@@ -174,6 +174,22 @@ class PostgresBotRepository:
         finally:
             con.close()
 
+    def delete_bot(self, bot_id: str) -> None:
+        """Delete a bot and all related data (domains, corpus mappings, index jobs)."""
+        bid = (bot_id or "").strip()
+        if not bid:
+            raise ValueError("bot_id is required")
+        con = _connect()
+        try:
+            # Delete in order: index_jobs, bot_domains, bot_corpora, bots
+            con.execute("DELETE FROM index_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_domains WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_corpora WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bots WHERE bot_id = %s", (bid,))
+            con.commit()
+        finally:
+            con.close()
+
 
 class PostgresBotDomainRepository:
     def add_domain(self, bot_id: str, hostname: str) -> Tuple[str, str]:

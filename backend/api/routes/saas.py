@@ -43,7 +43,7 @@ from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
-from infrastructure.rag.url_discovery_service import discover_urls
+from infrastructure.rag.url_discovery_service import discover_urls, discover_urls_from_sitemap, discover_urls_auto
 
 router = APIRouter()
 
@@ -696,6 +696,20 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
     )
 
 
+@router.delete("/v1/org/bots/{bot_id}")
+async def v1_org_delete_bot(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    try:
+        bot_service().delete_bot(bot_id)
+        return {"status": "deleted", "bot_id": bot_id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/v1/org/bots/{bot_id}/domains", response_model=BotDomainListResponse)
 async def v1_org_list_domains(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
@@ -789,12 +803,41 @@ async def v1_org_url_discovery(
 ):
     _resolve_org_id(user, org_id)
     try:
-        urls = await discover_urls(payload.url)
-        return UrlDiscoveryResponse(urls=urls)
+        # Use method from payload, default to "auto" (crawl4ai)
+        method = (payload.method or "auto").lower()
+        if method == "sitemap":
+            urls = await discover_urls_from_sitemap(payload.url)
+            if not urls:
+                # Sitemap discovery failed - return error message
+                return UrlDiscoveryResponse(
+                    urls=[],
+                    error="No URLs found from sitemap. This could be because:\n• No sitemap.xml found in robots.txt\n• Sitemap is protected by CAPTCHA/bot detection\n• Sitemap is empty or invalid\n• Sitemap URLs are blocked\n\nTry using 'Automatic' discovery method instead (recommended).",
+                    method_used="sitemap"
+                )
+            return UrlDiscoveryResponse(urls=urls, method_used="sitemap")
+        else:
+            # Default to "auto" - use crawl4ai discovery
+            urls = await discover_urls_auto(payload.url)
+            return UrlDiscoveryResponse(urls=urls or [], method_used="auto")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        # Log error but return error message instead of crashing
+        import logging
+        error_msg = str(e)
+        logging.error(f"URL discovery error for {payload.url}: {error_msg}")
+        method = (payload.method or "auto").lower()
+        if method == "sitemap":
+            return UrlDiscoveryResponse(
+                urls=[],
+                error=f"Sitemap discovery failed: {error_msg}\n\nTry using 'Automatic' discovery method instead (recommended).",
+                method_used="sitemap"
+            )
+        return UrlDiscoveryResponse(
+            urls=[],
+            error=f"Automatic discovery failed: {error_msg}",
+            method_used="auto"
+        )
 
 
 @router.post("/v1/org/bots/{bot_id}/index")

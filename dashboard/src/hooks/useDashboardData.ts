@@ -141,7 +141,8 @@ type DashboardData = {
   copySnippet: () => Promise<void>
   refreshAll: () => void
   setSelectedBotId: (value: string | null) => void
-  discoverUrls: (url: string) => Promise<string[]>
+  discoverUrls: (url: string, discoveryMethod?: string) => Promise<{ urls: string[], error?: string, methodUsed?: string }>
+  deleteBot: (botId: string) => Promise<boolean>
 }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -608,20 +609,48 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function discoverUrls(url: string) {
-    if (isSuperAdmin && !activeOrgId) return []
+  async function discoverUrls(url: string, discoveryMethod: string = 'auto'): Promise<{ urls: string[], error?: string, methodUsed?: string }> {
+    if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
     setError(null)
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const data = await fetchAuthedJson<{ urls: string[] }>(withOrgParam('/v1/org/url-discovery', orgOverride), {
+      const data = await fetchAuthedJson<{ urls: string[], error?: string, method_used?: string }>(withOrgParam('/v1/org/url-discovery', orgOverride), {
         method: 'POST',
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, method: discoveryMethod }),
       })
-      return data.urls || []
+      return {
+        urls: data.urls || [],
+        error: data.error,
+        methodUsed: data.method_used
+      }
+    } catch (err) {
+      const errorMsg = (err as Error).message
+      setError(errorMsg)
+      return { urls: [], error: errorMsg }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function deleteBot(botId: string): Promise<boolean> {
+    if (isSuperAdmin && !activeOrgId) return false
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}`, orgOverride), {
+        method: 'DELETE',
+      })
+      // If deleted bot was selected, clear selection
+      if (selectedBotId === botId) {
+        setSelectedBotId(null)
+      }
+      await loadBots()
+      return true
     } catch (err) {
       setError((err as Error).message)
-      return []
+      return false
     } finally {
       setLoading(false)
     }
@@ -847,6 +876,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     refreshAll,
     setSelectedBotId,
     discoverUrls,
+    deleteBot,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

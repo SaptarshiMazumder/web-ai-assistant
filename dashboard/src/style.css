@@ -83,6 +83,17 @@ button:disabled {
   color: #0f172a;
 }
 
+.danger {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+.danger:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 260px 1fr;

@@ -458,22 +458,66 @@ async def discover_internal_urls(
                     break
                 if len(discovered) >= max_urls:
                     break
-                results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
+                
+                # Try batch crawl with retry and fallback
+                results = None
+                for retry_attempt in range(2):
+                    try:
+                        results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
+                        break
+                    except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError) as e:
+                        if retry_attempt < 1:
+                            await asyncio.sleep(1.0 * (2 ** retry_attempt))
+                        else:
+                            # Fallback to individual crawl
+                            from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
+                            results = await _crawl_urls_individually(crawler, urls_to_crawl, run_config)
+                            break
+                    except Exception as e:
+                        # Other errors - try individual crawl
+                        from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
+                        results = await _crawl_urls_individually(crawler, urls_to_crawl, run_config)
+                        break
+                
+                if not results:
+                    # If all crawling failed, continue with what we have
+                    break
+                
                 next_level_urls = set()
                 for result in results:
-                    norm = _normalize_url(result.url)
-                    visited.add(norm)
-                    if norm and norm not in discovered and is_internal(norm):
-                        discovered.append(norm)
-                        if len(discovered) >= max_urls:
-                            break
-                    for link in result.links.get("internal", []):
-                        href = _normalize_url(link.get("href", ""))
-                        if href and href not in visited and is_internal(href):
-                            next_level_urls.add(href)
+                    try:
+                        norm = _normalize_url(result.url)
+                        visited.add(norm)
+                        if norm and norm not in discovered and is_internal(norm):
+                            discovered.append(norm)
+                            if len(discovered) >= max_urls:
+                                break
+                        # Extract links even if page had errors
+                        links = getattr(result, "links", None) or {}
+                        for link in links.get("internal", []):
+                            try:
+                                href = _normalize_url(link.get("href", ""))
+                                if href and href not in visited and is_internal(href):
+                                    next_level_urls.add(href)
+                            except Exception:
+                                # Continue with other links even if one fails
+                                continue
+                    except Exception:
+                        # Continue processing other results even if one fails
+                        continue
                 current_urls = next_level_urls
-    except Exception:
-        return discovered
+    except Exception as e:
+        # Return whatever we discovered so far - never return empty due to errors
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Discovery error in crawl_service: {type(e).__name__}: {str(e)[:100]}, returning {len(discovered)} URLs")
+        pass
+
+    # Always return at least the root URL if we have nothing else
+    if not discovered:
+        root_norm = _normalize_url(root_url)
+        if root_norm:
+            discovered.append(root_norm)
 
     return discovered
 

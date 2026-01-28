@@ -83,10 +83,13 @@ class BotIndexBatchRequest(BaseModel):
 
 class UrlDiscoveryRequest(BaseModel):
     url: str
+    method: str = "auto"  # "auto" (crawl4ai) or "sitemap"
 
 
 class UrlDiscoveryResponse(BaseModel):
     urls: List[str] = []
+    error: Optional[str] = None  # Error message if discovery failed
+    method_used: Optional[str] = None  # "auto" or "sitemap" - which method was actually used
 
 
 class BotIndexJobResponse(BaseModel):

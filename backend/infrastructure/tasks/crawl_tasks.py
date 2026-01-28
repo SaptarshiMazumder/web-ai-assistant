@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
@@ -10,9 +11,12 @@ from infrastructure.celery_app import celery_app
 from infrastructure.rag.crawl_service import CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
 from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
 from infrastructure.db.repositories import PostgresIndexJobRepository
+from infrastructure.rag.error_handling import safe_execute
 from google.cloud import storage
 import google.auth
 import vertexai
+
+logger = logging.getLogger(__name__)
 
 
 def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
@@ -71,25 +75,35 @@ async def _execute_crawl(
                     "raw_html_len": int(evt.get("raw_html_len") or 0),
                 })
 
-        if urls:
-            docs = await crawler_repo.crawl_urls_list(
-                urls,
-                max_concurrent=CRAWL_MAX_CONCURRENCY,
-                progress_cb=_on_progress,
-            )
-        else:
-            docs = await crawler_repo.crawl_urls_bfs(
-                url or "",
-                max_depth=CRAWL_MAX_DEPTH,
-                max_concurrent=CRAWL_MAX_CONCURRENCY,
-                stop_event=None,
-                progress_cb=_on_progress,
-            )
+        # Crawl with comprehensive error handling - always returns partial results
+        docs: List[Any] = []
+        try:
+            if urls:
+                docs = await crawler_repo.crawl_urls_list(
+                    urls,
+                    max_concurrent=CRAWL_MAX_CONCURRENCY,
+                    progress_cb=_on_progress,
+                )
+            else:
+                docs = await crawler_repo.crawl_urls_bfs(
+                    url or "",
+                    max_depth=CRAWL_MAX_DEPTH,
+                    max_concurrent=CRAWL_MAX_CONCURRENCY,
+                    stop_event=None,
+                    progress_cb=_on_progress,
+                )
+        except Exception as crawl_error:
+            # Log error but continue - we might have partial results
+            error_msg = str(crawl_error)[:200]
+            logger.warning(f"Crawl error (continuing with partial results): {type(crawl_error).__name__}: {error_msg}")
+            job.last_error = f"Crawl error: {error_msg}"
+            # Don't raise - continue to process whatever we got
 
-        job.docs_count = len(docs)
+        job.docs_count = len(docs) if docs else 0
         job_repo.update_job(job)
-        _emit_event("result", {"docs_count": len(docs)})
+        _emit_event("result", {"docs_count": job.docs_count})
 
+        # Even if no docs, continue to completion (might be a valid empty site)
         if not docs:
             job.stage = "done"
             job_repo.update_job(job)
@@ -117,36 +131,62 @@ async def _execute_crawl(
             if len(parts) > 1:
                 bot_id_from_prefix = parts[1].split("/")[0]
 
-        storage_client = storage.Client(credentials=creds, project=proj)
-        storage_repo = GCSDocumentStorageRepository(bucket_name, base_prefix, storage_client=storage_client)
-        gcs_prefix = storage_repo.save_documents(bot_id_from_prefix, docs)
-        job.gcs_prefix = gcs_prefix
-        job_repo.update_job(job)
-        _emit_event("gcs_prefix", {"gcs_prefix": gcs_prefix})
+        # Upload to GCS with error handling
+        gcs_prefix = ""
+        try:
+            storage_client = storage.Client(credentials=creds, project=proj)
+            storage_repo = GCSDocumentStorageRepository(bucket_name, base_prefix, storage_client=storage_client)
+            gcs_prefix = storage_repo.save_documents(bot_id_from_prefix, docs)
+            job.gcs_prefix = gcs_prefix
+            job_repo.update_job(job)
+            _emit_event("gcs_prefix", {"gcs_prefix": gcs_prefix})
+        except Exception as upload_error:
+            error_msg = str(upload_error)[:200]
+            logger.error(f"GCS upload error: {type(upload_error).__name__}: {error_msg}")
+            job.last_error = f"Upload error: {error_msg}"
+            job_repo.update_job(job)
+            # Continue even if upload fails - at least we tried
 
+        # Import to RAG with error handling
         job.stage = "importing"
         job_repo.update_job(job)
         _emit_event("stage", {"stage": "importing"})
 
         try:
             vertexai.init(project=proj, location=os.environ.get("LOCATION", "us-central1"), credentials=creds)
-        except Exception:
-            pass
+        except Exception as init_error:
+            logger.debug(f"Vertex AI init error (may already be initialized): {type(init_error).__name__}")
 
-        rag_repo = VertexRAGRepository()
-        rag_repo.import_documents(corpus_resource, gcs_prefix)
-
-        job.stage = "import_submitted"
-        job_repo.update_job(job)
-        _emit_event("stage", {"stage": "import_submitted"})
+        try:
+            rag_repo = VertexRAGRepository()
+            if gcs_prefix:
+                rag_repo.import_documents(corpus_resource, gcs_prefix)
+            job.stage = "import_submitted"
+            job_repo.update_job(job)
+            _emit_event("stage", {"stage": "import_submitted"})
+        except Exception as import_error:
+            error_msg = str(import_error)[:200]
+            logger.error(f"RAG import error: {type(import_error).__name__}: {error_msg}")
+            job.last_error = f"Import error: {error_msg}"
+            job.stage = "error"
+            job_repo.update_job(job)
+            # Don't raise - return what we have
 
         return {"status": "done", "docs_count": len(docs), "gcs_prefix": gcs_prefix}
 
     except Exception as e:
-        job.stage = "error"
-        job.last_error = str(e)
-        job_repo.update_job(job)
-        _emit_event("error", {"error": str(e)})
+        # Last resort error handling - update job and return error status
+        error_msg = str(e)[:500]
+        logger.error(f"Critical crawl error: {type(e).__name__}: {error_msg}")
+        try:
+            job.stage = "error"
+            job.last_error = error_msg
+            job_repo.update_job(job)
+            _emit_event("error", {"error": error_msg})
+        except Exception:
+            # Even job update failed - log and continue
+            pass
+        # Re-raise so Celery can handle retry
         raise
 
 

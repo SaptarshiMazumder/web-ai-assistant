@@ -8,6 +8,8 @@ type CreateBotContextValue = {
   setBotName: (value: string) => void
   websiteUrl: string
   setWebsiteUrl: (value: string) => void
+  discoveryMethod: string
+  setDiscoveryMethod: (value: string) => void
   normalizedWebsiteUrl: string
   discoveredUrls: string[]
   selectedUrls: string[]
@@ -20,6 +22,7 @@ type CreateBotContextValue = {
   botId: string | null
   jobId: string | null
   localError: string | null
+  setLocalError: (value: string | null) => void
   discoverUrls: () => Promise<boolean>
   toggleUrl: (url: string) => void
   selectAll: () => void
@@ -42,6 +45,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, getJobStatus, setNewBotName, setSelectedBotId } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
+  const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
@@ -58,6 +62,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
+    setDiscoveryMethod('auto')
     setNormalizedWebsiteUrl('')
     setDiscoveredUrls([])
     setSelectedUrls([])
@@ -91,19 +96,28 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     setIsDiscovering(true)
     setNormalizedWebsiteUrl(normalized)
-    const urls = await discoverUrlsFromHook(normalized)
-    if (!urls.length) {
-      setLocalError('No URLs found for this site.')
+    const result = await discoverUrlsFromHook(normalized, discoveryMethod)
+    
+    if (!result.urls || result.urls.length === 0) {
+      // If sitemap method failed, show error and suggest automatic
+      if (discoveryMethod === 'sitemap' && result.error) {
+        setLocalError(result.error)
+      } else if (result.error) {
+        setLocalError(result.error)
+      } else {
+        setLocalError('No URLs found for this site.')
+      }
       setDiscoveredUrls([])
       setSelectedUrls([])
       setIsDiscovering(false)
       return false
     }
-    setDiscoveredUrls(urls)
-    setSelectedUrls(urls)
+    
+    setDiscoveredUrls(result.urls)
+    setSelectedUrls(result.urls)
     setIsDiscovering(false)
     return true
-  }, [botName, websiteUrl, discoverUrlsFromHook])
+  }, [botName, websiteUrl, discoveryMethod, discoverUrlsFromHook])
 
   const toggleUrl = useCallback((url: string) => {
     setSelectedUrls((prev) => (prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url]))
@@ -181,6 +195,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setBotName,
       websiteUrl,
       setWebsiteUrl,
+      discoveryMethod,
+      setDiscoveryMethod,
       normalizedWebsiteUrl,
       discoveredUrls,
       selectedUrls,
@@ -193,6 +209,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       botId,
       jobId,
       localError,
+      setLocalError,
       discoverUrls,
       toggleUrl,
       selectAll,
@@ -203,6 +220,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     [
       botName,
       websiteUrl,
+      discoveryMethod,
       normalizedWebsiteUrl,
       discoveredUrls,
       selectedUrls,
@@ -215,6 +233,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       botId,
       jobId,
       localError,
+      setLocalError,
       discoverUrls,
       toggleUrl,
       selectAll,

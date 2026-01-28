@@ -22,6 +22,9 @@ class BotRepository(Protocol):
     def list_bots(self, org_id: Optional[str] = None) -> List[BotRecord]:
         ...
 
+    def delete_bot(self, bot_id: str) -> None:
+        ...
+
 
 class BotDomainRepository(Protocol):
     def add_domain(self, bot_id: str, hostname: str) -> Tuple[str, str]:

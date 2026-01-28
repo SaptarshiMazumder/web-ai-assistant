@@ -23,7 +23,11 @@ from infrastructure.services.indexing_service import _parse_bucket_and_prefix
 
 @lru_cache(maxsize=1)
 def bot_service() -> BotService:
-    return BotService(PostgresBotRepository(), PostgresBotDomainRepository())
+    return BotService(
+        PostgresBotRepository(),
+        PostgresBotDomainRepository(),
+        PostgresBotCorpusRepository(),
+    )
 
 
 @lru_cache(maxsize=1)
