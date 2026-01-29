@@ -12,6 +12,7 @@ langgraph
 beautifulsoup4
 playwright
 requests
+httpx
 markdownify
 PyJWT[crypto]
 psycopg[binary]

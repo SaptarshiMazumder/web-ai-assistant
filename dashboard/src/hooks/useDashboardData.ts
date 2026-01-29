@@ -120,7 +120,7 @@ type DashboardData = {
   loadBotDetail: (botId: string) => Promise<void>
   loadDomains: (botId: string) => Promise<void>
   loadJobs: (botId: string) => Promise<void>
-  createBot: () => Promise<BotCreateResponse | null>
+  createBot: (displayName?: string, orgIdOverride?: string | null) => Promise<BotCreateResponse | null>
   loadOrgs: () => Promise<void>
   loadSelfOrgs: () => Promise<void>
   loadOrgInfo: (orgId: string) => Promise<void>
@@ -144,7 +144,8 @@ type DashboardData = {
   discoverUrls: (
     url: string,
     discoveryMethod?: string,
-    onEvent?: (evt: { type: string; [key: string]: unknown }) => void
+    onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
+    signal?: AbortSignal
   ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
   deleteBot: (botId: string) => Promise<boolean>
 }
@@ -303,20 +304,22 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function createBot(): Promise<BotCreateResponse | null> {
-    if (!newBotName.trim()) return null
-    if (isSuperAdmin && (!activeOrgId || activeOrgId === ALL_ORGS_ID)) {
+  async function createBot(displayName?: string, orgIdOverride?: string | null): Promise<BotCreateResponse | null> {
+    const name = (displayName ?? newBotName).trim()
+    if (!name) return null
+    const effectiveOrgId = orgIdOverride ?? activeOrgId
+    if (isSuperAdmin && (!effectiveOrgId || effectiveOrgId === ALL_ORGS_ID)) {
       setError("Select an organization to create a bot")
       return null
     }
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchAuthedJson<BotCreateResponse>(withOrgParam('/v1/org/bots'), {
+      const data = await fetchAuthedJson<BotCreateResponse>(withOrgParam('/v1/org/bots', effectiveOrgId), {
         method: 'POST',
-        body: JSON.stringify({ display_name: newBotName.trim() }),
+        body: JSON.stringify({ display_name: name }),
       })
-      setNewBotName('')
+      if (!displayName) setNewBotName('')
       await loadBots()
       return data
     } catch (err) {
@@ -616,11 +619,13 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
-    onEvent?: (evt: { type: string; [key: string]: unknown }) => void
+    onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
+    signal?: AbortSignal
   ): Promise<{ urls: string[]; error?: string; methodUsed?: string }> {
     if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
     setError(null)
+    const collected: string[] = []
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const token = await getAccessTokenSilently()
@@ -632,6 +637,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ url, method: discoveryMethod }),
+        signal,
       })
 
       if (!res.ok) {
@@ -652,7 +658,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
-      const collected: string[] = []
       let finalError: string | undefined
       let finalMethod: string | undefined
 
@@ -703,7 +708,12 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
       return { urls: collected, error: finalError, methodUsed: finalMethod }
     } catch (err) {
-      const errorMsg = (err as Error).message
+      const e = err as Error & { name?: string }
+      if (e.name === 'AbortError') {
+        setLoading(false)
+        return { urls: collected }
+      }
+      const errorMsg = e.message
       setError(errorMsg)
       return { urls: [], error: errorMsg }
     } finally {

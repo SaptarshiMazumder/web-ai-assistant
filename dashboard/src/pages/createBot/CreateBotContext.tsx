@@ -14,6 +14,7 @@ type CreateBotContextValue = {
   discoveredUrls: string[]
   selectedUrls: string[]
   isDiscovering: boolean
+  isStartingTraining: boolean
   discoveryDurationMs: number | null
   trainingStage: TrainingStage
   trainingProgress: number
@@ -25,6 +26,7 @@ type CreateBotContextValue = {
   localError: string | null
   setLocalError: (value: string | null) => void
   discoverUrls: () => Promise<boolean>
+  stopDiscovery: () => void
   toggleUrl: (url: string) => void
   toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
   selectAll: () => void
@@ -44,7 +46,7 @@ function normalizeUrl(value: string) {
 }
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
-  const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, getJobStatus, setNewBotName, setSelectedBotId } = useDashboardData()
+  const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
@@ -52,9 +54,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
   const selectionTouchedRef = useRef(false)
   const discoveryStartTimeRef = useRef<number | null>(null)
+  const discoveryAbortRef = useRef<AbortController | null>(null)
   const [trainingStage, setTrainingStage] = useState<TrainingStage>('idle')
   const [trainingProgress, setTrainingProgress] = useState(0)
   const [trainingPagesCrawled, setTrainingPagesCrawled] = useState(0)
@@ -72,6 +76,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setIsDiscovering(false)
+    setIsStartingTraining(false)
     setDiscoveryDurationMs(null)
     setTrainingStage('idle')
     setTrainingProgress(0)
@@ -110,9 +115,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     selectionTouchedRef.current = false
     discoveryStartTimeRef.current = Date.now()
 
+    const controller = new AbortController()
+    discoveryAbortRef.current = controller
+
     // Fire-and-forget stream so UI can navigate immediately and update progressively.
     void (async () => {
-      const final = await discoverUrlsFromHook(normalized, discoveryMethod, (evt) => {
+      await discoverUrlsFromHook(normalized, discoveryMethod, (evt) => {
         if (evt.type === 'discovered' && typeof evt.url === 'string') {
           const url = evt.url
           setDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
@@ -138,15 +146,22 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             )
           }
         }
-      })
-
-      // If the stream ended without emitting done/error, finalize state.
-      if (!final.urls?.length) {
-        if (final.error) setLocalError(final.error)
-      }
-      const start = discoveryStartTimeRef.current
-      if (start != null && discoveryDurationMs === null) setDiscoveryDurationMs(Date.now() - start)
-      setIsDiscovering(false)
+      }, controller.signal)
+        .then((final) => {
+          if (final && !final.urls?.length && final.error) setLocalError(final.error)
+          const start = discoveryStartTimeRef.current
+          if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
+        })
+        .catch((err: Error & { name?: string }) => {
+          if (err.name === 'AbortError') {
+            const start = discoveryStartTimeRef.current
+            if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
+          }
+        })
+        .finally(() => {
+          setIsDiscovering(false)
+          discoveryAbortRef.current = null
+        })
     })()
 
     // Return true so the UI can move to the URLs page immediately.
@@ -188,6 +203,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setSelectedUrls([])
   }, [])
 
+  const stopDiscovery = useCallback(() => {
+    discoveryAbortRef.current?.abort()
+  }, [])
+
   const startTraining = useCallback(async () => {
     setLocalError(null)
     if (!botName.trim()) {
@@ -198,9 +217,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError('Select at least one URL to train on.')
       return null
     }
-    setNewBotName(botName.trim())
-    const created = await createBot()
+    setIsStartingTraining(true)
+    const orgOverride =
+      isSuperAdmin && (!activeOrgId || activeOrgId === '__all__') && orgs.length > 0 ? orgs[0].org_id : undefined
+    const created = await createBot(botName.trim(), orgOverride)
     if (!created) {
+      setIsStartingTraining(false)
+      setLocalError('Failed to start training. Select an organization above if you are an admin.')
       return null
     }
     setBotId(created.bot_id)
@@ -210,14 +233,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setTrainingPagesCrawled(0)
     setTrainingDocsCount(0)
     setTrainingStageName('crawling')
-    const jobIdResult = await queueCrawlUrls(created.bot_id, selectedUrls)
-    if (jobIdResult) {
-      setJobId(jobIdResult)
-    } else {
-      setLocalError('Failed to start crawl job')
-    }
+    void queueCrawlUrls(created.bot_id, selectedUrls)
+      .then((jobIdResult) => {
+        if (jobIdResult) setJobId(jobIdResult)
+        else setLocalError('Failed to start crawl job')
+      })
+      .catch(() => {})
+      .finally(() => setIsStartingTraining(false))
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, selectedUrls, setNewBotName, setSelectedBotId])
+  }, [botName, createBot, queueCrawlUrls, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId || !jobId) return
@@ -242,7 +266,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
     }
     pollStatus()
-    const timer = window.setInterval(pollStatus, 3000)
+    const timer = window.setInterval(pollStatus, 2000)
     return () => window.clearInterval(timer)
   }, [trainingStage, botId, jobId, getJobStatus, selectedUrls.length])
 
@@ -258,6 +282,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       discoveredUrls,
       selectedUrls,
       isDiscovering,
+      isStartingTraining,
       discoveryDurationMs,
       trainingStage,
       trainingProgress,
@@ -269,6 +294,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       localError,
       setLocalError,
       discoverUrls,
+      stopDiscovery,
       toggleUrl,
       toggleCategory,
       selectAll,
@@ -284,6 +310,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       discoveredUrls,
       selectedUrls,
       isDiscovering,
+      isStartingTraining,
       discoveryDurationMs,
       trainingStage,
       trainingProgress,
@@ -295,6 +322,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       localError,
       setLocalError,
       discoverUrls,
+      stopDiscovery,
       toggleUrl,
       toggleCategory,
       selectAll,

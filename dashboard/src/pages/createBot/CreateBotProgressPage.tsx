@@ -11,6 +11,7 @@ export default function CreateBotProgressPage() {
     trainingDocsCount,
     trainingStageName,
     botId,
+    jobId,
     localError,
     resetFlow,
   } = useCreateBotFlow()
@@ -35,7 +36,10 @@ export default function CreateBotProgressPage() {
     error: 'Error',
   }
 
-  const currentStageLabel = stageLabels[trainingStageName] || trainingStageName || 'Processing'
+  const currentStageLabel =
+    !jobId && trainingStage === 'training'
+      ? 'Starting crawl…'
+      : stageLabels[trainingStageName] || trainingStageName || 'Processing'
 
   return (
     <div className="flow-panel-body">

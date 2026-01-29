@@ -232,78 +232,72 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
             max_session_permit=max_concurrent,
         )
 
-        results = []
+        docs: List[Document] = []
         try:
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                # Try batch crawl first
-                try:
-                    results = await crawler.arun_many(urls=filtered_urls, config=run_config, dispatcher=dispatcher)
-                except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError) as e:
-                    # On connection errors, try individual crawl as fallback
-                    logger.debug(f"Batch crawl failed with {type(e).__name__}, trying individual URLs")
-                    results = await _crawl_urls_individually(crawler, filtered_urls, run_config)
-                except Exception as e:
-                    # Other errors - try individual crawl
-                    logger.debug(f"Batch crawl error {type(e).__name__}, trying individual URLs")
-                    results = await _crawl_urls_individually(crawler, filtered_urls, run_config)
-        except Exception as e:
-            # Even if crawler initialization fails, try to return something
-            logger.warning(f"Crawler initialization failed: {type(e).__name__}: {str(e)[:100]}")
-            return []
+                # Chunk so progress_cb runs after each chunk (UI shows incremental progress)
+                _chunk_size = 8
+                for start in range(0, len(filtered_urls), _chunk_size):
+                    chunk = filtered_urls[start : start + _chunk_size]
+                    results: List[Any] = []
+                    try:
+                        results = await crawler.arun_many(urls=chunk, config=run_config, dispatcher=dispatcher)
+                    except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError):
+                        logger.debug("Batch crawl failed for chunk, trying individual URLs")
+                        results = await _crawl_urls_individually(crawler, chunk, run_config)
+                    except Exception:
+                        logger.debug("Batch crawl error for chunk, trying individual URLs")
+                        results = await _crawl_urls_individually(crawler, chunk, run_config)
 
-        docs: List[Document] = []
-        # Process results - continue even if some failed
-        for result in results:
-            try:
-                result_url = getattr(result, "url", None) or ""
-                norm = _normalize_url(result_url) if result_url else ""
-                
-                if getattr(result, "success", False):
-                    content, src = safe_execute(
-                        lambda: _best_text(result),
-                        (None, None),
-                    )
-                    if content:
-                        docs.append(
-                            Document(
-                                url=result_url,
-                                content=f"Source URL: {result_url}\n\n{content}",
-                                metadata={"source": src or "unknown"},
-                            )
-                        )
-                    
-                    if progress_cb:
-                        safe_execute(
-                            lambda: progress_cb({
-                                "type": "page_crawled",
-                                "count": len(docs),
-                                "url": result_url,
-                                "depth": 0,
-                            }),
-                            None,
-                        )
-                else:
-                    # Failed result - still report progress
-                    if progress_cb:
-                        safe_execute(
-                            lambda: progress_cb({
-                                "type": "fetch",
-                                "url": norm,
-                                "success": False,
-                                "status_code": _meta_attr(result, "status_code")
-                                or _meta_attr(result, "http_status")
-                                or _meta_attr(result, "status"),
-                                "error": _meta_attr(result, "error")
-                                or _meta_attr(result, "error_message")
-                                or _meta_attr(result, "message")
-                                or "Unknown error",
-                            }),
-                            None,
-                        )
-            except Exception as e:
-                # Continue processing other results even if one fails
-                logger.debug(f"Error processing result: {type(e).__name__}: {str(e)[:100]}")
-                continue
+                    for result in results:
+                        try:
+                            result_url = getattr(result, "url", None) or ""
+                            norm = _normalize_url(result_url) if result_url else ""
+                            if getattr(result, "success", False):
+                                content, src = safe_execute(
+                                    lambda r=result: _best_text(r),
+                                    (None, None),
+                                )
+                                if content:
+                                    docs.append(
+                                        Document(
+                                            url=result_url,
+                                            content=f"Source URL: {result_url}\n\n{content}",
+                                            metadata={"source": src or "unknown"},
+                                        )
+                                    )
+                                if progress_cb:
+                                    safe_execute(
+                                        lambda u=result_url: progress_cb({
+                                            "type": "page_crawled",
+                                            "count": len(docs),
+                                            "url": u,
+                                            "depth": 0,
+                                        }),
+                                        None,
+                                    )
+                            else:
+                                if progress_cb:
+                                    safe_execute(
+                                        lambda n=norm, r=result: progress_cb({
+                                            "type": "fetch",
+                                            "url": n,
+                                            "success": False,
+                                            "status_code": _meta_attr(r, "status_code")
+                                            or _meta_attr(r, "http_status")
+                                            or _meta_attr(r, "status"),
+                                            "error": _meta_attr(r, "error")
+                                            or _meta_attr(r, "error_message")
+                                            or _meta_attr(r, "message")
+                                            or "Unknown error",
+                                        }),
+                                        None,
+                                    )
+                        except Exception as e:
+                            logger.debug(f"Error processing result: {type(e).__name__}: {str(e)[:100]}")
+        except Exception as e:
+            logger.warning(f"Crawler initialization failed: {type(e).__name__}: {str(e)[:100]}")
+            return docs if docs else []
 
         return docs
 

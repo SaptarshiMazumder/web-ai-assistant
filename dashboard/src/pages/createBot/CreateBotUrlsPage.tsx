@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateBotFlow } from './CreateBotContext'
+import { PlayIcon, StopIcon } from './DiscoveryIcons'
 import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategoryDisplayPath, getAllExpandablePaths, type UrlCategory } from './urlCategorizer'
 
 export default function CreateBotUrlsPage() {
@@ -10,11 +11,13 @@ export default function CreateBotUrlsPage() {
     selectedUrls,
     normalizedWebsiteUrl,
     isDiscovering,
+    isStartingTraining,
     discoveryDurationMs,
     toggleUrl,
     toggleCategory,
     selectAll,
     deselectAll,
+    stopDiscovery,
     localError,
     startTraining,
   } = useCreateBotFlow()
@@ -57,6 +60,7 @@ export default function CreateBotUrlsPage() {
   const collapseAll = () => setExpandedCategories(new Set())
 
   const handleStartTraining = async () => {
+    console.log('[Create Bot] Start Training clicked')
     const botId = await startTraining()
     if (botId) {
       navigate('/create-bot/progress')
@@ -299,12 +303,20 @@ export default function CreateBotUrlsPage() {
       {localError && <div className="alert error">{localError}</div>}
 
       <div className="flow-actions">
-        <button className="secondary" onClick={() => navigate('/create-bot')}>
+        <button type="button" className="secondary" onClick={() => navigate('/create-bot')}>
           Back
         </button>
-        <button className="primary" onClick={handleStartTraining} disabled={isDiscovering || selectedUrls.length === 0}>
-          Start training
-        </button>
+        {isDiscovering ? (
+          <button type="button" className="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <StopIcon />
+            Stop
+          </button>
+        ) : (
+          <button type="button" className="primary" onClick={handleStartTraining} disabled={selectedUrls.length === 0 || isStartingTraining} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <PlayIcon />
+            {isStartingTraining ? 'Starting…' : 'Start training'}
+          </button>
+        )}
       </div>
     </div>
   )
