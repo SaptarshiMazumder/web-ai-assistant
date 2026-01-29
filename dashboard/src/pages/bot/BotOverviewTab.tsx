@@ -33,7 +33,7 @@ export default function BotOverviewTab() {
         <div className="card-title">Embed script</div>
         <p className="muted">Add this snippet to your client website.</p>
         <pre className="snippet">{embedSnippet}</pre>
-        <button className="secondary" onClick={copySnippet} disabled={!embedSnippet}>
+        <button className="secondary" onClick={() => void copySnippet()} disabled={!embedSnippet}>
           Copy snippet
         </button>
       </section>

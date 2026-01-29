@@ -109,7 +109,6 @@ class IndexingService:
         if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
             raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
 
-        corpus = self._rag_repo.ensure_corpus(bot_id)
         bucket_name, base_prefix_root = _parse_bucket_and_prefix()
         base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
 
@@ -132,9 +131,9 @@ class IndexingService:
 
         self._job_repo.create_job(job)
 
-        # Queue Celery task with URL list
+        # Queue Celery task immediately; worker will call ensure_corpus so API returns fast
         try:
-            task = crawl_job_task.delay(job_id, bot_id, None, cleaned, bucket_name, base_prefix, corpus)
+            task = crawl_job_task.delay(job_id, bot_id, None, cleaned, bucket_name, base_prefix, None)
             task_id = task.id if task else None
         except Exception as e:
             # If Celery task fails to queue, mark job as error

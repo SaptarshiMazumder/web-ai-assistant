@@ -4,6 +4,7 @@ import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotProgressPage() {
   const navigate = useNavigate()
+  const { step3, flow } = useCreateBotFlow()
   const {
     trainingStage,
     trainingProgress,
@@ -14,13 +15,13 @@ export default function CreateBotProgressPage() {
     jobId,
     localError,
     resetFlow,
-  } = useCreateBotFlow()
+  } = step3
 
   useEffect(() => {
     if (trainingStage === 'idle') {
-      navigate('/create-bot')
+      navigate(flow.firstPath)
     }
-  }, [trainingStage, navigate])
+  }, [trainingStage, navigate, flow.firstPath])
 
   const handleFinish = () => {
     resetFlow()
@@ -69,12 +70,17 @@ export default function CreateBotProgressPage() {
       <div className="flow-actions">
         {trainingStage === 'complete' ? (
           <>
+            {flow.nextPath ? (
+              <button type="button" className="primary" onClick={() => navigate(flow.nextPath!)}>
+                Continue
+              </button>
+            ) : null}
             {botId ? (
-              <Link className="primary" to={`/bots/${botId}/overview`} onClick={handleFinish}>
+              <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}>
                 Go to bot overview
               </Link>
             ) : (
-              <Link className="primary" to="/bots" onClick={handleFinish}>
+              <Link className="secondary" to="/bots" onClick={handleFinish}>
                 Go to bots
               </Link>
             )}

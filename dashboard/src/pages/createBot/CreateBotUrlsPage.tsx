@@ -6,6 +6,7 @@ import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategor
 
 export default function CreateBotUrlsPage() {
   const navigate = useNavigate()
+  const { step2, flow } = useCreateBotFlow()
   const {
     discoveredUrls,
     selectedUrls,
@@ -20,7 +21,7 @@ export default function CreateBotUrlsPage() {
     stopDiscovery,
     localError,
     startTraining,
-  } = useCreateBotFlow()
+  } = step2
 
   const discoveryDurationLabel =
     discoveryDurationMs != null && !isDiscovering
@@ -42,9 +43,9 @@ export default function CreateBotUrlsPage() {
 
   useEffect(() => {
     if (!discoveredUrls.length && !isDiscovering) {
-      navigate('/create-bot')
+      navigate(flow.firstPath)
     }
-  }, [discoveredUrls.length, isDiscovering, navigate])
+  }, [discoveredUrls.length, isDiscovering, navigate, flow.firstPath])
 
   const hasExpandedDefault = useRef(false)
   useEffect(() => {
@@ -62,8 +63,8 @@ export default function CreateBotUrlsPage() {
   const handleStartTraining = async () => {
     console.log('[Create Bot] Start Training clicked')
     const botId = await startTraining()
-    if (botId) {
-      navigate('/create-bot/progress')
+    if (botId && flow.nextPath) {
+      navigate(flow.nextPath)
     }
   }
 
@@ -303,7 +304,7 @@ export default function CreateBotUrlsPage() {
       {localError && <div className="alert error">{localError}</div>}
 
       <div className="flow-actions">
-        <button type="button" className="secondary" onClick={() => navigate('/create-bot')}>
+        <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
         </button>
         {isDiscovering ? (

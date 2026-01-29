@@ -116,6 +116,7 @@ type DashboardData = {
   setNewMemberRole: (value: string) => void
   isSuperAdmin: boolean
   embedSnippet: string
+  buildEmbedSnippet: (config?: { position?: string; primaryColor?: string; title?: string; size?: string }) => string
   loadBots: () => Promise<void>
   loadBotDetail: (botId: string) => Promise<void>
   loadDomains: (botId: string) => Promise<void>
@@ -138,7 +139,7 @@ type DashboardData = {
   cancelCrawl: () => Promise<void>
   refreshStatus: (url: string) => Promise<void>
   getJobStatus: (botId: string, jobId: string) => Promise<IndexStatus | null>
-  copySnippet: () => Promise<void>
+  copySnippet: (snippet?: string) => Promise<void>
   refreshAll: () => void
   setSelectedBotId: (value: string | null) => void
   discoverUrls: (
@@ -212,6 +213,17 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     if (!selectedBot) return ''
     return `<script async src="${API_BASE}/widget/widget.js" data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"></script>`
   }, [selectedBot])
+
+  function buildEmbedSnippet(config?: { position?: string; primaryColor?: string; title?: string; size?: string }): string {
+    if (!selectedBot) return ''
+    const base = `data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"`
+    const attrs: string[] = [base]
+    if (config?.position) attrs.push(`data-position="${config.position}"`)
+    if (config?.primaryColor) attrs.push(`data-color="${config.primaryColor}"`)
+    if (config?.title) attrs.push(`data-title="${config.title.replace(/"/g, '&quot;')}"`)
+    if (config?.size) attrs.push(`data-size="${config.size}"`)
+    return `<script async src="${API_BASE}/widget/widget.js" ${attrs.join(' ')}></script>`
+  }
 
   async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T> {
     const token = await getAccessTokenSilently()
@@ -788,10 +800,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function copySnippet() {
-    if (!embedSnippet) return
+  async function copySnippet(snippet?: string) {
+    const text = snippet ?? embedSnippet
+    if (!text) return
     try {
-      await navigator.clipboard.writeText(embedSnippet)
+      await navigator.clipboard.writeText(text)
     } catch (err) {
       setError((err as Error).message)
     }
@@ -938,6 +951,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setNewMemberRole,
     isSuperAdmin,
     embedSnippet,
+    buildEmbedSnippet,
     loadBots,
     loadBotDetail,
     loadDomains,

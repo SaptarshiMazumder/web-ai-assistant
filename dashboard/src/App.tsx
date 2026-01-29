@@ -10,9 +10,11 @@ import OrgPage from './pages/OrgPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
 import CreateBotDetailsPage from './pages/createBot/CreateBotDetailsPage'
+import CreateBotEmbedPage from './pages/createBot/CreateBotEmbedPage'
 import CreateBotLayout from './pages/createBot/CreateBotLayout'
 import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
 import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
+import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
 import BotAnalyticsTab from './pages/bot/BotAnalyticsTab'
 import BotDesignTab from './pages/bot/BotDesignTab'
 import BotDetailLayout from './pages/bot/BotDetailLayout'
@@ -53,10 +55,13 @@ export default function App() {
     <DashboardDataProvider>
       <BrowserRouter>
         <Routes>
+          {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
           <Route path="/create-bot" element={<CreateBotLayout />}>
             <Route index element={<CreateBotDetailsPage />} />
             <Route path="urls" element={<CreateBotUrlsPage />} />
             <Route path="progress" element={<CreateBotProgressPage />} />
+            <Route path="widget" element={<CreateBotWidgetPage />} />
+            <Route path="embed" element={<CreateBotEmbedPage />} />
             <Route path="*" element={<Navigate to="/create-bot" replace />} />
           </Route>
           <Route path="/" element={<DashboardLayout />}>

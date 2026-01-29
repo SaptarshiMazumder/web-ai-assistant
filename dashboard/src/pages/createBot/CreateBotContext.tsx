@@ -1,9 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath } from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
 
-type CreateBotContextValue = {
+/** Step 1: Name + Website. Change only this slice when editing the first step. */
+export type CreateBotStep1Slice = {
   botName: string
   setBotName: (value: string) => void
   websiteUrl: string
@@ -11,11 +14,34 @@ type CreateBotContextValue = {
   discoveryMethod: string
   setDiscoveryMethod: (value: string) => void
   normalizedWebsiteUrl: string
+  isDiscovering: boolean
+  discoveryDurationMs: number | null
+  localError: string | null
+  setLocalError: (value: string | null) => void
+  discoverUrls: () => Promise<boolean>
+  stopDiscovery: () => void
+}
+
+/** Step 2: Select URLs. Change only this slice when editing the second step. */
+export type CreateBotStep2Slice = {
   discoveredUrls: string[]
   selectedUrls: string[]
+  normalizedWebsiteUrl: string
+  discoveryDurationMs: number | null
   isDiscovering: boolean
   isStartingTraining: boolean
-  discoveryDurationMs: number | null
+  localError: string | null
+  setLocalError: (value: string | null) => void
+  toggleUrl: (url: string) => void
+  toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
+  selectAll: () => void
+  deselectAll: () => void
+  startTraining: () => Promise<string | null>
+  stopDiscovery: () => void
+}
+
+/** Step 3: Training progress. Change only this slice when editing the third step. */
+export type CreateBotStep3Slice = {
   trainingStage: TrainingStage
   trainingProgress: number
   trainingPagesCrawled: number
@@ -25,18 +51,44 @@ type CreateBotContextValue = {
   jobId: string | null
   localError: string | null
   setLocalError: (value: string | null) => void
-  discoverUrls: () => Promise<boolean>
-  stopDiscovery: () => void
-  toggleUrl: (url: string) => void
-  toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
-  selectAll: () => void
-  deselectAll: () => void
-  startTraining: () => Promise<string | null>
+  resetFlow: () => void
+}
+
+/** Step 4: Design widget. Change only this slice when editing the fourth step. */
+export type CreateBotStep4Slice = {
+  widgetPosition: 'bottom-right' | 'bottom-left'
+  setWidgetPosition: (value: 'bottom-right' | 'bottom-left') => void
+  widgetPrimaryColor: string
+  setWidgetPrimaryColor: (value: string) => void
+  widgetTitle: string
+  setWidgetTitle: (value: string) => void
+  widgetSize: 'small' | 'medium' | 'large'
+  setWidgetSize: (value: 'small' | 'medium' | 'large') => void
+}
+
+/** Flow navigation. Derived from flowConfig; add/remove steps there. */
+export type CreateBotFlowSlice = {
+  nextPath: string | null
+  prevPath: string | null
+  firstPath: string
+}
+
+export type CreateBotContextValue = {
+  step1: CreateBotStep1Slice
+  step2: CreateBotStep2Slice
+  step3: CreateBotStep3Slice
+  step4: CreateBotStep4Slice
+  flow: CreateBotFlowSlice
   resetFlow: () => void
 }
 
 const CreateBotContext = createContext<CreateBotContextValue | undefined>(undefined)
 
+/**
+ * When adding a new step: 1) Add step to flowConfig.ts (path, label, description).
+ * 2) Add Route in App.tsx. 3) Define StepNSlice type and add stepN to value below.
+ * 4) Add step state and include it in resetFlow().
+ */
 function normalizeUrl(value: string) {
   const trimmed = value.trim()
   if (!trimmed) return ''
@@ -46,6 +98,7 @@ function normalizeUrl(value: string) {
 }
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
   const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -67,6 +120,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [botId, setBotId] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
+  const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
+  const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#6366f1')
+  const [widgetTitle, setWidgetTitle] = useState('Chat')
+  const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large'>('medium')
 
   const resetFlow = useCallback(() => {
     setBotName('')
@@ -86,6 +143,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(null)
     setJobId(null)
     setLocalError(null)
+    setWidgetPosition('bottom-right')
+    setWidgetPrimaryColor('#6366f1')
+    setWidgetTitle('Chat')
+    setWidgetSize('medium')
   }, [])
 
   const discoverUrls = useCallback(async () => {
@@ -266,40 +327,73 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
     }
     pollStatus()
-    const timer = window.setInterval(pollStatus, 2000)
+    const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
   }, [trainingStage, botId, jobId, getJobStatus, selectedUrls.length])
 
+  const nextPath = getCreateBotNextPath(location.pathname)
+  const prevPath = getCreateBotPrevPath(location.pathname)
+
   const value = useMemo(
     () => ({
-      botName,
-      setBotName,
-      websiteUrl,
-      setWebsiteUrl,
-      discoveryMethod,
-      setDiscoveryMethod,
-      normalizedWebsiteUrl,
-      discoveredUrls,
-      selectedUrls,
-      isDiscovering,
-      isStartingTraining,
-      discoveryDurationMs,
-      trainingStage,
-      trainingProgress,
-      trainingPagesCrawled,
-      trainingDocsCount,
-      trainingStageName,
-      botId,
-      jobId,
-      localError,
-      setLocalError,
-      discoverUrls,
-      stopDiscovery,
-      toggleUrl,
-      toggleCategory,
-      selectAll,
-      deselectAll,
-      startTraining,
+      step1: {
+        botName,
+        setBotName,
+        websiteUrl,
+        setWebsiteUrl,
+        discoveryMethod,
+        setDiscoveryMethod,
+        normalizedWebsiteUrl,
+        isDiscovering,
+        discoveryDurationMs,
+        localError,
+        setLocalError,
+        discoverUrls,
+        stopDiscovery,
+      },
+      step2: {
+        discoveredUrls,
+        selectedUrls,
+        normalizedWebsiteUrl,
+        discoveryDurationMs,
+        isDiscovering,
+        isStartingTraining,
+        localError,
+        setLocalError,
+        toggleUrl,
+        toggleCategory,
+        selectAll,
+        deselectAll,
+        startTraining,
+        stopDiscovery,
+      },
+      step3: {
+        trainingStage,
+        trainingProgress,
+        trainingPagesCrawled,
+        trainingDocsCount,
+        trainingStageName,
+        botId,
+        jobId,
+        localError,
+        setLocalError,
+        resetFlow,
+      },
+      step4: {
+        widgetPosition,
+        setWidgetPosition,
+        widgetPrimaryColor,
+        setWidgetPrimaryColor,
+        widgetTitle,
+        setWidgetTitle,
+        widgetSize,
+        setWidgetSize,
+      },
+      flow: {
+        nextPath,
+        prevPath,
+        firstPath: CREATE_BOT_FIRST_PATH,
+      },
       resetFlow,
     }),
     [
@@ -320,7 +414,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       botId,
       jobId,
       localError,
-      setLocalError,
+      widgetPosition,
+      widgetPrimaryColor,
+      widgetTitle,
+      widgetSize,
       discoverUrls,
       stopDiscovery,
       toggleUrl,
@@ -329,6 +426,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       deselectAll,
       startTraining,
       resetFlow,
+      nextPath,
+      prevPath,
     ]
   )
 

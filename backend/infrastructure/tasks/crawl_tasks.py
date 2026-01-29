@@ -208,7 +208,7 @@ def crawl_job_task(
     urls: Optional[List[str]],
     bucket_name: str,
     base_prefix: str,
-    corpus_resource: str,
+    corpus_resource: Optional[str],
 ) -> Dict[str, Any]:
     """
     Celery task to execute crawling job.
@@ -221,7 +221,7 @@ def crawl_job_task(
         urls: List of URLs for direct crawl (if url is None)
         bucket_name: GCS bucket name
         base_prefix: GCS base prefix
-        corpus_resource: Vertex AI RAG corpus resource name
+        corpus_resource: Vertex AI RAG corpus resource name (None = resolve in worker for fast API return)
     
     Returns:
         Dict with status and results
@@ -232,6 +232,11 @@ def crawl_job_task(
     if job:
         job.celery_task_id = self.request.id
         job_repo.update_job(job)
+
+    # Resolve corpus in worker so the API can return job_id immediately (ensure_corpus can take 30+ s)
+    if not corpus_resource:
+        rag_repo = VertexRAGRepository()
+        corpus_resource = rag_repo.ensure_corpus(bot_id)
     
     try:
         # Run async function - create new event loop for Celery worker

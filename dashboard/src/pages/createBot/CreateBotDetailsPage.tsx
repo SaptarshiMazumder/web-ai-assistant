@@ -4,12 +4,13 @@ import { PlayIcon, StopIcon } from './DiscoveryIcons'
 
 export default function CreateBotDetailsPage() {
   const navigate = useNavigate()
-  const { botName, setBotName, websiteUrl, setWebsiteUrl, discoveryMethod, setDiscoveryMethod, isDiscovering, localError, setLocalError, discoverUrls, stopDiscovery } = useCreateBotFlow()
+  const { step1, flow } = useCreateBotFlow()
+  const { botName, setBotName, websiteUrl, setWebsiteUrl, discoveryMethod, setDiscoveryMethod, isDiscovering, localError, setLocalError, discoverUrls, stopDiscovery } = step1
 
   const handleContinue = async () => {
     const ok = await discoverUrls()
-    if (ok) {
-      navigate('/create-bot/urls')
+    if (ok && flow.nextPath) {
+      navigate(flow.nextPath)
     }
   }
 
