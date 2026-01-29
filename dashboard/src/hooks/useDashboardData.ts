@@ -141,7 +141,11 @@ type DashboardData = {
   copySnippet: () => Promise<void>
   refreshAll: () => void
   setSelectedBotId: (value: string | null) => void
-  discoverUrls: (url: string, discoveryMethod?: string) => Promise<{ urls: string[], error?: string, methodUsed?: string }>
+  discoverUrls: (
+    url: string,
+    discoveryMethod?: string,
+    onEvent?: (evt: { type: string; [key: string]: unknown }) => void
+  ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
   deleteBot: (botId: string) => Promise<boolean>
 }
 
@@ -609,21 +613,95 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function discoverUrls(url: string, discoveryMethod: string = 'auto'): Promise<{ urls: string[], error?: string, methodUsed?: string }> {
+  async function discoverUrls(
+    url: string,
+    discoveryMethod: string = 'auto',
+    onEvent?: (evt: { type: string; [key: string]: unknown }) => void
+  ): Promise<{ urls: string[]; error?: string; methodUsed?: string }> {
     if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
     setError(null)
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const data = await fetchAuthedJson<{ urls: string[], error?: string, method_used?: string }>(withOrgParam('/v1/org/url-discovery', orgOverride), {
+      const token = await getAccessTokenSilently()
+
+      const res = await fetch(`${API_BASE}${withOrgParam('/v1/org/url-discovery/stream', orgOverride)}`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ url, method: discoveryMethod }),
       })
-      return {
-        urls: data.urls || [],
-        error: data.error,
-        methodUsed: data.method_used
+
+      if (!res.ok) {
+        let detail = res.statusText
+        try {
+          const body = (await res.json()) as { detail?: string }
+          detail = body.detail || detail
+        } catch {
+          // ignore
+        }
+        throw new Error(detail)
       }
+
+      if (!res.body) {
+        throw new Error('No response body from discovery stream')
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      const collected: string[] = []
+      let finalError: string | undefined
+      let finalMethod: string | undefined
+
+      const pushUnique = (u: string) => {
+        if (!u) return
+        if (!collected.includes(u)) collected.push(u)
+      }
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+          let evt: { type: string; [key: string]: unknown }
+          try {
+            evt = JSON.parse(trimmed) as { type: string; [key: string]: unknown }
+          } catch {
+            continue
+          }
+
+          if (onEvent) onEvent(evt)
+
+          if (evt.type === 'discovered' && typeof evt.url === 'string') {
+            pushUnique(evt.url)
+          }
+
+          if (evt.type === 'error' && typeof evt.message === 'string') {
+            finalError = evt.message
+          }
+
+          if (evt.type === 'done') {
+            if (Array.isArray(evt.urls)) {
+              for (const u of evt.urls) {
+                if (typeof u === 'string') pushUnique(u)
+              }
+            }
+            if (typeof evt.method_used === 'string') finalMethod = evt.method_used
+          }
+
+          if (typeof evt.method_used === 'string') finalMethod = evt.method_used
+        }
+      }
+
+      return { urls: collected, error: finalError, methodUsed: finalMethod }
     } catch (err) {
       const errorMsg = (err as Error).message
       setError(errorMsg)

@@ -1,11 +1,14 @@
 import asyncio
+import logging
 import os
 import re
 import hashlib
 from datetime import datetime
 import time
 from typing import List, Dict, Any, Tuple, Optional, Callable
-from urllib.parse import urlparse, urldefrag
+from urllib.parse import urlparse, urldefrag, urljoin, urlunparse
+
+logger = logging.getLogger(__name__)
 
 from google.cloud import storage
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
@@ -50,7 +53,228 @@ CHUNK_OVERLAP = 64
 # ---- UTILITIES ----------
 # =========================
 def _normalize_url(url: str) -> str:
-    return urldefrag(url)[0]
+    """Normalize URL: strip fragment, and collapse path '' and '/' so example.com and example.com/ are the same."""
+    url = urldefrag(url)[0]
+    try:
+        p = urlparse(url)
+        path = (p.path or "/").strip() or "/"
+        if path == "/":
+            # Canonical form for root: scheme://netloc/ so example.com and example.com/ dedupe
+            return urlunparse((p.scheme, p.netloc, "/", "", p.query, ""))
+    except Exception:
+        pass
+    return url
+
+
+# Extensions that are almost certainly not HTML content pages.
+_NON_PAGE_EXTENSIONS = {
+    # images
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".ico",
+    ".bmp",
+    ".tiff",
+    ".avif",
+    # styles/scripts
+    ".css",
+    ".js",
+    ".mjs",
+    ".map",
+    # fonts
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+    ".eot",
+    # media
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".m4a",
+    # docs/archives
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".tgz",
+    ".rar",
+    ".7z",
+    ".tar",
+    ".dmg",
+    ".exe",
+    # data
+    ".json",
+    ".xml",
+    ".rss",
+}
+
+
+def _is_probably_page_url(url: str, *, root_netloc: str) -> bool:
+    """
+    Heuristic filter to keep discovery focused on content pages.
+    We intentionally skip obvious static assets (png/js/css/etc.).
+    """
+    try:
+        p = urlparse(url)
+    except Exception:
+        return False
+
+    if p.scheme not in ("http", "https"):
+        return False
+    if not p.netloc or p.netloc != root_netloc:
+        return False
+
+    path = (p.path or "/").strip()
+    if not path:
+        path = "/"
+
+    # Strip trailing slash for extension checks.
+    path_no_slash = path[:-1] if path.endswith("/") and path != "/" else path
+    lower = path_no_slash.lower()
+
+    # If the last path segment ends with a known non-page extension, skip it.
+    for ext in _NON_PAGE_EXTENSIONS:
+        if lower.endswith(ext):
+            return False
+
+    return True
+
+
+# Regexes for fallback link extraction from HTML/markdown (so we never miss URLs).
+_RE_HREF = re.compile(
+    r'\bhref\s*=\s*["\']([^"\']+)["\']|\bhref\s*=\s*([^\s>"\']+)',
+    re.IGNORECASE,
+)
+_RE_MD_LINK = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+
+
+def _extract_urls_from_content(
+    content: str,
+    base_url: str,
+    root_netloc: str,
+) -> List[str]:
+    """
+    Extract same-domain page URLs from HTML or markdown when crawl4ai's links are empty.
+    Ensures discovery never misses links that are present in the page content.
+    """
+    if not content or not isinstance(content, str):
+        return []
+    seen: set = set()
+    out: List[str] = []
+    # href="..." or href='...' or href=...
+    for m in _RE_HREF.finditer(content):
+        raw = (m.group(1) or m.group(2) or "").strip()
+        if not raw or raw.startswith("#") or raw.startswith("javascript:"):
+            continue
+        try:
+            full = urljoin(base_url, raw)
+            norm = _normalize_url(full)
+            if not norm or norm in seen:
+                continue
+            if urlparse(norm).netloc != root_netloc:
+                continue
+            if not _is_probably_page_url(norm, root_netloc=root_netloc):
+                continue
+            seen.add(norm)
+            out.append(norm)
+        except Exception:
+            continue
+    # Markdown [text](url)
+    for m in _RE_MD_LINK.finditer(content):
+        raw = (m.group(2) or "").strip()
+        if not raw or raw.startswith("#") or raw.startswith("javascript:"):
+            continue
+        try:
+            full = urljoin(base_url, raw)
+            norm = _normalize_url(full)
+            if not norm or norm in seen:
+                continue
+            if urlparse(norm).netloc != root_netloc:
+                continue
+            if not _is_probably_page_url(norm, root_netloc=root_netloc):
+                continue
+            seen.add(norm)
+            out.append(norm)
+        except Exception:
+            continue
+    return out
+
+
+# ---- Discovery reliability (without freezing): bounded retries/backoff ----
+# Discovery runs in the request path (and can stream). Long backoffs (e.g. 60s waits)
+# make the UX unusable. We keep retries, but cap the total time per URL.
+_DISCOVERY_MAX_RETRIES = 4
+_DISCOVERY_RETRY_BACKOFF_BASE = 0.35  # ~0.35, 0.7, 1.4, 2.8 seconds
+_DISCOVERY_RETRY_BACKOFF_CAP_S = 2.0
+_DISCOVERY_PER_URL_BUDGET_S = 6.0
+
+
+def _is_successful_result(result: Any) -> bool:
+    """True if we got a real response (not a failed/placeholder result)."""
+    if result is None:
+        return False
+    return getattr(result, "success", True) is not False
+
+
+def _result_has_links(result: Any) -> bool:
+    """True if result has at least one internal or external link (for discovery)."""
+    if result is None:
+        return False
+    links = getattr(result, "links", None) or {}
+    if not isinstance(links, dict):
+        return False
+    internal = links.get("internal") or []
+    external = links.get("external") or []
+    return len(internal) > 0 or len(external) > 0
+
+
+class _FailedDiscoveryResult:
+    """Placeholder for a URL we could not fetch after retries. Has .url and .links = {}."""
+
+    def __init__(self, url: str):
+        self.url = url
+        self.success = False
+        self.links = {}
+
+
+async def _fetch_single_url_with_retries(
+    crawler: Any,
+    url: str,
+    run_config: Any,
+    *,
+    max_retries: int = _DISCOVERY_MAX_RETRIES,
+) -> Any:
+    """Fetch one URL with exponential backoff. Returns result or _FailedDiscoveryResult."""
+    start = time.monotonic()
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            result = await crawler.arun(url=url, config=run_config)
+            if result:
+                return result
+        except Exception as e:
+            last_error = e
+            msg = str(e)
+            # Fail fast on connection/navigation errors - each attempt can pause for many seconds,
+            # so retrying would freeze the flow. Prefer moving on over 2–3 long waits per URL.
+            if "ERR_CONNECTION_CLOSED" in msg or "Failed on navigating" in msg or "ACS-GOTO" in msg:
+                break
+            if time.monotonic() - start >= _DISCOVERY_PER_URL_BUDGET_S:
+                break
+            if attempt < max_retries - 1:
+                wait = min(_DISCOVERY_RETRY_BACKOFF_CAP_S, _DISCOVERY_RETRY_BACKOFF_BASE * (2 ** attempt))
+                # Don't sleep past remaining budget.
+                remaining = _DISCOVERY_PER_URL_BUDGET_S - (time.monotonic() - start)
+                if remaining <= 0:
+                    break
+                await asyncio.sleep(min(wait, max(0.0, remaining)))
+    return _FailedDiscoveryResult(url)
 
 
 def _get_str(result: Any, attr: str) -> str:
@@ -434,6 +658,8 @@ async def discover_internal_urls(
     max_urls: int = 2000,
 ) -> List[str]:
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+    # Use minimal config: crawl4ai treats wait_for as a CSS selector, not a load state,
+    # so setting wait_for="domcontentloaded" causes "Timeout waiting for selector 'domcontentloaded'".
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
@@ -446,6 +672,8 @@ async def discover_internal_urls(
     visited = set()
     current_urls = set([_normalize_url(root_url)])
     discovered: List[str] = []
+    failed_urls: set = set()
+    max_depth_reached = -1
 
     def is_internal(url: str) -> bool:
         return urlparse(url).netloc == root_netloc
@@ -453,64 +681,138 @@ async def discover_internal_urls(
     try:
         async with AsyncWebCrawler(config=browser_config) as crawler:
             for _depth in range(max_depth):
-                urls_to_crawl = [u for u in current_urls if u not in visited]
+                urls_to_crawl = sorted(
+                    u
+                    for u in current_urls
+                    if u not in visited and _is_probably_page_url(u, root_netloc=root_netloc)
+                )
                 if not urls_to_crawl:
+                    # No more URLs at this depth, but continue to next depth if we have discovered URLs
+                    # This handles cases where some pages don't have links but others do
+                    if len(discovered) > 0:
+                        continue
                     break
                 if len(discovered) >= max_urls:
                     break
                 
-                # Try batch crawl with retry and fallback
+                # Try batch crawl with retry and fallback (5 retries for reliability)
                 results = None
-                for retry_attempt in range(2):
+                for retry_attempt in range(5):
                     try:
                         results = await crawler.arun_many(urls=urls_to_crawl, config=run_config, dispatcher=dispatcher)
                         break
                     except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError) as e:
-                        if retry_attempt < 1:
-                            await asyncio.sleep(1.0 * (2 ** retry_attempt))
+                        if retry_attempt < 4:
+                            await asyncio.sleep(1.5 * (2 ** retry_attempt))
                         else:
-                            # Fallback to individual crawl
                             from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
                             results = await _crawl_urls_individually(crawler, urls_to_crawl, run_config)
                             break
                     except Exception as e:
-                        # Other errors - try individual crawl
                         from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
                         results = await _crawl_urls_individually(crawler, urls_to_crawl, run_config)
                         break
                 
                 if not results:
-                    # If all crawling failed, continue with what we have
-                    break
-                
+                    # If all crawling failed, continue to next depth level instead of breaking
+                    current_urls = set()
+                    continue
+                # Ensure every requested URL has a result: retry missing and failed until success or max retries
+                result_by_norm = {_normalize_url(getattr(r, "url", None) or ""): r for r in results}
+                missing = [u for u in urls_to_crawl if _normalize_url(u) not in result_by_norm]
+                for u in sorted(missing):
+                    r = await _fetch_single_url_with_retries(crawler, u, run_config)
+                    result_by_norm[_normalize_url(u)] = r
+                failed = [u for u in urls_to_crawl if not _is_successful_result(result_by_norm.get(_normalize_url(u)))]
+                for u in sorted(failed):
+                    r = await _fetch_single_url_with_retries(crawler, u, run_config)
+                    if _is_successful_result(r):
+                        result_by_norm[_normalize_url(u)] = r
+                results = [result_by_norm[_normalize_url(u)] for u in urls_to_crawl]
+                results = sorted(results, key=lambda r: (getattr(r, "url", None) or ""))
+                max_depth_reached = _depth
+                for r in results:
+                    if not _is_successful_result(r):
+                        u = getattr(r, "url", None) or ""
+                        if u:
+                            failed_urls.add(u)
                 next_level_urls = set()
                 for result in results:
                     try:
-                        norm = _normalize_url(result.url)
-                        visited.add(norm)
-                        if norm and norm not in discovered and is_internal(norm):
-                            discovered.append(norm)
-                            if len(discovered) >= max_urls:
-                                break
-                        # Extract links even if page had errors
+                        result_url = getattr(result, "url", None) or ""
+                        norm = _normalize_url(result_url) if result_url else ""
+
+                        if norm:
+                            visited.add(norm)
+                            if (
+                                norm not in discovered
+                                and is_internal(norm)
+                                and _is_probably_page_url(norm, root_netloc=root_netloc)
+                            ):
+                                discovered.append(norm)
+                                if len(discovered) >= max_urls:
+                                    break
+                        
+                        # Extract links even if page had errors - be more aggressive
+                        # Try to get links from multiple sources
                         links = getattr(result, "links", None) or {}
+                        
+                        # Extract internal links (primary source)
                         for link in links.get("internal", []):
                             try:
                                 href = _normalize_url(link.get("href", ""))
-                                if href and href not in visited and is_internal(href):
-                                    next_level_urls.add(href)
+                                if (
+                                    href
+                                    and href not in visited
+                                    and is_internal(href)
+                                    and _is_probably_page_url(href, root_netloc=root_netloc)
+                                ):
+                                    # Don't add if we've already discovered it
+                                    if href not in discovered:
+                                        next_level_urls.add(href)
                             except Exception:
                                 # Continue with other links even if one fails
                                 continue
+                        
+                        # Also try to extract links from external links that might be same domain
+                        # (some sites have external links that are actually internal)
+                        for link in links.get("external", []):
+                            try:
+                                href = _normalize_url(link.get("href", ""))
+                                if (
+                                    href
+                                    and is_internal(href)
+                                    and href not in visited
+                                    and _is_probably_page_url(href, root_netloc=root_netloc)
+                                ):
+                                    if href not in discovered:
+                                        next_level_urls.add(href)
+                            except Exception:
+                                continue
+                        # Fallback: extract links from all page content so we never miss URLs
+                        page_url = getattr(result, "url", None) or norm or root_url
+                        for content_attr in ("markdown", "html", "raw_html", "cleaned_html", "content"):
+                            raw = getattr(result, content_attr, None)
+                            if not raw or not isinstance(raw, str):
+                                continue
+                            for href in _extract_urls_from_content(raw, page_url, root_netloc):
+                                if href not in visited and href not in discovered:
+                                    next_level_urls.add(href)
                     except Exception:
                         # Continue processing other results even if one fails
                         continue
+                
+                # Continue to next depth even if we got some URLs
                 current_urls = next_level_urls
+                
+                # Don't break early - continue to max_depth to discover more URLs
     except Exception as e:
-        # Return whatever we discovered so far - never return empty due to errors
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Discovery error in crawl_service: {type(e).__name__}: {str(e)[:100]}, returning {len(discovered)} URLs")
+        logger.warning(
+            "Discovery error in crawl_service: %s: %s, returning %s URLs",
+            type(e).__name__,
+            str(e)[:100],
+            len(discovered),
+        )
         pass
 
     # Always return at least the root URL if we have nothing else
@@ -518,8 +820,207 @@ async def discover_internal_urls(
         root_norm = _normalize_url(root_url)
         if root_norm:
             discovered.append(root_norm)
+    # Log summary for ops (depths + failed URLs); not exposed to UI
+    logger.info(
+        "URL discovery completed: depths=%s, discovered=%s, failed=%s. Failed URLs: %s",
+        max_depth_reached + 1,
+        len(discovered),
+        len(failed_urls),
+        sorted(failed_urls),
+    )
+    # Return in deterministic order so counts are stable across runs
+    return sorted(discovered)
 
-    return discovered
+
+async def discover_internal_urls_stream(
+    root_url: str,
+    max_depth: int,
+    max_concurrent: int,
+    *,
+    max_urls: int = 2000,
+):
+    """
+    Async generator version of discover_internal_urls().
+
+    Yields NDJSON-friendly dict events:
+      - {"type":"start","root_url":...}
+      - {"type":"batch","depth":...,"queued":...}
+      - {"type":"discovered","url":...,"count":...,"depth":...}
+      - {"type":"error","message":...}
+      - {"type":"done","urls":[...]}
+    """
+    browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    dispatcher = MemoryAdaptiveDispatcher(
+        memory_threshold_percent=70.0,
+        check_interval=1.0,
+        max_session_permit=max_concurrent,
+    )
+
+    parsed_root = urlparse(root_url)
+    root_netloc = parsed_root.netloc
+    visited = set()
+    current_urls = set([_normalize_url(root_url)])
+    discovered: List[str] = []
+    failed_urls: set = set()
+    max_depth_reached = -1
+
+    def is_internal(url: str) -> bool:
+        return urlparse(url).netloc == root_netloc
+
+    yield {"type": "start", "root_url": root_url, "max_depth": max_depth, "max_urls": max_urls}
+
+    try:
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            for depth in range(max_depth):
+                urls_to_crawl = sorted(
+                    u
+                    for u in current_urls
+                    if u not in visited and _is_probably_page_url(u, root_netloc=root_netloc)
+                )
+                if not urls_to_crawl:
+                    break
+                if len(discovered) >= max_urls:
+                    break
+
+                # Chunk batches so the client receives frequent updates (closer to crawl logs).
+                batch_size = 8
+                yield {
+                    "type": "batch",
+                    "depth": depth,
+                    "queued": len(urls_to_crawl),
+                    "discovered": len(discovered),
+                    "batch_size": batch_size,
+                }
+
+                next_level_urls = set()
+                for start in range(0, len(urls_to_crawl), batch_size):
+                    chunk = urls_to_crawl[start : start + batch_size]
+                    if not chunk:
+                        continue
+
+                    yield {"type": "chunk", "depth": depth, "from": start, "size": len(chunk)}
+
+                    results = None
+                    for retry_attempt in range(5):
+                        try:
+                            results = await crawler.arun_many(urls=chunk, config=run_config, dispatcher=dispatcher)
+                            break
+                        except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError):
+                            if retry_attempt < 4:
+                                await asyncio.sleep(1.5 * (2 ** retry_attempt))
+                            else:
+                                from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
+                                results = await _crawl_urls_individually(crawler, chunk, run_config)
+                                break
+                        except Exception:
+                            from infrastructure.repositories.crawl4ai_crawler_repository import _crawl_urls_individually
+                            results = await _crawl_urls_individually(crawler, chunk, run_config)
+                            break
+
+                    if not results:
+                        yield {"type": "error", "message": f"Failed to crawl chunk at depth {depth}. Continuing."}
+                        continue
+                    # Ensure every URL in chunk has a result: retry missing and failed until success or max retries
+                    result_by_norm = {_normalize_url(getattr(r, "url", None) or ""): r for r in results}
+                    missing = [u for u in chunk if _normalize_url(u) not in result_by_norm]
+                    for u in sorted(missing):
+                        r = await _fetch_single_url_with_retries(crawler, u, run_config)
+                        result_by_norm[_normalize_url(u)] = r
+                    failed = [u for u in chunk if not _is_successful_result(result_by_norm.get(_normalize_url(u)))]
+                    for u in sorted(failed):
+                        r = await _fetch_single_url_with_retries(crawler, u, run_config)
+                        if _is_successful_result(r):
+                            result_by_norm[_normalize_url(u)] = r
+                    results = [result_by_norm[_normalize_url(u)] for u in chunk]
+                    results = sorted(results, key=lambda r: (getattr(r, "url", None) or ""))
+                    max_depth_reached = depth
+                    for r in results:
+                        if not _is_successful_result(r):
+                            u = getattr(r, "url", None) or ""
+                            if u:
+                                failed_urls.add(u)
+                    for result in results:
+                        try:
+                            result_url = getattr(result, "url", None) or ""
+                            norm = _normalize_url(result_url) if result_url else ""
+
+                            if norm:
+                                visited.add(norm)
+                                if (
+                                    norm not in discovered
+                                    and is_internal(norm)
+                                    and _is_probably_page_url(norm, root_netloc=root_netloc)
+                                ):
+                                    discovered.append(norm)
+                                    yield {"type": "discovered", "url": norm, "count": len(discovered), "depth": depth}
+                                    if len(discovered) >= max_urls:
+                                        break
+
+                            links = getattr(result, "links", None) or {}
+
+                            for link in links.get("internal", []):
+                                try:
+                                    href = _normalize_url(link.get("href", ""))
+                                    if (
+                                        href
+                                        and href not in visited
+                                        and is_internal(href)
+                                        and href not in discovered
+                                        and _is_probably_page_url(href, root_netloc=root_netloc)
+                                    ):
+                                        next_level_urls.add(href)
+                                except Exception:
+                                    continue
+
+                            for link in links.get("external", []):
+                                try:
+                                    href = _normalize_url(link.get("href", ""))
+                                    if (
+                                        href
+                                        and is_internal(href)
+                                        and href not in visited
+                                        and href not in discovered
+                                        and _is_probably_page_url(href, root_netloc=root_netloc)
+                                    ):
+                                        next_level_urls.add(href)
+                                except Exception:
+                                    continue
+                            # Fallback: extract links from all page content so we never miss URLs
+                            page_url = getattr(result, "url", None) or norm or root_url
+                            for content_attr in ("markdown", "html", "raw_html", "cleaned_html", "content"):
+                                raw = getattr(result, content_attr, None)
+                                if not raw or not isinstance(raw, str):
+                                    continue
+                                for href in _extract_urls_from_content(raw, page_url, root_netloc):
+                                    if href not in visited and href not in discovered:
+                                        next_level_urls.add(href)
+                        except Exception:
+                            continue
+
+                    if len(discovered) >= max_urls:
+                        break
+
+                current_urls = next_level_urls
+    except Exception as e:
+        yield {"type": "error", "message": f"{type(e).__name__}: {str(e)}"}
+
+    if not discovered:
+        root_norm = _normalize_url(root_url)
+        if root_norm:
+            discovered.append(root_norm)
+            yield {"type": "discovered", "url": root_norm, "count": len(discovered), "depth": 0}
+    # Log summary for ops (depths + failed URLs); not exposed to UI
+    logger.info(
+        "URL discovery (stream) completed: depths=%s, discovered=%s, failed=%s. Failed URLs: %s",
+        max_depth_reached + 1,
+        len(discovered),
+        len(failed_urls),
+        sorted(failed_urls),
+    )
+    # Return in deterministic order so counts are stable across runs
+    discovered = sorted(discovered)
+    yield {"type": "done", "urls": discovered}
 
 
 async def crawl_urls(

@@ -1,10 +1,12 @@
 import time
 import urllib.request
 import uuid
+import json
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from api.deps.auth import get_current_user, require_org_admin, require_super_admin
 from api.schemas import (
@@ -38,12 +40,11 @@ from api.schemas import (
 )
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
-from common.di.container import bot_service, indexing_service, org_service, user_service
+from common.di.container import bot_service, indexing_service, org_service, url_discovery, user_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
-from infrastructure.rag.url_discovery_service import discover_urls, discover_urls_from_sitemap, discover_urls_auto
 
 router = APIRouter()
 
@@ -803,22 +804,15 @@ async def v1_org_url_discovery(
 ):
     _resolve_org_id(user, org_id)
     try:
-        # Use method from payload, default to "auto" (crawl4ai)
         method = (payload.method or "auto").lower()
-        if method == "sitemap":
-            urls = await discover_urls_from_sitemap(payload.url)
-            if not urls:
-                # Sitemap discovery failed - return error message
-                return UrlDiscoveryResponse(
-                    urls=[],
-                    error="No URLs found from sitemap. This could be because:\n• No sitemap.xml found in robots.txt\n• Sitemap is protected by CAPTCHA/bot detection\n• Sitemap is empty or invalid\n• Sitemap URLs are blocked\n\nTry using 'Automatic' discovery method instead (recommended).",
-                    method_used="sitemap"
-                )
-            return UrlDiscoveryResponse(urls=urls, method_used="sitemap")
-        else:
-            # Default to "auto" - use crawl4ai discovery
-            urls = await discover_urls_auto(payload.url)
-            return UrlDiscoveryResponse(urls=urls or [], method_used="auto")
+        urls = await url_discovery().discover(payload.url, method)
+        if not urls and method == "sitemap":
+            return UrlDiscoveryResponse(
+                urls=[],
+                error="No URLs found from sitemap. This could be because:\n• No sitemap.xml found in robots.txt\n• Sitemap is protected by CAPTCHA/bot detection\n• Sitemap is empty or invalid\n• Sitemap URLs are blocked\n\nTry using 'Automatic' discovery method instead (recommended).",
+                method_used="sitemap"
+            )
+        return UrlDiscoveryResponse(urls=urls or [], method_used=method)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -838,6 +832,44 @@ async def v1_org_url_discovery(
             error=f"Automatic discovery failed: {error_msg}",
             method_used="auto"
         )
+
+
+@router.post("/v1/org/url-discovery/stream")
+async def v1_org_url_discovery_stream(
+    payload: UrlDiscoveryRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Stream URL discovery as NDJSON so the dashboard can show progress.
+    Uses Authorization header (so we can't use EventSource; we use fetch streaming).
+    """
+    _resolve_org_id(user, org_id)
+
+    method = (payload.method or "auto").lower()
+
+    async def _gen():
+        try:
+            async for evt in url_discovery().discover_stream(
+                payload.url, method, max_depth=10, max_concurrent=10, max_urls=2000
+            ):
+                evt = dict(evt)
+                if evt.get("type") in ("done", "start") and "method_used" not in evt:
+                    evt["method_used"] = method
+                yield json.dumps(evt, ensure_ascii=False) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}", "method_used": method}) + "\n"
+            yield json.dumps({"type": "done", "urls": [], "method_used": method}) + "\n"
+
+    return StreamingResponse(
+        _gen(),
+        media_type="application/x-ndjson",
+        headers={
+            # Encourage proxies/servers not to buffer streaming responses.
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/v1/org/bots/{bot_id}/index")

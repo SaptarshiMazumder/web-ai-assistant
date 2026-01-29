@@ -83,6 +83,16 @@ button:disabled {
   color: #0f172a;
 }
 
+.url-list-item {
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: 0 -8px;
+  transition: background 0.15s ease;
+}
+.url-list-item:hover {
+  background: rgba(99, 102, 241, 0.12);
+}
+
 .danger {
   background: #ef4444;
   color: #ffffff;
@@ -395,6 +405,30 @@ button:disabled {
   margin-top: -0.4rem;
   margin-bottom: 1rem;
 }
+
+@keyframes discovery-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.discovery-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.discovery-loading-dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  animation: discovery-dot 1.4s ease-in-out infinite both;
+}
+
+.discovery-loading-dots span:nth-child(1) { animation-delay: 0s; }
+.discovery-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.discovery-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 .detail-row {
   display: flex;

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
@@ -14,6 +14,7 @@ type CreateBotContextValue = {
   discoveredUrls: string[]
   selectedUrls: string[]
   isDiscovering: boolean
+  discoveryDurationMs: number | null
   trainingStage: TrainingStage
   trainingProgress: number
   trainingPagesCrawled: number
@@ -25,6 +26,7 @@ type CreateBotContextValue = {
   setLocalError: (value: string | null) => void
   discoverUrls: () => Promise<boolean>
   toggleUrl: (url: string) => void
+  toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
   selectAll: () => void
   deselectAll: () => void
   startTraining: () => Promise<string | null>
@@ -50,6 +52,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
+  const selectionTouchedRef = useRef(false)
+  const discoveryStartTimeRef = useRef<number | null>(null)
   const [trainingStage, setTrainingStage] = useState<TrainingStage>('idle')
   const [trainingProgress, setTrainingProgress] = useState(0)
   const [trainingPagesCrawled, setTrainingPagesCrawled] = useState(0)
@@ -67,6 +72,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setIsDiscovering(false)
+    setDiscoveryDurationMs(null)
     setTrainingStage('idle')
     setTrainingProgress(0)
     setTrainingPagesCrawled(0)
@@ -96,38 +102,89 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     setIsDiscovering(true)
     setNormalizedWebsiteUrl(normalized)
-    const result = await discoverUrlsFromHook(normalized, discoveryMethod)
-    
-    if (!result.urls || result.urls.length === 0) {
-      // If sitemap method failed, show error and suggest automatic
-      if (discoveryMethod === 'sitemap' && result.error) {
-        setLocalError(result.error)
-      } else if (result.error) {
-        setLocalError(result.error)
-      } else {
-        setLocalError('No URLs found for this site.')
+
+    // Reset lists for streaming UI; keep selection auto-checked until user touches selection.
+    setDiscoveredUrls([])
+    setSelectedUrls([])
+    setDiscoveryDurationMs(null)
+    selectionTouchedRef.current = false
+    discoveryStartTimeRef.current = Date.now()
+
+    // Fire-and-forget stream so UI can navigate immediately and update progressively.
+    void (async () => {
+      const final = await discoverUrlsFromHook(normalized, discoveryMethod, (evt) => {
+        if (evt.type === 'discovered' && typeof evt.url === 'string') {
+          const url = evt.url
+          setDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+
+          if (!selectionTouchedRef.current) {
+            setSelectedUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+          }
+        }
+
+        if (evt.type === 'error' && typeof evt.message === 'string') {
+          setLocalError(evt.message)
+        }
+
+        if (evt.type === 'done') {
+          const start = discoveryStartTimeRef.current
+          if (start != null) setDiscoveryDurationMs(Date.now() - start)
+          setIsDiscovering(false)
+          if (Array.isArray((evt as { urls?: unknown }).urls) && ((evt as { urls?: unknown[] }).urls || []).length === 0) {
+            setLocalError(
+              discoveryMethod === 'sitemap'
+                ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
+                : 'No URLs found for this site.'
+            )
+          }
+        }
+      })
+
+      // If the stream ended without emitting done/error, finalize state.
+      if (!final.urls?.length) {
+        if (final.error) setLocalError(final.error)
       }
-      setDiscoveredUrls([])
-      setSelectedUrls([])
+      const start = discoveryStartTimeRef.current
+      if (start != null && discoveryDurationMs === null) setDiscoveryDurationMs(Date.now() - start)
       setIsDiscovering(false)
-      return false
-    }
-    
-    setDiscoveredUrls(result.urls)
-    setSelectedUrls(result.urls)
-    setIsDiscovering(false)
+    })()
+
+    // Return true so the UI can move to the URLs page immediately.
     return true
   }, [botName, websiteUrl, discoveryMethod, discoverUrlsFromHook])
 
   const toggleUrl = useCallback((url: string) => {
+    selectionTouchedRef.current = true
     setSelectedUrls((prev) => (prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url]))
   }, [])
 
+  const toggleCategory = useCallback((_categoryPath: string, categoryUrls: string[]) => {
+    selectionTouchedRef.current = true
+    setSelectedUrls((prev) => {
+      const allSelected = categoryUrls.every(url => prev.includes(url))
+      if (allSelected) {
+        // Deselect all URLs in category
+        return prev.filter(url => !categoryUrls.includes(url))
+      } else {
+        // Select all URLs in category
+        const newSelected = [...prev]
+        for (const url of categoryUrls) {
+          if (!newSelected.includes(url)) {
+            newSelected.push(url)
+          }
+        }
+        return newSelected
+      }
+    })
+  }, [])
+
   const selectAll = useCallback(() => {
+    selectionTouchedRef.current = true
     setSelectedUrls(discoveredUrls)
   }, [discoveredUrls])
 
   const deselectAll = useCallback(() => {
+    selectionTouchedRef.current = true
     setSelectedUrls([])
   }, [])
 
@@ -201,6 +258,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       discoveredUrls,
       selectedUrls,
       isDiscovering,
+      discoveryDurationMs,
       trainingStage,
       trainingProgress,
       trainingPagesCrawled,
@@ -212,6 +270,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError,
       discoverUrls,
       toggleUrl,
+      toggleCategory,
       selectAll,
       deselectAll,
       startTraining,
@@ -225,6 +284,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       discoveredUrls,
       selectedUrls,
       isDiscovering,
+      discoveryDurationMs,
       trainingStage,
       trainingProgress,
       trainingPagesCrawled,
@@ -236,6 +296,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError,
       discoverUrls,
       toggleUrl,
+      toggleCategory,
       selectAll,
       deselectAll,
       startTraining,

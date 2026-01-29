@@ -27,24 +27,35 @@ def _normalize_url(url: str) -> str:
     return urldefrag(url)[0]
 
 
+_MAX_INDIVIDUAL_RETRIES = 5
+_BACKOFF_BASE = 1.5
+
+
 async def _crawl_urls_individually(crawler: AsyncWebCrawler, urls: List[str], run_config) -> List[Any]:
-    """Fallback: crawl URLs individually when batch fails. Never fails completely."""
+    """Fallback: crawl URLs individually with retries. Every URL gets a result (success or FailedResult)."""
+    class FailedResult:
+        def __init__(self, url: str, error: str):
+            self.url = url
+            self.success = False
+            self.error = error
+            self.links = {}
+
     results = []
     for url in urls:
-        try:
-            result = await crawler.arun(url=url, config=run_config)
-            if result:
-                results.append(result)
-        except Exception as e:
-            logger.debug(f"Individual crawl failed for {url}: {type(e).__name__}")
-            # Create a failed result object to maintain structure
-            class FailedResult:
-                def __init__(self, url: str, error: str):
-                    self.url = url
-                    self.success = False
-                    self.error = error
-                    self.links = {}
-            results.append(FailedResult(url, str(e)[:200]))
+        last_error = None
+        for attempt in range(_MAX_INDIVIDUAL_RETRIES):
+            try:
+                result = await crawler.arun(url=url, config=run_config)
+                if result:
+                    results.append(result)
+                    break
+            except Exception as e:
+                last_error = e
+                logger.debug(f"Individual crawl attempt {attempt + 1}/{_MAX_INDIVIDUAL_RETRIES} failed for {url}: {type(e).__name__}")
+                if attempt < _MAX_INDIVIDUAL_RETRIES - 1:
+                    await asyncio.sleep(_BACKOFF_BASE * (2 ** attempt))
+        else:
+            results.append(FailedResult(url, str(last_error)[:200] if last_error else "unknown"))
     return results
 
 

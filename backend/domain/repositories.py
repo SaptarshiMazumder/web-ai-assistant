@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .entities import Bot, BotDomainRecord, BotRecord, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
 
@@ -151,6 +151,20 @@ class CrawlerRepository(Protocol):
         *,
         max_urls: int = 2000,
     ) -> List[str]:
+        ...
+
+
+class UrlDiscoveryPort(Protocol):
+    """Port for discovering URLs from a site. Swap implementation to use a different service (e.g. replace crawl4ai)."""
+
+    async def discover(self, root_url: str, method: str = "auto") -> List[str]:
+        """Discover URLs; method is 'auto' or 'sitemap'. Returns list of URLs."""
+        ...
+
+    def discover_stream(
+        self, root_url: str, method: str = "auto", *, max_depth: int = 10, max_concurrent: int = 10, max_urls: int = 2000
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """Stream discovery events (discovered, done, error) for UI progress. Same method semantics as discover."""
         ...
 
 

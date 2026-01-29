@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 
 import requests
 
-from infrastructure.rag.crawl_service import discover_internal_urls
+from infrastructure.rag.crawl_service import discover_internal_urls, _normalize_url
 from infrastructure.rag.error_handling import (
     is_bot_detected,
     is_captcha_page,
@@ -40,10 +40,6 @@ def _origin(url: str) -> str:
 
 def _is_same_domain(url: str, root: str) -> bool:
     return urlparse(url).netloc == urlparse(root).netloc
-
-
-def _normalize_url(url: str) -> str:
-    return url.split("#", 1)[0].strip()
 
 
 def _get_robots_parser(root_url: str) -> Optional[RobotFileParser]:
@@ -420,12 +416,13 @@ async def discover_urls_auto(root_url: str) -> List[str]:
 
     # Use crawl4ai discovery of internal links (handles JS/CAPTCHA)
     # This should always work
+    # Increased depth and concurrency for more comprehensive discovery
     discovered = []
     discovered = await safe_execute_async(
         lambda: discover_internal_urls(
             root_url,
-            max_depth=3,
-            max_concurrent=10,
+            max_depth=10,
+            max_concurrent=10,  # Lower concurrency to reduce rate limiting / connection drops (more stable counts)
             max_urls=_MAX_DISCOVERY_URLS,
         ),
         [],

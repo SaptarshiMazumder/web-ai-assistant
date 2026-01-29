@@ -66,11 +66,10 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
                 progress_cb=_on_progress,
             )
         else:
-            docs = await crawler_repo.crawl_urls_bfs(
-                url or "",
-                max_depth=CRAWL_MAX_DEPTH,
+            # STRICT MODE: only crawl the explicit URL provided (no BFS expansion).
+            docs = await crawler_repo.crawl_urls_list(
+                [url or ""],
                 max_concurrent=CRAWL_MAX_CONCURRENCY,
-                stop_event=None,
                 progress_cb=_on_progress,
             )
     except Exception as e:
