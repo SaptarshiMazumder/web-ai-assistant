@@ -77,6 +77,7 @@ def reset_postgres_data() -> None:
         con.execute(
             """
             TRUNCATE TABLE
+              index_jobs,
               bot_domains,
               bot_corpora,
               bots,

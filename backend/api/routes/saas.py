@@ -37,6 +37,7 @@ from api.schemas import (
     UrlDiscoveryResponse,
     WidgetChatRequest,
     WidgetChatResponse,
+    WidgetConfigUpdate,
 )
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
@@ -384,6 +385,20 @@ async def v1_pk_cancel_index(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/v1/pk/{publishable_key}/widget-config")
+async def v1_pk_widget_config(publishable_key: str):
+    """Public: return saved widget config for the bot. Used by the embed script on load."""
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    if not getattr(bot, "widget_config", None) or not (bot.widget_config or "").strip():
+        return {}
+    try:
+        return json.loads(bot.widget_config)
+    except (TypeError, ValueError):
+        return {}
+
+
 @router.post("/v1/pk/{publishable_key}/chat", response_model=WidgetChatResponse)
 async def v1_widget_chat(
     publishable_key: str,
@@ -684,6 +699,12 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
     bot = bot_service().get_bot_record(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
+    widget_config = None
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,
@@ -693,8 +714,27 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             secret_key=bot.secret_key,
             created_at=bot.created_at,
             updated_at=bot.updated_at,
-        )
+        ),
+        widget_config=widget_config,
     )
+
+
+@router.put("/v1/org/bots/{bot_id}/widget-config")
+async def v1_org_update_bot_widget_config(
+    bot_id: str,
+    payload: WidgetConfigUpdate,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    config_dict = payload.model_dump(exclude_none=True)
+    config_json = json.dumps(config_dict)
+    bot_service().update_widget_config(bot_id, config_json)
+    return {"status": "ok", "bot_id": bot_id}
 
 
 @router.delete("/v1/org/bots/{bot_id}")

@@ -24,6 +24,9 @@ class BotService:
     def get_bot_record(self, bot_id: str) -> Optional[BotRecord]:
         return self._bot_repo.get_bot_record(bot_id)
 
+    def update_widget_config(self, bot_id: str, config_json: str) -> None:
+        self._bot_repo.update_widget_config(bot_id, config_json)
+
     def get_bot_by_publishable_key(self, publishable_key: str) -> Optional[Bot]:
         return self._bot_repo.get_bot_by_publishable_key(publishable_key)
 

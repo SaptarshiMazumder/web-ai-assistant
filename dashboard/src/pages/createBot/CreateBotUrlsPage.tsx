@@ -241,17 +241,17 @@ export default function CreateBotUrlsPage() {
       </div>
 
       <div className="flow-toolbar">
-        <button className="secondary" onClick={selectAll}>
-          Select all
+        <button
+          className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+          onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
+        >
+          {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
         </button>
-        <button className="ghost" onClick={deselectAll}>
-          Deselect all
-        </button>
-        <button className="ghost" onClick={expandAll}>
-          Expand all
-        </button>
-        <button className="ghost" onClick={collapseAll}>
-          Collapse all
+        <button
+          className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+          onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
+        >
+          {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
         </button>
         <div className="muted">{selectedUrls.length} selected</div>
       </div>

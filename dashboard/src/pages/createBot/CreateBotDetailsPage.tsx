@@ -31,8 +31,8 @@ export default function CreateBotDetailsPage() {
       <div>
         <div className="card-title">Discovery Method</div>
         <div className="card-subtitle">Choose how to discover URLs from the website.</div>
-        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <div className="design-form-radio-group" style={{ marginTop: '8px' }}>
+          <label className="design-form-radio-card">
             <input
               type="radio"
               name="discoveryMethod"
@@ -42,7 +42,7 @@ export default function CreateBotDetailsPage() {
             />
             <span>Automatic (Recommended)</span>
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <label className="design-form-radio-card">
             <input
               type="radio"
               name="discoveryMethod"

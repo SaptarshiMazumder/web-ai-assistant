@@ -42,6 +42,29 @@ export type JobRecord = {
   updated_at: string
 }
 
+/** Optional widget config for embed snippet (create-bot flow or custom embed). */
+export type EmbedSnippetConfig = {
+  position?: string
+  primaryColor?: string
+  title?: string
+  size?: string
+  placeholder?: string
+  footerMessage?: string
+  theme?: string
+  textColor?: string
+  launcherIconUrl?: string
+  launcherText?: string
+  headerIconUrl?: string
+  shareIconUrl?: string
+  maxHeight?: number
+  fontSize?: string
+  headerSize?: string
+  autoPopupWelcome?: string
+  autoScrollNewMessages?: boolean
+  displaySourcesInMessages?: boolean
+  sourcesLabel?: string
+}
+
 export type IndexStatus = {
   status: string
   stage?: string
@@ -116,7 +139,9 @@ type DashboardData = {
   setNewMemberRole: (value: string) => void
   isSuperAdmin: boolean
   embedSnippet: string
-  buildEmbedSnippet: (config?: { position?: string; primaryColor?: string; title?: string; size?: string }) => string
+  buildEmbedSnippet: (config?: EmbedSnippetConfig) => string
+  selectedBotWidgetConfig: Record<string, unknown> | null
+  saveWidgetConfig: (botId: string, config: Record<string, unknown>) => Promise<void>
   loadBots: () => Promise<void>
   loadBotDetail: (botId: string) => Promise<void>
   loadDomains: (botId: string) => Promise<void>
@@ -186,6 +211,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const [bots, setBots] = useState<BotSummary[]>([])
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null)
   const [selectedBot, setSelectedBot] = useState<BotSummary | null>(null)
+  const [selectedBotWidgetConfig, setSelectedBotWidgetConfig] = useState<Record<string, unknown> | null>(null)
   const [domains, setDomains] = useState<DomainRecord[]>([])
   const [jobs, setJobs] = useState<JobRecord[]>([])
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
@@ -214,15 +240,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     return `<script async src="${API_BASE}/widget/widget.js" data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"></script>`
   }, [selectedBot])
 
-  function buildEmbedSnippet(config?: { position?: string; primaryColor?: string; title?: string; size?: string }): string {
+  function buildEmbedSnippet(_config?: EmbedSnippetConfig): string {
     if (!selectedBot) return ''
-    const base = `data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"`
-    const attrs: string[] = [base]
-    if (config?.position) attrs.push(`data-position="${config.position}"`)
-    if (config?.primaryColor) attrs.push(`data-color="${config.primaryColor}"`)
-    if (config?.title) attrs.push(`data-title="${config.title.replace(/"/g, '&quot;')}"`)
-    if (config?.size) attrs.push(`data-size="${config.size}"`)
-    return `<script async src="${API_BASE}/widget/widget.js" ${attrs.join(' ')}></script>`
+    return `<script async src="${API_BASE}/widget/widget.js" data-bot-key="${selectedBot.publishable_key}" data-api-base="${API_BASE}"></script>`
+  }
+
+  async function saveWidgetConfig(botId: string, config: Record<string, unknown>): Promise<void> {
+    const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+    await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/widget-config`, orgOverride), {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    })
+    setSelectedBotWidgetConfig(config)
   }
 
   async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -277,11 +306,14 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setError(null)
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const data = await fetchAuthedJson<{ bot: BotSummary }>(withOrgParam(`/v1/org/bots/${botId}`, orgOverride))
+      const data = await fetchAuthedJson<{ bot: BotSummary; widget_config?: Record<string, unknown> }>(
+        withOrgParam(`/v1/org/bots/${botId}`, orgOverride)
+      )
       if (!activeOrgId && data.bot.org_id) {
         setActiveOrgId(data.bot.org_id)
       }
       setSelectedBot(data.bot)
+      setSelectedBotWidgetConfig(data.widget_config ?? null)
     } catch (err) {
       setError((err as Error).message)
       setSelectedBot(null)
@@ -952,6 +984,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     isSuperAdmin,
     embedSnippet,
     buildEmbedSnippet,
+    selectedBotWidgetConfig,
+    saveWidgetConfig,
     loadBots,
     loadBotDetail,
     loadDomains,

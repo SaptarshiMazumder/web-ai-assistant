@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCreateBotFlow } from './CreateBotContext'
+import { getTrainingStageLabel } from './trainingProgressLabels'
 
 export default function CreateBotProgressPage() {
   const navigate = useNavigate()
@@ -23,24 +24,20 @@ export default function CreateBotProgressPage() {
     }
   }, [trainingStage, navigate, flow.firstPath])
 
+  // Auto-advance to step 4 (Design widget) ~5s after crawl job starts so user can design while training runs in background
+  useEffect(() => {
+    if (!jobId || trainingStage !== 'training' || !flow.nextPath) return
+    const t = window.setTimeout(() => {
+      navigate(flow.nextPath!)
+    }, 5000)
+    return () => window.clearTimeout(t)
+  }, [jobId, trainingStage, flow.nextPath, navigate])
+
   const handleFinish = () => {
     resetFlow()
   }
 
-  const stageLabels: Record<string, string> = {
-    queued: 'Queued',
-    crawling: 'Crawling pages',
-    uploading: 'Uploading to storage',
-    importing: 'Importing to knowledge base',
-    import_submitted: 'Import submitted',
-    done: 'Complete',
-    error: 'Error',
-  }
-
-  const currentStageLabel =
-    !jobId && trainingStage === 'training'
-      ? 'Starting crawl…'
-      : stageLabels[trainingStageName] || trainingStageName || 'Processing'
+  const currentStageLabel = getTrainingStageLabel(jobId, trainingStage, trainingStageName)
 
   return (
     <div className="flow-panel-body">
@@ -89,7 +86,9 @@ export default function CreateBotProgressPage() {
             </Link>
           </>
         ) : (
-          <div className="muted">This usually takes a few minutes. You can leave this tab open.</div>
+          <div className="muted">
+            Training runs in the background. We&apos;ll take you to design your widget in a few seconds—you don&apos;t need to wait here.
+          </div>
         )}
       </div>
     </div>

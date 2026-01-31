@@ -52,13 +52,13 @@ class PostgresBotRepository:
         try:
             con.execute(
                 """
-                INSERT INTO bots(bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO bots(bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, NULL)
                 """,
                 (bot_id, oid, display_name, pk, sk, now, now),
             )
             con.commit()
-            return Bot(bot_id=bot_id, org_id=oid, display_name=display_name, publishable_key=pk, secret_key=sk)
+            return Bot(bot_id=bot_id, org_id=oid, display_name=display_name, publishable_key=pk, secret_key=sk, widget_config=None)
         finally:
             con.close()
 
@@ -69,12 +69,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key FROM bots WHERE publishable_key = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config FROM bots WHERE publishable_key = %s",
                 (pk,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4])
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None)
         finally:
             con.close()
 
@@ -85,12 +85,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key FROM bots WHERE secret_key = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config FROM bots WHERE secret_key = %s",
                 (sk,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4])
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None)
         finally:
             con.close()
 
@@ -101,12 +101,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key FROM bots WHERE bot_id = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config FROM bots WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4])
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None)
         finally:
             con.close()
 
@@ -118,7 +118,7 @@ class PostgresBotRepository:
         try:
             row = con.execute(
                 """
-                SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at
+                SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config
                 FROM bots
                 WHERE bot_id = %s
                 """,
@@ -134,6 +134,7 @@ class PostgresBotRepository:
                 secret_key=row[4],
                 created_at=row[5],
                 updated_at=row[6],
+                widget_config=row[7] if len(row) > 7 else None,
             )
         finally:
             con.close()
@@ -144,7 +145,7 @@ class PostgresBotRepository:
             if org_id:
                 rows = con.execute(
                     """
-                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at
+                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config
                     FROM bots
                     WHERE org_id = %s
                     ORDER BY created_at DESC
@@ -154,7 +155,7 @@ class PostgresBotRepository:
             else:
                 rows = con.execute(
                     """
-                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at
+                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config
                     FROM bots
                     ORDER BY created_at DESC
                     """
@@ -168,9 +169,25 @@ class PostgresBotRepository:
                     secret_key=row[4],
                     created_at=row[5],
                     updated_at=row[6],
+                    widget_config=row[7] if len(row) > 7 else None,
                 )
                 for row in (rows or [])
             ]
+        finally:
+            con.close()
+
+    def update_widget_config(self, bot_id: str, config_json: str) -> None:
+        bid = (bot_id or "").strip()
+        if not bid:
+            raise ValueError("bot_id is required")
+        con = _connect()
+        try:
+            now = _utc_now()
+            con.execute(
+                "UPDATE bots SET widget_config = %s, updated_at = %s WHERE bot_id = %s",
+                (config_json, now, bid),
+            )
+            con.commit()
         finally:
             con.close()
 

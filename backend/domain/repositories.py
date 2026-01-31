@@ -22,6 +22,9 @@ class BotRepository(Protocol):
     def list_bots(self, org_id: Optional[str] = None) -> List[BotRecord]:
         ...
 
+    def update_widget_config(self, bot_id: str, config_json: str) -> None:
+        ...
+
     def delete_bot(self, bot_id: str) -> None:
         ...
 

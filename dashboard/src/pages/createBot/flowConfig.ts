@@ -31,8 +31,8 @@ export const CREATE_BOT_STEPS = [
   {
     id: 'embed',
     path: '/create-bot/embed',
-    label: 'Add script',
-    description: 'Add the script to your website to show the chatbot.',
+    label: 'Add bot',
+    description: 'Add the bot to your website to display the chat agent.',
   },
 ] as const
 

@@ -9,6 +9,7 @@ class Bot:
     display_name: str
     publishable_key: str
     secret_key: str
+    widget_config: Optional[str] = None
 
 
 @dataclass
@@ -20,6 +21,7 @@ class BotRecord:
     secret_key: str
     created_at: str
     updated_at: str
+    widget_config: Optional[str] = None
 
 
 @dataclass

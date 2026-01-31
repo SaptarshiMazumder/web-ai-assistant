@@ -7,6 +7,8 @@
     <title>Web AI Widget</title>
     <style>
       :root {
+        --widget-color: #1976d2;
+        --widget-text-color: #ffffff;
         color-scheme: light;
       }
 
@@ -28,82 +30,222 @@
       }
 
       .header {
-        padding: 12px 12px;
-        background: #1976d2;
-        color: #fff;
+        padding: 12px 16px;
+        background: var(--widget-color);
+        color: var(--widget-text-color);
         font-weight: 600;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        flex-shrink: 0;
       }
 
-      .header small {
-        opacity: 0.9;
-        font-weight: 500;
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #22c55e;
+        flex-shrink: 0;
+      }
+
+      .header-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .header-icon-default {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .header-icon-default svg {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
       }
 
       .chat {
         flex: 1;
-        padding: 12px;
+        padding: 16px;
         overflow-y: auto;
-        background: #f7f8fa;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .welcome-block {
+        margin-bottom: 12px;
+      }
+
+      .message-row {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 12px;
+      }
+
+      .message-row.user-row {
+        justify-content: flex-end;
+      }
+
+      .message-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+      }
+
+      .message-avatar-default {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--widget-color);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .message-avatar-default svg {
+        width: 14px;
+        height: 14px;
+        stroke: white;
+      }
+
+      .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .suggestions button {
+        padding: 8px 12px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        font-size: 12px;
+        color: #334155;
+        cursor: pointer;
+        font-weight: normal;
+      }
+
+      .typing-bubble {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 12px 16px;
+      }
+
+      .typing-bubble span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #64748b;
+        animation: typing-dot 1.4s ease-in-out infinite both;
+      }
+
+      .typing-bubble span:nth-child(1) { animation-delay: 0s; }
+      .typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
+      .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
+
+      @keyframes typing-dot {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
       }
 
       .row {
         display: flex;
         gap: 8px;
-        padding: 10px;
-        background: #fff;
-        border-top: 1px solid #e6e6e6;
+        align-items: center;
+        padding: 12px 16px;
+        flex-shrink: 0;
+      }
+
+      .input-wrap {
+        flex: 1;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 12px;
       }
 
       input {
         flex: 1;
-        padding: 10px 12px;
-        border: 1px solid #d0d0d0;
-        border-radius: 10px;
+        border: none;
+        background: transparent;
         font-size: 14px;
         outline: none;
+        color: #334155;
       }
 
-      button {
-        padding: 10px 12px;
+      .send-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
         border: 0;
-        background: #1976d2;
-        color: #fff;
-        border-radius: 10px;
+        border-radius: 50%;
+        background: var(--widget-color);
+        color: var(--widget-text-color);
         cursor: pointer;
-        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
 
-      button:disabled {
+      .send-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .send-btn:disabled {
         opacity: 0.6;
         cursor: default;
       }
 
       .bubble {
         max-width: 92%;
-        padding: 10px 12px;
+        padding: 10px 14px;
         border-radius: 12px;
-        margin: 8px 0;
-        line-height: 1.35;
+        line-height: 1.5;
         font-size: 14px;
         white-space: pre-wrap;
       }
 
-      .user {
-        background: #1976d2;
-        color: #fff;
-        margin-left: auto;
-        border-bottom-right-radius: 4px;
+      .bubble.bot {
+        border-radius: 12px 12px 12px 4px;
+        background: #f1f5f9;
+        color: #334155;
+        margin-right: auto;
       }
 
-      .bot {
-        background: #fff;
-        color: #111;
-        border: 1px solid #eee;
-        margin-right: auto;
-        border-bottom-left-radius: 4px;
+      .bubble.user {
+        border-radius: 12px 12px 4px 12px;
+        margin-left: auto;
+        background: var(--widget-color);
+        color: var(--widget-text-color);
       }
 
       .meta {
@@ -113,7 +255,7 @@
       }
 
       a {
-        color: #1976d2;
+        color: var(--widget-color);
         text-decoration: none;
       }
 
@@ -121,52 +263,49 @@
         text-decoration: underline;
       }
 
-      .status {
-        font-size: 12px;
-        color: #666;
-        padding: 8px 12px;
-        border-top: 1px solid #eee;
-        background: #fafafa;
+      .footer-msg {
+        font-size: 11px;
+        color: #94a3b8;
+        padding: 6px 16px;
+        text-align: center;
+        background: #ffffff;
       }
 
-      .crawl {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        padding: 8px 12px;
-        border-top: 1px solid #eee;
-        background: #fafafa;
-      }
-
-      .crawl button {
-        padding: 6px 10px;
-        font-size: 12px;
-      }
-
-      .crawl span {
-        font-size: 12px;
-        color: #666;
-      }
+      [data-theme="dark"] .chat { background: #1e293b; }
+      [data-theme="dark"] .wrap { background: #1e293b; }
+      [data-theme="dark"] .row { background: transparent; }
+      [data-theme="dark"] .input-wrap { background: #0f172a; border-color: #334155; }
+      [data-theme="dark"] input { background: transparent; color: #e2e8f0; }
+      [data-theme="dark"] .bubble.bot { background: #334155; color: #e2e8f0; }
+      [data-theme="dark"] .suggestions button { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+      [data-theme="dark"] .footer-msg { background: #1e293b; color: #94a3b8; }
     </style>
   </head>
 
   <body>
     <div class="wrap">
       <div class="header">
-        <div>Web AI</div>
-        <small>Widget</small>
+        <div class="header-left">
+          <span id="headerIcon"></span>
+          <span id="headerTitle">Chat</span>
+          <span class="header-status-dot" id="headerStatusDot" title="Live"></span>
+        </div>
       </div>
-      <div id="chat" class="chat"></div>
-      <div class="crawl">
-        <button id="crawl">Crawl site</button>
-        <button id="cancelCrawl" disabled>Cancel</button>
-        <span id="crawlStatus"></span>
+      <div id="chat" class="chat">
+        <div id="welcome" class="welcome-block"></div>
+        <div id="messages"></div>
       </div>
       <div class="row">
-        <input id="msg" placeholder="Ask a question..." />
-        <button id="send">Send</button>
+        <div class="input-wrap">
+          <input id="msg" placeholder="Ask a question..." />
+          <button id="send" class="send-btn" type="button" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
       </div>
-      <div id="status" class="status">Ready</div>
+      <div id="footer" class="footer-msg"></div>
     </div>
     <script src="./iframe.js"></script>
   </body>

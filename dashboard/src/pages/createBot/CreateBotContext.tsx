@@ -64,6 +64,38 @@ export type CreateBotStep4Slice = {
   setWidgetTitle: (value: string) => void
   widgetSize: 'small' | 'medium' | 'large'
   setWidgetSize: (value: 'small' | 'medium' | 'large') => void
+  welcomeMessage: string
+  setWelcomeMessage: (value: string) => void
+  placeholder: string
+  setPlaceholder: (value: string) => void
+  footerMessage: string
+  setFooterMessage: (value: string) => void
+  theme: 'light' | 'dark'
+  setTheme: (value: 'light' | 'dark') => void
+  textColor: string
+  setTextColor: (value: string) => void
+  launcherIconUrl: string
+  setLauncherIconUrl: (value: string) => void
+  launcherText: string
+  setLauncherText: (value: string) => void
+  headerIconUrl: string
+  setHeaderIconUrl: (value: string) => void
+  shareIconUrl: string
+  setShareIconUrl: (value: string) => void
+  maxHeight: number
+  setMaxHeight: (value: number) => void
+  fontSize: 'small' | 'medium' | 'large'
+  setFontSize: (value: 'small' | 'medium' | 'large') => void
+  headerSize: 'small' | 'medium' | 'large'
+  setHeaderSize: (value: 'small' | 'medium' | 'large') => void
+  autoPopupWelcome: 'off' | '1s' | '2s' | '3s'
+  setAutoPopupWelcome: (value: 'off' | '1s' | '2s' | '3s') => void
+  autoScrollNewMessages: boolean
+  setAutoScrollNewMessages: (value: boolean) => void
+  displaySourcesInMessages: boolean
+  setDisplaySourcesInMessages: (value: boolean) => void
+  sourcesLabel: string
+  setSourcesLabel: (value: string) => void
 }
 
 /** Flow navigation. Derived from flowConfig; add/remove steps there. */
@@ -124,7 +156,22 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#6366f1')
   const [widgetTitle, setWidgetTitle] = useState('Chat')
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large'>('medium')
-
+  const [welcomeMessage, setWelcomeMessage] = useState('Welcome! How can I help you today?')
+  const [placeholder, setPlaceholder] = useState('Ask a question...')
+  const [footerMessage, setFooterMessage] = useState('Powered by WebAI')
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [textColor, setTextColor] = useState('#ffffff')
+  const [launcherIconUrl, setLauncherIconUrl] = useState('')
+  const [launcherText, setLauncherText] = useState('Help')
+  const [headerIconUrl, setHeaderIconUrl] = useState('')
+  const [shareIconUrl, setShareIconUrl] = useState('')
+  const [maxHeight, setMaxHeight] = useState(720)
+  const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium')
+  const [headerSize, setHeaderSize] = useState<'small' | 'medium' | 'large'>('small')
+  const [autoPopupWelcome, setAutoPopupWelcome] = useState<'off' | '1s' | '2s' | '3s'>('off')
+  const [autoScrollNewMessages, setAutoScrollNewMessages] = useState(true)
+  const [displaySourcesInMessages, setDisplaySourcesInMessages] = useState(false)
+  const [sourcesLabel, setSourcesLabel] = useState('Sources')
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
@@ -147,6 +194,22 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setWidgetPrimaryColor('#6366f1')
     setWidgetTitle('Chat')
     setWidgetSize('medium')
+    setWelcomeMessage('Welcome! How can I help you today?')
+    setPlaceholder('Ask a question...')
+    setFooterMessage('Powered by WebAI')
+    setTheme('light')
+    setTextColor('#ffffff')
+    setLauncherIconUrl('')
+    setLauncherText('Help')
+    setHeaderIconUrl('')
+    setShareIconUrl('')
+    setMaxHeight(720)
+    setFontSize('medium')
+    setHeaderSize('small')
+    setAutoPopupWelcome('off')
+    setAutoScrollNewMessages(true)
+    setDisplaySourcesInMessages(false)
+    setSourcesLabel('Sources')
   }, [])
 
   const discoverUrls = useCallback(async () => {
@@ -388,6 +451,38 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setWidgetTitle,
         widgetSize,
         setWidgetSize,
+        welcomeMessage,
+        setWelcomeMessage,
+        placeholder,
+        setPlaceholder,
+        footerMessage,
+        setFooterMessage,
+        theme,
+        setTheme,
+        textColor,
+        setTextColor,
+        launcherIconUrl,
+        setLauncherIconUrl,
+        launcherText,
+        setLauncherText,
+        headerIconUrl,
+        setHeaderIconUrl,
+        shareIconUrl,
+        setShareIconUrl,
+        maxHeight,
+        setMaxHeight,
+        fontSize,
+        setFontSize,
+        headerSize,
+        setHeaderSize,
+        autoPopupWelcome,
+        setAutoPopupWelcome,
+        autoScrollNewMessages,
+        setAutoScrollNewMessages,
+        displaySourcesInMessages,
+        setDisplaySourcesInMessages,
+        sourcesLabel,
+        setSourcesLabel,
       },
       flow: {
         nextPath,
@@ -418,6 +513,22 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       widgetPrimaryColor,
       widgetTitle,
       widgetSize,
+      welcomeMessage,
+      placeholder,
+      footerMessage,
+      theme,
+      textColor,
+      launcherIconUrl,
+      launcherText,
+      headerIconUrl,
+      shareIconUrl,
+      maxHeight,
+      fontSize,
+      headerSize,
+      autoPopupWelcome,
+      autoScrollNewMessages,
+      displaySourcesInMessages,
+      sourcesLabel,
       discoverUrls,
       stopDiscovery,
       toggleUrl,

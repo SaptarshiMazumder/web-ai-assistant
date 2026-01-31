@@ -31,15 +31,17 @@ _MAX_INDIVIDUAL_RETRIES = 5
 _BACKOFF_BASE = 1.5
 
 
+class _FailedResult:
+    """Result placeholder for a URL that failed to crawl."""
+    def __init__(self, url: str, error: str):
+        self.url = url
+        self.success = False
+        self.error = error
+        self.links = {}
+
+
 async def _crawl_urls_individually(crawler: AsyncWebCrawler, urls: List[str], run_config) -> List[Any]:
     """Fallback: crawl URLs individually with retries. Every URL gets a result (success or FailedResult)."""
-    class FailedResult:
-        def __init__(self, url: str, error: str):
-            self.url = url
-            self.success = False
-            self.error = error
-            self.links = {}
-
     results = []
     for url in urls:
         last_error = None
@@ -55,7 +57,7 @@ async def _crawl_urls_individually(crawler: AsyncWebCrawler, urls: List[str], ru
                 if attempt < _MAX_INDIVIDUAL_RETRIES - 1:
                     await asyncio.sleep(_BACKOFF_BASE * (2 ** attempt))
         else:
-            results.append(FailedResult(url, str(last_error)[:200] if last_error else "unknown"))
+            results.append(_FailedResult(url, str(last_error)[:200] if last_error else "unknown"))
     return results
 
 
@@ -214,87 +216,85 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         max_concurrent: int,
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> List[Document]:
-        """Crawl a list of URLs. Returns partial results even if some URLs fail."""
+        """Crawl a list of URLs. Reports progress after each URL completes (not per chunk)."""
         if not urls:
             return []
 
-        # No robots.txt filtering - use all provided URLs
         filtered_urls = urls
-
         if not filtered_urls:
             return []
 
         browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
         run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-        dispatcher = MemoryAdaptiveDispatcher(
-            memory_threshold_percent=70.0,
-            check_interval=1.0,
-            max_session_permit=max_concurrent,
-        )
+        sem = asyncio.Semaphore(max_concurrent)
+        results_list: List[tuple] = []  # (url, result) in completion order
 
         docs: List[Document] = []
         try:
             async with AsyncWebCrawler(config=browser_config) as crawler:
-                # Chunk so progress_cb runs after each chunk (UI shows incremental progress)
-                _chunk_size = 8
-                for start in range(0, len(filtered_urls), _chunk_size):
-                    chunk = filtered_urls[start : start + _chunk_size]
-                    results: List[Any] = []
-                    try:
-                        results = await crawler.arun_many(urls=chunk, config=run_config, dispatcher=dispatcher)
-                    except (ConnectionError, TimeoutError, OSError, asyncio.TimeoutError):
-                        logger.debug("Batch crawl failed for chunk, trying individual URLs")
-                        results = await _crawl_urls_individually(crawler, chunk, run_config)
-                    except Exception:
-                        logger.debug("Batch crawl error for chunk, trying individual URLs")
-                        results = await _crawl_urls_individually(crawler, chunk, run_config)
 
-                    for result in results:
+                async def crawl_one(url: str):
+                    async with sem:
                         try:
-                            result_url = getattr(result, "url", None) or ""
-                            norm = _normalize_url(result_url) if result_url else ""
-                            if getattr(result, "success", False):
-                                content, src = safe_execute(
-                                    lambda r=result: _best_text(r),
-                                    (None, None),
-                                )
-                                if content:
-                                    docs.append(
-                                        Document(
-                                            url=result_url,
-                                            content=f"Source URL: {result_url}\n\n{content}",
-                                            metadata={"source": src or "unknown"},
-                                        )
-                                    )
-                                if progress_cb:
-                                    safe_execute(
-                                        lambda u=result_url: progress_cb({
-                                            "type": "page_crawled",
-                                            "count": len(docs),
-                                            "url": u,
-                                            "depth": 0,
-                                        }),
-                                        None,
-                                    )
-                            else:
-                                if progress_cb:
-                                    safe_execute(
-                                        lambda n=norm, r=result: progress_cb({
-                                            "type": "fetch",
-                                            "url": n,
-                                            "success": False,
-                                            "status_code": _meta_attr(r, "status_code")
-                                            or _meta_attr(r, "http_status")
-                                            or _meta_attr(r, "status"),
-                                            "error": _meta_attr(r, "error")
-                                            or _meta_attr(r, "error_message")
-                                            or _meta_attr(r, "message")
-                                            or "Unknown error",
-                                        }),
-                                        None,
-                                    )
+                            result = await crawler.arun(url=url, config=run_config)
+                            return (url, result)
                         except Exception as e:
-                            logger.debug(f"Error processing result: {type(e).__name__}: {str(e)[:100]}")
+                            logger.debug(f"Single URL crawl failed for {url}: {type(e).__name__}")
+                            return (url, _FailedResult(url, str(e)[:200]))
+
+                async def process_one(url: str):
+                    url_ret, result = await crawl_one(url)
+                    results_list.append((url_ret, result))
+                    n = len(results_list)
+                    if progress_cb:
+                        # Always report page_crawled so job.pages_crawled increments (progress bar moves)
+                        safe_execute(
+                            lambda: progress_cb({
+                                "type": "page_crawled",
+                                "count": n,
+                                "url": url_ret,
+                                "depth": 0,
+                            }),
+                            None,
+                        )
+                        if not getattr(result, "success", False):
+                            safe_execute(
+                                lambda: progress_cb({
+                                    "type": "fetch",
+                                    "url": url_ret,
+                                    "success": False,
+                                    "status_code": _meta_attr(result, "status_code")
+                                    or _meta_attr(result, "http_status")
+                                    or _meta_attr(result, "status"),
+                                    "error": getattr(result, "error", None)
+                                    or _meta_attr(result, "error_message")
+                                    or _meta_attr(result, "message")
+                                    or "Unknown error",
+                                }),
+                                None,
+                            )
+                    return (url_ret, result)
+
+                await asyncio.gather(*[process_one(u) for u in filtered_urls])
+
+            for result_url, result in results_list:
+                try:
+                    if getattr(result, "success", False):
+                        content, src = safe_execute(
+                            lambda r=result: _best_text(r),
+                            (None, None),
+                        )
+                        if content:
+                            docs.append(
+                                Document(
+                                    url=result_url,
+                                    content=f"Source URL: {result_url}\n\n{content}",
+                                    metadata={"source": src or "unknown"},
+                                )
+                            )
+                    # progress already reported in process_one
+                except Exception as e:
+                    logger.debug(f"Error processing result: {type(e).__name__}: {str(e)[:100]}")
         except Exception as e:
             logger.warning(f"Crawler initialization failed: {type(e).__name__}: {str(e)[:100]}")
             return docs if docs else []

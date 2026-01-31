@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -35,6 +35,7 @@ class BotListResponse(BaseModel):
 
 class BotDetailResponse(BaseModel):
     bot: BotSummary
+    widget_config: Optional[Dict[str, Any]] = None
 
 
 class BotDomainAddRequest(BaseModel):
@@ -124,6 +125,30 @@ class Citation(BaseModel):
 class WidgetChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+
+
+class WidgetConfigUpdate(BaseModel):
+    """Widget design config stored per bot (widget API shape). All fields optional."""
+    position: Optional[str] = None
+    color: Optional[str] = None
+    title: Optional[str] = None
+    size: Optional[str] = None
+    welcomeMessage: Optional[str] = None
+    placeholder: Optional[str] = None
+    footer: Optional[str] = None
+    theme: Optional[str] = None
+    textColor: Optional[str] = None
+    launcherIcon: Optional[str] = None
+    launcherText: Optional[str] = None
+    headerIcon: Optional[str] = None
+    shareIcon: Optional[str] = None
+    maxHeight: Optional[int] = None
+    fontSize: Optional[str] = None
+    headerSize: Optional[str] = None
+    autoPopup: Optional[str] = None
+    autoScroll: Optional[bool] = None
+    displaySources: Optional[bool] = None
+    sourcesLabel: Optional[str] = None
 
 
 # ===========================
