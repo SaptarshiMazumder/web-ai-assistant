@@ -260,7 +260,7 @@ export default function OrgPage() {
                     <div className="muted">{org.org_id}</div>
                   </div>
                   <div className="row">
-                    <button className="ghost" onClick={() => setOrgStatus(org.org_id, org.status === 'active' ? 'disabled' : 'active')}>
+                    <button className="ghost" onClick={() => setOrgStatus(org.org_id, org.status === 'active' ? 'disabled' : 'active')} disabled={loading}>
                       {org.status === 'active' ? 'Disable' : 'Enable'}
                     </button>
                   </div>

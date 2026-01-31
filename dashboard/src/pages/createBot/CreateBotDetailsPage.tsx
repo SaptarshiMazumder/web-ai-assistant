@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon, StopIcon } from './DiscoveryIcons'
@@ -6,11 +7,18 @@ export default function CreateBotDetailsPage() {
   const navigate = useNavigate()
   const { step1, flow } = useCreateBotFlow()
   const { botName, setBotName, websiteUrl, setWebsiteUrl, discoveryMethod, setDiscoveryMethod, isDiscovering, localError, setLocalError, discoverUrls, stopDiscovery } = step1
+  const [starting, setStarting] = useState(false)
 
   const handleContinue = async () => {
-    const ok = await discoverUrls()
-    if (ok && flow.nextPath) {
-      navigate(flow.nextPath)
+    if (starting || isDiscovering) return
+    setStarting(true)
+    try {
+      const ok = await discoverUrls()
+      if (ok && flow.nextPath) {
+        navigate(flow.nextPath)
+      }
+    } finally {
+      setStarting(false)
     }
   }
 
@@ -89,9 +97,9 @@ export default function CreateBotDetailsPage() {
             Stop
           </button>
         ) : (
-          <button type="button" className="primary" onClick={handleContinue} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <button type="button" className="primary" onClick={() => void handleContinue()} disabled={starting} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <PlayIcon />
-            Start bot training
+            {starting ? 'Starting…' : 'Start bot training'}
           </button>
         )}
       </div>

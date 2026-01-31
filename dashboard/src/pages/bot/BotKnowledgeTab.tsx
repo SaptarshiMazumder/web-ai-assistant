@@ -39,7 +39,7 @@ export default function BotKnowledgeTab() {
                 <div className={`pill ${domain.status}`}>{domain.status}</div>
               </div>
               <div className="row">
-                <button className="ghost" onClick={() => verifyDomain(domain.hostname)}>
+                <button className="ghost" onClick={() => verifyDomain(domain.hostname)} disabled={loading}>
                   Verify
                 </button>
                 <div className="token">Token: {domain.verification_token}</div>

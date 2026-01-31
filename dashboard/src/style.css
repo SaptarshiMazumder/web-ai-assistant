@@ -1106,6 +1106,7 @@ button:disabled {
   width: 28px;
   height: 28px;
   border-radius: 50%;
+  background: var(--app-accent, #6366f1);
   color: #fff;
   flex-shrink: 0;
   transition: transform 0.2s;
