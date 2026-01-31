@@ -18,6 +18,7 @@ import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
 import BotAnalyticsTab from './pages/bot/BotAnalyticsTab'
 import BotDesignTab from './pages/bot/BotDesignTab'
 import BotDetailLayout from './pages/bot/BotDetailLayout'
+import AddSourcePage from './pages/bot/AddSourcePage'
 import BotKnowledgeTab from './pages/bot/BotKnowledgeTab'
 import BotOverviewTab from './pages/bot/BotOverviewTab'
 import BotSettingsTab from './pages/bot/BotSettingsTab'
@@ -74,6 +75,7 @@ export default function App() {
               <Route path="overview" element={<BotOverviewTab />} />
               <Route path="knowledge" element={<BotKnowledgeTab />} />
               <Route path="sources" element={<BotSourcesTab />} />
+              <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
               <Route path="analytics" element={<BotAnalyticsTab />} />

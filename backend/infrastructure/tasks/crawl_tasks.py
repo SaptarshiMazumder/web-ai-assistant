@@ -8,7 +8,7 @@ from celery import Task
 from celery.exceptions import Retry
 
 from infrastructure.celery_app import celery_app
-from infrastructure.rag.crawl_service import CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
+from infrastructure.rag.crawl_service import CRAWL_MAX_CONCURRENCY
 from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
 from infrastructure.db.repositories import PostgresIndexJobRepository
 from infrastructure.rag.error_handling import safe_execute
@@ -76,6 +76,7 @@ async def _execute_crawl(
                 })
 
         # Crawl with comprehensive error handling - always returns partial results
+        # Single URL or list of URLs: crawl only those pages (no link-following / BFS)
         docs: List[Any] = []
         try:
             if urls:
@@ -85,13 +86,14 @@ async def _execute_crawl(
                     progress_cb=_on_progress,
                 )
             else:
-                docs = await crawler_repo.crawl_urls_bfs(
-                    url or "",
-                    max_depth=CRAWL_MAX_DEPTH,
-                    max_concurrent=CRAWL_MAX_CONCURRENCY,
-                    stop_event=None,
-                    progress_cb=_on_progress,
-                )
+                # Single URL: crawl only that page (no nested pages)
+                single_url = (url or "").strip()
+                if single_url:
+                    docs = await crawler_repo.crawl_urls_list(
+                        [single_url],
+                        max_concurrent=CRAWL_MAX_CONCURRENCY,
+                        progress_cb=_on_progress,
+                    )
         except Exception as crawl_error:
             # Log error but continue - we might have partial results
             error_msg = str(crawl_error)[:200]
@@ -100,6 +102,13 @@ async def _execute_crawl(
             # Don't raise - continue to process whatever we got
 
         job.docs_count = len(docs) if docs else 0
+        # Store every URL we discovered and indexed (for display in dashboard)
+        crawled_urls = []
+        for d in docs or []:
+            u = getattr(d, "url", None) or (d.get("url") if isinstance(d, dict) else "")
+            if u:
+                crawled_urls.append(str(u))
+        job.crawled_urls = crawled_urls
         job_repo.update_job(job)
         _emit_event("result", {"docs_count": job.docs_count})
 

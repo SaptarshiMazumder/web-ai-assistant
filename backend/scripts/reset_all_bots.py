@@ -91,6 +91,7 @@ def _reset_bots_in_db() -> None:
     con = get_connection()
     try:
         con.execute("DELETE FROM index_jobs")
+        con.execute("DELETE FROM bot_sources")
         con.execute("DELETE FROM bot_domains")
         con.execute("DELETE FROM bot_corpora")
         con.execute("DELETE FROM bots")

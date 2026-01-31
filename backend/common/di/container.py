@@ -8,6 +8,7 @@ from infrastructure.db.repositories import (
     PostgresBotCorpusRepository,
     PostgresBotDomainRepository,
     PostgresBotRepository,
+    PostgresBotSourceRepository,
     PostgresIndexJobRepository,
     PostgresOrgMembershipRepository,
     PostgresOrgRepository,
@@ -47,6 +48,7 @@ def indexing_service() -> IndexingService:
     bot_repo = PostgresBotRepository()
     domain_repo = PostgresBotDomainRepository()
     corpus_repo = PostgresBotCorpusRepository()
+    source_repo = PostgresBotSourceRepository()
     job_repo = PostgresIndexJobRepository()
     crawler_repo = Crawl4AICrawlerRepository()
     
@@ -58,6 +60,7 @@ def indexing_service() -> IndexingService:
         bot_repo=bot_repo,
         domain_repo=domain_repo,
         corpus_repo=corpus_repo,
+        source_repo=source_repo,
         job_repo=job_repo,
         crawler_repo=crawler_repo,
         storage_repo=storage_repo,

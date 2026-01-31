@@ -1,8 +1,9 @@
-from .entities import Bot, BotRecord, BotDomainRecord, OrgRecord, OrgMemberRecord, UserRecord, Document, IndexJob
+from .entities import Bot, BotRecord, BotDomainRecord, BotSource, OrgRecord, OrgMemberRecord, UserRecord, Document, IndexJob
 from .repositories import (
     BotRepository,
     BotDomainRepository,
     BotCorpusRepository,
+    BotSourceRepository,
     OrgRepository,
     OrgMembershipRepository,
     UserRepository,
@@ -17,6 +18,7 @@ __all__ = [
     "Bot",
     "BotRecord",
     "BotDomainRecord",
+    "BotSource",
     "OrgRecord",
     "OrgMemberRecord",
     "UserRecord",
@@ -25,6 +27,7 @@ __all__ = [
     "BotRepository",
     "BotDomainRepository",
     "BotCorpusRepository",
+    "BotSourceRepository",
     "OrgRepository",
     "OrgMembershipRepository",
     "UserRepository",

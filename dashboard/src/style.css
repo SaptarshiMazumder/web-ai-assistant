@@ -19,6 +19,7 @@
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -86,6 +87,20 @@ button:disabled {
   box-shadow: 0 8px 18px rgba(99, 102, 241, 0.2);
 }
 
+/* Links as primary buttons: same look as button.primary */
+a.primary {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 0.6rem 1.1rem;
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
 .secondary {
   background: #ffffff;
   border: 1px solid #cbd5f5;
@@ -118,11 +133,14 @@ button:disabled {
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
 }
 
+/* minmax(0, 1fr) prevents the row from growing with content (grid item min-height: auto) */
 .app-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
+  grid-template-rows: minmax(0, 1fr);
   min-height: 100vh;
   height: 100vh;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -294,7 +312,10 @@ button:disabled {
 
 .content {
   padding: 0.75rem 0.5rem 0.5rem 1.25rem;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-shell {
@@ -303,7 +324,9 @@ button:disabled {
   --shell-pad-x: 1.75rem;
   --shell-pad-y: 1rem;
   padding: var(--shell-pad-y) var(--shell-pad-x);
-  min-height: calc(100vh - 1.5rem);
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
   border: 1px solid #e2e8f0;
 }
 
@@ -772,6 +795,21 @@ button:disabled {
 .pill.pending {
   background: #fef9c3;
   color: #854d0e;
+}
+
+.pill.trained {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pill.training {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.pill.failed {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .status {
@@ -1404,4 +1442,111 @@ button:disabled {
   .flow-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Knowledge tab: sources table, toolbar, footer */
+.knowledge-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.knowledge-toolbar-spacer {
+  flex: 1;
+}
+
+.knowledge-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.knowledge-table-wrap-scroll {
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.knowledge-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.knowledge-table th,
+.knowledge-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.knowledge-table th {
+  font-weight: 600;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.knowledge-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.knowledge-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-url {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Source type badge: URL, Drive, Google Docs */
+.source-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.source-type-badge[data-type="url"] {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+.source-type-badge[data-type="drive"] {
+  background: #fef3c7;
+  color: #b45309;
+}
+.source-type-badge[data-type="docs"] {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.knowledge-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.knowledge-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.knowledge-discovered .list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -76,6 +76,17 @@ class Document:
 
 
 @dataclass
+class BotSource:
+    source_id: str
+    bot_id: str
+    type: str  # url, drive, docs, ...
+    config: Dict[str, Any]  # type-specific payload, e.g. {"url": "..."}
+    display_name: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
 class IndexJob:
     job_id: str
     bot_id: str
@@ -91,3 +102,5 @@ class IndexJob:
     created_at: str
     updated_at: str
     celery_task_id: Optional[str] = None
+    crawled_urls: List[str] = field(default_factory=list)  # URLs discovered and indexed by this job
+    source_id: Optional[str] = None  # optional FK to bot_sources

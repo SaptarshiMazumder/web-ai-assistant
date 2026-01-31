@@ -1,3 +1,4 @@
+import json
 import re
 import secrets
 from dataclasses import dataclass
@@ -6,8 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
 
-from domain.entities import Bot, BotDomainRecord, BotRecord, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
-from domain.repositories import IndexJobRepository
+from domain.entities import Bot, BotDomainRecord, BotRecord, BotSource, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from domain.repositories import BotSourceRepository, IndexJobRepository
 from infrastructure.db.connection import get_connection
 
 
@@ -198,8 +199,9 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
-            # Delete in order: index_jobs, bot_domains, bot_corpora, bots
+            # Delete in order: index_jobs, bot_sources, bot_domains, bot_corpora, bots
             con.execute("DELETE FROM index_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_sources WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_domains WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_corpora WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bots WHERE bot_id = %s", (bid,))
@@ -697,22 +699,128 @@ class PostgresDomainCorpusRepository:
             con.close()
 
 
+class PostgresBotSourceRepository(BotSourceRepository):
+    def create_source(self, source: BotSource) -> None:
+        con = _connect()
+        try:
+            config_json = json.dumps(source.config if isinstance(source.config, dict) else {})
+            con.execute(
+                """
+                INSERT INTO bot_sources (source_id, bot_id, type, config, display_name, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    source.source_id,
+                    source.bot_id,
+                    source.type,
+                    config_json,
+                    source.display_name,
+                    source.created_at,
+                    source.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_source(self, bot_id: str, source_id: str) -> Optional[BotSource]:
+        bid = (bot_id or "").strip()
+        sid = (source_id or "").strip()
+        if not bid or not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT source_id, bot_id, type, config, display_name, created_at, updated_at
+                FROM bot_sources WHERE bot_id = %s AND source_id = %s
+                """,
+                (bid, sid),
+            ).fetchone()
+            if not row:
+                return None
+            try:
+                config = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or {})
+            except (TypeError, ValueError):
+                config = {}
+            return BotSource(
+                source_id=row[0],
+                bot_id=row[1],
+                type=row[2],
+                config=config if isinstance(config, dict) else {},
+                display_name=row[4],
+                created_at=row[5],
+                updated_at=row[6],
+            )
+        finally:
+            con.close()
+
+    def list_sources_for_bot(self, bot_id: str) -> List[BotSource]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT source_id, bot_id, type, config, display_name, created_at, updated_at
+                FROM bot_sources WHERE bot_id = %s ORDER BY updated_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            result = []
+            for row in rows:
+                try:
+                    config = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or {})
+                except (TypeError, ValueError):
+                    config = {}
+                result.append(
+                    BotSource(
+                        source_id=row[0],
+                        bot_id=row[1],
+                        type=row[2],
+                        config=config if isinstance(config, dict) else {},
+                        display_name=row[4],
+                        created_at=row[5],
+                        updated_at=row[6],
+                    )
+                )
+            return result
+        finally:
+            con.close()
+
+    def delete_source(self, bot_id: str, source_id: str) -> None:
+        bid = (bot_id or "").strip()
+        sid = (source_id or "").strip()
+        if not bid or not sid:
+            return
+        con = _connect()
+        try:
+            con.execute("DELETE FROM bot_sources WHERE bot_id = %s AND source_id = %s", (bid, sid))
+            con.commit()
+        finally:
+            con.close()
+
+
 class PostgresIndexJobRepository(IndexJobRepository):
     def create_job(self, job: IndexJob) -> None:
         con = _connect()
         try:
+            crawled_urls_json = json.dumps(getattr(job, "crawled_urls", None) or [])
+            source_id = getattr(job, "source_id", None)
             con.execute(
                 """
                 INSERT INTO index_jobs(
-                  job_id, bot_id, url, hostname, celery_task_id, stage,
+                  job_id, bot_id, source_id, url, hostname, celery_task_id, stage,
                   pages_crawled, docs_count, last_crawled_url, last_depth,
-                  gcs_prefix, last_error, created_at, updated_at
+                  gcs_prefix, last_error, crawled_urls, created_at, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     job.job_id,
                     job.bot_id,
+                    source_id,
                     job.url,
                     job.hostname,
                     job.celery_task_id,
@@ -723,6 +831,7 @@ class PostgresIndexJobRepository(IndexJobRepository):
                     job.last_depth,
                     job.gcs_prefix,
                     job.last_error,
+                    crawled_urls_json,
                     job.created_at,
                     job.updated_at,
                 ),
@@ -741,36 +850,44 @@ class PostgresIndexJobRepository(IndexJobRepository):
             # Try by job_id first
             row = con.execute(
                 """
-                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                SELECT job_id, bot_id, source_id, url, hostname, celery_task_id, stage,
                        pages_crawled, docs_count, last_crawled_url, last_depth,
-                       gcs_prefix, last_error, created_at, updated_at
+                       gcs_prefix, last_error, crawled_urls, created_at, updated_at
                 FROM index_jobs
                 WHERE bot_id = %s AND job_id = %s
                 """,
                 (bid, key),
             ).fetchone()
             if row:
+                crawled = row[13] if len(row) > 13 else "[]"
+                try:
+                    crawled_list = json.loads(crawled) if isinstance(crawled, str) else (crawled or [])
+                except (TypeError, ValueError):
+                    crawled_list = []
                 return IndexJob(
                     job_id=row[0],
                     bot_id=row[1],
-                    url=row[2],
-                    hostname=row[3],
-                    stage=row[5],
-                    pages_crawled=row[6] or 0,
-                    docs_count=row[7] or 0,
-                    last_crawled_url=row[8] or "",
-                    last_depth=row[9] or -1,
-                    gcs_prefix=row[10] or "",
-                    last_error=row[11] or "",
-                    created_at=row[12],
-                    updated_at=row[13],
+                    url=row[3],
+                    hostname=row[4],
+                    celery_task_id=row[5],
+                    stage=row[6],
+                    pages_crawled=row[7] or 0,
+                    docs_count=row[8] or 0,
+                    last_crawled_url=row[9] or "",
+                    last_depth=row[10] or -1,
+                    gcs_prefix=row[11] or "",
+                    last_error=row[12] or "",
+                    crawled_urls=crawled_list if isinstance(crawled_list, list) else [],
+                    created_at=row[14],
+                    updated_at=row[15],
+                    source_id=row[2],
                 )
             # Try by hostname (for backward compatibility)
             row = con.execute(
                 """
-                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                SELECT job_id, bot_id, source_id, url, hostname, celery_task_id, stage,
                        pages_crawled, docs_count, last_crawled_url, last_depth,
-                       gcs_prefix, last_error, created_at, updated_at
+                       gcs_prefix, last_error, crawled_urls, created_at, updated_at
                 FROM index_jobs
                 WHERE bot_id = %s AND hostname = %s
                 ORDER BY updated_at DESC
@@ -779,20 +896,28 @@ class PostgresIndexJobRepository(IndexJobRepository):
                 (bid, key),
             ).fetchone()
             if row:
+                crawled = row[13] if len(row) > 13 else "[]"
+                try:
+                    crawled_list = json.loads(crawled) if isinstance(crawled, str) else (crawled or [])
+                except (TypeError, ValueError):
+                    crawled_list = []
                 return IndexJob(
                     job_id=row[0],
                     bot_id=row[1],
-                    url=row[2],
-                    hostname=row[3],
-                    stage=row[5],
-                    pages_crawled=row[6] or 0,
-                    docs_count=row[7] or 0,
-                    last_crawled_url=row[8] or "",
-                    last_depth=row[9] or -1,
-                    gcs_prefix=row[10] or "",
-                    last_error=row[11] or "",
-                    created_at=row[12],
-                    updated_at=row[13],
+                    url=row[3],
+                    hostname=row[4],
+                    celery_task_id=row[5],
+                    stage=row[6],
+                    pages_crawled=row[7] or 0,
+                    docs_count=row[8] or 0,
+                    last_crawled_url=row[9] or "",
+                    last_depth=row[10] or -1,
+                    gcs_prefix=row[11] or "",
+                    last_error=row[12] or "",
+                    crawled_urls=crawled_list if isinstance(crawled_list, list) else [],
+                    created_at=row[14],
+                    updated_at=row[15],
+                    source_id=row[2],
                 )
             return None
         finally:
@@ -807,9 +932,9 @@ class PostgresIndexJobRepository(IndexJobRepository):
         try:
             row = con.execute(
                 """
-                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                SELECT job_id, bot_id, source_id, url, hostname, celery_task_id, stage,
                        pages_crawled, docs_count, last_crawled_url, last_depth,
-                       gcs_prefix, last_error, created_at, updated_at
+                       gcs_prefix, last_error, crawled_urls, created_at, updated_at
                 FROM index_jobs
                 WHERE bot_id = %s AND hostname = %s
                 ORDER BY updated_at DESC
@@ -819,27 +944,36 @@ class PostgresIndexJobRepository(IndexJobRepository):
             ).fetchone()
             if not row:
                 return None
+            crawled = row[13] if len(row) > 13 else "[]"
+            try:
+                crawled_list = json.loads(crawled) if isinstance(crawled, str) else (crawled or [])
+            except (TypeError, ValueError):
+                crawled_list = []
             return IndexJob(
                 job_id=row[0],
                 bot_id=row[1],
-                url=row[2],
-                hostname=row[3],
-                stage=row[5],
-                pages_crawled=row[6] or 0,
-                docs_count=row[7] or 0,
-                last_crawled_url=row[8] or "",
-                last_depth=row[9] or -1,
-                gcs_prefix=row[10] or "",
-                last_error=row[11] or "",
-                created_at=row[12],
-                updated_at=row[13],
-                celery_task_id=row[4],
+                url=row[3],
+                hostname=row[4],
+                stage=row[6],
+                pages_crawled=row[7] or 0,
+                docs_count=row[8] or 0,
+                last_crawled_url=row[9] or "",
+                last_depth=row[10] or -1,
+                gcs_prefix=row[11] or "",
+                last_error=row[12] or "",
+                crawled_urls=crawled_list if isinstance(crawled_list, list) else [],
+                created_at=row[14],
+                updated_at=row[15],
+                celery_task_id=row[5],
+                source_id=row[2],
             )
         finally:
             con.close()
 
     def update_job(self, job: IndexJob) -> None:
         now = _utc_now()
+        crawled_urls_json = json.dumps(getattr(job, "crawled_urls", None) or [])
+        source_id = getattr(job, "source_id", None)
         con = _connect()
         try:
             con.execute(
@@ -847,8 +981,8 @@ class PostgresIndexJobRepository(IndexJobRepository):
                 UPDATE index_jobs
                 SET stage = %s, pages_crawled = %s, docs_count = %s,
                     last_crawled_url = %s, last_depth = %s, gcs_prefix = %s,
-                    last_error = %s, updated_at = %s,
-                    celery_task_id = COALESCE(%s, celery_task_id)
+                    last_error = %s, crawled_urls = %s, source_id = COALESCE(%s, source_id),
+                    updated_at = %s, celery_task_id = COALESCE(%s, celery_task_id)
                 WHERE job_id = %s
                 """,
                 (
@@ -859,6 +993,8 @@ class PostgresIndexJobRepository(IndexJobRepository):
                     job.last_depth,
                     job.gcs_prefix,
                     job.last_error,
+                    crawled_urls_json,
+                    source_id,
                     now,
                     job.celery_task_id,
                     job.job_id,
@@ -876,32 +1012,41 @@ class PostgresIndexJobRepository(IndexJobRepository):
         try:
             rows = con.execute(
                 """
-                SELECT job_id, bot_id, url, hostname, celery_task_id, stage,
+                SELECT job_id, bot_id, source_id, url, hostname, celery_task_id, stage,
                        pages_crawled, docs_count, last_crawled_url, last_depth,
-                       gcs_prefix, last_error, created_at, updated_at
+                       gcs_prefix, last_error, crawled_urls, created_at, updated_at
                 FROM index_jobs
                 WHERE bot_id = %s
                 ORDER BY updated_at DESC
                 """,
                 (bid,),
             ).fetchall()
-            return [
-                IndexJob(
-                    job_id=row[0],
-                    bot_id=row[1],
-                    url=row[2],
-                    hostname=row[3],
-                    stage=row[5],
-                    pages_crawled=row[6] or 0,
-                    docs_count=row[7] or 0,
-                    last_crawled_url=row[8] or "",
-                    last_depth=row[9] or -1,
-                    gcs_prefix=row[10] or "",
-                    last_error=row[11] or "",
-                    created_at=row[12],
-                    updated_at=row[13],
+            result = []
+            for row in rows:
+                crawled = row[13] if len(row) > 13 else "[]"
+                try:
+                    crawled_list = json.loads(crawled) if isinstance(crawled, str) else (crawled or [])
+                except (TypeError, ValueError):
+                    crawled_list = []
+                result.append(
+                    IndexJob(
+                        job_id=row[0],
+                        bot_id=row[1],
+                        url=row[3],
+                        hostname=row[4],
+                        stage=row[6],
+                        pages_crawled=row[7] or 0,
+                        docs_count=row[8] or 0,
+                        last_crawled_url=row[9] or "",
+                        last_depth=row[10] or -1,
+                        gcs_prefix=row[11] or "",
+                        last_error=row[12] or "",
+                        crawled_urls=crawled_list if isinstance(crawled_list, list) else [],
+                        created_at=row[14],
+                        updated_at=row[15],
+                        source_id=row[2],
+                    )
                 )
-                for row in rows
-            ]
+            return result
         finally:
             con.close()

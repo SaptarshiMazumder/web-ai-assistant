@@ -23,6 +23,9 @@ from api.schemas import (
     BotIndexBatchRequest,
     BotIndexRequest,
     BotListResponse,
+    BotSourceCreateRequest,
+    BotSourceListResponse,
+    BotSourceResponse,
     BotSummary,
     Citation,
     OrgCreateRequest,
@@ -296,6 +299,8 @@ async def v1_list_jobs(bot_id: str, x_admin_key: Optional[str] = Header(default=
                 last_error=j.last_error,
                 created_at=j.created_at,
                 updated_at=j.updated_at,
+                crawled_urls=getattr(j, "crawled_urls", None) or [],
+                source_id=getattr(j, "source_id", None),
             )
             for j in jobs
         ],
@@ -830,10 +835,96 @@ async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depen
                 last_error=j.last_error,
                 created_at=j.created_at,
                 updated_at=j.updated_at,
+                crawled_urls=getattr(j, "crawled_urls", None) or [],
+                source_id=getattr(j, "source_id", None),
             )
             for j in jobs
         ],
     )
+
+
+@router.get("/v1/org/bots/{bot_id}/sources", response_model=BotSourceListResponse)
+async def v1_org_list_sources(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    sources = indexing_service().list_sources_for_bot(bot_id)
+    return BotSourceListResponse(
+        bot_id=bot_id,
+        sources=[
+            BotSourceResponse(
+                source_id=s.source_id,
+                bot_id=s.bot_id,
+                type=s.type,
+                config=s.config,
+                display_name=s.display_name,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+            )
+            for s in sources
+        ],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/sources", response_model=BotSourceResponse)
+async def v1_org_create_source(
+    bot_id: str,
+    payload: BotSourceCreateRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    source = indexing_service().create_source(
+        bot_id, payload.type, payload.config or {}, payload.display_name
+    )
+    return BotSourceResponse(
+        source_id=source.source_id,
+        bot_id=source.bot_id,
+        type=source.type,
+        config=source.config,
+        display_name=source.display_name,
+        created_at=source.created_at,
+        updated_at=source.updated_at,
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/sources/{source_id}", response_model=BotSourceResponse)
+async def v1_org_get_source(
+    bot_id: str,
+    source_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    source = indexing_service().get_source(bot_id, source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return BotSourceResponse(
+        source_id=source.source_id,
+        bot_id=source.bot_id,
+        type=source.type,
+        config=source.config,
+        display_name=source.display_name,
+        created_at=source.created_at,
+        updated_at=source.updated_at,
+    )
+
+
+@router.delete("/v1/org/bots/{bot_id}/sources/{source_id}")
+async def v1_org_delete_source(
+    bot_id: str,
+    source_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    source = indexing_service().get_source(bot_id, source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    indexing_service().delete_source(bot_id, source_id)
+    return {"ok": True}
 
 
 @router.post("/v1/org/url-discovery", response_model=UrlDiscoveryResponse)
@@ -922,7 +1013,11 @@ async def v1_org_start_index(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     try:
-        return await indexing_service().start_indexing_for_bot(bot_id, payload.url)
+        if payload.source_id and payload.source_id.strip():
+            return await indexing_service().start_indexing_for_source(bot_id, payload.source_id.strip())
+        if not (payload.url and payload.url.strip()):
+            raise HTTPException(status_code=400, detail="Provide url or source_id")
+        return await indexing_service().start_indexing_for_bot(bot_id, payload.url.strip())
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:

@@ -40,6 +40,19 @@ export type JobRecord = {
   last_error: string
   created_at: string
   updated_at: string
+  /** URLs discovered and indexed by this crawl job */
+  crawled_urls?: string[]
+  source_id?: string | null
+}
+
+export type SourceRecord = {
+  source_id: string
+  bot_id: string
+  type: string
+  config: Record<string, unknown>
+  display_name?: string | null
+  created_at: string
+  updated_at: string
 }
 
 /** Optional widget config for embed snippet (create-bot flow or custom embed). */
@@ -114,9 +127,11 @@ type DashboardData = {
   selectedBot: BotSummary | null
   domains: DomainRecord[]
   jobs: JobRecord[]
+  sources: SourceRecord[]
   indexStatus: IndexStatus | null
   loading: boolean
   error: string | null
+  setError: (value: string | null) => void
   newBotName: string
   setNewBotName: (value: string) => void
   newDomain: string
@@ -146,6 +161,9 @@ type DashboardData = {
   loadBotDetail: (botId: string) => Promise<void>
   loadDomains: (botId: string) => Promise<void>
   loadJobs: (botId: string) => Promise<void>
+  loadSources: (botId: string) => Promise<void>
+  createSource: (botId: string, type: string, config: Record<string, unknown>, displayName?: string | null) => Promise<SourceRecord | null>
+  deleteSource: (botId: string, sourceId: string) => Promise<void>
   createBot: (displayName?: string, orgIdOverride?: string | null) => Promise<BotCreateResponse | null>
   loadOrgs: () => Promise<void>
   loadSelfOrgs: () => Promise<void>
@@ -160,6 +178,7 @@ type DashboardData = {
   addDomain: () => Promise<void>
   verifyDomain: (hostname: string) => Promise<void>
   startCrawl: () => Promise<void>
+  startCrawlForSource: (botId: string, sourceId: string) => Promise<void>
   queueCrawlUrls: (botId: string, urls: string[]) => Promise<string | null>
   cancelCrawl: () => Promise<void>
   refreshStatus: (url: string) => Promise<void>
@@ -214,6 +233,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const [selectedBotWidgetConfig, setSelectedBotWidgetConfig] = useState<Record<string, unknown> | null>(null)
   const [domains, setDomains] = useState<DomainRecord[]>([])
   const [jobs, setJobs] = useState<JobRecord[]>([])
+  const [sources, setSources] = useState<SourceRecord[]>([])
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -343,6 +363,53 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         withOrgParam(`/v1/org/bots/${botId}/jobs`, orgOverride)
       )
       setJobs(data.jobs)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function loadSources(botId: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<{ bot_id: string; sources: SourceRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/sources`, orgOverride)
+      )
+      setSources(data.sources || [])
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  async function createSource(
+    botId: string,
+    type: string,
+    config: Record<string, unknown>,
+    displayName?: string | null
+  ): Promise<SourceRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<SourceRecord>(withOrgParam(`/v1/org/bots/${botId}/sources`, orgOverride), {
+        method: 'POST',
+        body: JSON.stringify({ type, config, display_name: displayName || null }),
+      })
+      await loadSources(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function deleteSource(botId: string, sourceId: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}`, orgOverride), {
+        method: 'DELETE',
+      })
+      await loadSources(botId)
     } catch (err) {
       setError((err as Error).message)
     }
@@ -640,6 +707,25 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function startCrawlForSource(botId: string, sourceId: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/index`, orgOverride), {
+        method: 'POST',
+        body: JSON.stringify({ source_id: sourceId }),
+      })
+      await loadJobs(botId)
+      await loadSources(botId)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function queueCrawlUrls(botId: string, urls: string[]): Promise<string | null> {
     if (isSuperAdmin && !activeOrgId) return null
     setLoading(true)
@@ -849,6 +935,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         void loadBotDetail(selectedBotId)
         void loadDomains(selectedBotId)
         void loadJobs(selectedBotId)
+        void loadSources(selectedBotId)
       }
     }
     if (isSuperAdmin) {
@@ -937,6 +1024,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     void loadBotDetail(selectedBotId)
     void loadDomains(selectedBotId)
     void loadJobs(selectedBotId)
+    void loadSources(selectedBotId)
     setIndexStatus(null)
     setActiveCrawlUrl('')
   }, [selectedBotId, activeOrgId])
@@ -958,9 +1046,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     selectedBot,
     domains,
     jobs,
+    sources,
     indexStatus,
     loading,
     error,
+    setError,
     newBotName,
     setNewBotName,
     newDomain,
@@ -990,6 +1080,9 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     loadBotDetail,
     loadDomains,
     loadJobs,
+    loadSources,
+    createSource,
+    deleteSource,
     createBot,
     loadOrgs,
     loadSelfOrgs,
@@ -1004,6 +1097,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     addDomain,
     verifyDomain,
     startCrawl,
+    startCrawlForSource,
     queueCrawlUrls,
     cancelCrawl,
     refreshStatus,

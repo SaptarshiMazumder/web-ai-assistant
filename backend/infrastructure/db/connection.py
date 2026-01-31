@@ -85,9 +85,22 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS bot_sources (
+      source_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      config TEXT NOT NULL DEFAULT '{}',
+      display_name TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_sources_bot_id ON bot_sources (bot_id)",
+    """
     CREATE TABLE IF NOT EXISTS index_jobs (
       job_id TEXT PRIMARY KEY,
       bot_id TEXT NOT NULL,
+      source_id TEXT,
       url TEXT NOT NULL,
       hostname TEXT NOT NULL,
       celery_task_id TEXT,
@@ -98,14 +111,18 @@ _SCHEMA_SQL: Iterable[str] = (
       last_depth INTEGER NOT NULL DEFAULT -1,
       gcs_prefix TEXT NOT NULL DEFAULT '',
       last_error TEXT NOT NULL DEFAULT '',
+      crawled_urls TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )
     """,
+    "ALTER TABLE index_jobs ADD COLUMN IF NOT EXISTS crawled_urls TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE index_jobs ADD COLUMN IF NOT EXISTS source_id TEXT",
     "CREATE INDEX IF NOT EXISTS index_jobs_bot_id ON index_jobs (bot_id)",
     "CREATE INDEX IF NOT EXISTS index_jobs_bot_hostname ON index_jobs (bot_id, hostname)",
     "CREATE INDEX IF NOT EXISTS index_jobs_stage ON index_jobs (stage)",
     "CREATE INDEX IF NOT EXISTS index_jobs_updated_at ON index_jobs (updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS index_jobs_source_id ON index_jobs (source_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 

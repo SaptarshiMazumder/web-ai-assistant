@@ -1,6 +1,6 @@
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Protocol, Tuple
 
-from .entities import Bot, BotDomainRecord, BotRecord, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from .entities import Bot, BotDomainRecord, BotRecord, BotSource, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
 
 
 class BotRepository(Protocol):
@@ -108,6 +108,20 @@ class DomainCorpusRepository(Protocol):
         ...
 
     def delete_corpus_mapping_for_host(self, hostname: str) -> None:
+        ...
+
+
+class BotSourceRepository(Protocol):
+    def create_source(self, source: BotSource) -> None:
+        ...
+
+    def get_source(self, bot_id: str, source_id: str) -> Optional[BotSource]:
+        ...
+
+    def list_sources_for_bot(self, bot_id: str) -> List[BotSource]:
+        ...
+
+    def delete_source(self, bot_id: str, source_id: str) -> None:
         ...
 
 

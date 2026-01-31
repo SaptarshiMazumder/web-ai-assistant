@@ -97,6 +97,19 @@ def _validate_urls_for_bot(bot_id: str, urls: List[str]) -> List[str]:
     return cleaned
 
 
+def _display_name_from_url(url: str) -> Optional[str]:
+    """Derive a short display name from URL: pathname or hostname if path is / or empty."""
+    try:
+        parsed = urlparse((url or "").strip())
+        path = (parsed.path or "").strip("/")
+        if path:
+            return "/" + path[:80] if len(path) > 80 else "/" + path
+        host = (parsed.hostname or "").lower().split(":")[0]
+        return host or None
+    except Exception:
+        return None
+
+
 def _parse_bucket_and_prefix() -> Tuple[str, str]:
     bucket_and_prefix = (config.GCS_BUCKET or "").strip("/").split("/", 1)
     if len(bucket_and_prefix) == 2:

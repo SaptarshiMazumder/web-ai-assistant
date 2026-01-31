@@ -75,7 +75,8 @@ class BotDomainListResponse(BaseModel):
 
 
 class BotIndexRequest(BaseModel):
-    url: str
+    url: str = ""  # required when source_id not provided
+    source_id: Optional[str] = None  # when provided, start crawl for this source (url from source.config)
 
 
 class BotIndexBatchRequest(BaseModel):
@@ -104,11 +105,34 @@ class BotIndexJobResponse(BaseModel):
     last_error: str
     created_at: str
     updated_at: str
+    crawled_urls: List[str] = []  # URLs discovered and indexed by this job
+    source_id: Optional[str] = None
 
 
 class BotIndexJobListResponse(BaseModel):
     bot_id: str
     jobs: List[BotIndexJobResponse] = []
+
+
+class BotSourceCreateRequest(BaseModel):
+    type: str  # url, drive, docs, ...
+    config: Dict[str, Any]  # type-specific, e.g. {"url": "https://..."}
+    display_name: Optional[str] = None
+
+
+class BotSourceResponse(BaseModel):
+    source_id: str
+    bot_id: str
+    type: str
+    config: Dict[str, Any]
+    display_name: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class BotSourceListResponse(BaseModel):
+    bot_id: str
+    sources: List[BotSourceResponse] = []
 
 
 class WidgetChatRequest(BaseModel):

@@ -8,11 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from common.config import config
-from domain.entities import IndexJob
+from domain.entities import BotSource, IndexJob
 from domain.repositories import (
     BotCorpusRepository,
     BotDomainRepository,
     BotRepository,
+    BotSourceRepository,
     CrawlerRepository,
     DocumentStorageRepository,
     IndexJobRepository,
@@ -23,6 +24,7 @@ from infrastructure.celery_app import celery_app
 from infrastructure.tasks.crawl_tasks import crawl_job_task
 from infrastructure.services.indexing_service import (
     _bot_base_prefix,
+    _display_name_from_url,
     _parse_and_validate_url,
     _parse_bucket_and_prefix,
     _validate_urls_for_bot,
@@ -35,6 +37,7 @@ class IndexingService:
         bot_repo: BotRepository,
         domain_repo: BotDomainRepository,
         corpus_repo: BotCorpusRepository,
+        source_repo: BotSourceRepository,
         job_repo: IndexJobRepository,
         crawler_repo: CrawlerRepository,
         storage_repo: DocumentStorageRepository,
@@ -43,13 +46,48 @@ class IndexingService:
         self._bot_repo = bot_repo
         self._domain_repo = domain_repo
         self._corpus_repo = corpus_repo
+        self._source_repo = source_repo
         self._job_repo = job_repo
         self._crawler_repo = crawler_repo
         self._storage_repo = storage_repo
         self._rag_repo = rag_repo
 
-    async def start_indexing_for_bot(self, bot_id: str, raw_url: str) -> Dict[str, Any]:
-        """Start BFS crawling from a single URL."""
+    def list_sources_for_bot(self, bot_id: str) -> List[BotSource]:
+        """List all sources for a bot."""
+        return self._source_repo.list_sources_for_bot(bot_id)
+
+    def create_source(self, bot_id: str, type: str, config: Dict[str, Any], display_name: Optional[str] = None) -> BotSource:
+        """Create a source for a bot. Returns the created source."""
+        now = datetime.now(timezone.utc).isoformat()
+        source_id = uuid.uuid4().hex
+        source = BotSource(
+            source_id=source_id,
+            bot_id=bot_id,
+            type=type,
+            config=config,
+            display_name=display_name,
+            created_at=now,
+            updated_at=now,
+        )
+        self._source_repo.create_source(source)
+        return source
+
+    def get_source(self, bot_id: str, source_id: str) -> Optional[BotSource]:
+        """Get a source by id."""
+        return self._source_repo.get_source(bot_id, source_id)
+
+    def delete_source(self, bot_id: str, source_id: str) -> None:
+        """Delete a source. Jobs that reference it keep source_id (stale)."""
+        self._source_repo.delete_source(bot_id, source_id)
+
+    async def start_indexing_for_bot(self, bot_id: str, raw_url: str, source_id: Optional[str] = None) -> Dict[str, Any]:
+        """Start BFS crawling from a single URL. Creates a source (unless source_id given) and links the job to it."""
+        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id)
+
+    async def _start_indexing_for_bot_inner(
+        self, bot_id: str, raw_url: str, source_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Inner: start crawl for URL; if source_id is None, create a new source first."""
         url, host = _parse_and_validate_url(raw_url)
 
         if config.REQUIRE_DOMAIN_VERIFICATION:
@@ -63,6 +101,10 @@ class IndexingService:
         corpus = self._rag_repo.ensure_corpus(bot_id)
         bucket_name, base_prefix_root = _parse_bucket_and_prefix()
         base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        if source_id is None:
+            source = self.create_source(bot_id, "url", {"url": url})
+            source_id = source.source_id
 
         job_id = uuid.uuid4().hex
         job = IndexJob(
@@ -79,22 +121,19 @@ class IndexingService:
             last_error="",
             created_at=datetime.now(timezone.utc).isoformat(),
             updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source_id,
         )
 
-        # Check for existing job and cancel if needed
         existing = self._job_repo.get_job_by_hostname(bot_id, host)
         if existing:
-            # Cancel existing job if running
             pass  # Job cancellation handled separately
 
         self._job_repo.create_job(job)
 
-        # Queue Celery task
         try:
             task = crawl_job_task.delay(job_id, bot_id, url, None, bucket_name, base_prefix, corpus)
             task_id = task.id if task else None
         except Exception as e:
-            # If Celery task fails to queue, mark job as error
             job.stage = "error"
             job.last_error = f"Failed to queue task: {str(e)}"
             self._job_repo.update_job(job)
@@ -102,12 +141,38 @@ class IndexingService:
 
         return {"status": "started", "job_id": job_id, "hostname": host, "task_id": task_id}
 
+    async def start_indexing_for_source(self, bot_id: str, source_id: str) -> Dict[str, Any]:
+        """Start crawling for an existing source (type=url). Creates a job linked to this source and adds to RAG."""
+        source = self._source_repo.get_source(bot_id, source_id)
+        if not source:
+            raise ValueError("Source not found")
+        if (source.type or "").lower() != "url":
+            raise ValueError("Only URL sources can be crawled; use the source's URL")
+        raw_url = (source.config or {}).get("url") if isinstance(source.config, dict) else None
+        if not raw_url or not isinstance(raw_url, str):
+            raise ValueError("Source has no URL in config")
+        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id)
+
     async def start_indexing_batch_for_bot(self, bot_id: str, urls: List[str]) -> Dict[str, Any]:
-        """Start crawling for a list of URLs (no BFS expansion)."""
+        """Start crawling for a list of URLs (no BFS expansion). Creates one source per URL so the Sources table shows each URL."""
         cleaned = _validate_urls_for_bot(bot_id, urls)
 
         if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
             raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+
+        now = datetime.now(timezone.utc).isoformat()
+        for u in cleaned:
+            display_name = _display_name_from_url(u)
+            source = BotSource(
+                source_id=uuid.uuid4().hex,
+                bot_id=bot_id,
+                type="url",
+                config={"url": u},
+                display_name=display_name,
+                created_at=now,
+                updated_at=now,
+            )
+            self._source_repo.create_source(source)
 
         bucket_name, base_prefix_root = _parse_bucket_and_prefix()
         base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
@@ -125,8 +190,8 @@ class IndexingService:
             last_depth=-1,
             gcs_prefix="",
             last_error="",
-            created_at=datetime.now(timezone.utc).isoformat(),
-            updated_at=datetime.now(timezone.utc).isoformat(),
+            created_at=now,
+            updated_at=now,
         )
 
         self._job_repo.create_job(job)
