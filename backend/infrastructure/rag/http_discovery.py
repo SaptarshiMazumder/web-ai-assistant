@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_TIMEOUT = 15.0
 _MAX_URLS_DEFAULT = 2000
+_FETCH_RETRIES = 3
+_FETCH_RETRY_BACKOFF = (0.5, 1.0, 2.0)  # seconds between retries
 
 
 def _extract_links_from_html(html: str, base_url: str, root_netloc: str) -> Set[str]:
@@ -54,6 +56,18 @@ async def _fetch_html(client: httpx.AsyncClient, url: str) -> str | None:
     except Exception as e:
         logger.debug("HTTP discovery: fetch failed for %s: %s", url, type(e).__name__)
         return None
+
+
+async def _fetch_html_with_retries(client: httpx.AsyncClient, url: str) -> str | None:
+    """GET url with retries so transient failures don't shrink the candidate set (more stable counts)."""
+    last_err: Exception | None = None
+    for attempt in range(_FETCH_RETRIES):
+        html = await _fetch_html(client, url)
+        if html is not None:
+            return html
+        if attempt < _FETCH_RETRIES - 1 and attempt < len(_FETCH_RETRY_BACKOFF):
+            await asyncio.sleep(_FETCH_RETRY_BACKOFF[attempt])
+    return None
 
 
 async def discover_internal_urls_http(
@@ -95,6 +109,7 @@ async def discover_internal_urls_http(
             if not to_fetch:
                 break
             next_level: Set[str] = set()
+            level_norms: Set[str] = set()
 
             async def fetch_one(url: str) -> None:
                 async with sem:
@@ -102,19 +117,20 @@ async def discover_internal_urls_http(
                     if norm in visited:
                         return
                     visited.add(norm)
-                    html = await _fetch_html(client, url)
+                    html = await _fetch_html_with_retries(client, url)
                     if not html:
                         return
-                    if norm not in discovered and _is_probably_page_url(norm, root_netloc=root_netloc):
-                        discovered.add(norm)
+                    if _is_probably_page_url(norm, root_netloc=root_netloc):
+                        level_norms.add(norm)
                     for link in _extract_links_from_html(html, url, root_netloc):
-                        if link not in visited and link not in discovered:
+                        if link not in visited:
                             next_level.add(link)
 
-            batch = to_fetch[: max_urls - len(discovered)]
-            await asyncio.gather(*[fetch_one(u) for u in batch])
+            await asyncio.gather(*[fetch_one(u) for u in to_fetch])
 
-            current_level = next_level
+            candidates = discovered | level_norms | next_level
+            discovered = set(sorted(candidates)[:max_urls])
+            current_level = discovered - visited
 
     if not discovered:
         root_norm = _normalize_url(root_url)
@@ -170,7 +186,7 @@ async def discover_internal_urls_http_stream(
                 if not to_fetch:
                     break
                 next_level: Set[str] = set()
-                batch_new: Set[str] = set()
+                level_norms: Set[str] = set()
 
                 async def fetch_one(url: str) -> None:
                     async with sem:
@@ -178,23 +194,23 @@ async def discover_internal_urls_http_stream(
                         if norm in visited:
                             return
                         visited.add(norm)
-                        html = await _fetch_html(client, url)
+                        html = await _fetch_html_with_retries(client, url)
                         if not html:
                             return
-                        if norm not in discovered_set and _is_probably_page_url(norm, root_netloc=root_netloc):
-                            discovered_set.add(norm)
-                            batch_new.add(norm)
+                        if _is_probably_page_url(norm, root_netloc=root_netloc):
+                            level_norms.add(norm)
                         for link in _extract_links_from_html(html, url, root_netloc):
-                            if link not in visited and link not in discovered_set:
+                            if link not in visited:
                                 next_level.add(link)
 
-                batch = to_fetch[: max_urls - len(discovered_set)]
-                await asyncio.gather(*[fetch_one(u) for u in batch])
-                for u in sorted(batch_new - yielded):
+                await asyncio.gather(*[fetch_one(u) for u in to_fetch])
+
+                candidates = discovered_set | level_norms | next_level
+                discovered_set = set(sorted(candidates)[:max_urls])
+                for u in sorted(discovered_set - yielded):
                     yielded.add(u)
                     yield {"type": "discovered", "url": u, "count": len(discovered_set), "depth": depth}
-
-                current_level = next_level
+                current_level = discovered_set - visited
 
         if not discovered_set:
             root_norm = _normalize_url(root_url)

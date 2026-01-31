@@ -270,11 +270,11 @@ def _fetch_sitemap_urls_impl(sitemap_url: str, depth: int = 0) -> Tuple[List[str
         
         logger.debug(f"Sitemap {sitemap_url} parsed successfully: {len(urls)} URLs found")
         
-        # If this looks like a sitemap index, recurse into each sitemap URL.
+        # If this looks like a sitemap index, recurse into each sitemap URL (sorted order for determinism)
         if any(url.endswith(".xml") for url in urls):
             logger.debug(f"Sitemap {sitemap_url} is a sitemap index with {len(urls)} child sitemaps")
             all_urls = []
-            for child in urls:
+            for child in sorted(urls):
                 child_urls, _ = _fetch_sitemap_urls(child, depth + 1)
                 all_urls.extend(child_urls)
             logger.info(f"Sitemap index {sitemap_url} returned {len(all_urls)} total URLs from {len(urls)} children")
@@ -319,12 +319,12 @@ async def _fetch_sitemap_urls_async(sitemap_url: str, depth: int = 0) -> List[st
         else:
             logger.warning(f"Failed to fetch {sitemap_url} via both requests and crawl4ai")
     
-    # If this looks like a sitemap index, recurse into each sitemap URL.
+    # If this looks like a sitemap index, recurse into each sitemap URL (sorted order for determinism).
     # Continue even if some child sitemaps fail - collect partial results
     if any(url.endswith(".xml") for url in urls):
         logger.debug(f"{sitemap_url} is a sitemap index with {len(urls)} child sitemaps")
         all_urls = []
-        for child in urls:
+        for child in sorted(urls):
             child_urls = await safe_execute_async(
                 lambda: _fetch_sitemap_urls_async(child, depth + 1),
                 [],
@@ -375,8 +375,10 @@ async def discover_urls_from_sitemap(root_url: str) -> List[str]:
     # Try to get URLs from sitemap (via robots.txt - we only use robots.txt to find sitemap URLs)
     sitemap_urls = _parse_robots_sitemaps(root_url)
     sitemap_candidates = []
-    
+
+    # Process sitemaps in fixed (sorted) order for deterministic results
     if sitemap_urls:
+        sitemap_urls = sorted(sitemap_urls)
         logger.info(f"Found {len(sitemap_urls)} sitemap(s) for {root_url}: {sitemap_urls}")
         # Try fetching sitemaps with async method (has crawl4ai fallback)
         # Process ALL sitemaps - don't stop early, collect all URLs
@@ -396,7 +398,8 @@ async def discover_urls_from_sitemap(root_url: str) -> List[str]:
 
     if sitemap_candidates:
         logger.info(f"Total URLs from all sitemaps: {len(sitemap_candidates)}")
-        sitemap_candidates = _dedupe_and_filter(sitemap_candidates, root_url, _MAX_DISCOVERY_URLS, None)
+        # Sort then cap so same site always yields same "first N" URLs (deterministic)
+        sitemap_candidates = _dedupe_and_filter(sorted(sitemap_candidates), root_url, _MAX_DISCOVERY_URLS, None)
         logger.info(f"After deduplication and filtering: {len(sitemap_candidates)} URLs")
         return sitemap_candidates
     

@@ -736,6 +736,7 @@ async def discover_internal_urls(
                         u = getattr(r, "url", None) or ""
                         if u:
                             failed_urls.add(u)
+                level_norms: set = set()
                 next_level_urls = set()
                 for result in results:
                     try:
@@ -744,20 +745,10 @@ async def discover_internal_urls(
 
                         if norm:
                             visited.add(norm)
-                            if (
-                                norm not in discovered
-                                and is_internal(norm)
-                                and _is_probably_page_url(norm, root_netloc=root_netloc)
-                            ):
-                                discovered.append(norm)
-                                if len(discovered) >= max_urls:
-                                    break
-                        
-                        # Extract links even if page had errors - be more aggressive
-                        # Try to get links from multiple sources
+                            if is_internal(norm) and _is_probably_page_url(norm, root_netloc=root_netloc):
+                                level_norms.add(norm)
+
                         links = getattr(result, "links", None) or {}
-                        
-                        # Extract internal links (primary source)
                         for link in links.get("internal", []):
                             try:
                                 href = _normalize_url(link.get("href", ""))
@@ -767,15 +758,9 @@ async def discover_internal_urls(
                                     and is_internal(href)
                                     and _is_probably_page_url(href, root_netloc=root_netloc)
                                 ):
-                                    # Don't add if we've already discovered it
-                                    if href not in discovered:
-                                        next_level_urls.add(href)
+                                    next_level_urls.add(href)
                             except Exception:
-                                # Continue with other links even if one fails
                                 continue
-                        
-                        # Also try to extract links from external links that might be same domain
-                        # (some sites have external links that are actually internal)
                         for link in links.get("external", []):
                             try:
                                 href = _normalize_url(link.get("href", ""))
@@ -785,27 +770,23 @@ async def discover_internal_urls(
                                     and href not in visited
                                     and _is_probably_page_url(href, root_netloc=root_netloc)
                                 ):
-                                    if href not in discovered:
-                                        next_level_urls.add(href)
+                                    next_level_urls.add(href)
                             except Exception:
                                 continue
-                        # Fallback: extract links from all page content so we never miss URLs
                         page_url = getattr(result, "url", None) or norm or root_url
                         for content_attr in ("markdown", "html", "raw_html", "cleaned_html", "content"):
                             raw = getattr(result, content_attr, None)
                             if not raw or not isinstance(raw, str):
                                 continue
                             for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                if href not in visited and href not in discovered:
+                                if href not in visited:
                                     next_level_urls.add(href)
                     except Exception:
-                        # Continue processing other results even if one fails
                         continue
-                
-                # Continue to next depth even if we got some URLs
-                current_urls = next_level_urls
-                
-                # Don't break early - continue to max_depth to discover more URLs
+
+                candidates = set(discovered) | level_norms | next_level_urls
+                discovered = sorted(candidates)[:max_urls]
+                current_urls = set(discovered) - visited
     except Exception as e:
         logger.warning(
             "Discovery error in crawl_service: %s: %s, returning %s URLs",
@@ -864,6 +845,7 @@ async def discover_internal_urls_stream(
     discovered: List[str] = []
     failed_urls: set = set()
     max_depth_reached = -1
+    yielded_global: set = set()
 
     def is_internal(url: str) -> bool:
         return urlparse(url).netloc == root_netloc
@@ -893,6 +875,7 @@ async def discover_internal_urls_stream(
                     "batch_size": batch_size,
                 }
 
+                level_norms_stream: set = set()
                 next_level_urls = set()
                 for start in range(0, len(urls_to_crawl), batch_size):
                     chunk = urls_to_crawl[start : start + batch_size]
@@ -921,7 +904,6 @@ async def discover_internal_urls_stream(
                     if not results:
                         yield {"type": "error", "message": f"Failed to crawl chunk at depth {depth}. Continuing."}
                         continue
-                    # Ensure every URL in chunk has a result: retry missing and failed until success or max retries
                     result_by_norm = {_normalize_url(getattr(r, "url", None) or ""): r for r in results}
                     missing = [u for u in chunk if _normalize_url(u) not in result_by_norm]
                     for u in sorted(missing):
@@ -947,18 +929,10 @@ async def discover_internal_urls_stream(
 
                             if norm:
                                 visited.add(norm)
-                                if (
-                                    norm not in discovered
-                                    and is_internal(norm)
-                                    and _is_probably_page_url(norm, root_netloc=root_netloc)
-                                ):
-                                    discovered.append(norm)
-                                    yield {"type": "discovered", "url": norm, "count": len(discovered), "depth": depth}
-                                    if len(discovered) >= max_urls:
-                                        break
+                                if is_internal(norm) and _is_probably_page_url(norm, root_netloc=root_netloc):
+                                    level_norms_stream.add(norm)
 
                             links = getattr(result, "links", None) or {}
-
                             for link in links.get("internal", []):
                                 try:
                                     href = _normalize_url(link.get("href", ""))
@@ -966,13 +940,11 @@ async def discover_internal_urls_stream(
                                         href
                                         and href not in visited
                                         and is_internal(href)
-                                        and href not in discovered
                                         and _is_probably_page_url(href, root_netloc=root_netloc)
                                     ):
                                         next_level_urls.add(href)
                                 except Exception:
                                     continue
-
                             for link in links.get("external", []):
                                 try:
                                     href = _normalize_url(link.get("href", ""))
@@ -980,28 +952,28 @@ async def discover_internal_urls_stream(
                                         href
                                         and is_internal(href)
                                         and href not in visited
-                                        and href not in discovered
                                         and _is_probably_page_url(href, root_netloc=root_netloc)
                                     ):
                                         next_level_urls.add(href)
                                 except Exception:
                                     continue
-                            # Fallback: extract links from all page content so we never miss URLs
                             page_url = getattr(result, "url", None) or norm or root_url
                             for content_attr in ("markdown", "html", "raw_html", "cleaned_html", "content"):
                                 raw = getattr(result, content_attr, None)
                                 if not raw or not isinstance(raw, str):
                                     continue
                                 for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                    if href not in visited and href not in discovered:
+                                    if href not in visited:
                                         next_level_urls.add(href)
                         except Exception:
                             continue
 
-                    if len(discovered) >= max_urls:
-                        break
-
-                current_urls = next_level_urls
+                candidates = set(discovered) | level_norms_stream | next_level_urls
+                discovered = sorted(candidates)[:max_urls]
+                for u in sorted(set(discovered) - yielded_global):
+                    yielded_global.add(u)
+                    yield {"type": "discovered", "url": u, "count": len(discovered), "depth": depth}
+                current_urls = set(discovered) - visited
     except Exception as e:
         yield {"type": "error", "message": f"{type(e).__name__}: {str(e)}"}
 
