@@ -174,6 +174,27 @@ class WidgetChatResponse(BaseModel):
     citations: List[Citation] = []
 
 
+class AgentConfigPayload(BaseModel):
+    model_id: Optional[str] = None
+    instructions: Optional[str] = None
+    temperature: Optional[float] = None
+
+
+class AgentConfigResponse(BaseModel):
+    model_id: Optional[str] = None
+    instructions: Optional[str] = None
+    temperature: Optional[float] = None
+
+
+class TestChatRequest(BaseModel):
+    message: str
+
+
+class TestChatResponse(BaseModel):
+    answer: str
+    citations: List[Citation] = []
+
+
 class WidgetConfigUpdate(BaseModel):
     """Widget design config stored per bot (widget API shape). All fields optional."""
     position: Optional[str] = None

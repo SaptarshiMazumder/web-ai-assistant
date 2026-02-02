@@ -143,6 +143,7 @@ type DashboardData = {
   sources: SourceRecord[]
   indexStatus: IndexStatus | null
   loading: boolean
+  botsLoadedOnce: boolean
   error: string | null
   setError: (value: string | null) => void
   newBotName: string
@@ -276,6 +277,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const [sources, setSources] = useState<SourceRecord[]>([])
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
   const [loading, setLoading] = useState(false)
+  const [botsLoadedOnce, setBotsLoadedOnce] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [newBotName, setNewBotName] = useState('')
@@ -376,6 +378,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setError((err as Error).message)
     } finally {
       setLoading(false)
+      setBotsLoadedOnce(true)
     }
   }
 
@@ -1167,6 +1170,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     sources,
     indexStatus,
     loading,
+    botsLoadedOnce,
     error,
     setError: setErrorSafe,
     newBotName,

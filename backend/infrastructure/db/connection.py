@@ -55,6 +55,7 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "ALTER TABLE bots ADD COLUMN IF NOT EXISTS widget_config TEXT",
+    "ALTER TABLE bots ADD COLUMN IF NOT EXISTS agent_config TEXT",
     """
     CREATE TABLE IF NOT EXISTS bot_domains (
       org_id TEXT NOT NULL,

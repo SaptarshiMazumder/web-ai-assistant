@@ -24,6 +24,15 @@ def chat_debug_emit(event: Dict[str, Any]) -> None:
             snippet = str(event.get("snippet") or "")
             label = "RETRIEVED" if t == "retrieved_chunk" else "FILTERED"
             print(f"\nWEB_AI_CHAT_DEBUG_CHUNK {label} trace_id={trace_id} #{idx}\nURL: {url}\n---\n{snippet}\n---\n", flush=True)
+        elif t == "gemini_prompt":
+            sys_inst = event.get("system_instruction") or ""
+            user_msg = event.get("user_message") or ""
+            print(f"\nWEB_AI_CHAT_DEBUG gemini_prompt trace_id={trace_id}", flush=True)
+            print("--- SYSTEM INSTRUCTION ---", flush=True)
+            print(sys_inst, flush=True)
+            print("--- USER MESSAGE ---", flush=True)
+            print(user_msg, flush=True)
+            print("--- END gemini_prompt ---\n", flush=True)
         else:
             try:
                 line = "WEB_AI_CHAT_DEBUG " + json.dumps(event, ensure_ascii=False)

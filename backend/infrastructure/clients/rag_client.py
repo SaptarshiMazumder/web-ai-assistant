@@ -384,28 +384,63 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 # =========================
 # Simple (non-streaming) synthesis
 # =========================
-def synthesize_with_evidence(client: genai.Client, question: str, evidence: List[Dict[str, str]]) -> str:
-    SYSTEM = (
-        "Answer the user's question using ONLY the provided evidence snippets.\n"
-        "If the evidence is insufficient, say so and ask a clarifying question.\n"
-        "Keep it concise.\n"
-        "End with 2–6 bullet citations using the source URLs."
-    )
+DEFAULT_SYSTEM = (
+    "Answer the user's question using ONLY the provided evidence snippets.\n"
+    "If the evidence is insufficient, say so and ask a clarifying question.\n"
+    "Keep it concise.\n"
+    "End with 2–6 bullet citations using the source URLs."
+)
+
+# Appended to custom system instructions so the model still stays grounded and cites sources.
+GROUNDING_SUFFIX = (
+    "\n\nYou must answer using ONLY the provided evidence snippets and cite source URLs. "
+    "If the evidence is insufficient, say so. Keep responses concise."
+)
+
+
+def synthesize_with_evidence(
+    client: genai.Client,
+    question: str,
+    evidence: List[Dict[str, str]],
+    *,
+    system_instruction: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: Optional[float] = None,
+    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> str:
+    custom = (system_instruction or "").strip()
+    if custom:
+        system = custom + GROUNDING_SUFFIX
+        task_line = "TASK: Answer using the evidence above. Use the tone, style, and persona from your system instructions."
+    else:
+        system = DEFAULT_SYSTEM
+        task_line = "TASK: Write the best possible grounded answer."
     user_block = (
         f"QUESTION:\n{question}\n\n"
         f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
-        "TASK: Write the best possible grounded answer."
+        f"{task_line}"
     )
+    if debug_cb:
+        try:
+            debug_cb({
+                "type": "gemini_prompt",
+                "system_instruction": system,
+                "user_message": user_block,
+            })
+        except Exception:
+            pass
+    temp = temperature if temperature is not None else 0.2
     cfg = types.GenerateContentConfig(
-        temperature=0.2,
+        temperature=temp,
         top_p=0.9,
         max_output_tokens=MAX_OUTPUT_TOKENS,
-        system_instruction=SYSTEM,
+        system_instruction=system,
     )
     if ENABLE_THINKING:
         cfg.thinking_config = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
+    model = (model_name or "").strip() or MODEL_NAME
     resp = client.models.generate_content(
-        model=MODEL_NAME,
+        model=model,
         contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_block)])],
         config=cfg,
     )
@@ -420,6 +455,9 @@ def run_vertex_rag(
     rag_corpus: str = DEFAULT_RAG_CORPUS,
     allowed_host: Optional[str] = None,
     debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    system_instruction: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
@@ -482,19 +520,16 @@ def run_vertex_rag(
         }
 
     # Build a grounded answer from snippets.
-    # Log the exact prompt we send to the model.
-    prompt = (
-        "SYSTEM:\n"
-        "Answer the user's question using ONLY the provided evidence snippets.\n"
-        "If the evidence is insufficient, say so and ask a clarifying question.\n"
-        "Keep it concise.\n"
-        "End with 2–6 bullet citations using the source URLs.\n\n"
-        f"QUESTION:\n{question}\n\n"
-        f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
-        "TASK: Write the best possible grounded answer."
+    # Actual system + user prompts sent to Gemini are logged via gemini_prompt in synthesize_with_evidence.
+    answer = synthesize_with_evidence(
+        client,
+        question,
+        evidence,
+        system_instruction=system_instruction,
+        model_name=model_name,
+        temperature=temperature,
+        debug_cb=_dbg,
     )
-    _dbg({"type": "model_prompt", "prompt": prompt})
-    answer = synthesize_with_evidence(client, question, evidence)
     _dbg({"type": "model_answer", "answer": answer})
 
     # Prepare sources from evidence

@@ -11,6 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from api.deps.auth import get_current_user, require_org_admin, require_super_admin
 from api.schemas import (
+    AgentConfigPayload,
+    AgentConfigResponse,
     BotCreateRequest,
     BotCreateResponse,
     BotDetailResponse,
@@ -37,6 +39,8 @@ from api.schemas import (
     OrgSelfResponse,
     OrgSummary,
     OrgUpdateRequest,
+    TestChatRequest,
+    TestChatResponse,
     UrlDiscoveryRequest,
     UrlDiscoveryResponse,
     DiscoveryJobCreateRequest,
@@ -462,7 +466,11 @@ async def v1_widget_chat(
     allowed_host = ""
     if site_url:
         try:
-            allowed_host = (urlparse(site_url).hostname or "").lower().split(":")[0]
+            hostname = (urlparse(site_url).hostname or "").lower().split(":")[0]
+            if hostname in ("localhost", "127.0.0.1"):
+                allowed_host = ""  # Dashboard Testing tab: skip host filter so all RAG evidence is used
+            else:
+                allowed_host = hostname
         except Exception:
             allowed_host = ""
 
@@ -485,7 +493,25 @@ async def v1_widget_chat(
         evt2["trace_id"] = trace_id
         chat_debug_emit(evt2)
 
-    result = run_vertex_rag(query, rag_corpus=corpus, allowed_host=allowed_host or None, debug_cb=_rag_dbg)
+    agent_config = {}
+    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+        try:
+            agent_config = json.loads(bot.agent_config)
+        except (TypeError, ValueError):
+            pass
+    system_instruction = agent_config.get("instructions") if agent_config else None
+    model_name = agent_config.get("model_id") if agent_config else None
+    temperature = agent_config.get("temperature") if agent_config else None
+
+    result = run_vertex_rag(
+        query,
+        rag_corpus=corpus,
+        allowed_host=allowed_host or None,
+        debug_cb=_rag_dbg,
+        system_instruction=system_instruction,
+        model_name=model_name,
+        temperature=temperature,
+    )
     chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
     sources = result.get("sources") or []
     citations = []
@@ -747,6 +773,85 @@ async def v1_org_update_bot_widget_config(
     config_json = json.dumps(config_dict)
     bot_service().update_widget_config(bot_id, config_json)
     return {"status": "ok", "bot_id": bot_id}
+
+
+@router.get("/v1/org/bots/{bot_id}/agent-config", response_model=AgentConfigResponse)
+async def v1_org_get_agent_config(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    agent_config = {}
+    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+        try:
+            agent_config = json.loads(bot.agent_config)
+        except (TypeError, ValueError):
+            pass
+    return AgentConfigResponse(
+        model_id=agent_config.get("model_id"),
+        instructions=agent_config.get("instructions"),
+        temperature=agent_config.get("temperature"),
+    )
+
+
+@router.put("/v1/org/bots/{bot_id}/agent-config")
+async def v1_org_update_agent_config(
+    bot_id: str,
+    payload: AgentConfigPayload,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    temperature = payload.temperature
+    if temperature is not None and (temperature < 0 or temperature > 1):
+        raise HTTPException(status_code=400, detail="temperature must be between 0 and 1")
+    config_dict = payload.model_dump(exclude_none=True)
+    config_json = json.dumps(config_dict)
+    bot_service().update_agent_config(bot_id, config_json)
+    return {"status": "ok", "bot_id": bot_id}
+
+
+@router.post("/v1/org/bots/{bot_id}/test-chat", response_model=TestChatResponse)
+async def v1_org_test_chat(
+    bot_id: str,
+    payload: TestChatRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    corpus = ensure_bot_corpus(bot.bot_id)
+    msg = (payload.message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="message is required")
+    agent_config = {}
+    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+        try:
+            agent_config = json.loads(bot.agent_config)
+        except (TypeError, ValueError):
+            pass
+    system_instruction = agent_config.get("instructions") if agent_config else None
+    model_name = agent_config.get("model_id") if agent_config else None
+    temperature = agent_config.get("temperature") if agent_config else None
+    result = run_vertex_rag(
+        msg,
+        rag_corpus=corpus,
+        allowed_host=None,
+        system_instruction=system_instruction,
+        model_name=model_name,
+        temperature=temperature,
+    )
+    sources = result.get("sources") or []
+    citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
+    return TestChatResponse(answer=str(result.get("answer") or ""), citations=citations)
 
 
 @router.delete("/v1/org/bots/{bot_id}")

@@ -25,6 +25,9 @@ class BotRepository(Protocol):
     def update_widget_config(self, bot_id: str, config_json: str) -> None:
         ...
 
+    def update_agent_config(self, bot_id: str, config_json: str) -> None:
+        ...
+
     def delete_bot(self, bot_id: str) -> None:
         ...
 

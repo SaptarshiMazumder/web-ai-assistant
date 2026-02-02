@@ -1,10 +1,10 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { DashboardDataProvider } from './hooks/useDashboardData'
+import { DashboardDataProvider, useDashboardData } from './hooks/useDashboardData'
 import DashboardLayout from './layouts/DashboardLayout'
 import AccountPage from './pages/AccountPage'
 import BotsPage from './pages/BotsPage'
-import DashboardPage from './pages/DashboardPage'
+import HomePage from './pages/HomePage'
 import DomainPage from './pages/DomainPage'
 import OrgPage from './pages/OrgPage'
 import SettingsPage from './pages/SettingsPage'
@@ -22,6 +22,22 @@ import AddSourcePage from './pages/bot/AddSourcePage'
 import BotKnowledgeTab from './pages/bot/BotKnowledgeTab'
 import BotOverviewTab from './pages/bot/BotOverviewTab'
 import BotSettingsTab from './pages/bot/BotSettingsTab'
+import BotTestingTab from './pages/bot/BotTestingTab'
+
+function mostRecentBotId(bots: { bot_id: string; created_at: string }[]): string | null {
+  if (bots.length === 0) return null
+  const sorted = [...bots].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+  return sorted[0]?.bot_id ?? null
+}
+
+function DashboardRedirect() {
+  const { bots, loading, botsLoadedOnce } = useDashboardData()
+  const mostRecentId = mostRecentBotId(bots)
+  if (!botsLoadedOnce || loading) return null
+  if (bots.length === 0) return <Navigate to="/create-bot" replace />
+  if (mostRecentId) return <Navigate to={`/bots/${mostRecentId}/overview`} replace />
+  return <Navigate to="/create-bot" replace />
+}
 
 export default function App() {
   const { isAuthenticated, isLoading: authLoading, loginWithRedirect } = useAuth0()
@@ -65,7 +81,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/create-bot" replace />} />
           </Route>
           <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<DashboardPage />} />
+            <Route index element={<HomePage />} />
+            <Route path="dashboard" element={<DashboardRedirect />} />
             <Route path="org" element={<OrgPage />} />
             <Route path="org/members" element={<Navigate to="/org" replace />} />
             <Route path="bots" element={<BotsPage />} />
@@ -76,6 +93,7 @@ export default function App() {
               <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
+              <Route path="testing" element={<BotTestingTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
               <Route path="analytics" element={<BotAnalyticsTab />} />
             </Route>

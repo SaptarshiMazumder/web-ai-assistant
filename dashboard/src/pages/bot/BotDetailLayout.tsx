@@ -1,6 +1,6 @@
 import { Bot } from 'lucide-react'
 import { useEffect } from 'react'
-import { NavLink, Outlet, useParams } from 'react-router-dom'
+import { Outlet, useParams } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
 
 export default function BotDetailLayout() {
@@ -38,24 +38,6 @@ export default function BotDetailLayout() {
       <div className="page-divider" />
 
       <div className="page-body">
-        <div className="tab-list">
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="overview">
-            Overview
-          </NavLink>
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="knowledge">
-            Knowledge
-          </NavLink>
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="design">
-            Design
-          </NavLink>
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="settings">
-            Settings
-          </NavLink>
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="analytics">
-            Analytics
-          </NavLink>
-        </div>
-
         <Outlet />
       </div>
     </div>

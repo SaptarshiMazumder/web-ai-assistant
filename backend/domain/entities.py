@@ -10,6 +10,7 @@ class Bot:
     publishable_key: str
     secret_key: str
     widget_config: Optional[str] = None
+    agent_config: Optional[str] = None
 
 
 @dataclass
@@ -22,6 +23,7 @@ class BotRecord:
     created_at: str
     updated_at: str
     widget_config: Optional[str] = None
+    agent_config: Optional[str] = None
 
 
 @dataclass
