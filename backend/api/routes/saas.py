@@ -54,7 +54,7 @@ from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from common.di.container import bot_service, indexing_service, org_service, url_discovery, user_service
 from common.logging.chat_debug import chat_debug_emit
-from infrastructure.clients.rag_client import run_vertex_rag
+from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.db.repositories import PostgresDiscoveryJobRepository
@@ -542,6 +542,161 @@ async def v1_widget_chat(
         }
     )
     return WidgetChatResponse(answer=str(result.get("answer") or ""), citations=citations)
+
+
+@router.post("/v1/pk/{publishable_key}/chat/stream")
+async def v1_widget_chat_stream(
+    publishable_key: str,
+    payload: WidgetChatRequest,
+    request: Request,
+    origin: Optional[str] = Header(default=None),
+):
+    trace_id = uuid.uuid4().hex
+    chat_debug_emit(
+        {
+            "type": "chat_request_received",
+            "trace_id": trace_id,
+            "publishable_key": publishable_key,
+            "payload": payload.model_dump() if hasattr(payload, "model_dump") else getattr(payload, "__dict__", {}),
+        }
+    )
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        chat_debug_emit({"type": "chat_error", "trace_id": trace_id, "error": "Unknown bot publishable key"})
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+
+    if config.REQUIRE_DOMAIN_VERIFICATION:
+        origin_h = _origin_host(origin)
+        if origin_h:
+            verified_hosts = set(bot_service().list_verified_hosts(bot.bot_id))
+            if origin_h not in verified_hosts:
+                raise HTTPException(status_code=403, detail="Origin not allowed for this bot")
+
+    _rate_limit(bot.bot_id)
+
+    corpus = ensure_bot_corpus(bot.bot_id)
+
+    msg = (payload.message or "").strip()
+    if not msg:
+        chat_debug_emit({"type": "chat_error", "trace_id": trace_id, "error": "Missing message"})
+        raise HTTPException(status_code=400, detail="Missing message")
+
+    site_url = (getattr(payload, "site_url", None) or "").strip()
+    site_title = (getattr(payload, "site_title", None) or "").strip()
+    ctx_lines = []
+    if site_title:
+        ctx_lines.append(f"Site title: {site_title}")
+    if site_url:
+        ctx_lines.append(f"Site URL: {site_url}")
+    query = msg
+    if ctx_lines:
+        query = f"{msg}\n\nContext:\n" + "\n".join(ctx_lines)
+
+    allowed_host = ""
+    if site_url:
+        try:
+            hostname = (urlparse(site_url).hostname or "").lower().split(":")[0]
+            if hostname in ("localhost", "127.0.0.1"):
+                allowed_host = ""  # Dashboard Testing tab: skip host filter so all RAG evidence is used
+            else:
+                allowed_host = hostname
+        except Exception:
+            allowed_host = ""
+
+    chat_debug_emit(
+        {
+            "type": "chat_context",
+            "trace_id": trace_id,
+            "bot_id": bot.bot_id,
+            "corpus_resource": corpus,
+            "allowed_host": allowed_host,
+            "site_url": site_url,
+            "site_title": site_title,
+            "raw_message": msg,
+            "final_query": query,
+        }
+    )
+
+    def _rag_dbg(evt: Dict[str, Any]) -> None:
+        evt2 = dict(evt)
+        evt2["trace_id"] = trace_id
+        chat_debug_emit(evt2)
+
+    agent_config = {}
+    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+        try:
+            agent_config = json.loads(bot.agent_config)
+        except (TypeError, ValueError):
+            pass
+    system_instruction = agent_config.get("instructions") if agent_config else None
+    model_name = agent_config.get("model_id") if agent_config else None
+    temperature = agent_config.get("temperature") if agent_config else None
+
+    async def _gen():
+        try:
+            for evt in run_vertex_rag_stream(
+                query,
+                rag_corpus=corpus,
+                allowed_host=allowed_host or None,
+                debug_cb=_rag_dbg,
+                system_instruction=system_instruction,
+                model_name=model_name,
+                temperature=temperature,
+            ):
+                if evt.get("type") == "delta":
+                    yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
+                    continue
+                if evt.get("type") == "done":
+                    sources = evt.get("sources") or []
+                    citations = []
+                    for s in sources:
+                        citations.append({"url": str(s.get("url") or ""), "snippet": str(s.get("excerpt") or "")})
+                    if not citations:
+                        host_label = allowed_host or "this site"
+                        chat_debug_emit(
+                            {
+                                "type": "chat_refusal",
+                                "trace_id": trace_id,
+                                "reason": "no_citations_after_host_filter",
+                                "host_label": host_label,
+                            }
+                        )
+                        yield json.dumps(
+                            {
+                                "type": "done",
+                                "answer": f"I canâ€™t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl.",
+                                "citations": [],
+                            },
+                            ensure_ascii=False,
+                        ) + "\n"
+                    else:
+                        chat_debug_emit(
+                            {
+                                "type": "chat_response",
+                                "trace_id": trace_id,
+                                "answer": str(evt.get("answer") or ""),
+                                "citations": citations,
+                            }
+                        )
+                        yield json.dumps(
+                            {
+                                "type": "done",
+                                "answer": str(evt.get("answer") or ""),
+                                "citations": citations,
+                            },
+                            ensure_ascii=False,
+                        ) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        _gen(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/v1/admin/orgs", response_model=OrgListResponse)

@@ -398,16 +398,12 @@ GROUNDING_SUFFIX = (
 )
 
 
-def synthesize_with_evidence(
-    client: genai.Client,
+def _build_grounded_prompt(
     question: str,
     evidence: List[Dict[str, str]],
     *,
     system_instruction: Optional[str] = None,
-    model_name: Optional[str] = None,
-    temperature: Optional[float] = None,
-    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
-) -> str:
+) -> Dict[str, str]:
     custom = (system_instruction or "").strip()
     if custom:
         system = custom + GROUNDING_SUFFIX
@@ -420,6 +416,22 @@ def synthesize_with_evidence(
         f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
         f"{task_line}"
     )
+    return {"system": system, "user_block": user_block}
+
+
+def synthesize_with_evidence(
+    client: genai.Client,
+    question: str,
+    evidence: List[Dict[str, str]],
+    *,
+    system_instruction: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: Optional[float] = None,
+    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+) -> str:
+    prompt = _build_grounded_prompt(question, evidence, system_instruction=system_instruction)
+    system = prompt["system"]
+    user_block = prompt["user_block"]
     if debug_cb:
         try:
             debug_cb({
@@ -445,6 +457,47 @@ def synthesize_with_evidence(
         config=cfg,
     )
     return (resp.text or "").strip()
+
+
+def synthesize_with_evidence_stream(
+    client: genai.Client,
+    question: str,
+    evidence: List[Dict[str, str]],
+    *,
+    system_instruction: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: Optional[float] = None,
+    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+):
+    prompt = _build_grounded_prompt(question, evidence, system_instruction=system_instruction)
+    system = prompt["system"]
+    user_block = prompt["user_block"]
+    if debug_cb:
+        try:
+            debug_cb({
+                "type": "gemini_prompt",
+                "system_instruction": system,
+                "user_message": user_block,
+            })
+        except Exception:
+            pass
+    temp = temperature if temperature is not None else 0.2
+    cfg = types.GenerateContentConfig(
+        temperature=temp,
+        top_p=0.9,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        system_instruction=system,
+    )
+    if ENABLE_THINKING:
+        cfg.thinking_config = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
+    model = (model_name or "").strip() or MODEL_NAME
+    for ch in client.models.generate_content_stream(
+        model=model,
+        contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_block)])],
+        config=cfg,
+    ):
+        if ch.candidates and ch.candidates[0].content and ch.candidates[0].content.parts and ch.text:
+            yield ch.text
 
 # =========================
 # Main
@@ -538,6 +591,100 @@ def run_vertex_rag(
 
     _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
     return {
+        "answer": answer,
+        "sources": sources,
+        "sufficient": True,
+        "selected_links": [],
+        "visited_urls": [],
+    }
+
+
+def run_vertex_rag_stream(
+    question: str,
+    *,
+    rag_corpus: str = DEFAULT_RAG_CORPUS,
+    allowed_host: Optional[str] = None,
+    debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    system_instruction: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: Optional[float] = None,
+):
+    """Stream deltas as they are generated, then emit a final done event with sources."""
+    def _dbg(evt: Dict[str, Any]) -> None:
+        if debug_cb is None:
+            return
+        try:
+            debug_cb(evt)
+        except Exception:
+            pass
+
+    _dbg(
+        {
+            "type": "rag_start",
+            "rag_corpus": rag_corpus,
+            "allowed_host": allowed_host or "",
+            "question": question,
+            "model": MODEL_NAME,
+            "rag_location": RAG_LOCATION,
+            "genai_location": GENAI_LOCATION,
+        }
+    )
+    if not PROJECT_ID:
+        raise RuntimeError("PROJECT_ID is not configured")
+    if not rag_corpus:
+        raise RuntimeError("DEFAULT_RAG_CORPUS is not configured")
+    vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+
+    sources: List[Dict[str, str]] = []
+
+    top_k = max(ONESHOT_TOP_K, 80)
+    _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
+    evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
+    evidence = dedupe_evidence(evidence)
+    _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
+    for i, e in enumerate(evidence, 1):
+        _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+    if allowed_host:
+        evidence = [e for e in evidence if _evidence_matches_host(e, allowed_host)]
+        _dbg({"type": "host_filter_done", "allowed_host": allowed_host, "evidence_count": len(evidence)})
+        for i, e in enumerate(evidence, 1):
+            _dbg({"type": "filtered_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+
+    if not evidence:
+        _dbg({"type": "rag_no_evidence", "answer": "", "sources": []})
+        yield {
+            "type": "done",
+            "answer": "",
+            "sources": [],
+            "sufficient": False,
+            "selected_links": [],
+            "visited_urls": [],
+        }
+        return
+
+    answer_parts: List[str] = []
+    for delta in synthesize_with_evidence_stream(
+        client,
+        question,
+        evidence,
+        system_instruction=system_instruction,
+        model_name=model_name,
+        temperature=temperature,
+        debug_cb=_dbg,
+    ):
+        answer_parts.append(delta)
+        yield {"type": "delta", "text": delta}
+
+    answer = "".join(answer_parts).strip()
+    _dbg({"type": "model_answer", "answer": answer})
+
+    for e in evidence:
+        sources.append({"excerpt": e.get("snippet", ""), "url": e.get("url", "")})
+
+    _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
+    yield {
+        "type": "done",
         "answer": answer,
         "sources": sources,
         "sufficient": True,
