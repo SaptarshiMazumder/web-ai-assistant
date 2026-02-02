@@ -819,6 +819,7 @@ async def discover_internal_urls_stream(
     max_concurrent: int,
     *,
     max_urls: int = 2000,
+    max_duration_sec: Optional[int] = None,
 ):
     """
     Async generator version of discover_internal_urls().
@@ -828,7 +829,7 @@ async def discover_internal_urls_stream(
       - {"type":"batch","depth":...,"queued":...}
       - {"type":"discovered","url":...,"count":...,"depth":...}
       - {"type":"error","message":...}
-      - {"type":"done","urls":[...]}
+      - {"type":"done","urls":[...],"timed_out":bool}
     """
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
@@ -992,7 +993,7 @@ async def discover_internal_urls_stream(
     )
     # Return in deterministic order so counts are stable across runs
     discovered = sorted(discovered)
-    yield {"type": "done", "urls": discovered}
+    yield {"type": "done", "urls": discovered, "timed_out": False}
 
 
 async def crawl_urls(

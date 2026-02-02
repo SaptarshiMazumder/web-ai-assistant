@@ -14,6 +14,7 @@ export default function CreateBotUrlsPage() {
     isDiscovering,
     isStartingTraining,
     discoveryDurationMs,
+    discoveryTimedOutMessage,
     toggleUrl,
     toggleCategory,
     selectAll,
@@ -214,6 +215,11 @@ export default function CreateBotUrlsPage() {
   return (
     <div className="flow-panel-body">
       <div>
+        {discoveryTimedOutMessage && !isDiscovering && (
+          <div className="alert info" style={{ marginBottom: '12px' }}>
+            {discoveryTimedOutMessage}
+          </div>
+        )}
         <div className="card-title">Select URLs to train on</div>
         <div className="card-subtitle">
           {isDiscovering ? (

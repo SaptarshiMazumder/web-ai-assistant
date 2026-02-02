@@ -2,6 +2,7 @@ import time
 import urllib.request
 import uuid
 import json
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -38,6 +39,9 @@ from api.schemas import (
     OrgUpdateRequest,
     UrlDiscoveryRequest,
     UrlDiscoveryResponse,
+    DiscoveryJobCreateRequest,
+    DiscoveryJobResponse,
+    DiscoveryJobListResponse,
     WidgetChatRequest,
     WidgetChatResponse,
     WidgetConfigUpdate,
@@ -49,6 +53,9 @@ from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
+from infrastructure.db.repositories import PostgresDiscoveryJobRepository
+from infrastructure.tasks.discovery_tasks import discovery_job_task
+from domain.entities import DiscoveryJob
 
 router = APIRouter()
 
@@ -982,7 +989,8 @@ async def v1_org_url_discovery_stream(
     async def _gen():
         try:
             async for evt in url_discovery().discover_stream(
-                payload.url, method, max_depth=10, max_concurrent=10, max_urls=2000
+                payload.url, method, max_depth=10, max_concurrent=10, max_urls=2000,
+                max_duration_sec=payload.max_duration_sec,
             ):
                 evt = dict(evt)
                 if evt.get("type") in ("done", "start") and "method_used" not in evt:
@@ -1043,6 +1051,105 @@ async def v1_org_start_index_batch(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _normalize_root_url(url: str) -> str:
+    u = (url or "").strip()
+    if u and not u.startswith(("http://", "https://")):
+        return "https://" + u
+    return u
+
+
+@router.post("/v1/org/bots/{bot_id}/discovery-jobs")
+async def v1_org_create_discovery_job(
+    bot_id: str,
+    payload: DiscoveryJobCreateRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Create a background discovery job and enqueue it. No time limit; results shown on Knowledge tab."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    root_url = _normalize_root_url(payload.url)
+    if not root_url or not root_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid url")
+    method = (payload.method or "auto").lower()
+    if method not in ("auto", "sitemap"):
+        method = "auto"
+    job_id = "disc_" + uuid.uuid4().hex
+    now = datetime.now(timezone.utc).isoformat()
+    job = DiscoveryJob(
+        job_id=job_id,
+        bot_id=bot_id,
+        root_url=root_url,
+        method=method,
+        status="queued",
+        discovered_urls=[],
+        error=None,
+        celery_task_id=None,
+        created_at=now,
+        updated_at=now,
+    )
+    repo = PostgresDiscoveryJobRepository()
+    repo.create(job)
+    discovery_job_task.delay(job_id, bot_id, root_url, method)
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.get("/v1/org/bots/{bot_id}/discovery-jobs")
+async def v1_org_list_discovery_jobs(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresDiscoveryJobRepository()
+    jobs = repo.list_by_bot(bot_id)
+    return DiscoveryJobListResponse(
+        jobs=[
+            DiscoveryJobResponse(
+                job_id=j.job_id,
+                bot_id=j.bot_id,
+                root_url=j.root_url,
+                method=j.method,
+                status=j.status,
+                discovered_urls=j.discovered_urls,
+                discovered_count=len(j.discovered_urls),
+                error=j.error,
+                created_at=j.created_at,
+                updated_at=j.updated_at,
+            )
+            for j in jobs
+        ]
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/discovery-jobs/{job_id}")
+async def v1_org_get_discovery_job(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresDiscoveryJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Discovery job not found")
+    return DiscoveryJobResponse(
+        job_id=job.job_id,
+        bot_id=job.bot_id,
+        root_url=job.root_url,
+        method=job.method,
+        status=job.status,
+        discovered_urls=job.discovered_urls,
+        discovered_count=len(job.discovered_urls),
+        error=job.error,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+    )
 
 
 @router.get("/v1/org/bots/{bot_id}/index/status")

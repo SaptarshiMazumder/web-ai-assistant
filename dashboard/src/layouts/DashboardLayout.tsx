@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Bot, Building2, LayoutDashboard, Settings, UserCircle, type LucideIcon } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 import { sidebarConfig } from '../navigation/sidebarConfig'
@@ -53,13 +53,13 @@ export default function DashboardLayout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
+        <Link to="/" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
           <div className="logo-dot" />
           <div>
             <div className="brand-title">Web AI Admin</div>
             <div className="brand-subtitle">Workspace console</div>
           </div>
-        </div>
+        </Link>
 
         <nav className="sidebar-nav">
           {sidebarConfig.map((item) => {

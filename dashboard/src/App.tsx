@@ -22,7 +22,6 @@ import AddSourcePage from './pages/bot/AddSourcePage'
 import BotKnowledgeTab from './pages/bot/BotKnowledgeTab'
 import BotOverviewTab from './pages/bot/BotOverviewTab'
 import BotSettingsTab from './pages/bot/BotSettingsTab'
-import BotSourcesTab from './pages/bot/BotSourcesTab'
 
 export default function App() {
   const { isAuthenticated, isLoading: authLoading, loginWithRedirect } = useAuth0()
@@ -74,7 +73,7 @@ export default function App() {
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<BotOverviewTab />} />
               <Route path="knowledge" element={<BotKnowledgeTab />} />
-              <Route path="sources" element={<BotSourcesTab />} />
+              <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
               <Route path="settings" element={<BotSettingsTab />} />

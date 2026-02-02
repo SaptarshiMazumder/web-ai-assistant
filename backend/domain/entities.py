@@ -104,3 +104,16 @@ class IndexJob:
     celery_task_id: Optional[str] = None
     crawled_urls: List[str] = field(default_factory=list)  # URLs discovered and indexed by this job
     source_id: Optional[str] = None  # optional FK to bot_sources
+@dataclass
+class DiscoveryJob:
+    """Background URL discovery job (no time limit). Created when user starts training from create-bot."""
+    job_id: str
+    bot_id: str
+    root_url: str
+    method: str  # "auto" or "sitemap"
+    status: str  # queued, running, done, failed
+    discovered_urls: List[str] = field(default_factory=list)
+    error: Optional[str] = None
+    celery_task_id: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""

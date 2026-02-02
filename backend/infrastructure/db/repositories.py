@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
 
-from domain.entities import Bot, BotDomainRecord, BotRecord, BotSource, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
-from domain.repositories import BotSourceRepository, IndexJobRepository
+from domain.entities import Bot, BotDomainRecord, BotRecord, BotSource, DiscoveryJob, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from domain.repositories import BotSourceRepository, DiscoveryJobRepository, IndexJobRepository
 from infrastructure.db.connection import get_connection
 
 
@@ -1048,5 +1048,133 @@ class PostgresIndexJobRepository(IndexJobRepository):
                     )
                 )
             return result
+        finally:
+            con.close()
+
+
+class PostgresDiscoveryJobRepository(DiscoveryJobRepository):
+    def create(self, job: DiscoveryJob) -> None:
+        con = _connect()
+        try:
+            urls_json = json.dumps(getattr(job, "discovered_urls", None) or [])
+            con.execute(
+                """
+                INSERT INTO discovery_jobs(
+                  job_id, bot_id, root_url, method, status,
+                  discovered_urls, error, celery_task_id, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id,
+                    job.bot_id,
+                    job.root_url,
+                    job.method,
+                    job.status,
+                    urls_json,
+                    job.error,
+                    job.celery_task_id,
+                    job.created_at,
+                    job.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get(self, bot_id: str, job_id: str) -> Optional[DiscoveryJob]:
+        bid = (bot_id or "").strip()
+        jid = (job_id or "").strip()
+        if not bid or not jid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, root_url, method, status,
+                       discovered_urls, error, celery_task_id, created_at, updated_at
+                FROM discovery_jobs
+                WHERE bot_id = %s AND job_id = %s
+                """,
+                (bid, jid),
+            ).fetchone()
+            if not row:
+                return None
+            urls_raw = row[5] if len(row) > 5 else "[]"
+            try:
+                urls_list = json.loads(urls_raw) if isinstance(urls_raw, str) else (urls_raw or [])
+            except (TypeError, ValueError):
+                urls_list = []
+            return DiscoveryJob(
+                job_id=row[0],
+                bot_id=row[1],
+                root_url=row[2],
+                method=row[3],
+                status=row[4],
+                discovered_urls=urls_list if isinstance(urls_list, list) else [],
+                error=row[6],
+                celery_task_id=row[7],
+                created_at=row[8],
+                updated_at=row[9],
+            )
+        finally:
+            con.close()
+
+    def list_by_bot(self, bot_id: str) -> List[DiscoveryJob]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT job_id, bot_id, root_url, method, status,
+                       discovered_urls, error, celery_task_id, created_at, updated_at
+                FROM discovery_jobs
+                WHERE bot_id = %s
+                ORDER BY created_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            result = []
+            for row in rows:
+                urls_raw = row[5] if len(row) > 5 else "[]"
+                try:
+                    urls_list = json.loads(urls_raw) if isinstance(urls_raw, str) else (urls_raw or [])
+                except (TypeError, ValueError):
+                    urls_list = []
+                result.append(
+                    DiscoveryJob(
+                        job_id=row[0],
+                        bot_id=row[1],
+                        root_url=row[2],
+                        method=row[3],
+                        status=row[4],
+                        discovered_urls=urls_list if isinstance(urls_list, list) else [],
+                        error=row[6],
+                        celery_task_id=row[7],
+                        created_at=row[8],
+                        updated_at=row[9],
+                    )
+                )
+            return result
+        finally:
+            con.close()
+
+    def update(self, job: DiscoveryJob) -> None:
+        now = _utc_now()
+        urls_json = json.dumps(getattr(job, "discovered_urls", None) or [])
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE discovery_jobs
+                SET status = %s, discovered_urls = %s, error = %s,
+                    celery_task_id = COALESCE(%s, celery_task_id), updated_at = %s
+                WHERE job_id = %s
+                """,
+                (job.status, urls_json, job.error, job.celery_task_id, now, job.job_id),
+            )
+            con.commit()
         finally:
             con.close()

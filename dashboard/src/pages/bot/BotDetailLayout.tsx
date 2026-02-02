@@ -45,9 +45,6 @@ export default function BotDetailLayout() {
           <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="knowledge">
             Knowledge
           </NavLink>
-          <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="sources">
-            Sources
-          </NavLink>
           <NavLink className={({ isActive }) => `tab ${isActive ? 'active' : ''}`} to="design">
             Design
           </NavLink>

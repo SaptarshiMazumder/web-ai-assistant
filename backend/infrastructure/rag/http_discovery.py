@@ -4,7 +4,7 @@ Fast, deterministic, same event shapes as browser-based discovery for drop-in re
 """
 import asyncio
 import logging
-from typing import Any, AsyncIterator, Dict, List, Set
+from typing import Any, AsyncIterator, Dict, List, Optional, Set
 from urllib.parse import urljoin, urlparse, urldefrag
 
 import httpx
@@ -145,9 +145,11 @@ async def discover_internal_urls_http_stream(
     max_depth: int = 10,
     max_concurrent: int = 50,
     max_urls: int = _MAX_URLS_DEFAULT,
+    max_duration_sec: Optional[int] = None,
 ) -> AsyncIterator[Dict[str, Any]]:
     """
     Same as discover_internal_urls_http but yields events for UI (same shapes as crawl4ai stream).
+    Time limit is enforced by the client (abort after 60s); this param is unused here.
     """
     root_url = (root_url or "").strip()
     if not root_url or not root_url.startswith(("http://", "https://")):
@@ -219,8 +221,8 @@ async def discover_internal_urls_http_stream(
                 if root_norm not in yielded:
                     yield {"type": "discovered", "url": root_norm, "count": 1, "depth": 0}
         discovered_sorted = sorted(discovered_set)
-        yield {"type": "done", "urls": discovered_sorted}
+        yield {"type": "done", "urls": discovered_sorted, "timed_out": False}
     except Exception as e:
         logger.exception("HTTP discovery stream error")
         yield {"type": "error", "message": f"{type(e).__name__}: {str(e)}"}
-        yield {"type": "done", "urls": sorted(discovered_set) if discovered_set else []}
+        yield {"type": "done", "urls": sorted(discovered_set) if discovered_set else [], "timed_out": False}

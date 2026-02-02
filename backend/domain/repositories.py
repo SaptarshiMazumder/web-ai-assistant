@@ -1,6 +1,6 @@
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Protocol, Tuple
 
-from .entities import Bot, BotDomainRecord, BotRecord, BotSource, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from .entities import Bot, BotDomainRecord, BotRecord, BotSource, DiscoveryJob, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
 
 
 class BotRepository(Protocol):
@@ -139,6 +139,20 @@ class IndexJobRepository(Protocol):
         ...
 
 
+class DiscoveryJobRepository(Protocol):
+    def create(self, job: DiscoveryJob) -> None:
+        ...
+
+    def get(self, bot_id: str, job_id: str) -> Optional[DiscoveryJob]:
+        ...
+
+    def list_by_bot(self, bot_id: str) -> List[DiscoveryJob]:
+        ...
+
+    def update(self, job: DiscoveryJob) -> None:
+        ...
+
+
 class CrawlerRepository(Protocol):
     async def crawl_urls_bfs(
         self,
@@ -179,7 +193,14 @@ class UrlDiscoveryPort(Protocol):
         ...
 
     def discover_stream(
-        self, root_url: str, method: str = "auto", *, max_depth: int = 10, max_concurrent: int = 10, max_urls: int = 2000
+        self,
+        root_url: str,
+        method: str = "auto",
+        *,
+        max_depth: int = 10,
+        max_concurrent: int = 10,
+        max_urls: int = 2000,
+        max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """Stream discovery events (discovered, done, error) for UI progress. Same method semantics as discover."""
         ...

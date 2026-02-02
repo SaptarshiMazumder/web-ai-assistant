@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export type BotSummary = {
@@ -87,6 +87,19 @@ export type IndexStatus = {
   last_error?: string
   gcs_prefix?: string
   updated_at?: string
+}
+
+export type DiscoveryJobRecord = {
+  job_id: string
+  bot_id: string
+  root_url: string
+  method: string
+  status: string
+  discovered_urls: string[]
+  discovered_count: number
+  error?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export type OrgSummary = {
@@ -181,6 +194,7 @@ type DashboardData = {
   startCrawlForSource: (botId: string, sourceId: string) => Promise<void>
   queueCrawlUrls: (botId: string, urls: string[]) => Promise<string | null>
   cancelCrawl: () => Promise<void>
+  cancelIndexJob: (botId: string, cancelUrl: string) => Promise<void>
   refreshStatus: (url: string) => Promise<void>
   getJobStatus: (botId: string, jobId: string) => Promise<IndexStatus | null>
   copySnippet: (snippet?: string) => Promise<void>
@@ -190,8 +204,12 @@ type DashboardData = {
     url: string,
     discoveryMethod?: string,
     onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { max_duration_sec?: number }
   ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
+  startBackgroundDiscovery: (botId: string, url: string, method: string) => Promise<void>
+  listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
+  getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
   deleteBot: (botId: string) => Promise<boolean>
 }
 
@@ -201,7 +219,26 @@ const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_B
 const ALL_ORGS_ID = "__all__"
 const terminalStages = new Set(['done', 'error', 'cancelled', 'import_submitted'])
 
-async function fetchJson<T>(path: string, init?: RequestInit, token?: string): Promise<T> {
+function isAuthError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
+  return (
+    msg.includes('refresh token') ||
+    msg.includes('missing refresh token') ||
+    msg.includes('unauthorized') ||
+    msg.includes('token expired') ||
+    msg.includes('login_required') ||
+    msg.includes('invalid token') ||
+    msg.includes('authentication required') ||
+    msg.includes('401')
+  )
+}
+
+async function fetchJson<T>(
+  path: string,
+  init?: RequestInit,
+  token?: string,
+  onAuthError?: () => void
+): Promise<T> {
   const initHeaders = init?.headers
   const headerEntries =
     initHeaders instanceof Headers ? Object.fromEntries(initHeaders.entries()) : (initHeaders as Record<string, string> | undefined)
@@ -214,6 +251,9 @@ async function fetchJson<T>(path: string, init?: RequestInit, token?: string): P
     },
   })
   if (!res.ok) {
+    if (res.status === 401 && onAuthError) {
+      onAuthError()
+    }
     let detail = res.statusText
     try {
       const body = (await res.json()) as { detail?: string }
@@ -253,7 +293,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
-  const { getAccessTokenSilently, getIdTokenClaims, user, logout, isAuthenticated } = useAuth0()
+  const { getAccessTokenSilently, getIdTokenClaims, user, logout, isAuthenticated, loginWithRedirect } = useAuth0()
+
+  const setErrorSafe = useCallback(
+    (value: string | null) => {
+      if (value != null && isAuthError(new Error(value))) {
+        loginWithRedirect()
+        return
+      }
+      setError(value)
+    },
+    [loginWithRedirect]
+  )
 
   const embedSnippet = useMemo(() => {
     if (!selectedBot) return ''
@@ -275,8 +326,16 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   }
 
   async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const token = await getAccessTokenSilently()
-    return fetchJson<T>(path, init, token)
+    let token: string
+    try {
+      token = await getAccessTokenSilently()
+    } catch (err) {
+      if (isAuthError(err)) {
+        loginWithRedirect()
+      }
+      throw err
+    }
+    return fetchJson<T>(path, init, token, loginWithRedirect)
   }
 
   function withOrgParam(path: string, orgIdOverride?: string | null) {
@@ -746,11 +805,53 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function startBackgroundDiscovery(botId: string, url: string, method: string): Promise<void> {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      await fetchAuthedJson<{ job_id: string; status: string }>(
+        withOrgParam(`/v1/org/bots/${botId}/discovery-jobs`, orgOverride),
+        {
+          method: 'POST',
+          body: JSON.stringify({ url: url.trim(), method: (method || 'auto').toLowerCase() }),
+        }
+      )
+    } catch {
+      // Fire-and-forget; do not block or surface error to create-bot flow
+    }
+  }
+
+  async function listDiscoveryJobs(botId: string): Promise<DiscoveryJobRecord[]> {
+    if (isSuperAdmin && !activeOrgId) return []
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const data = await fetchAuthedJson<{ jobs: DiscoveryJobRecord[] }>(
+        withOrgParam(`/v1/org/bots/${botId}/discovery-jobs`, orgOverride)
+      )
+      return data.jobs || []
+    } catch {
+      return []
+    }
+  }
+
+  async function getDiscoveryJob(botId: string, jobId: string): Promise<DiscoveryJobRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      return await fetchAuthedJson<DiscoveryJobRecord>(
+        withOrgParam(`/v1/org/bots/${botId}/discovery-jobs/${jobId}`, orgOverride)
+      )
+    } catch {
+      return null
+    }
+  }
+
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
     onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    options?: { max_duration_sec?: number }
   ): Promise<{ urls: string[]; error?: string; methodUsed?: string }> {
     if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
@@ -759,6 +860,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const token = await getAccessTokenSilently()
+      const body: { url: string; method: string; max_duration_sec?: number } = { url, method: discoveryMethod }
+      if (options?.max_duration_sec != null) body.max_duration_sec = options.max_duration_sec
 
       const res = await fetch(`${API_BASE}${withOrgParam('/v1/org/url-discovery/stream', orgOverride)}`, {
         method: 'POST',
@@ -766,7 +869,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ url, method: discoveryMethod }),
+        body: JSON.stringify(body),
         signal,
       })
 
@@ -890,6 +993,21 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setError((err as Error).message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function cancelIndexJob(botId: string, cancelUrl: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/index/cancel`, orgOverride), {
+        method: 'POST',
+        body: JSON.stringify({ url: cancelUrl }),
+      })
+      await loadJobs(botId)
+      await loadSources(botId)
+    } catch (err) {
+      setError((err as Error).message)
     }
   }
 
@@ -1050,7 +1168,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     indexStatus,
     loading,
     error,
-    setError,
+    setError: setErrorSafe,
     newBotName,
     setNewBotName,
     newDomain,
@@ -1100,12 +1218,16 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     startCrawlForSource,
     queueCrawlUrls,
     cancelCrawl,
+    cancelIndexJob,
     refreshStatus,
     getJobStatus,
     copySnippet,
     refreshAll,
     setSelectedBotId,
     discoverUrls,
+    startBackgroundDiscovery,
+    listDiscoveryJobs,
+    getDiscoveryJob,
     deleteBot,
   }
 

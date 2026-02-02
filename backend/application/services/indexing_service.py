@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+from google.cloud import storage
+
 from common.config import config
 from domain.entities import BotSource, IndexJob
 from domain.repositories import (
@@ -77,7 +79,25 @@ class IndexingService:
         return self._source_repo.get_source(bot_id, source_id)
 
     def delete_source(self, bot_id: str, source_id: str) -> None:
-        """Delete a source. Jobs that reference it keep source_id (stale)."""
+        """Delete a source and remove its content from GCS. Jobs that reference it keep source_id (stale)."""
+        jobs = self._job_repo.list_jobs_for_bot(bot_id)
+        try:
+            bucket_name, _ = _parse_bucket_and_prefix()
+        except Exception:
+            bucket_name = ""
+        for job in jobs:
+            if getattr(job, "source_id", None) != source_id:
+                continue
+            gcs_prefix = (getattr(job, "gcs_prefix", None) or "").strip()
+            if not gcs_prefix or not bucket_name:
+                continue
+            try:
+                client = storage.Client()
+                bucket = client.bucket(bucket_name)
+                for blob in bucket.list_blobs(prefix=gcs_prefix):
+                    blob.delete()
+            except Exception:
+                pass
         self._source_repo.delete_source(bot_id, source_id)
 
     async def start_indexing_for_bot(self, bot_id: str, raw_url: str, source_id: Optional[str] = None) -> Dict[str, Any]:

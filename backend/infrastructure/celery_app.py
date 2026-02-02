@@ -22,6 +22,11 @@ try:
 except ImportError as e:
     import sys
     print(f"WARNING: Failed to import crawl_tasks: {e}", file=sys.stderr)
+try:
+    from infrastructure.tasks import discovery_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import discovery_tasks: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     print(f"Registered tasks: {list(celery_app.tasks.keys())}")

@@ -86,6 +86,7 @@ class BotIndexBatchRequest(BaseModel):
 class UrlDiscoveryRequest(BaseModel):
     url: str
     method: str = "auto"  # "auto" (crawl4ai) or "sitemap"
+    max_duration_sec: Optional[int] = None  # stop discovery after N seconds (e.g. 90 for create-bot)
 
 
 class UrlDiscoveryResponse(BaseModel):
@@ -112,6 +113,28 @@ class BotIndexJobResponse(BaseModel):
 class BotIndexJobListResponse(BaseModel):
     bot_id: str
     jobs: List[BotIndexJobResponse] = []
+
+
+class DiscoveryJobCreateRequest(BaseModel):
+    url: str
+    method: str = "auto"  # "auto" or "sitemap"
+
+
+class DiscoveryJobResponse(BaseModel):
+    job_id: str
+    bot_id: str
+    root_url: str
+    method: str
+    status: str  # queued, running, done, failed
+    discovered_urls: List[str] = []
+    discovered_count: int = 0
+    error: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class DiscoveryJobListResponse(BaseModel):
+    jobs: List[DiscoveryJobResponse] = []
 
 
 class BotSourceCreateRequest(BaseModel):

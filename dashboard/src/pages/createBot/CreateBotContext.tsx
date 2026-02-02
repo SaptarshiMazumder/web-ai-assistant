@@ -16,6 +16,7 @@ export type CreateBotStep1Slice = {
   normalizedWebsiteUrl: string
   isDiscovering: boolean
   discoveryDurationMs: number | null
+  discoveryTimedOutMessage: string | null
   localError: string | null
   setLocalError: (value: string | null) => void
   discoverUrls: () => Promise<boolean>
@@ -28,6 +29,7 @@ export type CreateBotStep2Slice = {
   selectedUrls: string[]
   normalizedWebsiteUrl: string
   discoveryDurationMs: number | null
+  discoveryTimedOutMessage: string | null
   isDiscovering: boolean
   isStartingTraining: boolean
   localError: string | null
@@ -131,7 +133,7 @@ function normalizeUrl(value: string) {
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
+  const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, startBackgroundDiscovery, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
@@ -141,9 +143,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
+  const [discoveryTimedOutMessage, setDiscoveryTimedOutMessage] = useState<string | null>(null)
   const selectionTouchedRef = useRef(false)
   const discoveryStartTimeRef = useRef<number | null>(null)
   const discoveryAbortRef = useRef<AbortController | null>(null)
+  const discovery60sTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const discoveryTimedOutByTimerRef = useRef(false)
   const [trainingStage, setTrainingStage] = useState<TrainingStage>('idle')
   const [trainingProgress, setTrainingProgress] = useState(0)
   const [trainingPagesCrawled, setTrainingPagesCrawled] = useState(0)
@@ -182,6 +187,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setIsDiscovering(false)
     setIsStartingTraining(false)
     setDiscoveryDurationMs(null)
+    setDiscoveryTimedOutMessage(null)
     setTrainingStage('idle')
     setTrainingProgress(0)
     setTrainingPagesCrawled(0)
@@ -236,11 +242,20 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setDiscoveryDurationMs(null)
+    setDiscoveryTimedOutMessage(null)
     selectionTouchedRef.current = false
     discoveryStartTimeRef.current = Date.now()
 
     const controller = new AbortController()
     discoveryAbortRef.current = controller
+    discoveryTimedOutByTimerRef.current = false
+
+    // Client-side 60s cap: when user presses Discover, we stop reading the stream after 60s and use what we have.
+    discovery60sTimerRef.current = setTimeout(() => {
+      discovery60sTimerRef.current = null
+      discoveryTimedOutByTimerRef.current = true
+      controller.abort()
+    }, 60_000)
 
     // Fire-and-forget stream so UI can navigate immediately and update progressively.
     void (async () => {
@@ -259,9 +274,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (evt.type === 'done') {
+          if (discovery60sTimerRef.current) {
+            clearTimeout(discovery60sTimerRef.current)
+            discovery60sTimerRef.current = null
+          }
           const start = discoveryStartTimeRef.current
           if (start != null) setDiscoveryDurationMs(Date.now() - start)
           setIsDiscovering(false)
+          if ((evt as { timed_out?: boolean }).timed_out === true) {
+            setDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+          }
           if (Array.isArray((evt as { urls?: unknown }).urls) && ((evt as { urls?: unknown[] }).urls || []).length === 0) {
             setLocalError(
               discoveryMethod === 'sitemap'
@@ -280,9 +302,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           if (err.name === 'AbortError') {
             const start = discoveryStartTimeRef.current
             if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
+            if (discoveryTimedOutByTimerRef.current) {
+              setDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+            }
           }
         })
         .finally(() => {
+          if (discovery60sTimerRef.current) {
+            clearTimeout(discovery60sTimerRef.current)
+            discovery60sTimerRef.current = null
+          }
           setIsDiscovering(false)
           discoveryAbortRef.current = null
         })
@@ -328,6 +357,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const stopDiscovery = useCallback(() => {
+    if (discovery60sTimerRef.current) {
+      clearTimeout(discovery60sTimerRef.current)
+      discovery60sTimerRef.current = null
+    }
     discoveryAbortRef.current?.abort()
   }, [])
 
@@ -364,8 +397,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {})
       .finally(() => setIsStartingTraining(false))
+    void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin])
+  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, selectedUrls, normalizedWebsiteUrl, discoveryMethod, setSelectedBotId, orgs, activeOrgId, isSuperAdmin])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId || !jobId) return
@@ -409,6 +443,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         normalizedWebsiteUrl,
         isDiscovering,
         discoveryDurationMs,
+        discoveryTimedOutMessage,
         localError,
         setLocalError,
         discoverUrls,
@@ -419,6 +454,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         selectedUrls,
         normalizedWebsiteUrl,
         discoveryDurationMs,
+        discoveryTimedOutMessage,
         isDiscovering,
         isStartingTraining,
         localError,

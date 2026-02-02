@@ -831,6 +831,11 @@ a.primary {
   color: #991b1b;
 }
 
+.alert.info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .muted {
   color: #64748b;
   font-size: 0.85rem;

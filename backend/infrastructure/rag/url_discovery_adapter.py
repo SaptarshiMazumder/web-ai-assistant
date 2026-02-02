@@ -2,7 +2,7 @@
 URL discovery adapter: implements domain UrlDiscoveryPort.
 Default is HttpUrlDiscoveryAdapter (HTTP + HTML, fast). Crawl4AIUrlDiscoveryAdapter (browser) kept for fallback.
 """
-from typing import Any, AsyncIterator, Dict, List
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from domain.repositories import UrlDiscoveryPort
 
@@ -38,9 +38,11 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_depth: int = 10,
         max_concurrent: int = 50,
         max_urls: int = 2000,
+        max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         return self._discover_stream_impl(
-            root_url, method=method, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls
+            root_url, method=method, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls,
+            max_duration_sec=max_duration_sec,
         )
 
     async def _discover_stream_impl(
@@ -51,6 +53,7 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_depth: int = 10,
         max_concurrent: int = 50,
         max_urls: int = 2000,
+        max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         method = (method or "auto").lower()
         root_url = _ensure_url(root_url or "")
@@ -65,7 +68,8 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
             yield {"type": "done", "urls": urls, "method_used": "sitemap"}
             return
         async for evt in discover_internal_urls_http_stream(
-            root_url, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls
+            root_url, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls,
+            max_duration_sec=max_duration_sec,
         ):
             yield evt
 
@@ -87,10 +91,12 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_depth: int = 10,
         max_concurrent: int = 10,
         max_urls: int = 2000,
+        max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """Returns an async generator; use async for evt in port.discover_stream(...)."""
         return self._discover_stream_impl(
-            root_url, method=method, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls
+            root_url, method=method, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls,
+            max_duration_sec=max_duration_sec,
         )
 
     async def _discover_stream_impl(
@@ -101,6 +107,7 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_depth: int = 10,
         max_concurrent: int = 10,
         max_urls: int = 2000,
+        max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         method = (method or "auto").lower()
         if method == "sitemap":
@@ -114,6 +121,7 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
             yield {"type": "done", "urls": urls, "method_used": "sitemap"}
             return
         async for evt in discover_internal_urls_stream(
-            root_url, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls
+            root_url, max_depth=max_depth, max_concurrent=max_concurrent, max_urls=max_urls,
+            max_duration_sec=max_duration_sec,
         ):
             yield evt

@@ -123,6 +123,21 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE INDEX IF NOT EXISTS index_jobs_stage ON index_jobs (stage)",
     "CREATE INDEX IF NOT EXISTS index_jobs_updated_at ON index_jobs (updated_at DESC)",
     "CREATE INDEX IF NOT EXISTS index_jobs_source_id ON index_jobs (source_id)",
+    """
+    CREATE TABLE IF NOT EXISTS discovery_jobs (
+      job_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      root_url TEXT NOT NULL,
+      method TEXT NOT NULL,
+      status TEXT NOT NULL,
+      discovered_urls TEXT NOT NULL DEFAULT '[]',
+      error TEXT,
+      celery_task_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS discovery_jobs_bot_id ON discovery_jobs (bot_id)",
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 
