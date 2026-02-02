@@ -18,6 +18,13 @@
         padding: 0;
         height: 100%;
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        overflow-x: hidden;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
       }
 
       .wrap {
@@ -27,6 +34,7 @@
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        max-width: 100%;
       }
 
       .header {
@@ -83,10 +91,17 @@
         flex: 1;
         padding: 16px;
         overflow-y: auto;
+        overflow-x: hidden;
         background: #ffffff;
         display: flex;
         flex-direction: column;
         min-height: 0;
+        max-width: 100%;
+      }
+
+      #messages {
+        max-width: 100%;
+        min-width: 0;
       }
 
       .welcome-block {
@@ -98,6 +113,9 @@
         gap: 10px;
         align-items: flex-start;
         margin-bottom: 12px;
+        max-width: 100%;
+        width: 100%;
+        min-width: 0;
       }
 
       .message-row.user-row {
@@ -226,12 +244,27 @@
       }
 
       .bubble {
-        max-width: 92%;
+        max-width: 100%;
         padding: 10px 14px;
         border-radius: 12px;
         line-height: 1.5;
         font-size: 14px;
         white-space: pre-wrap;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .message-row:not(.user-row) .bubble {
+        max-width: calc(100% - 38px);
+      }
+
+      .meta,
+      .meta a {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
 
       .bubble.bot {

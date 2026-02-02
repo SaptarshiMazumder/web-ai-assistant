@@ -1,7 +1,8 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { useCallback, useMemo, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useDashboardData } from '../../hooks/useDashboardData'
+import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
+import { useDashboardData, type SourceRecord, type DomainRecord } from '../../hooks/useDashboardData'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 
@@ -32,13 +33,15 @@ function withOrg(path: string, orgId: string | null): string {
 /** Build iframe URL for the real widget so Testing tab shows the same widget as on the website. */
 function buildWidgetIframeSrc(
   publishableKey: string,
-  widgetConfig: Record<string, unknown> | null
+  widgetConfig: Record<string, unknown> | null,
+  siteUrl: string,
+  siteTitle: string
 ): string {
   const params = new URLSearchParams()
   params.set('pk', publishableKey)
   params.set('apiBase', API_BASE)
-  params.set('siteUrl', window.location.origin)
-  params.set('siteTitle', 'Dashboard Testing')
+  params.set('siteUrl', siteUrl)
+  params.set('siteTitle', siteTitle)
   const merged = widgetConfig && typeof widgetConfig === 'object' ? { ...widgetConfig } : {}
   for (const key of Object.keys(merged)) {
     const v = merged[key]
@@ -47,10 +50,32 @@ function buildWidgetIframeSrc(
   return `${API_BASE}/widget/iframe.html?${params.toString()}`
 }
 
+function pickPrimaryDomain(domains: DomainRecord[], botId?: string | null): DomainRecord | null {
+  if (!botId) return null
+  const botDomains = domains.filter((d) => d.bot_id === botId)
+  if (!botDomains.length) return null
+  return botDomains.find((d) => d.status === 'verified') ?? botDomains[0]
+}
+
+function pickSourceOrigin(sources: SourceRecord[], botId?: string | null): { origin: string | null; host: string | null } {
+  if (!botId) return { origin: null, host: null }
+  const urlSource = sources.find(
+    (s) => s.bot_id === botId && s.type === 'url' && typeof s.config?.url === 'string'
+  )
+  const rawUrl = typeof urlSource?.config?.url === 'string' ? urlSource.config.url.trim() : ''
+  if (!rawUrl) return { origin: null, host: null }
+  try {
+    const parsed = new URL(rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`)
+    return { origin: parsed.origin, host: parsed.hostname }
+  } catch {
+    return { origin: null, host: null }
+  }
+}
+
 export default function BotTestingTab() {
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
-  const { selectedBot, activeOrgId, selectedBotWidgetConfig } = useDashboardData()
+  const { selectedBot, activeOrgId, selectedBotWidgetConfig, domains, sources } = useDashboardData()
 
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({})
   const [modelId, setModelId] = useState('')
@@ -60,13 +85,32 @@ export default function BotTestingTab() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const widgetIframeSrc = useMemo(
-    () =>
-      selectedBot?.publishable_key
-        ? buildWidgetIframeSrc(selectedBot.publishable_key, selectedBotWidgetConfig ?? null)
-        : '',
-    [selectedBot?.publishable_key, selectedBotWidgetConfig]
-  )
+  const { siteUrl, siteTitle } = useMemo(() => {
+    const primaryDomain = pickPrimaryDomain(domains, selectedBot?.bot_id)
+    const sourceInfo = pickSourceOrigin(sources, selectedBot?.bot_id)
+    const domainHost = primaryDomain?.hostname || null
+    const url = domainHost ? `https://${domainHost}` : (sourceInfo.origin || window.location.origin)
+    const title =
+      domainHost ||
+      sourceInfo.host ||
+      selectedBot?.display_name ||
+      document.title ||
+      'Website'
+    return { siteUrl: url, siteTitle: title }
+  }, [domains, sources, selectedBot?.bot_id, selectedBot?.display_name])
+
+  const widgetIframeSrc = useMemo(() => {
+    if (!selectedBot?.publishable_key) return ''
+    return buildWidgetIframeSrc(
+      selectedBot.publishable_key,
+      selectedBotWidgetConfig ?? null,
+      siteUrl,
+      siteTitle
+    )
+  }, [selectedBot?.publishable_key, selectedBotWidgetConfig, siteUrl, siteTitle])
+
+  const widgetSize = (selectedBotWidgetConfig?.size as 'small' | 'medium' | 'large') || 'medium'
+  const widgetDims = WIDGET_SIZE_DIMENSIONS[widgetSize] ?? WIDGET_SIZE_DIMENSIONS.medium
 
   const loadConfig = useCallback(async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
@@ -226,9 +270,15 @@ export default function BotTestingTab() {
               src={widgetIframeSrc}
               title="Chat widget"
               className="testing-widget-iframe"
+              style={{ width: widgetDims.width, height: widgetDims.height }}
             />
           ) : (
-            <div className="testing-widget-placeholder">No publishable key for this bot.</div>
+            <div
+              className="testing-widget-placeholder"
+              style={{ width: widgetDims.width, height: widgetDims.height }}
+            >
+              No publishable key for this bot.
+            </div>
           )}
         </div>
         {saveError && <div className="testing-chat-error">{saveError}</div>}

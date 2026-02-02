@@ -15,6 +15,7 @@ from infrastructure.rag.crawl_service import (
     _meta_attr,
     CRAWL_MAX_CONCURRENCY,
     CRAWL_MAX_DEPTH,
+    CRAWL_WAIT_FOR_CONTENT,
     HEADLESS,
 )
 # robots.txt filtering removed - we don't care about robots.txt rules
@@ -72,7 +73,11 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> List[Document]:
         browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-        run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            stream=False,
+            wait_for=CRAWL_WAIT_FOR_CONTENT,
+        )
         dispatcher = MemoryAdaptiveDispatcher(
             memory_threshold_percent=70.0,
             check_interval=1.0,
@@ -225,7 +230,11 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
             return []
 
         browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-        run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            stream=False,
+            wait_for=CRAWL_WAIT_FOR_CONTENT,
+        )
         sem = asyncio.Semaphore(max_concurrent)
         results_list: List[tuple] = []  # (url, result) in completion order
 
@@ -310,7 +319,11 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         max_urls: int = 2000,
     ) -> List[str]:
         browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-        run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            stream=False,
+            wait_for=CRAWL_WAIT_FOR_CONTENT,
+        )
         dispatcher = MemoryAdaptiveDispatcher(
             memory_threshold_percent=70.0,
             check_interval=1.0,

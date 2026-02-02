@@ -15,7 +15,7 @@ from infrastructure.db.repositories import (
     PostgresUserRepository,
 )
 from domain.repositories import UrlDiscoveryPort
-from infrastructure.rag.url_discovery_adapter import HttpUrlDiscoveryAdapter
+from infrastructure.rag.url_discovery_adapter import AutoUrlDiscoveryAdapter
 from infrastructure.repositories import (
     Crawl4AICrawlerRepository,
     GCSDocumentStorageRepository,
@@ -70,5 +70,5 @@ def indexing_service() -> IndexingService:
 
 @lru_cache(maxsize=1)
 def url_discovery() -> UrlDiscoveryPort:
-    """URL discovery: HTTP + HTML (fast). Use Crawl4AIUrlDiscoveryAdapter for browser-based fallback."""
-    return HttpUrlDiscoveryAdapter()
+    """URL discovery: try HTTP first (fast); if few URLs, fall back to crawl4ai browser (JS sites)."""
+    return AutoUrlDiscoveryAdapter()

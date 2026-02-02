@@ -6,9 +6,9 @@ Updates discovered_urls periodically so the dashboard can show "X URLs so far" w
 import asyncio
 import logging
 
+from common.di.container import url_discovery
 from infrastructure.celery_app import celery_app
 from infrastructure.db.repositories import PostgresDiscoveryJobRepository
-from infrastructure.rag.url_discovery_adapter import HttpUrlDiscoveryAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def discovery_job_task(self, job_id: str, bot_id: str, root_url: str, method: st
         repo.update(job)
 
         async def run_stream() -> None:
-            adapter = HttpUrlDiscoveryAdapter()
+            adapter = url_discovery()
             accumulated: list[str] = []
             stream = adapter.discover_stream(root_url, method or "auto")
             async for evt in stream:

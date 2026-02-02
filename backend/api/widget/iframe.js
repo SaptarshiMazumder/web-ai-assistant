@@ -21,6 +21,38 @@
     return v === "true" || v === "yes" || v === "1";
   }
 
+  const SOFT_WRAP_TOKEN_MIN = 32;
+  const SOFT_WRAP_CHUNK = 24;
+  const SOFT_WRAP_SEPARATORS = /[\/\-\_\.\?\&\=\#\:\@]/;
+
+  function appendSoftWrappedText(target, text) {
+    if (text == null) return;
+    const parts = String(text).split(/(\s+)/);
+    parts.forEach((part) => {
+      if (!part) return;
+      if (/^\s+$/.test(part)) {
+        target.appendChild(document.createTextNode(part));
+        return;
+      }
+      if (part.length <= SOFT_WRAP_TOKEN_MIN) {
+        target.appendChild(document.createTextNode(part));
+        return;
+      }
+      const pieces = part.split(/([\/\-\_\.\?\&\=\#\:\@])/);
+      let run = 0;
+      pieces.forEach((piece) => {
+        if (!piece) return;
+        const isSep = piece.length === 1 && SOFT_WRAP_SEPARATORS.test(piece);
+        target.appendChild(document.createTextNode(piece));
+        run += piece.length;
+        if (isSep || run >= SOFT_WRAP_CHUNK) {
+          target.appendChild(document.createElement("wbr"));
+          run = 0;
+        }
+      });
+    });
+  }
+
   const DEFAULT_SUGGESTIONS = ["What can you do?", "Ask a question", "Get help"];
   const WELCOME_TEXT = welcomeMessage;
 
@@ -85,7 +117,7 @@
     }
     const bubble = document.createElement("div");
     bubble.className = "bubble bot";
-    bubble.textContent = WELCOME_TEXT;
+    appendSoftWrappedText(bubble, WELCOME_TEXT);
     rowDiv.appendChild(bubble);
     welcomeEl.appendChild(rowDiv);
 
@@ -156,7 +188,7 @@
 
     const div = document.createElement("div");
     div.className = "bubble " + who;
-    div.textContent = text;
+    appendSoftWrappedText(div, text);
     if (who === "user") {
       div.style.background = color;
       div.style.color = textColor;

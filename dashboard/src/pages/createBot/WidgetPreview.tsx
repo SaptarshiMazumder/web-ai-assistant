@@ -2,7 +2,10 @@
  * Live preview of the chat widget for the Design step.
  * Reflects all step4 settings: position, colors, title, size, placeholder, footer, theme,
  * header/launcher icons, launcher text, max height, font/header size.
+ * Dimensions match backend api/widget/widget.js so Design, Testing, and website are identical.
  */
+
+import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
 
 type WidgetPreviewProps = {
   position: 'bottom-right' | 'bottom-left'
@@ -21,12 +24,6 @@ type WidgetPreviewProps = {
   fontSize?: 'small' | 'medium' | 'large'
   headerSize?: 'small' | 'medium' | 'large'
 }
-
-const SIZE_MAP = {
-  small: { width: 400, height: 520 },
-  medium: { width: 480, height: 600 },
-  large: { width: 560, height: 680 },
-} as const
 
 const FONT_SIZE_MAP = { small: 12, medium: 14, large: 16 } as const
 const HEADER_PADDING_MAP = { small: 10, medium: 14, large: 18 } as const
@@ -49,7 +46,7 @@ export function WidgetPreview({
   fontSize = 'medium',
   headerSize = 'small',
 }: WidgetPreviewProps) {
-  const { width, height: baseHeight } = SIZE_MAP[size]
+  const { width, height: baseHeight } = WIDGET_SIZE_DIMENSIONS[size]
   const height = Math.min(baseHeight, maxHeight)
   const isDark = theme === 'dark'
   const contentBg = isDark ? '#1e293b' : '#ffffff'
@@ -191,7 +188,10 @@ export function WidgetPreview({
                     borderRadius: '12px 12px 12px 4px',
                     fontSize: `${msgFontSize}px`,
                     lineHeight: 1.5,
-                    maxWidth: '85%',
+                    maxWidth: 'calc(100% - 38px)',
+                    minWidth: 0,
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
                   }}
                 >
                   {welcomeMessage}

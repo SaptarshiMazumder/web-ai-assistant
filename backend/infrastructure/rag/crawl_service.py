@@ -49,6 +49,10 @@ HEADLESS = True
 CHUNK_SIZE = 256
 CHUNK_OVERLAP = 64
 
+# Wait for body to have some visible text (fast on server-rendered pages, ~1–3s on JS-heavy).
+# No fixed per-page delay; capture as soon as content appears or page_timeout.
+CRAWL_WAIT_FOR_CONTENT = "js:() => document.body && document.body.innerText.trim().length > 80"
+
 # =========================
 # ---- UTILITIES ----------
 # =========================
@@ -528,7 +532,11 @@ async def crawl_site_bfs(
     progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> List[Dict[str, Any]]:
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        wait_for=CRAWL_WAIT_FOR_CONTENT,
+    )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,
@@ -658,9 +666,11 @@ async def discover_internal_urls(
     max_urls: int = 2000,
 ) -> List[str]:
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-    # Use minimal config: crawl4ai treats wait_for as a CSS selector, not a load state,
-    # so setting wait_for="domcontentloaded" causes "Timeout waiting for selector 'domcontentloaded'".
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        wait_for=CRAWL_WAIT_FOR_CONTENT,
+    )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,
@@ -832,7 +842,11 @@ async def discover_internal_urls_stream(
       - {"type":"done","urls":[...],"timed_out":bool}
     """
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        wait_for=CRAWL_WAIT_FOR_CONTENT,
+    )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,
@@ -1006,7 +1020,11 @@ async def crawl_urls(
         return []
 
     browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        wait_for=CRAWL_WAIT_FOR_CONTENT,
+    )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,

@@ -699,11 +699,14 @@ a.primary {
   min-height: 200px;
 }
 
-/* Testing tab: two-panel layout */
+/* Testing tab: two-panel layout (same width/gap pattern as Design screen .widget-design-grid) */
 .testing-page {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 70rem) minmax(28rem, 42rem);
+  gap: 3rem;
+  align-items: start;
+  max-width: 100rem;
+  width: 100%;
   min-height: 0;
   height: 100%;
 }
@@ -734,9 +737,8 @@ a.primary {
   margin: 0;
 }
 
+/* Width/height set inline from WIDGET_SIZE_DIMENSIONS (same as Design + website) */
 .testing-widget-iframe {
-  width: 380px;
-  height: 560px;
   border: 0;
   border-radius: 12px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
@@ -745,8 +747,6 @@ a.primary {
 }
 
 .testing-widget-placeholder {
-  width: 380px;
-  height: 560px;
   display: flex;
   align-items: center;
   justify-content: center;

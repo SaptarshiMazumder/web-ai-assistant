@@ -22,6 +22,12 @@ _DEFAULT_TIMEOUT = 30  # Increased timeout for large sitemaps
 _MAX_SITEMAP_URLS = 5000
 _MAX_DISCOVERY_URLS = 2000
 _MAX_SITEMAP_DEPTH = 6
+_DEFAULT_SITEMAP_PATHS = (
+    "/sitemap.xml",
+    "/sitemap_index.xml",
+    "/sitemap-index.xml",
+    "/sitemap/sitemap.xml",
+)
 
 
 def _ensure_url(value: str) -> str:
@@ -97,6 +103,14 @@ def _parse_robots_sitemaps_impl(root_url: str) -> List[str]:
     except Exception as e:
         logger.debug(f"Failed to parse robots.txt for {root_url}: {str(e)[:100]}")
         return []
+
+
+def _default_sitemap_candidates(root_url: str) -> List[str]:
+    """Fallback sitemap locations when robots.txt doesn't list any."""
+    base = _origin(_ensure_url(root_url))
+    if not base:
+        return []
+    return [urljoin(base, path) for path in _DEFAULT_SITEMAP_PATHS]
 
 
 def _is_url_allowed_by_robots(url: str, robots_parser: Optional[RobotFileParser], user_agent: str = "*") -> bool:
@@ -374,6 +388,8 @@ async def discover_urls_from_sitemap(root_url: str) -> List[str]:
 
     # Try to get URLs from sitemap (via robots.txt - we only use robots.txt to find sitemap URLs)
     sitemap_urls = _parse_robots_sitemaps(root_url)
+    if not sitemap_urls:
+        sitemap_urls = _default_sitemap_candidates(root_url)
     sitemap_candidates = []
 
     # Process sitemaps in fixed (sorted) order for deterministic results

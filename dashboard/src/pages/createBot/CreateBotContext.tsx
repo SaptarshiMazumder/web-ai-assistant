@@ -292,7 +292,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             )
           }
         }
-      }, controller.signal)
+      }, controller.signal, { max_duration_sec: 60 })
         .then((final) => {
           if (final && !final.urls?.length && final.error) setLocalError(final.error)
           const start = discoveryStartTimeRef.current
