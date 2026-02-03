@@ -20,13 +20,29 @@
   let wsPingTimer = null;
   let wsReconnectTimer = null;
   let wsReconnectAttempts = 0;
+  let wsDisabled = false;
+  let wsFailureCount = 0;
+  let wsFailureLogged = false;
   let humanPollTimer = null;
+  const seenMessageIds = new Set();
   const seenHumanMessageIds = new Set();
+  let pollIntervalMs = 3000;
+  let pollNoopCount = 0;
 
   function parseBool(val, def) {
     if (val == null || val === "") return def;
     const v = String(val).toLowerCase();
     return v === "true" || v === "yes" || v === "1";
+  }
+
+  function isWidgetVisible() {
+    if (document.visibilityState !== "visible") return false;
+    const body = document.body;
+    if (!body) return true;
+    const style = window.getComputedStyle(body);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+    if (body.offsetWidth === 0 || body.offsetHeight === 0) return false;
+    return true;
   }
 
   const SOFT_WRAP_TOKEN_MIN = 32;
@@ -74,7 +90,8 @@
   }
 
   function connectWebsocket() {
-    if (!sessionId || !apiBase) return;
+    if (!sessionId || !apiBase || wsDisabled) return;
+    if (!isWidgetVisible()) return;
     if (wsReconnectTimer) {
       clearTimeout(wsReconnectTimer);
       wsReconnectTimer = null;
@@ -93,6 +110,7 @@
     ws = new WebSocket(`${wsBase}/ws/conversations/${encodeURIComponent(sessionId)}`);
     ws.onopen = () => {
       wsReconnectAttempts = 0;
+      wsFailureCount = 0;
       if (wsPingTimer) {
         clearInterval(wsPingTimer);
       }
@@ -115,6 +133,7 @@
       if (!data || data.type !== "human_message") return;
       const msg = data.message || {};
       if (msg.message_id) {
+        seenMessageIds.add(String(msg.message_id));
         seenHumanMessageIds.add(String(msg.message_id));
       }
       const sender = msg.sender_name || "";
@@ -127,6 +146,16 @@
         wsPingTimer = null;
       }
       ws = null;
+      wsFailureCount += 1;
+      if (wsFailureCount >= 3) {
+        wsDisabled = true;
+        if (!wsFailureLogged) {
+          console.warn("WebSocket unavailable, switching to polling.");
+          wsFailureLogged = true;
+        }
+        startHumanPoll();
+        return;
+      }
       startHumanPoll();
       const wait = Math.min(8000, 500 * Math.pow(2, wsReconnectAttempts));
       wsReconnectAttempts += 1;
@@ -135,12 +164,21 @@
       }, wait);
     };
     ws.onerror = (evt) => {
-      console.error("WebSocket error:", evt);
+      if (!wsFailureLogged) {
+        console.warn("WebSocket error, will retry:", evt);
+        wsFailureLogged = true;
+      }
       if (wsPingTimer) {
         clearInterval(wsPingTimer);
         wsPingTimer = null;
       }
       ws = null;
+      wsFailureCount += 1;
+      if (wsFailureCount >= 3) {
+        wsDisabled = true;
+        startHumanPoll();
+        return;
+      }
       startHumanPoll();
     };
   }
@@ -255,7 +293,28 @@
   if (sessionId) {
     connectWebsocket();
     startHumanPoll();
+    loadHistory();
   }
+
+  document.addEventListener("visibilitychange", () => {
+    if (isWidgetVisible()) {
+      if (!wsDisabled) {
+        connectWebsocket();
+      }
+      startHumanPoll();
+    } else {
+      stopHumanPoll();
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (isWidgetVisible()) {
+      if (!wsDisabled) connectWebsocket();
+      startHumanPoll();
+    } else {
+      stopHumanPoll();
+    }
+  });
 
   function botAvatarEl() {
     if (headerIconUrl && !headerIconUrl.startsWith("blob:")) {
@@ -317,9 +376,32 @@
     if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
+  async function loadHistory() {
+    if (!pk || !sessionId) return;
+    try {
+      const resp = await fetch(
+        `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}?limit=200`
+      );
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const messages = data && data.messages ? data.messages : [];
+      messages.forEach((m) => {
+        if (!m) return;
+        const mid = m.message_id ? String(m.message_id) : "";
+        if (mid && seenMessageIds.has(mid)) return;
+        if (mid) seenMessageIds.add(mid);
+        if (m.sender_name && mid) seenHumanMessageIds.add(mid);
+        appendBubble(m.content || "", m.role || "bot", [], m.sender_name || "");
+      });
+    } catch (e) {}
+  }
+
   function startHumanPoll() {
     if (humanPollTimer || !pk || !sessionId) return;
-    humanPollTimer = setInterval(fetchHumanReplies, 3000);
+    if (!isWidgetVisible()) return;
+    pollIntervalMs = 3000;
+    pollNoopCount = 0;
+    humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
     fetchHumanReplies();
   }
 
@@ -331,6 +413,10 @@
 
   async function fetchHumanReplies() {
     if (!pk || !sessionId) return;
+    if (!isWidgetVisible()) {
+      stopHumanPoll();
+      return;
+    }
     try {
       const resp = await fetch(
         `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}?limit=50`
@@ -338,13 +424,33 @@
       if (!resp.ok) return;
       const data = await resp.json();
       const messages = data && data.messages ? data.messages : [];
+      let appended = 0;
       messages.forEach((m) => {
         if (!m || !m.sender_name || m.role !== "bot") return;
         const mid = m.message_id ? String(m.message_id) : "";
-        if (mid && seenHumanMessageIds.has(mid)) return;
-        if (mid) seenHumanMessageIds.add(mid);
+        if (mid && (seenHumanMessageIds.has(mid) || seenMessageIds.has(mid))) return;
+        if (mid) {
+          seenHumanMessageIds.add(mid);
+          seenMessageIds.add(mid);
+        }
         appendBubble(m.content || "", "bot", [], m.sender_name || "");
+        appended += 1;
       });
+      if (appended === 0) {
+        pollNoopCount += 1;
+        if (pollNoopCount >= 3 && pollIntervalMs < 15000) {
+          pollIntervalMs = Math.min(15000, pollIntervalMs + 3000);
+          stopHumanPoll();
+          humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
+        }
+      } else {
+        pollNoopCount = 0;
+        if (pollIntervalMs !== 3000) {
+          pollIntervalMs = 3000;
+          stopHumanPoll();
+          humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
+        }
+      }
     } catch (e) {}
   }
 

@@ -74,5 +74,9 @@ class Config:
     # Redis (pubsub for conversations). Defaults to Celery broker if not set.
     REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 
+    # Conversation stream (Redis Streams)
+    CONVERSATION_STREAM_KEY = os.environ.get("CONVERSATION_STREAM_KEY", "webai:conversation_events").strip()
+    CONVERSATION_STREAM_MAXLEN = os.environ.get("CONVERSATION_STREAM_MAXLEN", "10000").strip()
+
 
 config = Config()

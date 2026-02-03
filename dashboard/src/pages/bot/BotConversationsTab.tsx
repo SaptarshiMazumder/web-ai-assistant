@@ -17,6 +17,31 @@ export default function BotConversationsTab() {
   const [currentCursor, setCurrentCursor] = useState<string | null>(null)
   const [humanName, setHumanName] = useState('')
   const [humanMessage, setHumanMessage] = useState('')
+  const [isPageVisible, setIsPageVisible] = useState(true)
+
+  useEffect(() => {
+    if (!selectedBot?.bot_id) return
+    const key = `webai_human_name_${activeOrgId || 'org'}_${selectedBot.bot_id}`
+    const stored = localStorage.getItem(key)
+    if (stored) setHumanName(stored)
+  }, [selectedBot?.bot_id, activeOrgId])
+
+  useEffect(() => {
+    if (!selectedBot?.bot_id) return
+    const key = `webai_human_name_${activeOrgId || 'org'}_${selectedBot.bot_id}`
+    if (humanName) {
+      localStorage.setItem(key, humanName)
+    }
+  }, [humanName, selectedBot?.bot_id, activeOrgId])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      setIsPageVisible(document.visibilityState === 'visible')
+    }
+    handleVisibility()
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   useEffect(() => {
     if (!selectedBot) return
@@ -89,6 +114,27 @@ export default function BotConversationsTab() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (!selectedBot || !selectedSession) return
+    if (!isPageVisible) return
+    const status = statusForSession(selectedSessionRecord)
+    if (status !== 'Active') return
+    let active = true
+    const poll = async () => {
+      if (!active) return
+      const data = await getConversation(selectedBot.bot_id, selectedSession, 200)
+      if (active) setMessages(data || [])
+    }
+    void poll()
+    const timer = window.setInterval(() => {
+      void poll()
+    }, 4000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [selectedBot, selectedSession, getConversation, isPageVisible, selectedSessionRecord])
 
   function toDateKey(ts?: string | null) {
     if (!ts) return ''

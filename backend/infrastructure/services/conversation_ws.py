@@ -10,9 +10,11 @@ from common.config import config
 
 _connections: Dict[str, Set[WebSocket]] = {}
 _redis: Optional[Redis] = None
-_pubsub_task: Optional[asyncio.Task] = None
+_stream_task: Optional[asyncio.Task] = None
 _redis_ready: bool = False
-_channel_prefix = "webai:conversations:"
+_stream_ready: bool = False
+_stream_key = (getattr(config, "CONVERSATION_STREAM_KEY", "") or "webai:conversation_events").strip()
+_stream_maxlen = int(getattr(config, "CONVERSATION_STREAM_MAXLEN", "10000"))
 
 
 def _logger() -> logging.Logger:
@@ -58,78 +60,84 @@ async def _ensure_redis() -> Optional[Redis]:
         _redis_ready = True
         return _redis
     except Exception as e:
-        _logger().warning("Redis unavailable for conversation pubsub: %s", e)
+        _logger().warning("Redis unavailable for conversation stream: %s", e)
         _redis_ready = False
         _redis = None
         return None
 
 
 async def broadcast_message(session_id: str, payload: Dict[str, object]) -> None:
+    global _stream_ready
     redis = await _ensure_redis()
     if redis:
         try:
-            await redis.publish(_channel_prefix + session_id, json.dumps(payload))
-            return
+            await redis.xadd(
+                _stream_key,
+                {"session_id": session_id, "payload": json.dumps(payload)},
+                maxlen=_stream_maxlen,
+                approximate=True,
+            )
+            if _stream_ready:
+                return
         except Exception as e:
-            _logger().warning("Redis publish failed, falling back to local: %s", e)
+            _logger().warning("Redis stream publish failed, falling back to local: %s", e)
     await _send_local(session_id, payload)
 
 
-async def _pubsub_loop() -> None:
+async def _stream_loop() -> None:
+    global _stream_ready
     redis = await _ensure_redis()
     if not redis:
         return
-    pubsub = redis.pubsub()
-    await pubsub.psubscribe(_channel_prefix + "*")
+    _stream_ready = True
+    last_id = "$"
     try:
-        async for msg in pubsub.listen():
-            if msg is None or msg.get("type") != "pmessage":
+        while True:
+            streams = await redis.xread({_stream_key: last_id}, block=5000, count=200)
+            if not streams:
                 continue
-            channel = msg.get("channel")
-            data = msg.get("data")
-            if not channel or not data:
-                continue
-            try:
-                if isinstance(channel, bytes):
-                    channel = channel.decode("utf-8", errors="ignore")
-                session_id = str(channel).split(_channel_prefix, 1)[1]
-            except Exception:
-                continue
-            try:
-                if isinstance(data, bytes):
-                    data = data.decode("utf-8", errors="ignore")
-                payload = json.loads(data)
-            except Exception:
-                continue
-            await _send_local(session_id, payload)
+            for _, entries in streams:
+                for entry_id, data in entries:
+                    last_id = entry_id
+                    sid = data.get(b"session_id") if isinstance(data, dict) else None
+                    payload_raw = data.get(b"payload") if isinstance(data, dict) else None
+                    if not sid or not payload_raw:
+                        continue
+                    try:
+                        if isinstance(sid, bytes):
+                            sid = sid.decode("utf-8", errors="ignore")
+                        if isinstance(payload_raw, bytes):
+                            payload_raw = payload_raw.decode("utf-8", errors="ignore")
+                        payload = json.loads(payload_raw)
+                    except Exception:
+                        continue
+                    await _send_local(str(sid), payload)
     finally:
-        try:
-            await pubsub.close()
-        except Exception:
-            pass
+        _stream_ready = False
 
 
 async def start_pubsub() -> None:
-    global _pubsub_task
-    if _pubsub_task and not _pubsub_task.done():
+    global _stream_task
+    if _stream_task and not _stream_task.done():
         return
     redis = await _ensure_redis()
     if not redis:
-        _logger().info("Conversation WS pubsub: Redis not configured or unavailable; using local broadcast")
+        _logger().info("Conversation WS stream: Redis not configured or unavailable; using local broadcast")
         return
-    _pubsub_task = asyncio.create_task(_pubsub_loop())
-    _logger().info("Conversation WS pubsub: connected to Redis")
+    _stream_task = asyncio.create_task(_stream_loop())
+    _logger().info("Conversation WS stream: connected to Redis")
 
 
 async def stop_pubsub() -> None:
-    global _pubsub_task, _redis, _redis_ready
-    if _pubsub_task and not _pubsub_task.done():
-        _pubsub_task.cancel()
+    global _stream_task, _redis, _redis_ready, _stream_ready
+    if _stream_task and not _stream_task.done():
+        _stream_task.cancel()
         try:
-            await _pubsub_task
+            await _stream_task
         except Exception:
             pass
-    _pubsub_task = None
+    _stream_task = None
+    _stream_ready = False
     if _redis:
         try:
             await _redis.close()
