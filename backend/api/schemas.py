@@ -162,6 +162,7 @@ class WidgetChatRequest(BaseModel):
     message: str
     site_url: Optional[str] = None
     site_title: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 class Citation(BaseModel):
@@ -172,6 +173,7 @@ class Citation(BaseModel):
 class WidgetChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+    session_id: Optional[str] = None
 
 
 class AgentConfigPayload(BaseModel):
@@ -188,11 +190,60 @@ class AgentConfigResponse(BaseModel):
 
 class TestChatRequest(BaseModel):
     message: str
+    session_id: Optional[str] = None
 
 
 class TestChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+    session_id: Optional[str] = None
+
+
+class ConversationSessionResponse(BaseModel):
+    session_id: str
+    bot_id: str
+    channel: str
+    status: str
+    title: Optional[str] = None
+    site_url: Optional[str] = None
+    site_title: Optional[str] = None
+    message_count: int = 0
+    started_at: str
+    last_active_at: str
+    ended_at: Optional[str] = None
+
+
+class ConversationMessageResponse(BaseModel):
+    message_id: str
+    session_id: str
+    bot_id: str
+    role: str
+    sender_name: Optional[str] = None
+    content: str
+    citations: List[Citation] = []
+    created_at: str
+
+
+class ConversationListResponse(BaseModel):
+    bot_id: str
+    sessions: List[ConversationSessionResponse]
+    next_cursor: Optional[str] = None
+
+
+class ConversationDetailResponse(BaseModel):
+    bot_id: str
+    session_id: str
+    messages: List[ConversationMessageResponse]
+
+
+class ConversationEndResponse(BaseModel):
+    session_id: str
+    status: str
+
+
+class ConversationHumanReplyRequest(BaseModel):
+    sender_name: str
+    message: str
 
 
 class WidgetConfigUpdate(BaseModel):

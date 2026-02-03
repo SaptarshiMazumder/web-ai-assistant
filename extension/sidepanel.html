@@ -14,9 +14,27 @@
         </div> -->
 
         <div id="container">
-            <div id="chat"></div>
-            <div id="inputRow">
-                <input type="text" id="question" placeholder="Ask about this page..." />
+            <div id="tabs">
+                <button id="tab-chat" class="tab active" type="button">Chat</button>
+                <button id="tab-conversations" class="tab" type="button">Conversations</button>
+            </div>
+            <div id="chat-panel">
+                <div id="chat"></div>
+                <div id="inputRow">
+                    <input type="text" id="question" placeholder="Ask about this page..." />
+                </div>
+            </div>
+            <div id="conversations-panel" class="hidden">
+                <div class="conv-config">
+                    <input type="text" id="botKeyInput" placeholder="Bot publishable key (pk_...)" />
+                    <button id="botKeySave" type="button">Use</button>
+                </div>
+                <div id="conversation-list"></div>
+                <div id="conversation-pagination">
+                    <button id="conv-prev" type="button">Previous</button>
+                    <button id="conv-next" type="button">Next</button>
+                </div>
+                <div id="conversation-detail" class="hidden"></div>
             </div>
         </div>
         <script type="module" src="dist/sidepanel.js"></script>

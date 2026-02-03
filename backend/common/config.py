@@ -71,5 +71,8 @@ class Config:
     CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "").strip() or CELERY_BROKER_URL
     CELERY_WORKER_CONCURRENCY = int(os.environ.get("CELERY_WORKER_CONCURRENCY", "10"))
 
+    # Redis (pubsub for conversations). Defaults to Celery broker if not set.
+    REDIS_URL = os.environ.get("REDIS_URL", "").strip()
+
 
 config = Config()

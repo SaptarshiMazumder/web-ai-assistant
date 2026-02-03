@@ -14,6 +14,14 @@
   const footerMessage = params.get("footer") || params.get("footerMessage") || "Powered by WebAI";
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
+  const sessionKey = pk ? `webai_session_${pk}` : null;
+  let sessionId = sessionKey ? localStorage.getItem(sessionKey) || "" : "";
+  let ws = null;
+  let wsPingTimer = null;
+  let wsReconnectTimer = null;
+  let wsReconnectAttempts = 0;
+  let humanPollTimer = null;
+  const seenHumanMessageIds = new Set();
 
   function parseBool(val, def) {
     if (val == null || val === "") return def;
@@ -51,6 +59,90 @@
         }
       });
     });
+  }
+
+  function setSession(id) {
+    if (!id || !sessionKey) return;
+    sessionId = id;
+    try {
+      localStorage.setItem(sessionKey, id);
+    } catch (e) {
+      // ignore storage failures
+    }
+    connectWebsocket();
+    startHumanPoll();
+  }
+
+  function connectWebsocket() {
+    if (!sessionId || !apiBase) return;
+    if (wsReconnectTimer) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = null;
+    }
+    if (ws) {
+      try {
+        ws.close();
+      } catch (e) {}
+    }
+    let wsBase = "";
+    try {
+      wsBase = new URL(apiBase).origin.replace(/^http/, "ws");
+    } catch (e) {
+      wsBase = apiBase.replace(/^http/, "ws");
+    }
+    ws = new WebSocket(`${wsBase}/ws/conversations/${encodeURIComponent(sessionId)}`);
+    ws.onopen = () => {
+      wsReconnectAttempts = 0;
+      if (wsPingTimer) {
+        clearInterval(wsPingTimer);
+      }
+      wsPingTimer = setInterval(() => {
+        try {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send("ping");
+          }
+        } catch (e) {}
+      }, 25000);
+      stopHumanPoll();
+    };
+    ws.onmessage = (event) => {
+      let data = null;
+      try {
+        data = JSON.parse(event.data);
+      } catch (e) {
+        return;
+      }
+      if (!data || data.type !== "human_message") return;
+      const msg = data.message || {};
+      if (msg.message_id) {
+        seenHumanMessageIds.add(String(msg.message_id));
+      }
+      const sender = msg.sender_name || "";
+      const text = msg.content || "";
+      appendBubble(text, "bot", [], sender);
+    };
+    ws.onclose = () => {
+      if (wsPingTimer) {
+        clearInterval(wsPingTimer);
+        wsPingTimer = null;
+      }
+      ws = null;
+      startHumanPoll();
+      const wait = Math.min(8000, 500 * Math.pow(2, wsReconnectAttempts));
+      wsReconnectAttempts += 1;
+      wsReconnectTimer = setTimeout(() => {
+        connectWebsocket();
+      }, wait);
+    };
+    ws.onerror = (evt) => {
+      console.error("WebSocket error:", evt);
+      if (wsPingTimer) {
+        clearInterval(wsPingTimer);
+        wsPingTimer = null;
+      }
+      ws = null;
+      startHumanPoll();
+    };
   }
 
   const DEFAULT_SUGGESTIONS = ["What can you do?", "Ask a question", "Get help"];
@@ -160,6 +252,10 @@
   }
 
   renderWelcome();
+  if (sessionId) {
+    connectWebsocket();
+    startHumanPoll();
+  }
 
   function botAvatarEl() {
     if (headerIconUrl && !headerIconUrl.startsWith("blob:")) {
@@ -176,7 +272,7 @@
     return av;
   }
 
-  function appendBubble(text, who, citations) {
+  function appendBubble(text, who, citations, senderName) {
     hideWelcome();
 
     const rowDiv = document.createElement("div");
@@ -188,6 +284,12 @@
 
     const div = document.createElement("div");
     div.className = "bubble " + who;
+    if (senderName) {
+      const label = document.createElement("div");
+      label.className = "sender-label";
+      label.textContent = senderName;
+      div.appendChild(label);
+    }
     setBubbleText(div, text);
     if (who === "user") {
       div.style.background = color;
@@ -215,8 +317,41 @@
     if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
+  function startHumanPoll() {
+    if (humanPollTimer || !pk || !sessionId) return;
+    humanPollTimer = setInterval(fetchHumanReplies, 3000);
+    fetchHumanReplies();
+  }
+
+  function stopHumanPoll() {
+    if (!humanPollTimer) return;
+    clearInterval(humanPollTimer);
+    humanPollTimer = null;
+  }
+
+  async function fetchHumanReplies() {
+    if (!pk || !sessionId) return;
+    try {
+      const resp = await fetch(
+        `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}?limit=50`
+      );
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const messages = data && data.messages ? data.messages : [];
+      messages.forEach((m) => {
+        if (!m || !m.sender_name || m.role !== "bot") return;
+        const mid = m.message_id ? String(m.message_id) : "";
+        if (mid && seenHumanMessageIds.has(mid)) return;
+        if (mid) seenHumanMessageIds.add(mid);
+        appendBubble(m.content || "", "bot", [], m.sender_name || "");
+      });
+    } catch (e) {}
+  }
+
   function setBubbleText(bubble, text) {
+    const existingLabel = bubble.querySelector(".sender-label");
     bubble.innerHTML = "";
+    if (existingLabel) bubble.appendChild(existingLabel);
     appendSoftWrappedText(bubble, text);
   }
 
@@ -264,6 +399,8 @@
     let ticking = false;
     let doneEvent = null;
     const bubble = ensureStreamingBubble();
+    const headerSession = resp.headers.get("x-conversation-id");
+    if (headerSession) setSession(headerSession);
     function startTicker() {
       if (ticking) return;
       ticking = true;
@@ -306,8 +443,11 @@
           if (evt && evt.type === "delta") {
             pending += evt.text || "";
             startTicker();
+          } else if (evt && evt.type === "meta") {
+            if (evt.session_id) setSession(evt.session_id);
           } else if (evt && evt.type === "done") {
             doneEvent = evt;
+            if (evt.session_id) setSession(evt.session_id);
             startTicker();
           } else if (evt && evt.type === "error") {
             setBubbleText(bubble, evt.message || "Request failed.");
@@ -345,7 +485,7 @@
       const resp = await fetch(`${apiBase}/v1/pk/${encodeURIComponent(pk)}/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, site_url: siteUrl, site_title: siteTitle }),
+        body: JSON.stringify({ message: msg, site_url: siteUrl, site_title: siteTitle, session_id: sessionId || undefined }),
       });
       removeTypingBubble();
       const isStream = (resp.headers.get("content-type") || "").includes("application/x-ndjson");
@@ -356,6 +496,7 @@
         await streamResponse(resp);
       } else {
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
+        if (data && data.session_id) setSession(data.session_id);
         appendBubble(data.answer || "", "bot", data.citations || []);
       }
     } catch (e) {
@@ -370,4 +511,6 @@
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessage();
   });
+
+  // Do not auto-end on reload; session ends via inactivity or explicit end.
 })();

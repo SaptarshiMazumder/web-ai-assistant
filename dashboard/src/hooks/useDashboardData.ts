@@ -102,6 +102,36 @@ export type DiscoveryJobRecord = {
   updated_at: string
 }
 
+export type ConversationSessionRecord = {
+  session_id: string
+  bot_id: string
+  channel: string
+  status: string
+  title?: string | null
+  site_url?: string | null
+  site_title?: string | null
+  message_count: number
+  started_at: string
+  last_active_at: string
+  ended_at?: string | null
+}
+
+export type ConversationCitation = {
+  url: string
+  snippet: string
+}
+
+export type ConversationMessageRecord = {
+  message_id: string
+  session_id: string
+  bot_id: string
+  role: string
+  sender_name?: string | null
+  content: string
+  citations?: ConversationCitation[]
+  created_at: string
+}
+
 export type OrgSummary = {
   org_id: string
   name: string
@@ -209,10 +239,21 @@ type DashboardData = {
     options?: { max_duration_sec?: number }
   ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
   startBackgroundDiscovery: (botId: string, url: string, method: string) => Promise<void>
-  listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
-  getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
-  deleteBot: (botId: string) => Promise<boolean>
-}
+    listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
+    getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
+    deleteBot: (botId: string) => Promise<boolean>
+    listConversations: (
+      botId: string,
+      limit?: number,
+      cursor?: string | null
+    ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }>
+    getConversation: (
+      botId: string,
+      sessionId: string,
+      limit?: number
+    ) => Promise<ConversationMessageRecord[]>
+    endConversation: (botId: string, sessionId: string) => Promise<void>
+  }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
 
@@ -849,6 +890,56 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function listConversations(
+    botId: string,
+    limit = 50,
+    cursor: string | null = null
+  ): Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }> {
+    if (isSuperAdmin && !activeOrgId) return { sessions: [] }
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+      const path = withOrgParam(`/v1/org/bots/${botId}/conversations?limit=${limit}${cursorParam}`, orgOverride)
+      return await fetchAuthedJson<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return { sessions: [] }
+    }
+  }
+
+  async function getConversation(
+    botId: string,
+    sessionId: string,
+    limit = 200
+  ): Promise<ConversationMessageRecord[]> {
+    if (isSuperAdmin && !activeOrgId) return []
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(
+        `/v1/org/bots/${botId}/conversations/${encodeURIComponent(sessionId)}?limit=${limit}`,
+        orgOverride
+      )
+      const data = await fetchAuthedJson<{ messages: ConversationMessageRecord[] }>(path)
+      return data.messages || []
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    }
+  }
+
+  async function endConversation(botId: string, sessionId: string): Promise<void> {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(
+        `/v1/org/bots/${botId}/conversations/${encodeURIComponent(sessionId)}/end`,
+        orgOverride
+      )
+      await fetchAuthedJson(path, { method: 'POST' })
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
@@ -1233,6 +1324,9 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     listDiscoveryJobs,
     getDiscoveryJob,
     deleteBot,
+    listConversations,
+    getConversation,
+    endConversation,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

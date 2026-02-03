@@ -139,6 +139,43 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "CREATE INDEX IF NOT EXISTS discovery_jobs_bot_id ON discovery_jobs (bot_id)",
+    """
+    CREATE TABLE IF NOT EXISTS conversation_sessions (
+      session_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      status TEXT NOT NULL,
+      title TEXT,
+      site_url TEXT,
+      site_title TEXT,
+      message_count INTEGER NOT NULL DEFAULT 0,
+      started_at TEXT NOT NULL,
+      last_active_at TEXT NOT NULL,
+      ended_at TEXT,
+      user_agent TEXT,
+      ip TEXT
+    )
+    """,
+    "ALTER TABLE conversation_sessions ADD COLUMN IF NOT EXISTS title TEXT",
+    """
+    CREATE TABLE IF NOT EXISTS conversation_messages (
+      message_id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      sender_name TEXT,
+      content TEXT NOT NULL,
+      citations TEXT NOT NULL DEFAULT '[]',
+      created_at TEXT NOT NULL
+    )
+    """,
+    "ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sender_name TEXT",
+    "CREATE INDEX IF NOT EXISTS conversation_sessions_bot_id ON conversation_sessions (bot_id)",
+    "CREATE INDEX IF NOT EXISTS conversation_sessions_last_active ON conversation_sessions (bot_id, last_active_at DESC)",
+    "CREATE INDEX IF NOT EXISTS conversation_messages_session_id ON conversation_messages (session_id)",
+    "CREATE INDEX IF NOT EXISTS conversation_messages_bot_id ON conversation_messages (bot_id)",
+    "CREATE INDEX IF NOT EXISTS conversation_messages_created_at ON conversation_messages (created_at DESC)",
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 

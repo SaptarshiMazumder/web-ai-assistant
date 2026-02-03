@@ -7,7 +7,19 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
 
-from domain.entities import Bot, BotDomainRecord, BotRecord, BotSource, DiscoveryJob, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from domain.entities import (
+    Bot,
+    BotDomainRecord,
+    BotRecord,
+    BotSource,
+    ConversationMessage,
+    ConversationSession,
+    DiscoveryJob,
+    IndexJob,
+    OrgMemberRecord,
+    OrgRecord,
+    UserRecord,
+)
 from domain.repositories import BotSourceRepository, DiscoveryJobRepository, IndexJobRepository
 from infrastructure.db.connection import get_connection
 
@@ -38,6 +50,14 @@ def _new_publishable_key() -> str:
 
 def _new_secret_key() -> str:
     return "sk_" + secrets.token_urlsafe(32)
+
+
+def _new_conversation_id() -> str:
+    return "conv_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
+
+
+def _new_message_id() -> str:
+    return "msg_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
 
 
 class PostgresBotRepository:
@@ -1193,5 +1213,292 @@ class PostgresDiscoveryJobRepository(DiscoveryJobRepository):
                 (job.status, urls_json, job.error, job.celery_task_id, now, job.job_id),
             )
             con.commit()
+        finally:
+            con.close()
+
+
+class PostgresConversationRepository:
+    def create_session(
+        self,
+        *,
+        bot_id: str,
+        org_id: str,
+        channel: str,
+        site_url: Optional[str],
+        site_title: Optional[str],
+        user_agent: Optional[str],
+        ip: Optional[str],
+    ) -> ConversationSession:
+        bid = (bot_id or "").strip()
+        oid = (org_id or "").strip()
+        if not bid or not oid:
+            raise ValueError("bot_id and org_id are required")
+        now = _utc_now()
+        session_id = _new_conversation_id()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO conversation_sessions(
+                  session_id, bot_id, org_id, channel, status, title, site_url, site_title,
+                  message_count, started_at, last_active_at, ended_at, user_agent, ip
+                )
+                VALUES (%s, %s, %s, %s, %s, NULL, %s, %s, 0, %s, %s, NULL, %s, %s)
+                """,
+                (
+                    session_id,
+                    bid,
+                    oid,
+                    channel,
+                    "active",
+                    site_url,
+                    site_title,
+                    now,
+                    now,
+                    user_agent,
+                    ip,
+                ),
+            )
+            con.commit()
+            return ConversationSession(
+                session_id=session_id,
+                bot_id=bid,
+                org_id=oid,
+                channel=channel,
+                status="active",
+                title=None,
+                site_url=site_url,
+                site_title=site_title,
+                message_count=0,
+                started_at=now,
+                last_active_at=now,
+                ended_at=None,
+                user_agent=user_agent,
+                ip=ip,
+            )
+        finally:
+            con.close()
+
+    def get_session(self, session_id: str) -> Optional[ConversationSession]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
+                       message_count, started_at, last_active_at, ended_at, user_agent, ip
+                FROM conversation_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return ConversationSession(
+                session_id=row[0],
+                bot_id=row[1],
+                org_id=row[2],
+                channel=row[3],
+                status=row[4],
+                title=row[5],
+                site_url=row[6],
+                site_title=row[7],
+                message_count=row[8] or 0,
+                started_at=row[9],
+                last_active_at=row[10],
+                ended_at=row[11],
+                user_agent=row[12],
+                ip=row[13],
+            )
+        finally:
+            con.close()
+
+    def list_sessions_for_bot(self, bot_id: str, *, limit: int = 50, before: Optional[str] = None) -> List[ConversationSession]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        lim = max(1, min(int(limit or 50), 200))
+        con = _connect()
+        try:
+            if before:
+                rows = con.execute(
+                    """
+                    SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
+                           message_count, started_at, last_active_at, ended_at, user_agent, ip
+                    FROM conversation_sessions
+                    WHERE bot_id = %s AND last_active_at < %s
+                    ORDER BY last_active_at DESC
+                    LIMIT %s
+                    """,
+                    (bid, before, lim),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    """
+                    SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
+                           message_count, started_at, last_active_at, ended_at, user_agent, ip
+                    FROM conversation_sessions
+                    WHERE bot_id = %s
+                    ORDER BY last_active_at DESC
+                    LIMIT %s
+                    """,
+                    (bid, lim),
+                ).fetchall()
+            result = []
+            for row in rows or []:
+                result.append(
+                    ConversationSession(
+                        session_id=row[0],
+                        bot_id=row[1],
+                        org_id=row[2],
+                        channel=row[3],
+                        status=row[4],
+                        title=row[5],
+                        site_url=row[6],
+                        site_title=row[7],
+                        message_count=row[8] or 0,
+                        started_at=row[9],
+                        last_active_at=row[10],
+                        ended_at=row[11],
+                        user_agent=row[12],
+                        ip=row[13],
+                    )
+                )
+            return result
+        finally:
+            con.close()
+
+    def touch_session(self, session_id: str) -> None:
+        sid = (session_id or "").strip()
+        if not sid:
+            return
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE conversation_sessions
+                SET last_active_at = %s
+                WHERE session_id = %s
+                """,
+                (now, sid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def end_session(self, session_id: str, status: str = "ended") -> None:
+        sid = (session_id or "").strip()
+        if not sid:
+            return
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE conversation_sessions
+                SET status = %s, ended_at = %s, last_active_at = %s
+                WHERE session_id = %s
+                """,
+                (status, now, now, sid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def add_message(
+        self,
+        *,
+        session_id: str,
+        bot_id: str,
+        role: str,
+        content: str,
+        citations: Optional[List[Dict[str, Any]]] = None,
+        sender_name: Optional[str] = None,
+    ) -> ConversationMessage:
+        sid = (session_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not sid or not bid:
+            raise ValueError("session_id and bot_id are required")
+        now = _utc_now()
+        msg_id = _new_message_id()
+        payload = json.dumps(citations or [])
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO conversation_messages(
+                  message_id, session_id, bot_id, role, sender_name, content, citations, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (msg_id, sid, bid, role, sender_name, content or "", payload, now),
+            )
+            con.execute(
+                """
+                UPDATE conversation_sessions
+                SET message_count = message_count + 1,
+                    last_active_at = %s,
+                    title = CASE
+                      WHEN (title IS NULL OR title = '') AND %s = 'user' AND %s <> '' THEN %s
+                      ELSE title
+                    END
+                WHERE session_id = %s
+                """,
+                (now, role, content or "", content or "", sid),
+            )
+            con.commit()
+            return ConversationMessage(
+                message_id=msg_id,
+                session_id=sid,
+                bot_id=bid,
+                role=role,
+                sender_name=sender_name,
+                content=content or "",
+                citations=citations or [],
+                created_at=now,
+            )
+        finally:
+            con.close()
+
+    def list_messages(self, session_id: str, *, limit: int = 200) -> List[ConversationMessage]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return []
+        lim = max(1, min(int(limit or 200), 500))
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT message_id, session_id, bot_id, role, sender_name, content, citations, created_at
+                FROM conversation_messages
+                WHERE session_id = %s
+                ORDER BY created_at ASC
+                LIMIT %s
+                """,
+                (sid, lim),
+            ).fetchall()
+            result = []
+            for row in rows or []:
+                citations_raw = row[6] if len(row) > 6 else "[]"
+                try:
+                    citations = json.loads(citations_raw) if isinstance(citations_raw, str) else (citations_raw or [])
+                except (TypeError, ValueError):
+                    citations = []
+                result.append(
+                    ConversationMessage(
+                        message_id=row[0],
+                        session_id=row[1],
+                        bot_id=row[2],
+                        role=row[3],
+                        sender_name=row[4],
+                        content=row[5],
+                        citations=citations if isinstance(citations, list) else [],
+                        created_at=row[7],
+                    )
+                )
+            return result
         finally:
             con.close()

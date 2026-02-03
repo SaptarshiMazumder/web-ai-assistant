@@ -112,6 +112,21 @@ export default function BotTestingTab() {
   const widgetSize = (selectedBotWidgetConfig?.size as 'small' | 'medium' | 'large') || 'medium'
   const widgetDims = WIDGET_SIZE_DIMENSIONS[widgetSize] ?? WIDGET_SIZE_DIMENSIONS.medium
 
+  useEffect(() => {
+    function endSession() {
+      if (!selectedBot) return
+      const sessionKey = `webai_session_${selectedBot.publishable_key}`
+      const sessionId = localStorage.getItem(sessionKey)
+      if (!sessionId) return
+      fetch(`${API_BASE}/v1/pk/${encodeURIComponent(selectedBot.publishable_key)}/conversations/${encodeURIComponent(sessionId)}/end`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {})
+    }
+    window.addEventListener('beforeunload', endSession)
+    return () => window.removeEventListener('beforeunload', endSession)
+  }, [selectedBot])
+
   const loadConfig = useCallback(async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
     setConfigLoading(true)

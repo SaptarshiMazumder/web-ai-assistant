@@ -10,6 +10,259 @@ let indexPollTimer: number | null = null;
 let indexingInProgress = false;
 let lastIndexUrl: string | null = null;
 
+const chatTab = document.getElementById("tab-chat") as HTMLButtonElement | null;
+const conversationsTab = document.getElementById("tab-conversations") as HTMLButtonElement | null;
+const chatPanel = document.getElementById("chat-panel") as HTMLElement | null;
+const conversationsPanel = document.getElementById("conversations-panel") as HTMLElement | null;
+const botKeyInput = document.getElementById("botKeyInput") as HTMLInputElement | null;
+const botKeySave = document.getElementById("botKeySave") as HTMLButtonElement | null;
+const conversationList = document.getElementById("conversation-list") as HTMLElement | null;
+const conversationDetail = document.getElementById("conversation-detail") as HTMLElement | null;
+const convPrevBtn = document.getElementById("conv-prev") as HTMLButtonElement | null;
+const convNextBtn = document.getElementById("conv-next") as HTMLButtonElement | null;
+const CONV_KEY = "webai_conversations_bot_key";
+let convCursorStack: string[] = [];
+let convNextCursor: string | null = null;
+let convCurrentCursor: string | null = null;
+const convStatusById: Record<string, string> = {};
+
+function setActiveTab(tab: "chat" | "conversations") {
+  if (chatTab && conversationsTab) {
+    chatTab.classList.toggle("active", tab === "chat");
+    conversationsTab.classList.toggle("active", tab === "conversations");
+  }
+  if (chatPanel && conversationsPanel) {
+    chatPanel.classList.toggle("hidden", tab !== "chat");
+    conversationsPanel.classList.toggle("hidden", tab !== "conversations");
+  }
+  if (tab === "conversations") {
+    fetchConversationList();
+  }
+}
+
+function readBotKey(): string {
+  if (botKeyInput && botKeyInput.value.trim()) return botKeyInput.value.trim();
+  try {
+    return localStorage.getItem(CONV_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function saveBotKey(key: string) {
+  try {
+    localStorage.setItem(CONV_KEY, key);
+  } catch {
+    // ignore
+  }
+}
+
+function formatTime(ts: string | null | undefined): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return ts;
+  return d.toLocaleString();
+}
+
+function renderConversationList(sessions: any[]) {
+  if (!conversationList) return;
+  conversationList.innerHTML = "";
+  if (!sessions || sessions.length === 0) {
+    const empty = document.createElement("div");
+    empty.textContent = "No conversations yet.";
+    empty.style.color = "#64748b";
+    empty.style.padding = "8px";
+    conversationList.appendChild(empty);
+    return;
+  }
+  sessions.forEach((s: any) => {
+    if (s && s.session_id) convStatusById[s.session_id] = s.status || "";
+    const item = document.createElement("div");
+    item.className = "conv-item";
+    const title = document.createElement("div");
+    title.className = "conv-title";
+    title.textContent = s.title || s.site_title || s.site_url || s.session_id;
+    const meta = document.createElement("div");
+    meta.className = "conv-meta";
+    let statusLabel = "";
+    if (s.status && s.status !== "active") {
+      statusLabel = "Session ended";
+    } else {
+      const last = new Date(s.last_active_at || "");
+      if (!Number.isNaN(last.getTime())) {
+        const diffMin = Math.floor((Date.now() - last.getTime()) / 60000);
+        if (diffMin <= 5) statusLabel = "Active";
+        else if (diffMin <= 30) statusLabel = "Inactive";
+      }
+    }
+    meta.textContent = `${statusLabel ? statusLabel + " • " : ""}${s.message_count || 0} msgs • ${formatTime(s.last_active_at)}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    item.addEventListener("click", () => fetchConversationDetail(s.session_id));
+    conversationList.appendChild(item);
+  });
+}
+
+function renderConversationDetail(messages: any[], statusLabel: string) {
+  if (!conversationDetail) return;
+  conversationDetail.innerHTML = "";
+  const back = document.createElement("button");
+  back.className = "conv-back";
+  back.textContent = "Back to list";
+  back.onclick = () => {
+    conversationDetail.classList.add("hidden");
+    if (conversationList) conversationList.classList.remove("hidden");
+  };
+  conversationDetail.appendChild(back);
+  const count = document.createElement("div");
+  count.className = "conv-count";
+  count.textContent = `Messages: ${messages?.length || 0}`;
+  conversationDetail.appendChild(count);
+
+  const status = document.createElement("div");
+  status.className = "conv-count";
+  status.textContent = `Status: ${statusLabel}`;
+  conversationDetail.appendChild(status);
+
+  function formatMessageTime(ts?: string | null) {
+    const d = ts ? new Date(ts) : new Date();
+    if (Number.isNaN(d.getTime())) return "";
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    if (isToday) return `Today ${time}`;
+    if (isYesterday) return `Yesterday ${time}`;
+    return `${d.toLocaleDateString()} ${time}`;
+  }
+
+  function dateKey(ts?: string | null) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toDateString();
+  }
+
+  const list = messages || [];
+  list.forEach((m: any, idx: number) => {
+    const prev = list[idx - 1];
+    const showDate = dateKey(m.created_at) !== dateKey(prev?.created_at);
+    if (showDate) {
+      const sep = document.createElement("div");
+      sep.className = "conv-date";
+      sep.textContent = dateKey(m.created_at) || new Date().toDateString();
+      conversationDetail.appendChild(sep);
+    }
+    const row = document.createElement("div");
+    row.className = `conv-message ${m.role === "user" ? "user" : "bot"}`;
+    row.textContent = m.content || "";
+    const meta = document.createElement("div");
+    meta.className = "conv-time";
+    meta.textContent = formatMessageTime(m.created_at || null);
+    row.appendChild(meta);
+    conversationDetail.appendChild(row);
+  });
+}
+
+function updatePaginationControls() {
+  if (convPrevBtn) convPrevBtn.disabled = convCursorStack.length === 0;
+  if (convNextBtn) convNextBtn.disabled = !convNextCursor;
+}
+
+async function fetchConversationList(cursor?: string | null) {
+  if (!conversationList) return;
+  const pk = readBotKey();
+  if (!pk) {
+  const statusLabel = convStatusById[sessionId] || "Unknown";
+    conversationList.innerHTML = "<div style='color:#64748b;padding:8px;'>Enter a bot publishable key to view conversations.</div>";
+    convNextCursor = null;
+    convCursorStack = [];
+    convCurrentCursor = null;
+    updatePaginationControls();
+    return;
+  }
+  if (botKeyInput) botKeyInput.value = pk;
+  try {
+    const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+    const resp = await fetch(`${BACKEND_BASE_URL}/v1/pk/${encodeURIComponent(pk)}/conversations?limit=50${cursorParam}`);
+    if (!resp.ok) {
+      conversationList.innerHTML = `<div style='color:#b91c1c;padding:8px;'>Failed to load conversations.</div>`;
+      convNextCursor = null;
+      updatePaginationControls();
+      return;
+    }
+    const data = await resp.json();
+    renderConversationList(data.sessions || []);
+    convNextCursor = data.next_cursor || null;
+    convCurrentCursor = cursor || null;
+    updatePaginationControls();
+  } catch (e) {
+    conversationList.innerHTML = `<div style='color:#b91c1c;padding:8px;'>Error loading conversations.</div>`;
+    convNextCursor = null;
+    updatePaginationControls();
+  }
+}
+
+async function fetchConversationDetail(sessionId: string) {
+  if (!conversationDetail || !conversationList) return;
+  const pk = readBotKey();
+  if (!pk) return;
+  try {
+    const resp = await fetch(`${BACKEND_BASE_URL}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}?limit=200`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    conversationList.classList.add("hidden");
+    conversationDetail.classList.remove("hidden");
+    renderConversationDetail(data.messages || [], statusLabel);
+    const endBtn = document.createElement("button");
+    endBtn.className = "conv-back";
+    endBtn.textContent = "End session";
+    endBtn.onclick = async () => {
+      try {
+        await fetch(`${BACKEND_BASE_URL}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}/end`, {
+          method: "POST",
+        });
+      } finally {
+        conversationDetail.classList.add("hidden");
+        if (conversationList) conversationList.classList.remove("hidden");
+        fetchConversationList(convCurrentCursor);
+      }
+    };
+    conversationDetail.insertBefore(endBtn, conversationDetail.firstChild);
+  } catch {
+    // ignore
+  }
+}
+
+if (chatTab) chatTab.addEventListener("click", () => setActiveTab("chat"));
+if (conversationsTab) conversationsTab.addEventListener("click", () => setActiveTab("conversations"));
+if (botKeySave && botKeyInput) {
+  botKeySave.addEventListener("click", () => {
+    const key = botKeyInput.value.trim();
+    if (!key) return;
+    saveBotKey(key);
+    convCursorStack = [];
+    fetchConversationList(null);
+  });
+}
+
+if (convNextBtn) {
+  convNextBtn.addEventListener("click", () => {
+    if (!convNextCursor) return;
+    if (convCurrentCursor) convCursorStack.push(convCurrentCursor);
+    fetchConversationList(convNextCursor);
+  });
+}
+
+if (convPrevBtn) {
+  convPrevBtn.addEventListener("click", () => {
+    const prev = convCursorStack.pop() || null;
+    fetchConversationList(prev);
+  });
+}
+
 function ensureContentScript(tabId: number, cb: () => void) {
   debugLog(`Ensuring content script is injected for tab ${tabId}`);
   chrome.tabs.sendMessage(tabId, { type: "PING" }, (response) => {

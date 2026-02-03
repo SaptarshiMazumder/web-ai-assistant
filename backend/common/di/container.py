@@ -3,6 +3,7 @@ from functools import lru_cache
 from application.services.bot_service import BotService
 from application.services.indexing_service import IndexingService
 from application.services.org_service import OrgService
+from application.services.conversation_service import ConversationService
 from application.services.user_service import UserService
 from infrastructure.db.repositories import (
     PostgresBotCorpusRepository,
@@ -72,3 +73,8 @@ def indexing_service() -> IndexingService:
 def url_discovery() -> UrlDiscoveryPort:
     """URL discovery: try HTTP first (fast); if few URLs, fall back to crawl4ai browser (JS sites)."""
     return AutoUrlDiscoveryAdapter()
+
+
+@lru_cache(maxsize=1)
+def conversation_service() -> ConversationService:
+    return ConversationService()

@@ -15,6 +15,12 @@ from api.router import api_router
 from api.middleware.dynamic_cors import DynamicWidgetCORSMiddleware
 from common.config import config
 from infrastructure.db.connection import get_connection
+from infrastructure.services.conversation_ws import (
+    register as register_conversation_ws,
+    unregister as unregister_conversation_ws,
+    start_pubsub as start_conversation_pubsub,
+    stop_pubsub as stop_conversation_pubsub,
+)
 load_dotenv()
 
 
@@ -100,6 +106,14 @@ def create_app() -> FastAPI:
     async def _startup_log_creds() -> None:
         _log_google_creds()
 
+    @app.on_event("startup")
+    async def _startup_conversation_pubsub() -> None:
+        await start_conversation_pubsub()
+
+    @app.on_event("shutdown")
+    async def _shutdown_conversation_pubsub() -> None:
+        await stop_conversation_pubsub()
+
     if config.REQUIRE_DOMAIN_VERIFICATION:
         app.add_middleware(DynamicWidgetCORSMiddleware)
     else:
@@ -112,6 +126,28 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router)
+
+    @app.websocket("/ws/conversations/{session_id}")
+    async def ws_conversation(session_id: str, websocket):
+        ws_logger = logging.getLogger("uvicorn.error")
+        ws_logger.info(
+            "WS connect attempt session=%s origin=%s client=%s",
+            session_id,
+            websocket.headers.get("origin"),
+            getattr(websocket.client, "host", None),
+        )
+        try:
+            await register_conversation_ws(session_id, websocket)
+        except Exception as exc:
+            ws_logger.exception("WS accept failed session=%s err=%s", session_id, exc)
+            return
+        try:
+            while True:
+                await websocket.receive_text()
+        except Exception as exc:
+            ws_logger.info("WS disconnected session=%s err=%s", session_id, exc)
+        finally:
+            unregister_conversation_ws(session_id, websocket)
 
     app.mount(
         "/widget",

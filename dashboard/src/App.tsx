@@ -23,6 +23,7 @@ import BotKnowledgeTab from './pages/bot/BotKnowledgeTab'
 import BotOverviewTab from './pages/bot/BotOverviewTab'
 import BotSettingsTab from './pages/bot/BotSettingsTab'
 import BotTestingTab from './pages/bot/BotTestingTab'
+import BotConversationsTab from './pages/bot/BotConversationsTab'
 
 function mostRecentBotId(bots: { bot_id: string; created_at: string }[]): string | null {
   if (bots.length === 0) return null
@@ -94,6 +95,7 @@ export default function App() {
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
               <Route path="testing" element={<BotTestingTab />} />
+              <Route path="conversations" element={<BotConversationsTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
               <Route path="analytics" element={<BotAnalyticsTab />} />
             </Route>

@@ -1062,6 +1062,13 @@ a.primary {
   margin-bottom: 0.65rem;
 }
 
+.detail-row:last-of-type span:last-child {
+  color: #64748b;
+}
+
+.conversation-last-active {
+  color: #64748b;
+}
 .detail-row code {
   font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   background: #f1f5f9;
@@ -2131,14 +2138,216 @@ a.primary {
   border-top: 1px solid #e2e8f0;
 }
 
-.knowledge-pagination {
+/* Conversations tab */
+.conversation-row {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-.knowledge-discovered .list-row {
+.conversation-row:hover {
+  border-color: #cbd5f5;
+  background: #f8fafc;
+}
+
+.conversation-title {
+  font-weight: 600;
+  color: var(--app-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-row-top {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+}
+
+.conversation-time {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.conversation-meta {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
   gap: 0.5rem;
+  align-items: center;
+}
+
+.conversation-status {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.conversation-status.active {
+  color: var(--app-accent);
+}
+
+.conversation-status.inactive {
+  color: #94a3b8;
+}
+
+.conversation-status.ended {
+  color: #94a3b8;
+}
+
+.conversation-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.conversation-messages {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.conversation-date-separator {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.conversation-bubble-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+
+.conversation-bubble-row--user {
+  justify-content: flex-start;
+}
+
+.conversation-bubble-row--bot {
+  justify-content: flex-end;
+}
+
+.conversation-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  background: var(--app-accent);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.conversation-avatar--user {
+  background: #e2e8f0;
+  color: #334155;
+  order: 0;
+}
+
+.conversation-avatar--bot {
+  background: #e2e8f0;
+  color: #334155;
+  order: 2;
+}
+
+.conversation-message {
+  padding: 0.7rem 0.85rem;
+  border-radius: 18px;
+  border: none;
+  background: #f8fafc;
+  max-width: 70%;
+}
+
+.conversation-message--user {
+  background: var(--app-accent);
+  color: #ffffff;
+  order: 0;
+  border-radius: 18px 18px 18px 6px;
+}
+
+.conversation-message--bot {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-radius: 18px 18px 6px 18px;
+}
+
+.conversation-message-content {
+  white-space: pre-wrap;
+  color: inherit;
+}
+
+.conversation-message-time {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: rgba(15, 23, 42, 0.6);
+  text-align: right;
+}
+
+.conversation-message--user .conversation-message-time {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.conversation-reply-row {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.conversation-reply-row:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.conversation-reply-input {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.25rem;
+  min-width: 0;
+}
+
+.conversation-reply-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.conversation-reply-input:first-of-type {
+  flex: 0 0 140px;
+}
+
+.conversation-reply-input:last-of-type {
+  flex: 1 1 auto;
+}
+
+.conversation-reply-sep {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.conversation-sender-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.65);
+  margin-bottom: 0.15rem;
+}
+
+.conversation-message--user .conversation-sender-name {
+  color: rgba(255, 255, 255, 0.85);
 }

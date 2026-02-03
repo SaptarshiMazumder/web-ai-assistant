@@ -116,6 +116,40 @@ body {
     width: 100vw; /* or 100%, if you want to restrict width */
     box-sizing: border-box;
     padding: 12px;
+    gap: 10px;
+}
+
+#tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.tab {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #d7dbe2;
+    background: #fff;
+    font-size: 0.95em;
+    color: #334155;
+    cursor: pointer;
+}
+
+.tab.active {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#chat-panel,
+#conversations-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 #chat {
@@ -159,4 +193,142 @@ body {
 
 #inputRow button:hover {
     background: #176cc6;
+}
+
+.conv-config {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.conv-config input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+}
+
+.conv-config button {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #0f172a;
+    background: #0f172a;
+    color: #fff;
+    cursor: pointer;
+}
+
+#conversation-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 8px;
+}
+
+.conv-item {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.conv-item:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+
+.conv-item .conv-title {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conv-item .conv-meta {
+    font-size: 0.8em;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+#conversation-detail {
+    margin-top: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 10px;
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.conv-message {
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 0.95em;
+    position: relative;
+}
+
+.conv-message.user {
+    background: #e0f2fe;
+    border: 1px solid #bae6fd;
+}
+
+.conv-message.bot {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.conv-time {
+    margin-top: 4px;
+    font-size: 0.75em;
+    color: #64748b;
+    text-align: right;
+}
+
+.conv-date {
+    text-align: center;
+    font-size: 0.8em;
+    color: #64748b;
+    margin: 6px 0 8px;
+}
+
+.conv-count {
+    font-size: 0.85em;
+    color: #64748b;
+    margin-bottom: 8px;
+}
+
+.conv-back {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #94a3b8;
+    background: #fff;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+#conversation-pagination {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+#conversation-pagination button {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+#conversation-pagination button:disabled {
+    opacity: 0.5;
+    cursor: default;
 }

@@ -31,6 +31,12 @@ from api.schemas import (
     BotSourceResponse,
     BotSummary,
     Citation,
+    ConversationDetailResponse,
+    ConversationEndResponse,
+    ConversationHumanReplyRequest,
+    ConversationListResponse,
+    ConversationMessageResponse,
+    ConversationSessionResponse,
     OrgCreateRequest,
     OrgListResponse,
     OrgMemberAddRequest,
@@ -52,7 +58,7 @@ from api.schemas import (
 )
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
-from common.di.container import bot_service, indexing_service, org_service, url_discovery, user_service
+from common.di.container import bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
@@ -503,6 +509,23 @@ async def v1_widget_chat(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
+    session = conversation_service().get_or_create_session(
+        bot_id=bot.bot_id,
+        org_id=bot.org_id,
+        channel="chat",
+        session_id=getattr(payload, "session_id", None),
+        site_url=site_url or None,
+        site_title=site_title or None,
+        user_agent=request.headers.get("user-agent"),
+        ip=request.client.host if request.client else None,
+    )
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="user",
+        content=msg,
+    )
+
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -528,9 +551,18 @@ async def v1_widget_chat(
                 "host_label": host_label,
             }
         )
-        return WidgetChatResponse(
-            answer=f"I can’t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl.",
+        answer = f"I can’t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl."
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=answer,
             citations=[],
+        )
+        return WidgetChatResponse(
+            answer=answer,
+            citations=[],
+            session_id=session.session_id,
         )
 
     chat_debug_emit(
@@ -541,7 +573,15 @@ async def v1_widget_chat(
             "citations": [c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
         }
     )
-    return WidgetChatResponse(answer=str(result.get("answer") or ""), citations=citations)
+    answer = str(result.get("answer") or "")
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="bot",
+        content=answer,
+        citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
+    )
+    return WidgetChatResponse(answer=answer, citations=citations, session_id=session.session_id)
 
 
 @router.post("/v1/pk/{publishable_key}/chat/stream")
@@ -632,7 +672,25 @@ async def v1_widget_chat_stream(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
+    session = conversation_service().get_or_create_session(
+        bot_id=bot.bot_id,
+        org_id=bot.org_id,
+        channel="chat",
+        session_id=getattr(payload, "session_id", None),
+        site_url=site_url or None,
+        site_title=site_title or None,
+        user_agent=request.headers.get("user-agent"),
+        ip=request.client.host if request.client else None,
+    )
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="user",
+        content=msg,
+    )
+
     async def _gen():
+        yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
             for evt in run_vertex_rag_stream(
                 query,
@@ -661,11 +719,20 @@ async def v1_widget_chat_stream(
                                 "host_label": host_label,
                             }
                         )
+                        answer = f"I can?t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl."
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="bot",
+                            content=answer,
+                            citations=[],
+                        )
                         yield json.dumps(
                             {
                                 "type": "done",
-                                "answer": f"I canâ€™t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl.",
+                                "answer": answer,
                                 "citations": [],
+                                "session_id": session.session_id,
                             },
                             ensure_ascii=False,
                         ) + "\n"
@@ -678,11 +745,20 @@ async def v1_widget_chat_stream(
                                 "citations": citations,
                             }
                         )
+                        answer = str(evt.get("answer") or "")
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="bot",
+                            content=answer,
+                            citations=citations,
+                        )
                         yield json.dumps(
                             {
                                 "type": "done",
-                                "answer": str(evt.get("answer") or ""),
+                                "answer": answer,
                                 "citations": citations,
+                                "session_id": session.session_id,
                             },
                             ensure_ascii=False,
                         ) + "\n"
@@ -695,6 +771,7 @@ async def v1_widget_chat_stream(
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
+            "X-Conversation-Id": session.session_id,
         },
     )
 
@@ -975,6 +1052,7 @@ async def v1_org_update_agent_config(
 async def v1_org_test_chat(
     bot_id: str,
     payload: TestChatRequest,
+    request: Request,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
@@ -987,6 +1065,22 @@ async def v1_org_test_chat(
     msg = (payload.message or "").strip()
     if not msg:
         raise HTTPException(status_code=400, detail="message is required")
+    session = conversation_service().get_or_create_session(
+        bot_id=bot.bot_id,
+        org_id=bot.org_id,
+        channel="test",
+        session_id=getattr(payload, "session_id", None),
+        site_url=None,
+        site_title=None,
+        user_agent=request.headers.get("user-agent"),
+        ip=request.client.host if request.client else None,
+    )
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="user",
+        content=msg,
+    )
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
         try:
@@ -1006,7 +1100,265 @@ async def v1_org_test_chat(
     )
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
-    return TestChatResponse(answer=str(result.get("answer") or ""), citations=citations)
+    answer = str(result.get("answer") or "")
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="bot",
+        content=answer,
+        citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
+    )
+    return TestChatResponse(answer=answer, citations=citations, session_id=session.session_id)
+
+
+@router.get("/v1/org/bots/{bot_id}/conversations", response_model=ConversationListResponse)
+async def v1_org_list_conversations(
+    bot_id: str,
+    limit: int = 50,
+    cursor: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    sessions = conversation_service().list_sessions(bot_id, limit=limit, before=cursor)
+    next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
+    return ConversationListResponse(
+        bot_id=bot_id,
+        sessions=[
+            ConversationSessionResponse(
+                session_id=s.session_id,
+                bot_id=s.bot_id,
+                channel=s.channel,
+                status=s.status,
+                title=s.title,
+                site_url=s.site_url,
+                site_title=s.site_title,
+                message_count=s.message_count,
+                started_at=s.started_at,
+                last_active_at=s.last_active_at,
+                ended_at=s.ended_at,
+            )
+            for s in sessions
+        ],
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/conversations/{session_id}", response_model=ConversationDetailResponse)
+async def v1_org_get_conversation(
+    bot_id: str,
+    session_id: str,
+    limit: int = 200,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    messages = conversation_service().list_messages(session_id, limit=limit)
+    return ConversationDetailResponse(
+        bot_id=bot_id,
+        session_id=session_id,
+        messages=[
+            ConversationMessageResponse(
+                message_id=m.message_id,
+                session_id=m.session_id,
+                bot_id=m.bot_id,
+                role=m.role,
+                sender_name=m.sender_name,
+                content=m.content,
+                citations=[Citation(url=str(c.get("url") or ""), snippet=str(c.get("snippet") or "")) for c in (m.citations or [])],
+                created_at=m.created_at,
+            )
+            for m in messages
+        ],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/conversations/{session_id}/end", response_model=ConversationEndResponse)
+async def v1_org_end_conversation(
+    bot_id: str,
+    session_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    conversation_service().end_session(session_id, status="ended")
+    return ConversationEndResponse(session_id=session_id, status="ended")
+
+
+@router.post("/v1/org/bots/{bot_id}/conversations/{session_id}/human-reply")
+async def v1_org_human_reply(
+    bot_id: str,
+    session_id: str,
+    payload: ConversationHumanReplyRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    if session.status != "active":
+        raise HTTPException(status_code=400, detail="Session is not active")
+    sender = (payload.sender_name or "").strip() or "Agent"
+    msg = (payload.message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="message is required")
+    convo_msg = conversation_service().add_message(
+        session_id=session_id,
+        bot_id=bot_id,
+        role="bot",
+        content=msg,
+        citations=[],
+        sender_name=sender,
+    )
+    from infrastructure.services.conversation_ws import broadcast_message
+    await broadcast_message(
+        session_id,
+        {
+            "type": "human_message",
+            "message": {
+                "message_id": convo_msg.message_id,
+                "content": convo_msg.content,
+                "sender_name": sender,
+                "created_at": convo_msg.created_at,
+                "role": "bot",
+            },
+        },
+    )
+    return {"status": "ok"}
+
+
+@router.get("/v1/pk/{publishable_key}/conversations", response_model=ConversationListResponse)
+async def v1_pk_list_conversations(
+    publishable_key: str,
+    limit: int = 50,
+    cursor: Optional[str] = None,
+):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    sessions = conversation_service().list_sessions(bot.bot_id, limit=limit, before=cursor)
+    next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
+    return ConversationListResponse(
+        bot_id=bot.bot_id,
+        sessions=[
+            ConversationSessionResponse(
+                session_id=s.session_id,
+                bot_id=s.bot_id,
+                channel=s.channel,
+                status=s.status,
+                title=s.title,
+                site_url=s.site_url,
+                site_title=s.site_title,
+                message_count=s.message_count,
+                started_at=s.started_at,
+                last_active_at=s.last_active_at,
+                ended_at=s.ended_at,
+            )
+            for s in sessions
+        ],
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/v1/pk/{publishable_key}/conversations/{session_id}", response_model=ConversationDetailResponse)
+async def v1_pk_get_conversation(
+    publishable_key: str,
+    session_id: str,
+    limit: int = 200,
+):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot.bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    messages = conversation_service().list_messages(session_id, limit=limit)
+    return ConversationDetailResponse(
+        bot_id=bot.bot_id,
+        session_id=session_id,
+        messages=[
+            ConversationMessageResponse(
+                message_id=m.message_id,
+                session_id=m.session_id,
+                bot_id=m.bot_id,
+                role=m.role,
+                sender_name=m.sender_name,
+                content=m.content,
+                citations=[Citation(url=str(c.get("url") or ""), snippet=str(c.get("snippet") or "")) for c in (m.citations or [])],
+                created_at=m.created_at,
+            )
+            for m in messages
+        ],
+    )
+
+
+@router.post("/v1/pk/{publishable_key}/conversations/{session_id}/end", response_model=ConversationEndResponse)
+async def v1_pk_end_conversation(
+    publishable_key: str,
+    session_id: str,
+):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot.bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    conversation_service().end_session(session_id, status="ended")
+    return ConversationEndResponse(session_id=session_id, status="ended")
+
+
+@router.post("/v1/pk/{publishable_key}/conversations/{session_id}/human-reply")
+async def v1_pk_human_reply(
+    publishable_key: str,
+    session_id: str,
+    payload: ConversationHumanReplyRequest,
+):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot.bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    if session.status != "active":
+        raise HTTPException(status_code=400, detail="Session is not active")
+    sender = (payload.sender_name or "").strip() or "Agent"
+    msg = (payload.message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="message is required")
+    convo_msg = conversation_service().add_message(
+        session_id=session_id,
+        bot_id=bot.bot_id,
+        role="bot",
+        content=msg,
+        citations=[],
+        sender_name=sender,
+    )
+    from infrastructure.services.conversation_ws import broadcast_message
+    await broadcast_message(
+        session_id,
+        {
+            "type": "human_message",
+            "message": {
+                "message_id": convo_msg.message_id,
+                "content": convo_msg.content,
+                "sender_name": sender,
+                "created_at": convo_msg.created_at,
+                "role": "bot",
+            },
+        },
+    )
+    return {"status": "ok"}
 
 
 @router.delete("/v1/org/bots/{bot_id}")

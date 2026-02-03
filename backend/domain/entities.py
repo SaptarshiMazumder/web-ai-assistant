@@ -119,3 +119,33 @@ class DiscoveryJob:
     celery_task_id: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+
+
+@dataclass
+class ConversationSession:
+    session_id: str
+    bot_id: str
+    org_id: str
+    channel: str
+    status: str
+    title: Optional[str]
+    site_url: Optional[str]
+    site_title: Optional[str]
+    message_count: int
+    started_at: str
+    last_active_at: str
+    ended_at: Optional[str] = None
+    user_agent: Optional[str] = None
+    ip: Optional[str] = None
+
+
+@dataclass
+class ConversationMessage:
+    message_id: str
+    session_id: str
+    bot_id: str
+    role: str
+    content: str
+    sender_name: Optional[str] = None
+    citations: List[Dict[str, Any]] = field(default_factory=list)
+    created_at: str = ""
