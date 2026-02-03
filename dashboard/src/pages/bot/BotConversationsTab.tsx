@@ -1,40 +1,46 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, User, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Bot, User } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
-import type { ConversationMessageRecord, ConversationSessionRecord } from '../../hooks/useDashboardData'
+import type {
+  ConversationMessageRecord,
+  ConversationSessionRecord,
+  EscalationRecord,
+} from '../../hooks/useDashboardData'
 
 export default function BotConversationsTab() {
-  const { selectedBot, listConversations, getConversation, endConversation } = useDashboardData()
+  const { selectedBot, listConversations, getConversation, endConversation, getEscalationForSession } =
+    useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
+  const [escalation, setEscalation] = useState<EscalationRecord | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
-  const [cursorStack, setCursorStack] = useState<string[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [currentCursor, setCurrentCursor] = useState<string | null>(null)
-  const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [searchParams] = useSearchParams()
 
   useEffect(() => {
     if (!selectedBot) return
     setSessions([])
     setMessages([])
+    setEscalation(null)
     setSelectedSession(null)
-    setCursorStack([])
-    setTotalCount(null)
-    void loadSessions(null)
+    void loadSessions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBot?.bot_id])
 
-  const canPrev = cursorStack.length > 0
-  const canNext = !!nextCursor
-  const pageSize = 10
-  const currentPage = cursorStack.length + 1
-  const totalPages = totalCount ? Math.max(1, Math.ceil(totalCount / pageSize)) : null
+  const pageSize = 200
 
   const selectedSessionRecord = useMemo(
     () => sessions.find((s) => s.session_id === selectedSession) || null,
     [sessions, selectedSession]
   )
+
+  useEffect(() => {
+    const sessionParam = searchParams.get('session')
+    if (!sessionParam || !selectedBot) return
+    if (selectedSession === sessionParam) return
+    void openSession(sessionParam)
+  }, [searchParams, sessions, selectedBot, selectedSession])
 
   function formatListTime(ts?: string | null) {
     if (!ts) return ''
@@ -65,15 +71,12 @@ export default function BotConversationsTab() {
     return 'Session ended'
   }
 
-  async function loadSessions(cursor: string | null) {
+  async function loadSessions() {
     if (!selectedBot) return
     setLoading(true)
     try {
-      const data = await listConversations(selectedBot.bot_id, pageSize, cursor)
+      const data = await listConversations(selectedBot.bot_id, pageSize)
       setSessions(data.sessions || [])
-      setNextCursor(data.next_cursor || null)
-      setCurrentCursor(cursor)
-      setTotalCount(typeof data.total_count === 'number' ? data.total_count : null)
     } finally {
       setLoading(false)
     }
@@ -84,8 +87,12 @@ export default function BotConversationsTab() {
     setSelectedSession(sessionId)
     setLoading(true)
     try {
-      const data = await getConversation(selectedBot.bot_id, sessionId, 200)
+      const [data, escalationInfo] = await Promise.all([
+        getConversation(selectedBot.bot_id, sessionId, 200),
+        getEscalationForSession(selectedBot.bot_id, sessionId),
+      ])
       setMessages(data || [])
+      setEscalation(escalationInfo || null)
     } finally {
       setLoading(false)
     }
@@ -119,7 +126,7 @@ export default function BotConversationsTab() {
     await endConversation(selectedBot.bot_id, selectedSession)
     setSelectedSession(null)
     setMessages([])
-    await loadSessions(currentCursor)
+    await loadSessions()
   }
 
 
@@ -166,39 +173,6 @@ export default function BotConversationsTab() {
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
-          <button
-            type="button"
-            className="circle-nav"
-            disabled={!canPrev}
-            aria-label="Previous page"
-            onClick={() => {
-              const stack = [...cursorStack]
-              const prev = stack.pop() || null
-              setCursorStack(stack)
-              void loadSessions(prev)
-            }}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div className="muted" style={{ fontSize: '0.95rem' }}>
-            Page {currentPage}
-            {totalPages ? ` of ${totalPages}` : ''}
-          </div>
-          <button
-            type="button"
-            className="circle-nav"
-            disabled={!canNext}
-            aria-label="Next page"
-            onClick={() => {
-              if (!nextCursor) return
-              if (currentCursor) setCursorStack([...cursorStack, currentCursor])
-              void loadSessions(nextCursor)
-            }}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
       </section>
 
       <section className="card">
@@ -237,9 +211,44 @@ export default function BotConversationsTab() {
               </button>
             </div>
             <div className="conversation-messages">
-              {messages.map((m, idx) => {
+              {(() => {
+                let escalationRendered = false
+                return messages.map((m, idx) => {
                 const prev = messages[idx - 1]
                 const showDate = toDateKey(m.created_at || null) !== toDateKey(prev?.created_at || null)
+                if (m.role === 'system') {
+                  const shouldShowEscalation =
+                    !escalationRendered &&
+                    !!escalation?.visitor_email &&
+                    m.content?.toLowerCase().includes('escalated to support')
+                  if (shouldShowEscalation) {
+                    escalationRendered = true
+                  }
+                  return (
+                    <div key={m.message_id || `${m.role}-${idx}`}>
+                      {showDate && (
+                        <div className="conversation-date-separator">
+                          {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
+                        </div>
+                      )}
+                      <div className="conversation-system-note">{m.content}</div>
+                      {shouldShowEscalation && (
+                        <div className="conversation-escalation-box">
+                          <div className="conversation-escalation-row">
+                            <span>Escalation email</span>
+                            <span>{escalation?.visitor_email}</span>
+                          </div>
+                          {escalation?.details && (
+                            <div className="conversation-escalation-row">
+                              <span>Escalation details</span>
+                              <span>{escalation.details}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
                 return (
                   <div key={m.message_id || `${m.role}-${idx}`}>
                     {showDate && (
@@ -261,7 +270,8 @@ export default function BotConversationsTab() {
                     </div>
                   </div>
                 )
-              })}
+              })
+              })()}
               {messages.length === 0 && !loading && <div className="muted">No messages found.</div>}
             </div>
           </>

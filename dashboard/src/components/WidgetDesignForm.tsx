@@ -31,7 +31,7 @@ export type WidgetDesignState = {
 export type SuggestedMessageConfig = {
   id: string
   label: string
-  type: 'user_message' | 'ai_response'
+  type: 'user_message' | 'ai_response' | 'escalate'
   message?: string
   prompt?: string
 }
@@ -61,6 +61,7 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
     { id: 'suggest_1', label: 'What can you do?', type: 'user_message', message: 'What can you do?' },
     { id: 'suggest_2', label: 'Ask a question', type: 'user_message', message: 'Ask a question' },
     { id: 'suggest_3', label: 'Get help', type: 'user_message', message: 'Get help' },
+    { id: 'suggest_4', label: 'Escalate to support', type: 'escalate' },
   ],
 }
 
@@ -100,7 +101,7 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
         const label = typeof item?.label === 'string' ? item.label : ''
         if (!label) return null
         const type =
-          item?.type === 'ai_response' || item?.type === 'user_message'
+          item?.type === 'ai_response' || item?.type === 'user_message' || item?.type === 'escalate'
             ? item.type
             : 'user_message'
         const message = typeof item?.message === 'string' ? item.message : undefined

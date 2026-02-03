@@ -82,8 +82,22 @@
     document.body.appendChild(iframe);
   }
 
+  var escalationUrl = apiBase + "/v1/pk/" + encodeURIComponent(botKey) + "/escalation-config";
+
   fetch(configUrl)
     .then(function (r) { return r.ok ? r.json() : {}; })
+    .then(function (config) {
+      return fetch(escalationUrl)
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (esc) {
+          config = config || {};
+          if (esc && typeof esc.enabled === "boolean") {
+            config.escalationsEnabled = esc.enabled;
+          }
+          return config;
+        })
+        .catch(function () { return config || {}; });
+    })
     .then(function (config) { applyConfig(config || {}); })
     .catch(function () { applyConfig(scriptOverrides()); });
 })();

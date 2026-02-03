@@ -242,6 +242,51 @@ class ConversationEndResponse(BaseModel):
     status: str
 
 
+class EscalationConfigPayload(BaseModel):
+    enabled: Optional[bool] = None
+    notify_enabled: Optional[bool] = None
+    notification_emails: Optional[str] = None
+
+
+class EscalationConfigResponse(BaseModel):
+    enabled: bool = False
+    notify_enabled: bool = False
+    notification_emails: str = ""
+
+
+class EscalationCreateRequest(BaseModel):
+    visitor_email: str
+    details: Optional[str] = None
+    site_url: Optional[str] = None
+    site_title: Optional[str] = None
+
+
+class EscalationRecordResponse(BaseModel):
+    escalation_id: str
+    bot_id: str
+    session_id: str
+    visitor_email: str
+    details: Optional[str] = None
+    status: str
+    created_at: str
+    title: Optional[str] = None
+    site_url: Optional[str] = None
+    site_title: Optional[str] = None
+    last_active_at: Optional[str] = None
+    session_status: Optional[str] = None
+
+
+class EscalationListResponse(BaseModel):
+    bot_id: str
+    escalations: List[EscalationRecordResponse]
+    next_cursor: Optional[str] = None
+    total_count: Optional[int] = None
+
+
+class EscalationStatusUpdateRequest(BaseModel):
+    status: str
+
+
 class WidgetConfigUpdate(BaseModel):
     """Widget design config stored per bot (widget API shape). All fields optional."""
     position: Optional[str] = None

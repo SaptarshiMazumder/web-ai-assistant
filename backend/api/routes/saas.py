@@ -36,6 +36,12 @@ from api.schemas import (
     ConversationListResponse,
     ConversationMessageResponse,
     ConversationSessionResponse,
+    EscalationConfigPayload,
+    EscalationConfigResponse,
+    EscalationCreateRequest,
+    EscalationListResponse,
+    EscalationRecordResponse,
+    EscalationStatusUpdateRequest,
     OrgCreateRequest,
     OrgListResponse,
     OrgMemberAddRequest,
@@ -75,6 +81,20 @@ def _require_admin_key(x_admin_key: Optional[str]) -> None:
         return
     if (x_admin_key or "").strip() != required:
         raise HTTPException(status_code=401, detail="Missing/invalid admin key")
+
+
+def _parse_escalation_config(raw: Optional[str]) -> Dict[str, Any]:
+    if not raw or not raw.strip():
+        return {"enabled": False, "notify_enabled": False, "notification_emails": ""}
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return {"enabled": False, "notify_enabled": False, "notification_emails": ""}
+    return {
+        "enabled": bool(data.get("enabled")),
+        "notify_enabled": bool(data.get("notify_enabled")),
+        "notification_emails": str(data.get("notification_emails") or ""),
+    }
 
 
 def _require_bot_secret(authorization: Optional[str]) -> str:
@@ -418,6 +438,19 @@ async def v1_pk_widget_config(publishable_key: str):
         return json.loads(bot.widget_config)
     except (TypeError, ValueError):
         return {}
+
+
+@router.get("/v1/pk/{publishable_key}/escalation-config", response_model=EscalationConfigResponse)
+async def v1_pk_escalation_config(publishable_key: str):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
+    return EscalationConfigResponse(
+        enabled=cfg["enabled"],
+        notify_enabled=cfg["notify_enabled"],
+        notification_emails=cfg["notification_emails"],
+    )
 
 
 @router.post("/v1/pk/{publishable_key}/chat", response_model=WidgetChatResponse)
@@ -1046,6 +1079,52 @@ async def v1_org_update_agent_config(
     return {"status": "ok", "bot_id": bot_id}
 
 
+@router.get("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
+async def v1_org_get_escalation_config(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
+    return EscalationConfigResponse(
+        enabled=cfg["enabled"],
+        notify_enabled=cfg["notify_enabled"],
+        notification_emails=cfg["notification_emails"],
+    )
+
+
+@router.put("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
+async def v1_org_update_escalation_config(
+    bot_id: str,
+    payload: EscalationConfigPayload,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
+    if payload.enabled is not None:
+        cfg["enabled"] = bool(payload.enabled)
+    if payload.notify_enabled is not None:
+        cfg["notify_enabled"] = bool(payload.notify_enabled)
+    if payload.notification_emails is not None:
+        cfg["notification_emails"] = str(payload.notification_emails)
+    bot_service().update_escalation_config(bot_id, json.dumps(cfg))
+    return EscalationConfigResponse(
+        enabled=cfg["enabled"],
+        notify_enabled=cfg["notify_enabled"],
+        notification_emails=cfg["notification_emails"],
+    )
+
+
 @router.post("/v1/org/bots/{bot_id}/test-chat", response_model=TestChatResponse)
 async def v1_org_test_chat(
     bot_id: str,
@@ -1121,7 +1200,11 @@ async def v1_org_list_conversations(
     _assert_bot_org(bot_id, resolved_org)
     sessions = conversation_service().list_sessions(bot_id, limit=limit, before=cursor)
     total_count = conversation_service().count_sessions(bot_id)
-    next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
+    next_cursor = (
+        f"{sessions[-1].last_active_at}|{sessions[-1].session_id}"
+        if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200)
+        else None
+    )
     return ConversationListResponse(
         bot_id=bot_id,
         sessions=[
@@ -1143,6 +1226,94 @@ async def v1_org_list_conversations(
         next_cursor=next_cursor,
         total_count=total_count,
     )
+
+
+@router.get("/v1/org/bots/{bot_id}/escalations", response_model=EscalationListResponse)
+async def v1_org_list_escalations(
+    bot_id: str,
+    limit: int = 10,
+    cursor: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    escalations = conversation_service().list_escalations(bot_id, limit=limit, before=cursor)
+    total_count = conversation_service().count_escalations(bot_id)
+    next_cursor = (
+        f"{escalations[-1].created_at}|{escalations[-1].escalation_id}"
+        if escalations and len(escalations) >= min(max(int(limit or 10), 1), 200)
+        else None
+    )
+    return EscalationListResponse(
+        bot_id=bot_id,
+        escalations=[
+            EscalationRecordResponse(
+                escalation_id=e.escalation_id,
+                bot_id=e.bot_id,
+                session_id=e.session_id,
+                visitor_email=e.visitor_email,
+                status=e.status,
+                created_at=e.created_at,
+                details=e.details,
+                title=e.session_title,
+                site_url=e.site_url,
+                site_title=e.site_title,
+                last_active_at=e.last_active_at,
+                session_status=e.session_status,
+            )
+            for e in escalations
+        ],
+        next_cursor=next_cursor,
+        total_count=total_count,
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/escalations/{session_id}", response_model=EscalationRecordResponse)
+async def v1_org_get_escalation_for_session(
+    bot_id: str,
+    session_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    record = conversation_service().get_escalation_for_session(bot_id, session_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="No escalation for this session")
+    return EscalationRecordResponse(
+        escalation_id=record.escalation_id,
+        bot_id=record.bot_id,
+        session_id=record.session_id,
+        visitor_email=record.visitor_email,
+        status=record.status,
+        created_at=record.created_at,
+        details=record.details,
+        title=record.session_title,
+        site_url=record.site_url,
+        site_title=record.site_title,
+        last_active_at=record.last_active_at,
+        session_status=record.session_status,
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/escalations/{escalation_id}/status")
+async def v1_org_update_escalation_status(
+    bot_id: str,
+    escalation_id: str,
+    payload: EscalationStatusUpdateRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    status = (payload.status or "").strip().lower()
+    if status not in {"open", "resolved"}:
+        raise HTTPException(status_code=400, detail="Invalid escalation status")
+    updated = conversation_service().update_escalation_status(bot_id, escalation_id, status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    return {"status": status}
 
 
 @router.get("/v1/org/bots/{bot_id}/conversations/{session_id}", response_model=ConversationDetailResponse)
@@ -1205,7 +1376,11 @@ async def v1_pk_list_conversations(
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     sessions = conversation_service().list_sessions(bot.bot_id, limit=limit, before=cursor)
     total_count = conversation_service().count_sessions(bot.bot_id)
-    next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
+    next_cursor = (
+        f"{sessions[-1].last_active_at}|{sessions[-1].session_id}"
+        if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200)
+        else None
+    )
     return ConversationListResponse(
         bot_id=bot.bot_id,
         sessions=[
@@ -1257,6 +1432,7 @@ async def v1_pk_get_conversation(
                 created_at=m.created_at,
             )
             for m in messages
+            if m.role != "system"
         ],
     )
 
@@ -1274,6 +1450,58 @@ async def v1_pk_end_conversation(
         raise HTTPException(status_code=404, detail="Unknown session_id")
     conversation_service().end_session(session_id, status="ended")
     return ConversationEndResponse(session_id=session_id, status="ended")
+
+
+@router.post("/v1/pk/{publishable_key}/conversations/{session_id}/escalate", response_model=EscalationRecordResponse)
+async def v1_pk_escalate_support(
+    publishable_key: str,
+    session_id: str,
+    payload: EscalationCreateRequest,
+    request: Request,
+):
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    session = conversation_service().get_session(session_id)
+    if session_id == "new" or not session or session.bot_id != bot.bot_id:
+        session = conversation_service().get_or_create_session(
+            bot_id=bot.bot_id,
+            org_id=bot.org_id,
+            channel="chat",
+            session_id=None,
+            site_url=(payload.site_url or "").strip() or None,
+            site_title=(payload.site_title or "").strip() or None,
+            user_agent=request.headers.get("user-agent"),
+            ip=request.client.host if request.client else None,
+        )
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="system",
+            content="Escalated to support",
+        )
+    visitor_email = (payload.visitor_email or "").strip().lower()
+    if not visitor_email or "@" not in visitor_email:
+        raise HTTPException(status_code=400, detail="visitor_email is required")
+    cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
+    if not cfg.get("enabled"):
+        raise HTTPException(status_code=400, detail="Escalations are disabled for this bot")
+    record = conversation_service().create_escalation(
+        bot_id=bot.bot_id,
+        session_id=session.session_id,
+        visitor_email=visitor_email,
+        details=(payload.details or "").strip() or None,
+    )
+    # TODO: send email notification when notify_enabled is true.
+    return EscalationRecordResponse(
+        escalation_id=record.escalation_id,
+        bot_id=record.bot_id,
+        session_id=record.session_id,
+        visitor_email=record.visitor_email,
+        status=record.status,
+        created_at=record.created_at,
+        details=getattr(payload, "details", None),
+    )
 
 
 @router.delete("/v1/org/bots/{bot_id}")

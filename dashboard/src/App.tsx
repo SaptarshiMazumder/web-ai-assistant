@@ -24,6 +24,7 @@ import BotOverviewTab from './pages/bot/BotOverviewTab'
 import BotSettingsTab from './pages/bot/BotSettingsTab'
 import BotTestingTab from './pages/bot/BotTestingTab'
 import BotConversationsTab from './pages/bot/BotConversationsTab'
+import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
 
 function mostRecentBotId(bots: { bot_id: string; created_at: string }[]): string | null {
@@ -98,6 +99,7 @@ export default function App() {
               <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
               <Route path="testing" element={<BotTestingTab />} />
               <Route path="conversations" element={<BotConversationsTab />} />
+              <Route path="escalations" element={<BotEscalationsTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
               <Route path="analytics" element={<BotAnalyticsTab />} />
             </Route>

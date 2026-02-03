@@ -56,6 +56,7 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "ALTER TABLE bots ADD COLUMN IF NOT EXISTS widget_config TEXT",
     "ALTER TABLE bots ADD COLUMN IF NOT EXISTS agent_config TEXT",
+    "ALTER TABLE bots ADD COLUMN IF NOT EXISTS escalation_config TEXT",
     """
     CREATE TABLE IF NOT EXISTS bot_domains (
       org_id TEXT NOT NULL,
@@ -170,6 +171,18 @@ _SCHEMA_SQL: Iterable[str] = (
       created_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS conversation_escalations (
+      escalation_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      visitor_email TEXT NOT NULL,
+      details TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_at TEXT NOT NULL
+    )
+    """,
+    "ALTER TABLE conversation_escalations ADD COLUMN IF NOT EXISTS details TEXT",
     "ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sender_name TEXT",
     "CREATE INDEX IF NOT EXISTS conversation_sessions_bot_id ON conversation_sessions (bot_id)",
     "CREATE INDEX IF NOT EXISTS conversation_sessions_last_active ON conversation_sessions (bot_id, last_active_at DESC)",

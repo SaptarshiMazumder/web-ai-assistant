@@ -30,6 +30,9 @@ class BotService:
     def update_agent_config(self, bot_id: str, config_json: str) -> None:
         self._bot_repo.update_agent_config(bot_id, config_json)
 
+    def update_escalation_config(self, bot_id: str, config_json: str) -> None:
+        self._bot_repo.update_escalation_config(bot_id, config_json)
+
     def get_bot_by_publishable_key(self, publishable_key: str) -> Optional[Bot]:
         return self._bot_repo.get_bot_by_publishable_key(publishable_key)
 

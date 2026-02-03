@@ -15,6 +15,7 @@
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
   const suggestedMessagesParam = params.get("suggestedMessages");
+  const escalationsEnabled = parseBool(params.get("escalationsEnabled"), false);
   const sessionKey = pk ? `webai_session_${pk}` : null;
   let sessionId = sessionKey ? localStorage.getItem(sessionKey) || "" : "";
   let isSessionEnded = false;
@@ -33,7 +34,7 @@
     return list
       .map((item, idx) => {
         const label = item && typeof item.label === "string" ? item.label : "";
-        const type = item && item.type === "ai_response" ? item.type : "user_message";
+        const type = item && (item.type === "ai_response" || item.type === "escalate") ? item.type : "user_message";
         const message = item && typeof item.message === "string" ? item.message : "";
         const prompt = item && typeof item.prompt === "string" ? item.prompt : "";
         return { id: String(item && item.id ? item.id : `suggest_${idx}`), label, type, message, prompt };
@@ -53,6 +54,7 @@
       { id: "default_1", label: "What can you do?", type: "user_message", message: "What can you do?" },
       { id: "default_2", label: "Ask a question", type: "user_message", message: "Ask a question" },
       { id: "default_3", label: "Get help", type: "user_message", message: "Get help" },
+      { id: "default_4", label: "Escalate to support", type: "escalate", message: "" },
     ];
   }
 
@@ -187,6 +189,10 @@
         sendMessageWithContent(prompt, display);
         return;
       }
+      if (item.type === "escalate") {
+        openEscalationModal();
+        return;
+      }
       const content = item.message || item.label;
       sendMessageWithContent(content, item.label || content);
     });
@@ -198,6 +204,7 @@
     quickActionsEl.innerHTML = "";
     if (!force && (isSessionEnded || botPending || !hasBotReply)) return;
     suggestedMessages.forEach((item) => {
+      if (item.type === "escalate" && !escalationsEnabled) return;
       quickActionsEl.appendChild(buildSuggestionButton(item));
     });
   }
@@ -298,6 +305,150 @@
       botPending = false;
       renderQuickActions();
     }
+  }
+
+  function openEscalationModal() {
+    if (!escalationsEnabled) {
+      appendBubble("Escalations are currently disabled.", "bot");
+      return;
+    }
+    if (document.getElementById("escalation-modal")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "escalation-modal";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(15, 23, 42, 0.6)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "9999";
+
+    const card = document.createElement("div");
+    card.style.background = theme === "dark" ? "#0f172a" : "#ffffff";
+    card.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+    card.style.borderRadius = "14px";
+    card.style.padding = "18px";
+    card.style.width = "90%";
+    card.style.maxWidth = "320px";
+    card.style.boxShadow = "0 16px 40px rgba(0,0,0,0.25)";
+
+    const title = document.createElement("div");
+    title.textContent = "Escalate to support";
+    title.style.fontWeight = "600";
+    title.style.marginBottom = "6px";
+
+    const subtitle = document.createElement("div");
+    subtitle.textContent = "Enter your email so support can reach you.";
+    subtitle.style.fontSize = "12px";
+    subtitle.style.color = theme === "dark" ? "#94a3b8" : "#64748b";
+    subtitle.style.marginBottom = "12px";
+
+    const inputEl = document.createElement("input");
+    inputEl.type = "email";
+    inputEl.placeholder = "you@email.com";
+    inputEl.style.width = "100%";
+    inputEl.style.padding = "10px 12px";
+    inputEl.style.borderRadius = "10px";
+    inputEl.style.border = "1px solid #e2e8f0";
+    inputEl.style.background = theme === "dark" ? "#0b1220" : "#ffffff";
+    inputEl.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+
+    const detailsLabel = document.createElement("div");
+    detailsLabel.textContent = "Details (optional)";
+    detailsLabel.style.fontSize = "12px";
+    detailsLabel.style.color = theme === "dark" ? "#94a3b8" : "#64748b";
+    detailsLabel.style.marginTop = "10px";
+
+    const detailsEl = document.createElement("textarea");
+    detailsEl.placeholder = "Tell us a bit more about your request (optional)";
+    detailsEl.rows = 3;
+    detailsEl.style.width = "100%";
+    detailsEl.style.padding = "10px 12px";
+    detailsEl.style.borderRadius = "10px";
+    detailsEl.style.border = "1px solid #e2e8f0";
+    detailsEl.style.background = theme === "dark" ? "#0b1220" : "#ffffff";
+    detailsEl.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+    detailsEl.style.marginTop = "6px";
+
+    const errorEl = document.createElement("div");
+    errorEl.style.fontSize = "12px";
+    errorEl.style.color = "#ef4444";
+    errorEl.style.marginTop = "6px";
+    errorEl.style.display = "none";
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "8px";
+    actions.style.marginTop = "12px";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.flex = "1";
+    cancelBtn.style.height = "36px";
+    cancelBtn.style.borderRadius = "10px";
+    cancelBtn.style.border = "1px solid #e2e8f0";
+    cancelBtn.style.background = "transparent";
+    cancelBtn.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+
+    const submitBtn = document.createElement("button");
+    submitBtn.textContent = "Submit";
+    submitBtn.style.flex = "1";
+    submitBtn.style.height = "36px";
+    submitBtn.style.borderRadius = "10px";
+    submitBtn.style.border = "0";
+    submitBtn.style.background = "var(--widget-color)";
+    submitBtn.style.color = "var(--widget-text-color)";
+
+    cancelBtn.onclick = () => overlay.remove();
+    submitBtn.onclick = async () => {
+      const email = (inputEl.value || "").trim();
+      if (!email || email.indexOf("@") === -1) {
+        errorEl.textContent = "Please enter a valid email.";
+        errorEl.style.display = "block";
+        return;
+      }
+      const details = (detailsEl.value || "").trim();
+      submitBtn.disabled = true;
+      try {
+        const targetSession = sessionId || "new";
+        const resp = await fetch(
+          `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(targetSession)}/escalate`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ visitor_email: email, details: details || null, site_url: siteUrl || null, site_title: siteTitle || null }),
+          }
+        );
+        if (!resp.ok) {
+          const data = await resp.json().catch(async () => ({ detail: await resp.text() }));
+          errorEl.textContent = data.detail || "Failed to submit escalation.";
+          errorEl.style.display = "block";
+          submitBtn.disabled = false;
+          return;
+        }
+        const data = await resp.json().catch(() => null);
+        if (data && data.session_id) setSession(data.session_id);
+        overlay.remove();
+        appendBubble("Thanks! Support has been notified and will reach out soon.", "bot");
+      } catch (e) {
+        errorEl.textContent = "Failed to submit escalation.";
+        errorEl.style.display = "block";
+        submitBtn.disabled = false;
+      }
+    };
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(submitBtn);
+    card.appendChild(title);
+    card.appendChild(subtitle);
+    card.appendChild(inputEl);
+    card.appendChild(detailsLabel);
+    card.appendChild(detailsEl);
+    card.appendChild(errorEl);
+    card.appendChild(actions);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    setTimeout(() => inputEl.focus(), 0);
   }
 
   async function loadHistory() {

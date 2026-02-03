@@ -14,6 +14,7 @@ from domain.entities import (
     BotSource,
     ConversationMessage,
     ConversationSession,
+    EscalationRecord,
     DiscoveryJob,
     IndexJob,
     OrgMemberRecord,
@@ -60,6 +61,10 @@ def _new_message_id() -> str:
     return "msg_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
 
 
+def _new_escalation_id() -> str:
+    return "esc_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
+
+
 class PostgresBotRepository:
     def create_bot(self, display_name: str, org_id: str) -> Bot:
         bot_id = _new_bot_id()
@@ -90,12 +95,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config FROM bots WHERE publishable_key = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config, escalation_config FROM bots WHERE publishable_key = %s",
                 (pk,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None)
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None, escalation_config=row[7] if len(row) > 7 else None)
         finally:
             con.close()
 
@@ -106,12 +111,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config FROM bots WHERE secret_key = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config, escalation_config FROM bots WHERE secret_key = %s",
                 (sk,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None)
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None, escalation_config=row[7] if len(row) > 7 else None)
         finally:
             con.close()
 
@@ -122,12 +127,12 @@ class PostgresBotRepository:
         con = _connect()
         try:
             row = con.execute(
-                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config FROM bots WHERE bot_id = %s",
+                "SELECT bot_id, org_id, display_name, publishable_key, secret_key, widget_config, agent_config, escalation_config FROM bots WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
             if not row:
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None)
+            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None, escalation_config=row[7] if len(row) > 7 else None)
         finally:
             con.close()
 
@@ -139,7 +144,7 @@ class PostgresBotRepository:
         try:
             row = con.execute(
                 """
-                SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config
+                SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config, escalation_config
                 FROM bots
                 WHERE bot_id = %s
                 """,
@@ -157,6 +162,7 @@ class PostgresBotRepository:
                 updated_at=row[6],
                 widget_config=row[7] if len(row) > 7 else None,
                 agent_config=row[8] if len(row) > 8 else None,
+                escalation_config=row[9] if len(row) > 9 else None,
             )
         finally:
             con.close()
@@ -167,7 +173,7 @@ class PostgresBotRepository:
             if org_id:
                 rows = con.execute(
                     """
-                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config
+                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config, escalation_config
                     FROM bots
                     WHERE org_id = %s
                     ORDER BY created_at DESC
@@ -177,7 +183,7 @@ class PostgresBotRepository:
             else:
                 rows = con.execute(
                     """
-                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config
+                    SELECT bot_id, org_id, display_name, publishable_key, secret_key, created_at, updated_at, widget_config, agent_config, escalation_config
                     FROM bots
                     ORDER BY created_at DESC
                     """
@@ -193,6 +199,7 @@ class PostgresBotRepository:
                     updated_at=row[6],
                     widget_config=row[7] if len(row) > 7 else None,
                     agent_config=row[8] if len(row) > 8 else None,
+                    escalation_config=row[9] if len(row) > 9 else None,
                 )
                 for row in (rows or [])
             ]
@@ -223,6 +230,21 @@ class PostgresBotRepository:
             now = _utc_now()
             con.execute(
                 "UPDATE bots SET agent_config = %s, updated_at = %s WHERE bot_id = %s",
+                (config_json, now, bid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_escalation_config(self, bot_id: str, config_json: str) -> None:
+        bid = (bot_id or "").strip()
+        if not bid:
+            raise ValueError("bot_id is required")
+        con = _connect()
+        try:
+            now = _utc_now()
+            con.execute(
+                "UPDATE bots SET escalation_config = %s, updated_at = %s WHERE bot_id = %s",
                 (config_json, now, bid),
             )
             con.commit()
@@ -1320,19 +1342,26 @@ class PostgresConversationRepository:
         if not bid:
             return []
         lim = max(1, min(int(limit or 50), 200))
+        before_ts = None
+        before_id = None
+        if before:
+            if "|" in before:
+                before_ts, before_id = before.split("|", 1)
+            else:
+                before_ts = before
         con = _connect()
         try:
-            if before:
+            if before_ts:
                 rows = con.execute(
                     """
                     SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
                            message_count, started_at, last_active_at, ended_at, user_agent, ip
                     FROM conversation_sessions
-                    WHERE bot_id = %s AND last_active_at < %s
-                    ORDER BY last_active_at DESC
+                    WHERE bot_id = %s AND (last_active_at, session_id) < (%s, %s)
+                    ORDER BY last_active_at DESC, session_id DESC
                     LIMIT %s
                     """,
-                    (bid, before, lim),
+                    (bid, before_ts, before_id or "", lim),
                 ).fetchall()
             else:
                 rows = con.execute(
@@ -1341,7 +1370,7 @@ class PostgresConversationRepository:
                            message_count, started_at, last_active_at, ended_at, user_agent, ip
                     FROM conversation_sessions
                     WHERE bot_id = %s
-                    ORDER BY last_active_at DESC
+                    ORDER BY last_active_at DESC, session_id DESC
                     LIMIT %s
                     """,
                     (bid, lim),
@@ -1514,5 +1543,168 @@ class PostgresConversationRepository:
                     )
                 )
             return result
+        finally:
+            con.close()
+
+    def create_escalation(self, *, bot_id: str, session_id: str, visitor_email: str, details: Optional[str] = None) -> EscalationRecord:
+        bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
+        email = (visitor_email or "").strip().lower()
+        if not bid or not sid or not email:
+            raise ValueError("bot_id, session_id, and visitor_email are required")
+        eid = _new_escalation_id()
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO conversation_escalations(
+                  escalation_id, bot_id, session_id, visitor_email, details, status, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (eid, bid, sid, email, details, "open", now),
+            )
+            con.commit()
+            return EscalationRecord(
+                escalation_id=eid,
+                bot_id=bid,
+                session_id=sid,
+                visitor_email=email,
+                created_at=now,
+                status="open",
+            )
+        finally:
+            con.close()
+
+    def count_escalations_for_bot(self, bot_id: str) -> int:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return 0
+        con = _connect()
+        try:
+            row = con.execute(
+                "SELECT COUNT(1) FROM conversation_escalations WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            return int(row[0]) if row else 0
+        finally:
+            con.close()
+
+    def list_escalations_for_bot(
+        self, bot_id: str, *, limit: int = 10, before: Optional[str] = None
+    ) -> List[EscalationRecord]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        lim = max(1, min(int(limit or 10), 200))
+        before_ts = None
+        before_id = None
+        if before:
+            if "|" in before:
+                before_ts, before_id = before.split("|", 1)
+            else:
+                before_ts = before
+        con = _connect()
+        try:
+            if before_ts:
+                rows = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    WHERE e.bot_id = %s AND (e.created_at, e.escalation_id) < (%s, %s)
+                    ORDER BY e.created_at DESC
+                    LIMIT %s
+                    """,
+                    (bid, before_ts, before_id or "", lim),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    WHERE e.bot_id = %s
+                    ORDER BY e.created_at DESC
+                    LIMIT %s
+                    """,
+                    (bid, lim),
+                ).fetchall()
+            result = []
+            for row in rows or []:
+                result.append(
+                    EscalationRecord(
+                        escalation_id=row[0],
+                        bot_id=row[1],
+                        session_id=row[2],
+                        visitor_email=row[3],
+                        status=row[5],
+                        created_at=row[6],
+                        details=row[4],
+                        session_title=row[7],
+                        site_url=row[8],
+                        site_title=row[9],
+                        last_active_at=row[10],
+                        session_status=row[11],
+                    )
+                )
+            return result
+        finally:
+            con.close()
+
+    def get_escalation_for_session(self, bot_id: str, session_id: str) -> Optional[EscalationRecord]:
+        bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
+        if not bid or not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                       s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                FROM conversation_escalations e
+                LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                WHERE e.bot_id = %s AND e.session_id = %s
+                ORDER BY e.created_at DESC
+                LIMIT 1
+                """,
+                (bid, sid),
+            ).fetchone()
+            if not row:
+                return None
+            return EscalationRecord(
+                escalation_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                visitor_email=row[3],
+                status=row[5],
+                created_at=row[6],
+                details=row[4],
+                session_title=row[7],
+                site_url=row[8],
+                site_title=row[9],
+                last_active_at=row[10],
+                session_status=row[11],
+            )
+        finally:
+            con.close()
+
+    def update_escalation_status(self, bot_id: str, escalation_id: str, status: str) -> bool:
+        bid = (bot_id or "").strip()
+        eid = (escalation_id or "").strip()
+        if not bid or not eid:
+            return False
+        con = _connect()
+        try:
+            con.execute(
+                "UPDATE conversation_escalations SET status = %s WHERE bot_id = %s AND escalation_id = %s",
+                (status, bid, eid),
+            )
+            con.commit()
+            return True
         finally:
             con.close()

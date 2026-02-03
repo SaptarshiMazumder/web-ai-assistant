@@ -78,7 +78,11 @@ export function SuggestedMessagesEditor({
               <div>
                 <div style={{ fontWeight: 600 }}>{msg.label}</div>
                 <div className="muted" style={{ fontSize: '0.85rem' }}>
-                  {msg.type === 'ai_response' ? 'AI response' : 'User message'}
+                  {msg.type === 'ai_response'
+                    ? 'AI response'
+                    : msg.type === 'escalate'
+                    ? 'Escalate to support'
+                    : 'User message'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -133,6 +137,7 @@ export function SuggestedMessagesEditor({
               >
                 <option value="user_message">User message</option>
                 <option value="ai_response">AI response</option>
+                <option value="escalate">Escalate to support</option>
               </select>
               {suggestionDraft.type === 'ai_response' && (
                 <>
@@ -165,6 +170,11 @@ export function SuggestedMessagesEditor({
                     placeholder="What can you do?"
                   />
                 </>
+              )}
+              {suggestionDraft.type === 'escalate' && (
+                <div className="muted" style={{ marginTop: '0.75rem' }}>
+                  Visitors will be prompted for their email before escalation is submitted.
+                </div>
               )}
             </div>
             <div className="modal-actions">

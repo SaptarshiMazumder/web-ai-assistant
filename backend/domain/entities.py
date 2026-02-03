@@ -11,6 +11,7 @@ class Bot:
     secret_key: str
     widget_config: Optional[str] = None
     agent_config: Optional[str] = None
+    escalation_config: Optional[str] = None
 
 
 @dataclass
@@ -24,6 +25,7 @@ class BotRecord:
     updated_at: str
     widget_config: Optional[str] = None
     agent_config: Optional[str] = None
+    escalation_config: Optional[str] = None
 
 
 @dataclass
@@ -149,3 +151,19 @@ class ConversationMessage:
     sender_name: Optional[str] = None
     citations: List[Dict[str, Any]] = field(default_factory=list)
     created_at: str = ""
+
+
+@dataclass
+class EscalationRecord:
+    escalation_id: str
+    bot_id: str
+    session_id: str
+    visitor_email: str
+    created_at: str
+    status: str
+    details: Optional[str] = None
+    session_title: Optional[str] = None
+    site_url: Optional[str] = None
+    site_title: Optional[str] = None
+    last_active_at: Optional[str] = None
+    session_status: Optional[str] = None

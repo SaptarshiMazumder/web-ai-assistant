@@ -74,6 +74,26 @@ class ConversationService:
     def end_session(self, session_id: str, status: str = "ended") -> None:
         self._repo.end_session(session_id, status=status)
 
+    def create_escalation(self, *, bot_id: str, session_id: str, visitor_email: str, details: Optional[str] = None):
+        return self._repo.create_escalation(
+            bot_id=bot_id,
+            session_id=session_id,
+            visitor_email=visitor_email,
+            details=details,
+        )
+
+    def list_escalations(self, bot_id: str, *, limit: int = 10, before: Optional[str] = None):
+        return self._repo.list_escalations_for_bot(bot_id, limit=limit, before=before)
+
+    def count_escalations(self, bot_id: str) -> int:
+        return self._repo.count_escalations_for_bot(bot_id)
+
+    def get_escalation_for_session(self, bot_id: str, session_id: str):
+        return self._repo.get_escalation_for_session(bot_id, session_id)
+
+    def update_escalation_status(self, bot_id: str, escalation_id: str, status: str) -> bool:
+        return self._repo.update_escalation_status(bot_id, escalation_id, status)
+
     def _is_expired(self, last_active_at: str) -> bool:
         try:
             last_dt = datetime.fromisoformat(last_active_at)

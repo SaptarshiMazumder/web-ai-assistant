@@ -132,6 +132,26 @@ export type ConversationMessageRecord = {
   created_at: string
 }
 
+export type EscalationConfig = {
+  enabled: boolean
+  notify_enabled: boolean
+  notification_emails: string
+}
+
+export type EscalationRecord = {
+  escalation_id: string
+  bot_id: string
+  session_id: string
+  visitor_email: string
+  details?: string | null
+  status: string
+  created_at: string
+  title?: string | null
+  site_url?: string | null
+  site_title?: string | null
+  last_active_at?: string | null
+  session_status?: string | null
+}
 export type OrgSummary = {
   org_id: string
   name: string
@@ -253,6 +273,15 @@ type DashboardData = {
       limit?: number
     ) => Promise<ConversationMessageRecord[]>
     endConversation: (botId: string, sessionId: string) => Promise<void>
+    getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
+    saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
+  listEscalations: (
+    botId: string,
+    limit?: number,
+    cursor?: string | null
+  ) => Promise<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }>
+    getEscalationForSession: (botId: string, sessionId: string) => Promise<EscalationRecord | null>
+    updateEscalationStatus: (botId: string, escalationId: string, status: 'open' | 'resolved') => Promise<void>
   }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -940,6 +969,76 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setError((err as Error).message)
     }
   }
+
+  async function getEscalationConfig(botId: string): Promise<EscalationConfig | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalation-config`, orgOverride)
+      return await fetchAuthedJson<EscalationConfig>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function saveEscalationConfig(botId: string, config: EscalationConfig): Promise<EscalationConfig | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalation-config`, orgOverride)
+      return await fetchAuthedJson<EscalationConfig>(path, {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function listEscalations(
+    botId: string,
+    limit = 10,
+    cursor: string | null = null
+  ): Promise<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }> {
+    if (isSuperAdmin && !activeOrgId) return { escalations: [] }
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalations?limit=${limit}${cursorParam}`, orgOverride)
+      return await fetchAuthedJson<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return { escalations: [] }
+    }
+  }
+
+  async function getEscalationForSession(botId: string, sessionId: string): Promise<EscalationRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalations/${encodeURIComponent(sessionId)}`, orgOverride)
+      return await fetchAuthedJson<EscalationRecord>(path)
+    } catch {
+      return null
+    }
+  }
+
+  async function updateEscalationStatus(
+    botId: string,
+    escalationId: string,
+    status: 'open' | 'resolved'
+  ): Promise<void> {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalations/${encodeURIComponent(escalationId)}/status`, orgOverride)
+      await fetchAuthedJson(path, { method: 'POST', body: JSON.stringify({ status }) })
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
@@ -1327,6 +1426,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     listConversations,
     getConversation,
     endConversation,
+    getEscalationConfig,
+    saveEscalationConfig,
+    listEscalations,
+    getEscalationForSession,
+    updateEscalationStatus,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)
