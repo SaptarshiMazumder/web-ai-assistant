@@ -51,21 +51,22 @@ export default function BotDesignTab() {
   }
 
   if (loading && !selectedBot) {
-    return <div className="empty-panel">Loading…</div>
+    return <div className="empty-panel">Loading...</div>
   }
 
   if (selectedBot?.bot_id !== botId) {
-    return <div className="empty-panel">Loading…</div>
+    return <div className="empty-panel">Loading...</div>
   }
 
   return (
     <WidgetDesignForm
       value={state}
       onChange={update}
+      showSuggestedMessages={false}
       actions={
         <button type="button" className="primary" onClick={() => void handleSave()} disabled={saving || savedJustNow} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
           {saving ? (
-            'Saving…'
+            'Saving...'
           ) : savedJustNow ? (
             <>
               <Check size={18} strokeWidth={2.5} aria-hidden />

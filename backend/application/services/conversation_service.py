@@ -62,6 +62,9 @@ class ConversationService:
     def list_sessions(self, bot_id: str, *, limit: int = 50, before: Optional[str] = None) -> List[ConversationSession]:
         return self._repo.list_sessions_for_bot(bot_id, limit=limit, before=before)
 
+    def count_sessions(self, bot_id: str) -> int:
+        return self._repo.count_sessions_for_bot(bot_id)
+
     def list_messages(self, session_id: str, *, limit: int = 200) -> List[ConversationMessage]:
         return self._repo.list_messages(session_id, limit=limit)
 

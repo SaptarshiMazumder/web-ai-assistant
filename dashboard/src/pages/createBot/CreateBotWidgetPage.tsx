@@ -46,6 +46,7 @@ export default function CreateBotWidgetPage() {
     autoScrollNewMessages: step4.autoScrollNewMessages,
     displaySourcesInMessages: step4.displaySourcesInMessages,
     sourcesLabel: step4.sourcesLabel,
+    suggestedMessages: step4.suggestedMessages,
   }
 
   const onChange = useCallback(<K extends keyof WidgetDesignState>(key: K, val: WidgetDesignState[K]) => {
@@ -100,7 +101,7 @@ export default function CreateBotWidgetPage() {
         Back
       </button>
       <button type="button" className="primary" onClick={() => void handleContinue()} disabled={saving}>
-        {saving ? 'Saving…' : 'Continue'}
+        {saving ? 'Saving...' : 'Continue'}
       </button>
     </>
   )

@@ -14,20 +14,13 @@
   const footerMessage = params.get("footer") || params.get("footerMessage") || "Powered by WebAI";
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
+  const suggestedMessagesParam = params.get("suggestedMessages");
   const sessionKey = pk ? `webai_session_${pk}` : null;
   let sessionId = sessionKey ? localStorage.getItem(sessionKey) || "" : "";
-  let ws = null;
-  let wsPingTimer = null;
-  let wsReconnectTimer = null;
-  let wsReconnectAttempts = 0;
-  let wsDisabled = false;
-  let wsFailureCount = 0;
-  let wsFailureLogged = false;
-  let humanPollTimer = null;
+  let isSessionEnded = false;
+  let botPending = false;
+  let hasBotReply = false;
   const seenMessageIds = new Set();
-  const seenHumanMessageIds = new Set();
-  let pollIntervalMs = 3000;
-  let pollNoopCount = 0;
 
   function parseBool(val, def) {
     if (val == null || val === "") return def;
@@ -35,19 +28,42 @@
     return v === "true" || v === "yes" || v === "1";
   }
 
-  function isWidgetVisible() {
-    if (document.visibilityState !== "visible") return false;
-    const body = document.body;
-    if (!body) return true;
-    const style = window.getComputedStyle(body);
-    if (style.display === "none" || style.visibility === "hidden") return false;
-    if (body.offsetWidth === 0 || body.offsetHeight === 0) return false;
-    return true;
+  function normalizeSuggestions(list) {
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((item, idx) => {
+        const label = item && typeof item.label === "string" ? item.label : "";
+        const type = item && item.type === "ai_response" ? item.type : "user_message";
+        const message = item && typeof item.message === "string" ? item.message : "";
+        const prompt = item && typeof item.prompt === "string" ? item.prompt : "";
+        return { id: String(item && item.id ? item.id : `suggest_${idx}`), label, type, message, prompt };
+      })
+      .filter((item) => item.label);
+  }
+
+  function getInitialSuggestions() {
+    if (suggestedMessagesParam) {
+      try {
+        const parsed = JSON.parse(suggestedMessagesParam);
+        const normalized = normalizeSuggestions(parsed);
+        if (normalized.length) return normalized;
+      } catch (e) {}
+    }
+    return [
+      { id: "default_1", label: "What can you do?", type: "user_message", message: "What can you do?" },
+      { id: "default_2", label: "Ask a question", type: "user_message", message: "Ask a question" },
+      { id: "default_3", label: "Get help", type: "user_message", message: "Get help" },
+    ];
+  }
+
+  if (sessionId) {
+    // session restored from storage
   }
 
   const SOFT_WRAP_TOKEN_MIN = 32;
   const SOFT_WRAP_CHUNK = 24;
   const SOFT_WRAP_SEPARATORS = /[\/\-\_\.\?\&\=\#\:\@]/;
+  const suggestedMessages = getInitialSuggestions();
 
   function appendSoftWrappedText(target, text) {
     if (text == null) return;
@@ -85,112 +101,18 @@
     } catch (e) {
       // ignore storage failures
     }
-    connectWebsocket();
-    startHumanPoll();
+    updateEscalationUI();
   }
 
-  function connectWebsocket() {
-    if (!sessionId || !apiBase || wsDisabled) return;
-    if (!isWidgetVisible()) return;
-    if (wsReconnectTimer) {
-      clearTimeout(wsReconnectTimer);
-      wsReconnectTimer = null;
-    }
-    if (ws) {
-      try {
-        ws.close();
-      } catch (e) {}
-    }
-    let wsBase = "";
-    try {
-      wsBase = new URL(apiBase).origin.replace(/^http/, "ws");
-    } catch (e) {
-      wsBase = apiBase.replace(/^http/, "ws");
-    }
-    ws = new WebSocket(`${wsBase}/ws/conversations/${encodeURIComponent(sessionId)}`);
-    ws.onopen = () => {
-      wsReconnectAttempts = 0;
-      wsFailureCount = 0;
-      if (wsPingTimer) {
-        clearInterval(wsPingTimer);
-      }
-      wsPingTimer = setInterval(() => {
-        try {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send("ping");
-          }
-        } catch (e) {}
-      }, 25000);
-      stopHumanPoll();
-    };
-    ws.onmessage = (event) => {
-      let data = null;
-      try {
-        data = JSON.parse(event.data);
-      } catch (e) {
-        return;
-      }
-      if (!data || data.type !== "human_message") return;
-      const msg = data.message || {};
-      if (msg.message_id) {
-        seenMessageIds.add(String(msg.message_id));
-        seenHumanMessageIds.add(String(msg.message_id));
-      }
-      const sender = msg.sender_name || "";
-      const text = msg.content || "";
-      appendBubble(text, "bot", [], sender);
-    };
-    ws.onclose = () => {
-      if (wsPingTimer) {
-        clearInterval(wsPingTimer);
-        wsPingTimer = null;
-      }
-      ws = null;
-      wsFailureCount += 1;
-      if (wsFailureCount >= 3) {
-        wsDisabled = true;
-        if (!wsFailureLogged) {
-          console.warn("WebSocket unavailable, switching to polling.");
-          wsFailureLogged = true;
-        }
-        startHumanPoll();
-        return;
-      }
-      startHumanPoll();
-      const wait = Math.min(8000, 500 * Math.pow(2, wsReconnectAttempts));
-      wsReconnectAttempts += 1;
-      wsReconnectTimer = setTimeout(() => {
-        connectWebsocket();
-      }, wait);
-    };
-    ws.onerror = (evt) => {
-      if (!wsFailureLogged) {
-        console.warn("WebSocket error, will retry:", evt);
-        wsFailureLogged = true;
-      }
-      if (wsPingTimer) {
-        clearInterval(wsPingTimer);
-        wsPingTimer = null;
-      }
-      ws = null;
-      wsFailureCount += 1;
-      if (wsFailureCount >= 3) {
-        wsDisabled = true;
-        startHumanPoll();
-        return;
-      }
-      startHumanPoll();
-    };
-  }
-
-  const DEFAULT_SUGGESTIONS = ["What can you do?", "Ask a question", "Get help"];
   const WELCOME_TEXT = welcomeMessage;
 
   const chat = document.getElementById("chat");
   const messagesEl = document.getElementById("messages");
   const welcomeEl = document.getElementById("welcome");
+  const quickActionsEl = document.getElementById("quickActions");
   const input = document.getElementById("msg");
   const send = document.getElementById("send");
+  const endChat = document.getElementById("endChat");
   const footerEl = document.getElementById("footer");
   const headerIconSlot = document.getElementById("headerIcon");
   const headerTitleEl = document.getElementById("headerTitle");
@@ -251,19 +173,33 @@
     rowDiv.appendChild(bubble);
     welcomeEl.appendChild(rowDiv);
 
-    const suggestionsDiv = document.createElement("div");
-    suggestionsDiv.className = "suggestions";
-    DEFAULT_SUGGESTIONS.forEach((q) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = q;
-      btn.addEventListener("click", () => {
-        input.value = q;
-        sendMessage();
-      });
-      suggestionsDiv.appendChild(btn);
+    // Suggested messages are rendered in the sticky quick actions area below.
+  }
+
+  function buildSuggestionButton(item) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = item.label;
+    btn.addEventListener("click", () => {
+      if (item.type === "ai_response") {
+        const prompt = item.prompt || item.message || item.label;
+        const display = item.label || prompt;
+        sendMessageWithContent(prompt, display);
+        return;
+      }
+      const content = item.message || item.label;
+      sendMessageWithContent(content, item.label || content);
     });
-    welcomeEl.appendChild(suggestionsDiv);
+    return btn;
+  }
+
+  function renderQuickActions(force = false) {
+    if (!quickActionsEl) return;
+    quickActionsEl.innerHTML = "";
+    if (!force && (isSessionEnded || botPending || !hasBotReply)) return;
+    suggestedMessages.forEach((item) => {
+      quickActionsEl.appendChild(buildSuggestionButton(item));
+    });
   }
 
   function hideWelcome() {
@@ -272,6 +208,8 @@
 
   function appendTypingBubble() {
     removeTypingBubble();
+    botPending = true;
+    renderQuickActions();
     const rowDiv = document.createElement("div");
     rowDiv.className = "message-row";
     rowDiv.id = "typing-row";
@@ -290,31 +228,12 @@
   }
 
   renderWelcome();
+  renderQuickActions(true);
   if (sessionId) {
-    connectWebsocket();
-    startHumanPoll();
     loadHistory();
+    updateEscalationUI();
   }
 
-  document.addEventListener("visibilitychange", () => {
-    if (isWidgetVisible()) {
-      if (!wsDisabled) {
-        connectWebsocket();
-      }
-      startHumanPoll();
-    } else {
-      stopHumanPoll();
-    }
-  });
-
-  window.addEventListener("resize", () => {
-    if (isWidgetVisible()) {
-      if (!wsDisabled) connectWebsocket();
-      startHumanPoll();
-    } else {
-      stopHumanPoll();
-    }
-  });
 
   function botAvatarEl() {
     if (headerIconUrl && !headerIconUrl.startsWith("blob:")) {
@@ -374,6 +293,11 @@
 
     if (messagesEl) messagesEl.appendChild(rowDiv);
     if (chat) chat.scrollTop = chat.scrollHeight;
+    if (who === "bot") {
+      hasBotReply = true;
+      botPending = false;
+      renderQuickActions();
+    }
   }
 
   async function loadHistory() {
@@ -390,68 +314,15 @@
         const mid = m.message_id ? String(m.message_id) : "";
         if (mid && seenMessageIds.has(mid)) return;
         if (mid) seenMessageIds.add(mid);
-        if (m.sender_name && mid) seenHumanMessageIds.add(mid);
         appendBubble(m.content || "", m.role || "bot", [], m.sender_name || "");
       });
     } catch (e) {}
   }
 
-  function startHumanPoll() {
-    if (humanPollTimer || !pk || !sessionId) return;
-    if (!isWidgetVisible()) return;
-    pollIntervalMs = 3000;
-    pollNoopCount = 0;
-    humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
-    fetchHumanReplies();
-  }
-
-  function stopHumanPoll() {
-    if (!humanPollTimer) return;
-    clearInterval(humanPollTimer);
-    humanPollTimer = null;
-  }
-
-  async function fetchHumanReplies() {
-    if (!pk || !sessionId) return;
-    if (!isWidgetVisible()) {
-      stopHumanPoll();
-      return;
-    }
-    try {
-      const resp = await fetch(
-        `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}?limit=50`
-      );
-      if (!resp.ok) return;
-      const data = await resp.json();
-      const messages = data && data.messages ? data.messages : [];
-      let appended = 0;
-      messages.forEach((m) => {
-        if (!m || !m.sender_name || m.role !== "bot") return;
-        const mid = m.message_id ? String(m.message_id) : "";
-        if (mid && (seenHumanMessageIds.has(mid) || seenMessageIds.has(mid))) return;
-        if (mid) {
-          seenHumanMessageIds.add(mid);
-          seenMessageIds.add(mid);
-        }
-        appendBubble(m.content || "", "bot", [], m.sender_name || "");
-        appended += 1;
-      });
-      if (appended === 0) {
-        pollNoopCount += 1;
-        if (pollNoopCount >= 3 && pollIntervalMs < 15000) {
-          pollIntervalMs = Math.min(15000, pollIntervalMs + 3000);
-          stopHumanPoll();
-          humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
-        }
-      } else {
-        pollNoopCount = 0;
-        if (pollIntervalMs !== 3000) {
-          pollIntervalMs = 3000;
-          stopHumanPoll();
-          humanPollTimer = setInterval(fetchHumanReplies, pollIntervalMs);
-        }
-      }
-    } catch (e) {}
+  function updateEscalationUI() {
+    if (input) input.disabled = isSessionEnded;
+    if (send) send.disabled = isSessionEnded;
+    renderQuickActions();
   }
 
   function setBubbleText(bubble, text) {
@@ -497,6 +368,8 @@
 
   async function streamResponse(resp) {
     if (!resp.body) throw new Error("No response body");
+    botPending = true;
+    renderQuickActions();
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -527,6 +400,9 @@
           appendCitationsToBubble(bubble, doneEvent.citations || []);
           if (chat) chat.scrollTop = chat.scrollHeight;
           doneEvent = null;
+          botPending = false;
+          hasBotReply = true;
+          renderQuickActions();
         }
       };
       setTimeout(tick, STREAM_TICK_MS);
@@ -571,19 +447,26 @@
       setBubbleText(bubble, text);
       appendCitationsToBubble(bubble, doneEvent.citations || []);
       if (chat) chat.scrollTop = chat.scrollHeight;
+      botPending = false;
+      hasBotReply = true;
+      renderQuickActions();
     }
   }
 
-  async function sendMessage() {
-    const msg = (input.value || "").trim();
+  async function sendMessageWithContent(messageText, displayText) {
+    const msg = (messageText || "").trim();
     if (!msg) return;
     if (!pk) {
       appendBubble("Widget is not configured (missing bot key).", "bot");
       return;
     }
+    if (isSessionEnded) {
+      appendBubble("This chat has ended.", "bot");
+      return;
+    }
 
-    input.value = "";
-    appendBubble(msg, "user");
+    if (input) input.value = "";
+    appendBubble(displayText || msg, "user");
     appendTypingBubble();
     send.disabled = true;
 
@@ -598,25 +481,66 @@
       if (!resp.ok) {
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
         appendBubble(data.detail || data.answer || `Error (${resp.status})`, "bot");
+        botPending = false;
+        renderQuickActions();
       } else if (isStream) {
         await streamResponse(resp);
       } else {
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
         if (data && data.session_id) setSession(data.session_id);
         appendBubble(data.answer || "", "bot", data.citations || []);
+        botPending = false;
+        renderQuickActions();
       }
     } catch (e) {
       removeTypingBubble();
       appendBubble("Request failed: " + e.message, "bot");
+      botPending = false;
+      renderQuickActions();
     } finally {
       send.disabled = false;
     }
+  }
+
+  async function endChatSession() {
+    if (!pk || !sessionId) return;
+    try {
+      await fetch(
+        `${apiBase}/v1/pk/${encodeURIComponent(pk)}/conversations/${encodeURIComponent(sessionId)}/end`,
+        {
+          method: "POST",
+        }
+      );
+    } catch (e) {}
+    isSessionEnded = true;
+    if (messagesEl) messagesEl.innerHTML = "";
+    if (welcomeEl) welcomeEl.innerHTML = "";
+    appendBubble("Chat ended.", "bot");
+    if (sessionKey) {
+      try {
+        localStorage.removeItem(sessionKey);
+      } catch (e) {}
+    }
+    sessionId = "";
+    hasBotReply = false;
+    botPending = false;
+    updateEscalationUI();
+    renderQuickActions(true);
+  }
+
+  async function sendMessage() {
+    const msg = (input.value || "").trim();
+    if (!msg) return;
+    await sendMessageWithContent(msg, msg);
   }
 
   send.addEventListener("click", sendMessage);
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessage();
   });
+  if (endChat) {
+    endChat.addEventListener("click", endChatSession);
+  }
 
   // Do not auto-end on reload; session ends via inactivity or explicit end.
 })();

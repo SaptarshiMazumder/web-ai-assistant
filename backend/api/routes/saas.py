@@ -33,7 +33,6 @@ from api.schemas import (
     Citation,
     ConversationDetailResponse,
     ConversationEndResponse,
-    ConversationHumanReplyRequest,
     ConversationListResponse,
     ConversationMessageResponse,
     ConversationSessionResponse,
@@ -525,7 +524,6 @@ async def v1_widget_chat(
         role="user",
         content=msg,
     )
-
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -1122,6 +1120,7 @@ async def v1_org_list_conversations(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     sessions = conversation_service().list_sessions(bot_id, limit=limit, before=cursor)
+    total_count = conversation_service().count_sessions(bot_id)
     next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
     return ConversationListResponse(
         bot_id=bot_id,
@@ -1142,6 +1141,7 @@ async def v1_org_list_conversations(
             for s in sessions
         ],
         next_cursor=next_cursor,
+        total_count=total_count,
     )
 
 
@@ -1194,50 +1194,6 @@ async def v1_org_end_conversation(
     return ConversationEndResponse(session_id=session_id, status="ended")
 
 
-@router.post("/v1/org/bots/{bot_id}/conversations/{session_id}/human-reply")
-async def v1_org_human_reply(
-    bot_id: str,
-    session_id: str,
-    payload: ConversationHumanReplyRequest,
-    org_id: Optional[str] = None,
-    user=Depends(get_current_user),
-):
-    resolved_org = _resolve_org_id(user, org_id)
-    _assert_bot_org(bot_id, resolved_org)
-    session = conversation_service().get_session(session_id)
-    if not session or session.bot_id != bot_id:
-        raise HTTPException(status_code=404, detail="Unknown session_id")
-    if session.status != "active":
-        raise HTTPException(status_code=400, detail="Session is not active")
-    sender = (payload.sender_name or "").strip() or "Agent"
-    msg = (payload.message or "").strip()
-    if not msg:
-        raise HTTPException(status_code=400, detail="message is required")
-    convo_msg = conversation_service().add_message(
-        session_id=session_id,
-        bot_id=bot_id,
-        role="bot",
-        content=msg,
-        citations=[],
-        sender_name=sender,
-    )
-    from infrastructure.services.conversation_ws import broadcast_message
-    await broadcast_message(
-        session_id,
-        {
-            "type": "human_message",
-            "message": {
-                "message_id": convo_msg.message_id,
-                "content": convo_msg.content,
-                "sender_name": sender,
-                "created_at": convo_msg.created_at,
-                "role": "bot",
-            },
-        },
-    )
-    return {"status": "ok"}
-
-
 @router.get("/v1/pk/{publishable_key}/conversations", response_model=ConversationListResponse)
 async def v1_pk_list_conversations(
     publishable_key: str,
@@ -1248,6 +1204,7 @@ async def v1_pk_list_conversations(
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     sessions = conversation_service().list_sessions(bot.bot_id, limit=limit, before=cursor)
+    total_count = conversation_service().count_sessions(bot.bot_id)
     next_cursor = sessions[-1].last_active_at if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200) else None
     return ConversationListResponse(
         bot_id=bot.bot_id,
@@ -1268,6 +1225,7 @@ async def v1_pk_list_conversations(
             for s in sessions
         ],
         next_cursor=next_cursor,
+        total_count=total_count,
     )
 
 
@@ -1316,49 +1274,6 @@ async def v1_pk_end_conversation(
         raise HTTPException(status_code=404, detail="Unknown session_id")
     conversation_service().end_session(session_id, status="ended")
     return ConversationEndResponse(session_id=session_id, status="ended")
-
-
-@router.post("/v1/pk/{publishable_key}/conversations/{session_id}/human-reply")
-async def v1_pk_human_reply(
-    publishable_key: str,
-    session_id: str,
-    payload: ConversationHumanReplyRequest,
-):
-    bot = bot_service().get_bot_by_publishable_key(publishable_key)
-    if not bot:
-        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
-    session = conversation_service().get_session(session_id)
-    if not session or session.bot_id != bot.bot_id:
-        raise HTTPException(status_code=404, detail="Unknown session_id")
-    if session.status != "active":
-        raise HTTPException(status_code=400, detail="Session is not active")
-    sender = (payload.sender_name or "").strip() or "Agent"
-    msg = (payload.message or "").strip()
-    if not msg:
-        raise HTTPException(status_code=400, detail="message is required")
-    convo_msg = conversation_service().add_message(
-        session_id=session_id,
-        bot_id=bot.bot_id,
-        role="bot",
-        content=msg,
-        citations=[],
-        sender_name=sender,
-    )
-    from infrastructure.services.conversation_ws import broadcast_message
-    await broadcast_message(
-        session_id,
-        {
-            "type": "human_message",
-            "message": {
-                "message_id": convo_msg.message_id,
-                "content": convo_msg.content,
-                "sender_name": sender,
-                "created_at": convo_msg.created_at,
-                "role": "bot",
-            },
-        },
-    )
-    return {"status": "ok"}
 
 
 @router.delete("/v1/org/bots/{bot_id}")

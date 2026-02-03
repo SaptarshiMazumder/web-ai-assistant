@@ -49,7 +49,13 @@
     params.set("siteUrl", siteUrl);
     params.set("siteTitle", siteTitle);
     for (var key in merged) if (merged.hasOwnProperty(key) && merged[key] !== "") {
-      params.set(key, String(merged[key]));
+      if (key === "suggestedMessages" && Array.isArray(merged[key])) {
+        try {
+          params.set("suggestedMessages", JSON.stringify(merged[key]));
+        } catch (e) {}
+      } else {
+        params.set(key, String(merged[key]));
+      }
     }
 
     var position = (merged.position || "bottom-right").toLowerCase();

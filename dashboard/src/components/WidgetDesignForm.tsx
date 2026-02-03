@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { WidgetPreview } from '../pages/createBot/WidgetPreview'
+import { SuggestedMessagesEditor } from './SuggestedMessagesEditor'
 
 const FOOTER_MAX_LENGTH = 200
 
@@ -24,6 +25,15 @@ export type WidgetDesignState = {
   autoScrollNewMessages: boolean
   displaySourcesInMessages: boolean
   sourcesLabel: string
+  suggestedMessages: SuggestedMessageConfig[]
+}
+
+export type SuggestedMessageConfig = {
+  id: string
+  label: string
+  type: 'user_message' | 'ai_response'
+  message?: string
+  prompt?: string
 }
 
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
@@ -47,6 +57,11 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   autoScrollNewMessages: true,
   displaySourcesInMessages: false,
   sourcesLabel: 'Sources',
+  suggestedMessages: [
+    { id: 'suggest_1', label: 'What can you do?', type: 'user_message', message: 'What can you do?' },
+    { id: 'suggest_2', label: 'Ask a question', type: 'user_message', message: 'Ask a question' },
+    { id: 'suggest_3', label: 'Get help', type: 'user_message', message: 'Get help' },
+  ],
 }
 
 export function widgetConfigToState(config: Record<string, unknown> | null): WidgetDesignState {
@@ -78,6 +93,22 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   if (typeof config.autoScroll === 'boolean') d.autoScrollNewMessages = config.autoScroll
   if (typeof config.displaySources === 'boolean') d.displaySourcesInMessages = config.displaySources
   if (typeof config.sourcesLabel === 'string') d.sourcesLabel = config.sourcesLabel
+  if (Array.isArray((config as Record<string, unknown>).suggestedMessages)) {
+    const raw = (config as Record<string, unknown>).suggestedMessages as SuggestedMessageConfig[]
+    d.suggestedMessages = raw
+      .map((item, idx): SuggestedMessageConfig | null => {
+        const label = typeof item?.label === 'string' ? item.label : ''
+        if (!label) return null
+        const type =
+          item?.type === 'ai_response' || item?.type === 'user_message'
+            ? item.type
+            : 'user_message'
+        const message = typeof item?.message === 'string' ? item.message : undefined
+        const prompt = typeof item?.prompt === 'string' ? item.prompt : undefined
+        return { id: String(item?.id || `suggest_${idx}`), label, type, message, prompt }
+      })
+      .filter((item): item is SuggestedMessageConfig => Boolean(item))
+  }
   return d
 }
 
@@ -103,6 +134,7 @@ export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknow
     autoScroll: s.autoScrollNewMessages,
     displaySources: s.displaySourcesInMessages,
     sourcesLabel: s.sourcesLabel,
+    suggestedMessages: s.suggestedMessages,
   }
 }
 
@@ -111,9 +143,16 @@ export type WidgetDesignFormProps = {
   onChange: <K extends keyof WidgetDesignState>(key: K, value: WidgetDesignState[K]) => void
   banner?: React.ReactNode
   actions?: React.ReactNode
+  showSuggestedMessages?: boolean
 }
 
-export function WidgetDesignForm({ value, onChange, banner, actions }: WidgetDesignFormProps) {
+export function WidgetDesignForm({
+  value,
+  onChange,
+  banner,
+  actions,
+  showSuggestedMessages = true,
+}: WidgetDesignFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const headerInputRef = useRef<HTMLInputElement>(null)
   const launcherInputRef = useRef<HTMLInputElement>(null)
@@ -160,6 +199,7 @@ export function WidgetDesignForm({ value, onChange, banner, actions }: WidgetDes
     autoScrollNewMessages,
     displaySourcesInMessages,
     sourcesLabel,
+    suggestedMessages,
   } = value
 
   return (
@@ -292,6 +332,12 @@ export function WidgetDesignForm({ value, onChange, banner, actions }: WidgetDes
                         </span>
                       </div>
                     </div>
+                    {showSuggestedMessages && (
+                      <SuggestedMessagesEditor
+                        suggestedMessages={suggestedMessages}
+                        onChange={(next) => update('suggestedMessages', next)}
+                      />
+                    )}
                   </div>
                 </section>
 
@@ -470,8 +516,10 @@ export function WidgetDesignForm({ value, onChange, banner, actions }: WidgetDes
           maxHeight={maxHeight}
           fontSize={fontSize}
           headerSize={headerSize}
+          suggestedMessages={suggestedMessages.map((msg) => ({ id: msg.id, label: msg.label }))}
         />
       </div>
+
 
       {actions != null && <div className="flow-actions">{actions}</div>}
     </div>

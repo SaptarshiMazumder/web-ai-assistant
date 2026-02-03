@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { DEFAULT_WIDGET_DESIGN_STATE, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
 import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath } from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
@@ -98,6 +99,8 @@ export type CreateBotStep4Slice = {
   setDisplaySourcesInMessages: (value: boolean) => void
   sourcesLabel: string
   setSourcesLabel: (value: string) => void
+  suggestedMessages: SuggestedMessageConfig[]
+  setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
 }
 
 /** Flow navigation. Derived from flowConfig; add/remove steps there. */
@@ -177,6 +180,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [autoScrollNewMessages, setAutoScrollNewMessages] = useState(true)
   const [displaySourcesInMessages, setDisplaySourcesInMessages] = useState(false)
   const [sourcesLabel, setSourcesLabel] = useState('Sources')
+  const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
+    DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages
+  )
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
@@ -216,6 +222,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setAutoScrollNewMessages(true)
     setDisplaySourcesInMessages(false)
     setSourcesLabel('Sources')
+    setSuggestedMessages(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
   }, [])
 
   const discoverUrls = useCallback(async () => {
@@ -478,7 +485,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setLocalError,
         resetFlow,
       },
-      step4: {
+    step4: {
         widgetPosition,
         setWidgetPosition,
         widgetPrimaryColor,
@@ -515,11 +522,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setAutoPopupWelcome,
         autoScrollNewMessages,
         setAutoScrollNewMessages,
-        displaySourcesInMessages,
-        setDisplaySourcesInMessages,
-        sourcesLabel,
-        setSourcesLabel,
-      },
+      displaySourcesInMessages,
+      setDisplaySourcesInMessages,
+      sourcesLabel,
+      setSourcesLabel,
+      suggestedMessages,
+      setSuggestedMessages,
+    },
       flow: {
         nextPath,
         prevPath,

@@ -246,7 +246,7 @@ type DashboardData = {
       botId: string,
       limit?: number,
       cursor?: string | null
-    ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }>
+    ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>
     getConversation: (
       botId: string,
       sessionId: string,
@@ -894,13 +894,13 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     botId: string,
     limit = 50,
     cursor: string | null = null
-  ): Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }> {
+  ): Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }> {
     if (isSuperAdmin && !activeOrgId) return { sessions: [] }
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const cursorParam = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
       const path = withOrgParam(`/v1/org/bots/${botId}/conversations?limit=${limit}${cursorParam}`, orgOverride)
-      return await fetchAuthedJson<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null }>(path)
+      return await fetchAuthedJson<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>(path)
     } catch (err) {
       setError((err as Error).message)
       return { sessions: [] }

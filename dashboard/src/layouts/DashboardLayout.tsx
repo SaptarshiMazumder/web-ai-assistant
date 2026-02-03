@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom'
-import { BarChart3, Check, FlaskConical, LayoutDashboard, MoreVertical, Palette, Plus, Search, Settings, BookOpen, MessageSquare } from 'lucide-react'
+import { BarChart3, Check, FlaskConical, LayoutDashboard, MoreVertical, Palette, Plus, Search, Settings, BookOpen, MessageSquare, MessageCircle } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 
 export default function DashboardLayout() {
@@ -80,6 +80,7 @@ export default function DashboardLayout() {
             { id: 'overview', label: 'Overview', to: `/bots/${botId}/overview`, icon: LayoutDashboard },
             { id: 'knowledge', label: 'Knowledge', to: `/bots/${botId}/knowledge`, icon: BookOpen },
             { id: 'design', label: 'Design', to: `/bots/${botId}/design`, icon: Palette },
+            { id: 'suggested', label: 'Suggestions', to: `/bots/${botId}/suggested-messages`, icon: MessageCircle },
             { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical },
             { id: 'conversations', label: 'Conversations', to: `/bots/${botId}/conversations`, icon: MessageSquare },
             { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings },

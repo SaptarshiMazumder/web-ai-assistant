@@ -46,6 +46,7 @@
         align-items: center;
         justify-content: space-between;
         flex-shrink: 0;
+        gap: 10px;
       }
 
       .header-left {
@@ -167,6 +168,16 @@
         font-weight: normal;
       }
 
+      .suggestions-sticky {
+        padding: 0 16px 8px 16px;
+        background: #ffffff;
+        justify-content: flex-end;
+      }
+
+      [data-theme="dark"] .suggestions-sticky {
+        background: #1e293b;
+      }
+
       .typing-bubble {
         display: flex;
         align-items: center;
@@ -243,6 +254,31 @@
       .send-btn:disabled {
         opacity: 0.6;
         cursor: default;
+      }
+
+      .clear-btn {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.2);
+        color: var(--widget-text-color);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .clear-btn svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      [data-theme="dark"] .clear-btn {
+        border-color: rgba(148, 163, 184, 0.35);
+        background: rgba(15, 23, 42, 0.4);
       }
 
       .bubble {
@@ -354,11 +390,19 @@
           <span id="headerTitle">Chat</span>
           <span class="header-status-dot" id="headerStatusDot" title="Live"></span>
         </div>
+        <button id="endChat" class="clear-btn" type="button" aria-label="Clear chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18" />
+            <path d="M8 6V4h8v2" />
+            <path d="M6 6l1 14h10l1-14" />
+          </svg>
+        </button>
       </div>
       <div id="chat" class="chat">
         <div id="welcome" class="welcome-block"></div>
         <div id="messages"></div>
       </div>
+      <div id="quickActions" class="suggestions suggestions-sticky"></div>
       <div class="row">
         <div class="input-wrap">
           <input id="msg" placeholder="Ask a question..." />

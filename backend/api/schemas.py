@@ -228,6 +228,7 @@ class ConversationListResponse(BaseModel):
     bot_id: str
     sessions: List[ConversationSessionResponse]
     next_cursor: Optional[str] = None
+    total_count: Optional[int] = None
 
 
 class ConversationDetailResponse(BaseModel):
@@ -239,11 +240,6 @@ class ConversationDetailResponse(BaseModel):
 class ConversationEndResponse(BaseModel):
     session_id: str
     status: str
-
-
-class ConversationHumanReplyRequest(BaseModel):
-    sender_name: str
-    message: str
 
 
 class WidgetConfigUpdate(BaseModel):
@@ -268,6 +264,7 @@ class WidgetConfigUpdate(BaseModel):
     autoScroll: Optional[bool] = None
     displaySources: Optional[bool] = None
     sourcesLabel: Optional[str] = None
+    suggestedMessages: Optional[List[Dict[str, Any]]] = None
 
 
 # ===========================

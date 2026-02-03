@@ -45,7 +45,13 @@ function buildWidgetIframeSrc(
   const merged = widgetConfig && typeof widgetConfig === 'object' ? { ...widgetConfig } : {}
   for (const key of Object.keys(merged)) {
     const v = merged[key]
-    if (v !== undefined && v !== null && v !== '') params.set(key, String(v))
+    if (v !== undefined && v !== null && v !== '') {
+      if (key === 'suggestedMessages' && Array.isArray(v)) {
+        params.set('suggestedMessages', JSON.stringify(v))
+      } else {
+        params.set(key, String(v))
+      }
+    }
   }
   return `${API_BASE}/widget/iframe.html?${params.toString()}`
 }

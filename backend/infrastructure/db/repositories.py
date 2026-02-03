@@ -1370,6 +1370,20 @@ class PostgresConversationRepository:
         finally:
             con.close()
 
+    def count_sessions_for_bot(self, bot_id: str) -> int:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return 0
+        con = _connect()
+        try:
+            row = con.execute(
+                "SELECT COUNT(1) FROM conversation_sessions WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            return int(row[0]) if row else 0
+        finally:
+            con.close()
+
     def touch_session(self, session_id: str) -> None:
         sid = (session_id or "").strip()
         if not sid:

@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, User } from 'lucide-react'
-import { useAuth0 } from '@auth0/auth0-react'
+import { Bot, User, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import type { ConversationMessageRecord, ConversationSessionRecord } from '../../hooks/useDashboardData'
 
 export default function BotConversationsTab() {
-  const { selectedBot, listConversations, getConversation, endConversation, orgMembers, activeOrgId } = useDashboardData()
-  const { getAccessTokenSilently } = useAuth0()
-  const apiBase = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
+  const { selectedBot, listConversations, getConversation, endConversation } = useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -15,33 +12,7 @@ export default function BotConversationsTab() {
   const [cursorStack, setCursorStack] = useState<string[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [currentCursor, setCurrentCursor] = useState<string | null>(null)
-  const [humanName, setHumanName] = useState('')
-  const [humanMessage, setHumanMessage] = useState('')
-  const [isPageVisible, setIsPageVisible] = useState(true)
-
-  useEffect(() => {
-    if (!selectedBot?.bot_id) return
-    const key = `webai_human_name_${activeOrgId || 'org'}_${selectedBot.bot_id}`
-    const stored = localStorage.getItem(key)
-    if (stored) setHumanName(stored)
-  }, [selectedBot?.bot_id, activeOrgId])
-
-  useEffect(() => {
-    if (!selectedBot?.bot_id) return
-    const key = `webai_human_name_${activeOrgId || 'org'}_${selectedBot.bot_id}`
-    if (humanName) {
-      localStorage.setItem(key, humanName)
-    }
-  }, [humanName, selectedBot?.bot_id, activeOrgId])
-
-  useEffect(() => {
-    const handleVisibility = () => {
-      setIsPageVisible(document.visibilityState === 'visible')
-    }
-    handleVisibility()
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
-  }, [])
+  const [totalCount, setTotalCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!selectedBot) return
@@ -49,12 +20,16 @@ export default function BotConversationsTab() {
     setMessages([])
     setSelectedSession(null)
     setCursorStack([])
+    setTotalCount(null)
     void loadSessions(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBot?.bot_id])
 
   const canPrev = cursorStack.length > 0
   const canNext = !!nextCursor
+  const pageSize = 10
+  const currentPage = cursorStack.length + 1
+  const totalPages = totalCount ? Math.max(1, Math.ceil(totalCount / pageSize)) : null
 
   const selectedSessionRecord = useMemo(
     () => sessions.find((s) => s.session_id === selectedSession) || null,
@@ -86,7 +61,7 @@ export default function BotConversationsTab() {
     const now = new Date()
     const diffMin = Math.floor((now.getTime() - last.getTime()) / 60000)
     if (diffMin <= 5) return 'Active'
-    if (diffMin <= 30) return 'Inactive'
+    if (diffMin <= 30) return 'Away'
     return 'Session ended'
   }
 
@@ -94,10 +69,11 @@ export default function BotConversationsTab() {
     if (!selectedBot) return
     setLoading(true)
     try {
-      const data = await listConversations(selectedBot.bot_id, 50, cursor)
+      const data = await listConversations(selectedBot.bot_id, pageSize, cursor)
       setSessions(data.sessions || [])
       setNextCursor(data.next_cursor || null)
       setCurrentCursor(cursor)
+      setTotalCount(typeof data.total_count === 'number' ? data.total_count : null)
     } finally {
       setLoading(false)
     }
@@ -115,26 +91,7 @@ export default function BotConversationsTab() {
     }
   }
 
-  useEffect(() => {
-    if (!selectedBot || !selectedSession) return
-    if (!isPageVisible) return
-    const status = statusForSession(selectedSessionRecord)
-    if (status !== 'Active') return
-    let active = true
-    const poll = async () => {
-      if (!active) return
-      const data = await getConversation(selectedBot.bot_id, selectedSession, 200)
-      if (active) setMessages(data || [])
-    }
-    void poll()
-    const timer = window.setInterval(() => {
-      void poll()
-    }, 4000)
-    return () => {
-      active = false
-      window.clearInterval(timer)
-    }
-  }, [selectedBot, selectedSession, getConversation, isPageVisible, selectedSessionRecord])
+  // No polling: conversations update on manual refresh or re-open.
 
   function toDateKey(ts?: string | null) {
     if (!ts) return ''
@@ -165,39 +122,6 @@ export default function BotConversationsTab() {
     await loadSessions(currentCursor)
   }
 
-  async function sendHumanReply() {
-    if (!selectedBot || !selectedSession) return
-    const name = humanName.trim()
-    const msg = humanMessage.trim()
-    if (!msg) return
-    const token = await getAccessTokenSilently()
-    const orgParam = activeOrgId && activeOrgId !== '__all__' ? `?org_id=${encodeURIComponent(activeOrgId)}` : ''
-    const path = `/v1/org/bots/${selectedBot.bot_id}/conversations/${encodeURIComponent(selectedSession)}/human-reply${orgParam}`
-    try {
-      const resp = await fetch(`${apiBase}${path}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ sender_name: name || 'Agent', message: msg }),
-      })
-      if (!resp.ok) {
-        let detail = resp.statusText
-        try {
-          const data = (await resp.json()) as { detail?: string }
-          detail = data.detail || detail
-        } catch {
-          // ignore
-        }
-        throw new Error(detail)
-      }
-      setHumanMessage('')
-      await openSession(selectedSession)
-    } catch (err) {
-      console.error('Failed to send human reply:', err)
-    }
-  }
 
   if (!selectedBot) {
     return <div className="empty-panel">Select a bot to view conversations.</div>
@@ -229,7 +153,7 @@ export default function BotConversationsTab() {
                     className={`conversation-status ${
                       statusForSession(s) === 'Active'
                         ? 'active'
-                        : statusForSession(s) === 'Inactive'
+                        : statusForSession(s) === 'Away'
                         ? 'inactive'
                         : 'ended'
                     }`}
@@ -242,11 +166,12 @@ export default function BotConversationsTab() {
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
           <button
             type="button"
-            className="secondary"
+            className="circle-nav"
             disabled={!canPrev}
+            aria-label="Previous page"
             onClick={() => {
               const stack = [...cursorStack]
               const prev = stack.pop() || null
@@ -254,19 +179,24 @@ export default function BotConversationsTab() {
               void loadSessions(prev)
             }}
           >
-            Previous
+            <ChevronLeft size={18} />
           </button>
+          <div className="muted" style={{ fontSize: '0.95rem' }}>
+            Page {currentPage}
+            {totalPages ? ` of ${totalPages}` : ''}
+          </div>
           <button
             type="button"
-            className="secondary"
+            className="circle-nav"
             disabled={!canNext}
+            aria-label="Next page"
             onClick={() => {
               if (!nextCursor) return
               if (currentCursor) setCursorStack([...cursorStack, currentCursor])
               void loadSessions(nextCursor)
             }}
           >
-            Next
+            <ChevronRight size={18} />
           </button>
         </div>
       </section>
@@ -286,7 +216,7 @@ export default function BotConversationsTab() {
                     className={`conversation-status ${
                       statusForSession(selectedSessionRecord) === 'Active'
                         ? 'active'
-                        : statusForSession(selectedSessionRecord) === 'Inactive'
+                        : statusForSession(selectedSessionRecord) === 'Away'
                         ? 'inactive'
                         : statusForSession(selectedSessionRecord) === 'Session ended'
                         ? 'ended'
@@ -306,45 +236,6 @@ export default function BotConversationsTab() {
                 End session
               </button>
             </div>
-            {statusForSession(selectedSessionRecord) === 'Active' ? (
-              <div className="conversation-reply-row">
-                <input
-                  className="conversation-reply-input"
-                  list="orgMembers"
-                  placeholder="Name"
-                  value={humanName}
-                  onChange={(e) => setHumanName(e.target.value)}
-                />
-                <span className="conversation-reply-sep">|</span>
-                <input
-                  className="conversation-reply-input"
-                  placeholder="Type a reply..."
-                  value={humanMessage}
-                  onChange={(e) => setHumanMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      void sendHumanReply()
-                    }
-                  }}
-                />
-                <button type="button" className="primary" onClick={() => void sendHumanReply()}>
-                  Send
-                </button>
-                <datalist id="orgMembers">
-                  {orgMembers.map((m) => (
-                    <option
-                      key={m.user_id}
-                      value={`${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email}
-                    />
-                  ))}
-                </datalist>
-              </div>
-            ) : (
-              <div className="muted" style={{ marginTop: '0.75rem' }}>
-                Replying is available while the session is active.
-              </div>
-            )}
             <div className="conversation-messages">
               {messages.map((m, idx) => {
                 const prev = messages[idx - 1]
