@@ -2227,6 +2227,10 @@ a.primary {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 .escalation-list {
@@ -2447,6 +2451,29 @@ a.primary {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.conversations-page {
+  height: calc(100vh - 220px);
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversations-page .conversation-grid {
+  height: 100%;
+  min-height: 0;
+}
+
+.conversations-page .conversation-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .conversation-date-separator {

@@ -135,12 +135,13 @@ export default function BotConversationsTab() {
   }
 
   return (
-    <div className="card-grid">
-      <section className="card">
+    <div className="conversations-page">
+      <div className="card-grid conversation-grid">
+      <section className="card conversation-panel conversation-panel--list">
         <div className="card-title">Conversation sessions</div>
         {loading && <div className="muted">Loading...</div>}
         {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
+        <div className="conversation-list">
           {sessions.map((s) => (
             <button
               key={s.session_id}
@@ -175,7 +176,7 @@ export default function BotConversationsTab() {
         </div>
       </section>
 
-      <section className="card">
+      <section className="card conversation-panel conversation-panel--detail">
         <div className="card-title">
           Conversation details{messages.length ? ` (${messages.length} messages)` : ''}
         </div>
@@ -277,6 +278,7 @@ export default function BotConversationsTab() {
           </>
         )}
       </section>
+      </div>
     </div>
   )
 }
