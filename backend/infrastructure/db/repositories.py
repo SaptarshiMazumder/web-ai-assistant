@@ -1546,6 +1546,47 @@ class PostgresConversationRepository:
         finally:
             con.close()
 
+    def list_messages_recent(self, session_id: str, *, limit: int = 20) -> List[ConversationMessage]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return []
+        lim = max(1, min(int(limit or 20), 200))
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT message_id, session_id, bot_id, role, sender_name, content, citations, created_at
+                FROM conversation_messages
+                WHERE session_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (sid, lim),
+            ).fetchall()
+            result = []
+            for row in rows or []:
+                citations_raw = row[6] if len(row) > 6 else "[]"
+                try:
+                    citations = json.loads(citations_raw) if isinstance(citations_raw, str) else (citations_raw or [])
+                except (TypeError, ValueError):
+                    citations = []
+                result.append(
+                    ConversationMessage(
+                        message_id=row[0],
+                        session_id=row[1],
+                        bot_id=row[2],
+                        role=row[3],
+                        sender_name=row[4],
+                        content=row[5],
+                        citations=citations if isinstance(citations, list) else [],
+                        created_at=row[7],
+                    )
+                )
+            result.reverse()
+            return result
+        finally:
+            con.close()
+
     def create_escalation(self, *, bot_id: str, session_id: str, visitor_email: str, details: Optional[str] = None) -> EscalationRecord:
         bid = (bot_id or "").strip()
         sid = (session_id or "").strip()

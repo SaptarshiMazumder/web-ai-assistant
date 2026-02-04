@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 from domain.entities import ConversationMessage, ConversationSession
 from infrastructure.db.repositories import PostgresConversationRepository
 
+CONVERSATION_HISTORY_MESSAGES = 20
+
 
 class ConversationService:
     def __init__(self, repo: Optional[PostgresConversationRepository] = None):
@@ -67,6 +69,9 @@ class ConversationService:
 
     def list_messages(self, session_id: str, *, limit: int = 200) -> List[ConversationMessage]:
         return self._repo.list_messages(session_id, limit=limit)
+
+    def list_recent_messages(self, session_id: str, *, limit: int = CONVERSATION_HISTORY_MESSAGES) -> List[ConversationMessage]:
+        return self._repo.list_messages_recent(session_id, limit=limit)
 
     def get_session(self, session_id: str) -> Optional[ConversationSession]:
         return self._repo.get_session(session_id)

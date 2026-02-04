@@ -63,6 +63,7 @@ from api.schemas import (
 )
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
+from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from common.di.container import bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
@@ -73,6 +74,21 @@ from infrastructure.tasks.discovery_tasks import discovery_job_task
 from domain.entities import DiscoveryJob
 
 router = APIRouter()
+
+# Per-message truncation for conversation context (keeps prompt size bounded).
+_CONVERSATION_CONTEXT_MAX_CHARS = 500
+
+
+def _format_conversation_context(messages: list) -> str:
+    """Format recent messages as 'User: ...' / 'Assistant: ...' with truncation."""
+    lines = []
+    for m in messages:
+        content = (m.content or "").strip()
+        if len(content) > _CONVERSATION_CONTEXT_MAX_CHARS:
+            content = content[:_CONVERSATION_CONTEXT_MAX_CHARS] + "..."
+        role_label = "Assistant" if (m.role or "").lower() == "bot" else "User"
+        lines.append(f"{role_label}: {content}")
+    return "\n\n".join(lines) if lines else ""
 
 
 def _require_admin_key(x_admin_key: Optional[str]) -> None:
@@ -557,6 +573,8 @@ async def v1_widget_chat(
         role="user",
         content=msg,
     )
+    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+    conversation_context = _format_conversation_context(recent)
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -565,6 +583,7 @@ async def v1_widget_chat(
         system_instruction=system_instruction,
         model_name=model_name,
         temperature=temperature,
+        conversation_context=conversation_context or None,
     )
     chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
     sources = result.get("sources") or []
@@ -719,6 +738,8 @@ async def v1_widget_chat_stream(
         role="user",
         content=msg,
     )
+    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+    conversation_context = _format_conversation_context(recent)
 
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
@@ -731,6 +752,7 @@ async def v1_widget_chat_stream(
                 system_instruction=system_instruction,
                 model_name=model_name,
                 temperature=temperature,
+                conversation_context=conversation_context or None,
             ):
                 if evt.get("type") == "delta":
                     yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
@@ -1158,6 +1180,8 @@ async def v1_org_test_chat(
         role="user",
         content=msg,
     )
+    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+    conversation_context = _format_conversation_context(recent)
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
         try:
@@ -1174,6 +1198,7 @@ async def v1_org_test_chat(
         system_instruction=system_instruction,
         model_name=model_name,
         temperature=temperature,
+        conversation_context=conversation_context or None,
     )
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]

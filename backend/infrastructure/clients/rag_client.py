@@ -403,6 +403,7 @@ def _build_grounded_prompt(
     evidence: List[Dict[str, str]],
     *,
     system_instruction: Optional[str] = None,
+    conversation_context: Optional[str] = None,
 ) -> Dict[str, str]:
     custom = (system_instruction or "").strip()
     if custom:
@@ -411,10 +412,15 @@ def _build_grounded_prompt(
     else:
         system = DEFAULT_SYSTEM
         task_line = "TASK: Write the best possible grounded answer."
+    question_section = (
+        f"RECENT CONVERSATION:\n{conversation_context}\n\nQUESTION:\n{question}\n\n"
+        if (conversation_context or "").strip()
+        else f"QUESTION:\n{question}\n\n"
+    )
     user_block = (
-        f"QUESTION:\n{question}\n\n"
-        f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
-        f"{task_line}"
+        question_section
+        + f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
+        + task_line
     )
     return {"system": system, "user_block": user_block}
 
@@ -428,8 +434,11 @@ def synthesize_with_evidence(
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    conversation_context: Optional[str] = None,
 ) -> str:
-    prompt = _build_grounded_prompt(question, evidence, system_instruction=system_instruction)
+    prompt = _build_grounded_prompt(
+        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context
+    )
     system = prompt["system"]
     user_block = prompt["user_block"]
     if debug_cb:
@@ -468,8 +477,11 @@ def synthesize_with_evidence_stream(
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+    conversation_context: Optional[str] = None,
 ):
-    prompt = _build_grounded_prompt(question, evidence, system_instruction=system_instruction)
+    prompt = _build_grounded_prompt(
+        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context
+    )
     system = prompt["system"]
     user_block = prompt["user_block"]
     if debug_cb:
@@ -511,6 +523,7 @@ def run_vertex_rag(
     system_instruction: Optional[str] = None,
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
+    conversation_context: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
@@ -582,6 +595,7 @@ def run_vertex_rag(
         model_name=model_name,
         temperature=temperature,
         debug_cb=_dbg,
+        conversation_context=conversation_context,
     )
     _dbg({"type": "model_answer", "answer": answer})
 
@@ -608,6 +622,7 @@ def run_vertex_rag_stream(
     system_instruction: Optional[str] = None,
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
+    conversation_context: Optional[str] = None,
 ):
     """Stream deltas as they are generated, then emit a final done event with sources."""
     def _dbg(evt: Dict[str, Any]) -> None:
@@ -672,6 +687,7 @@ def run_vertex_rag_stream(
         model_name=model_name,
         temperature=temperature,
         debug_cb=_dbg,
+        conversation_context=conversation_context,
     ):
         answer_parts.append(delta)
         yield {"type": "delta", "text": delta}
