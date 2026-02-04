@@ -1,31 +1,14 @@
-import { LayoutDashboard } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
+import PageHeader from '../components/PageHeader'
 
 export default function DashboardPage() {
-  const { bots, orgs, activeOrgId, isSuperAdmin, refreshAll, loading } = useDashboardData()
+  const { bots, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
   const botCount = bots.length
   const orgCount = orgs.length
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div>
-          <div className="page-title">
-            <span className="page-title-row">
-              <LayoutDashboard className="page-title-icon" aria-hidden="true" />
-              <span className="page-title-divider">|</span>
-              <span className="page-title-text">Dashboard</span>
-            </span>
-          </div>
-        </div>
-        <div className="page-actions">
-          <button className="ghost" onClick={refreshAll} disabled={loading}>
-            Refresh
-          </button>
-        </div>
-      </div>
-      <div className="page-divider" />
-
+      <PageHeader title="Dashboard" />
       <div className="page-body">
         <div className="card-grid">
           <section className="card">

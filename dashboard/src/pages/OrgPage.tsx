@@ -1,5 +1,5 @@
-import { Building2 } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
+import PageHeader from '../components/PageHeader'
 
 export default function OrgPage() {
   const {
@@ -23,7 +23,6 @@ export default function OrgPage() {
     saveOrgName,
     loading,
     user,
-    refreshAll,
   } = useDashboardData()
 
   const activeOrg = orgs.find((org) => org.org_id === activeOrgId)
@@ -74,24 +73,7 @@ export default function OrgPage() {
 
   return (
     <div className="page narrow">
-      <div className="page-header">
-        <div>
-          <div className="page-title">
-            <span className="page-title-row">
-              <Building2 className="page-title-icon" aria-hidden="true" />
-              <span className="page-title-divider">|</span>
-              <span className="page-title-text">Organization</span>
-            </span>
-          </div>
-        </div>
-        <div className="page-actions">
-          <button className="ghost" onClick={refreshAll} disabled={loading}>
-            Refresh
-          </button>
-        </div>
-      </div>
-      <div className="page-divider" />
-
+      <PageHeader title="Organization" />
       <div className="page-body page-body-narrow">
         <div className="org-grid">
           <section className="card">

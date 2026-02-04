@@ -1,14 +1,12 @@
-import { Link } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
 
 export default function HomePage() {
   return (
     <div className="page">
-      <nav className="home-nav">
-        <Link to="/dashboard" className="home-nav-link">
-          Dashboard
-        </Link>
-      </nav>
-      <div className="home-content" />
+      <PageHeader title="Dashboard" />
+      <div className="page-body">
+        {/* Dashboard content */}
+      </div>
     </div>
   )
 }

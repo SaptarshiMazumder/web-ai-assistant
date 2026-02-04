@@ -1,4 +1,5 @@
 import { useDashboardData } from '../hooks/useDashboardData'
+import PageHeader from '../components/PageHeader'
 
 export default function OrgMembersPage() {
   const {
@@ -18,12 +19,7 @@ export default function OrgMembersPage() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div>
-          <div className="page-title">Users</div>
-          <div className="page-subtitle">Manage organization members and access.</div>
-        </div>
-      </div>
+      <PageHeader title="Users" subtitle="Manage organization members and access." />
 
       <section className="card">
         <div className="card-title">Add member</div>

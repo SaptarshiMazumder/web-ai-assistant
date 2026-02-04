@@ -1,29 +1,12 @@
-import { UserCircle } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
+import PageHeader from '../components/PageHeader'
 
 export default function AccountPage() {
-  const { user, logout, refreshAll, loading } = useDashboardData()
+  const { user, logout } = useDashboardData()
 
   return (
     <div className="page narrow">
-      <div className="page-header">
-        <div>
-          <div className="page-title">
-            <span className="page-title-row">
-              <UserCircle className="page-title-icon" aria-hidden="true" />
-              <span className="page-title-divider">|</span>
-              <span className="page-title-text">Account</span>
-            </span>
-          </div>
-        </div>
-        <div className="page-actions">
-          <button className="ghost" onClick={refreshAll} disabled={loading}>
-            Refresh
-          </button>
-        </div>
-      </div>
-      <div className="page-divider" />
-
+      <PageHeader title="Account" />
       <div className="page-body page-body-narrow">
         <section className="card">
           <div className="card-title">Profile</div>

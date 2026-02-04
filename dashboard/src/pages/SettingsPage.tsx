@@ -1,30 +1,17 @@
-import { Settings } from 'lucide-react'
-import { useDashboardData } from '../hooks/useDashboardData'
+import PageHeader from '../components/PageHeader'
 
 export default function SettingsPage() {
-  const { refreshAll, loading } = useDashboardData()
   return (
-    <div className="page narrow">
-      <div className="page-header">
-        <div>
-          <div className="page-title">
-            <span className="page-title-row">
-              <Settings className="page-title-icon" aria-hidden="true" />
-              <span className="page-title-divider">|</span>
-              <span className="page-title-text">Settings</span>
-            </span>
-          </div>
-        </div>
-        <div className="page-actions">
-          <button className="ghost" onClick={refreshAll} disabled={loading}>
-            Refresh
-          </button>
-        </div>
-      </div>
-      <div className="page-divider" />
-
+    <div className="page">
+      <PageHeader title="Settings" />
       <div className="page-body page-body-narrow">
-        <div className="empty-panel">Settings controls will be added here.</div>
+        <section className="card">
+          <div className="card-title">Settings</div>
+          <p className="muted">Manage your account preferences, notifications, and application settings here.</p>
+          <p className="muted" style={{ marginTop: '0.5rem' }}>
+            Additional settings controls will be added in future updates.
+          </p>
+        </section>
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DashboardDataProvider, useDashboardData } from './hooks/useDashboardData'
 import DashboardLayout from './layouts/DashboardLayout'
 import AccountPage from './pages/AccountPage'
+import BillingPage from './pages/BillingPage'
 import BotsPage from './pages/BotsPage'
 import HomePage from './pages/HomePage'
 import DomainPage from './pages/DomainPage'
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="domain" element={<DomainPage />} />
             <Route path="account" element={<AccountPage />} />
+            <Route path="billing" element={<BillingPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
