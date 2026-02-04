@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="page">
       <PageHeader title="Dashboard" />
       <div className="page-body">
-        {/* Dashboard content */}
+        <p className="muted">Select a bot from the sidebar or go to Bots to view and manage your agents.</p>
       </div>
     </div>
   )

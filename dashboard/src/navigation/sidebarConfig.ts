@@ -14,7 +14,6 @@ import {
   MessageSquare,
   Bell,
   Settings,
-  BarChart3,
 } from 'lucide-react'
 
 export type PrimaryNavItem = {
@@ -70,7 +69,6 @@ export const botTabSecondaryItems = (botId: string) => [
   { id: 'conversations', label: 'Conversations', to: `/bots/${botId}/conversations`, icon: MessageSquare },
   { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: Bell },
   { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings },
-  { id: 'analytics', label: 'Analytics', to: `/bots/${botId}/analytics`, icon: BarChart3 },
 ]
 
 export type SidebarItem = {

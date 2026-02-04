@@ -152,6 +152,44 @@ export type EscalationRecord = {
   last_active_at?: string | null
   session_status?: string | null
 }
+
+export type AnalyticsSummary = {
+  start_day: string
+  end_day: string
+  conversations: number
+  messages_user: number
+  messages_bot: number
+  escalations: number
+  unique_visitors_est: number
+  messages_per_conversation: number
+  escalation_rate: number
+  positive_feedback: number
+  negative_feedback: number
+}
+
+export type UsagePoint = {
+  day: string
+  conversations: number
+  messages_user: number
+  messages_bot: number
+  escalations: number
+  unique_visitors_est: number
+}
+
+export type AnalyticsTimeseries = {
+  start_day: string
+  end_day: string
+  points: UsagePoint[]
+}
+
+export type TopSourceItem = { source_url: string; count: number }
+export type TopSources = { start_day: string; end_day: string; items: TopSourceItem[] }
+
+export type TopicItem = { topic: string; count: number }
+export type Topics = { start_day: string; end_day: string; items: TopicItem[] }
+
+export type ConversationSearchSessionRecord = ConversationSessionRecord & { snippet?: string | null }
+
 export type OrgSummary = {
   org_id: string
   name: string
@@ -267,6 +305,32 @@ type DashboardData = {
       limit?: number,
       cursor?: string | null
     ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>
+  searchConversations: (
+    botId: string,
+    args: {
+      q?: string | null
+      from_day?: string | null
+      to_day?: string | null
+      status?: string | null
+      channel?: string | null
+      has_escalation?: boolean | null
+      site_url?: string | null
+      limit?: number
+      cursor?: string | null
+    }
+  ) => Promise<{ sessions: ConversationSearchSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>
+  exportConversationsCsv: (
+    botId: string,
+    args: {
+      q?: string | null
+      from_day?: string | null
+      to_day?: string | null
+      status?: string | null
+      channel?: string | null
+      has_escalation?: boolean | null
+      site_url?: string | null
+    }
+  ) => Promise<void>
     getConversation: (
       botId: string,
       sessionId: string,
@@ -275,6 +339,18 @@ type DashboardData = {
     endConversation: (botId: string, sessionId: string) => Promise<void>
     getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
     saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
+  getEscalationCounts: (botId: string) => Promise<{ total: number; open: number } | null>
+  recomputeAnalytics: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<boolean>
+  getAnalyticsSummary: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<AnalyticsSummary | null>
+  getAnalyticsTimeseries: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<AnalyticsTimeseries | null>
+  getAnalyticsTopSources: (
+    botId: string,
+    args?: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number }
+  ) => Promise<TopSources | null>
+  getAnalyticsTopics: (
+    botId: string,
+    args?: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number }
+  ) => Promise<Topics | null>
   listEscalations: (
     botId: string,
     limit?: number,
@@ -936,6 +1012,186 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function searchConversations(
+    botId: string,
+    args: {
+      q?: string | null
+      from_day?: string | null
+      to_day?: string | null
+      status?: string | null
+      channel?: string | null
+      has_escalation?: boolean | null
+      site_url?: string | null
+      limit?: number
+      cursor?: string | null
+    }
+  ): Promise<{ sessions: ConversationSearchSessionRecord[]; next_cursor?: string | null; total_count?: number | null }> {
+    if (isSuperAdmin && !activeOrgId) return { sessions: [] }
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const qp = new URLSearchParams()
+      if (args.q) qp.set('q', args.q)
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      if (args.status) qp.set('status', args.status)
+      if (args.channel) qp.set('channel', args.channel)
+      if (args.site_url) qp.set('site_url', args.site_url)
+      if (args.has_escalation != null) qp.set('has_escalation', String(args.has_escalation))
+      if (args.limit != null) qp.set('limit', String(args.limit))
+      if (args.cursor) qp.set('cursor', args.cursor)
+      const path = withOrgParam(`/v1/org/bots/${botId}/conversations/search?${qp.toString()}`, orgOverride)
+      return await fetchAuthedJson<{ sessions: ConversationSearchSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>(
+        path
+      )
+    } catch (err) {
+      setError((err as Error).message)
+      return { sessions: [] }
+    }
+  }
+
+  async function exportConversationsCsv(
+    botId: string,
+    args: {
+      q?: string | null
+      from_day?: string | null
+      to_day?: string | null
+      status?: string | null
+      channel?: string | null
+      has_escalation?: boolean | null
+      site_url?: string | null
+    }
+  ): Promise<void> {
+    if (isSuperAdmin && !activeOrgId) return
+    const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+    const qp = new URLSearchParams()
+    if (args.q) qp.set('q', args.q)
+    if (args.from_day) qp.set('from_day', args.from_day)
+    if (args.to_day) qp.set('to_day', args.to_day)
+    if (args.status) qp.set('status', args.status)
+    if (args.channel) qp.set('channel', args.channel)
+    if (args.site_url) qp.set('site_url', args.site_url)
+    if (args.has_escalation != null) qp.set('has_escalation', String(args.has_escalation))
+    const path = withOrgParam(`/v1/org/bots/${botId}/conversations/export.csv?${qp.toString()}`, orgOverride)
+    const token = await getAccessTokenSilently()
+    const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) throw new Error(res.statusText)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `conversations_${botId}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function recomputeAnalytics(
+    botId: string,
+    args: { range?: string; from_day?: string | null; to_day?: string | null } = {}
+  ): Promise<boolean> {
+    if (isSuperAdmin && !activeOrgId) return false
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const qp = new URLSearchParams()
+      qp.set('range', args.range || '30d')
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      const path = withOrgParam(`/v1/org/bots/${botId}/analytics/recompute?${qp.toString()}`, orgOverride)
+      await fetchAuthedJson<{ ok: boolean }>(path, { method: 'POST' })
+      return true
+    } catch (err) {
+      setError((err as Error).message)
+      return false
+    }
+  }
+
+  async function getAnalyticsSummary(
+    botId: string,
+    args: { range?: string; from_day?: string | null; to_day?: string | null } = {}
+  ): Promise<AnalyticsSummary | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const qp = new URLSearchParams()
+      qp.set('range', args.range || '30d')
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      const path = withOrgParam(`/v1/org/bots/${botId}/analytics/summary?${qp.toString()}`, orgOverride)
+      return await fetchAuthedJson<AnalyticsSummary>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getAnalyticsTimeseries(
+    botId: string,
+    args: { range?: string; from_day?: string | null; to_day?: string | null } = {}
+  ): Promise<AnalyticsTimeseries | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const qp = new URLSearchParams()
+      qp.set('range', args.range || '30d')
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      const path = withOrgParam(`/v1/org/bots/${botId}/analytics/timeseries?${qp.toString()}`, orgOverride)
+      return await fetchAuthedJson<AnalyticsTimeseries>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getAnalyticsTopSources(
+    botId: string,
+    args: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number } = {}
+  ): Promise<TopSources | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const limit = args.limit ?? 10
+      const qp = new URLSearchParams()
+      qp.set('range', args.range || '30d')
+      qp.set('limit', String(limit))
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      const path = withOrgParam(
+        `/v1/org/bots/${botId}/analytics/top-sources?${qp.toString()}`,
+        orgOverride
+      )
+      return await fetchAuthedJson<TopSources>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getAnalyticsTopics(
+    botId: string,
+    args: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number } = {}
+  ): Promise<Topics | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const limit = args.limit ?? 20
+      const qp = new URLSearchParams()
+      qp.set('range', args.range || '30d')
+      qp.set('limit', String(limit))
+      if (args.from_day) qp.set('from_day', args.from_day)
+      if (args.to_day) qp.set('to_day', args.to_day)
+      const path = withOrgParam(
+        `/v1/org/bots/${botId}/analytics/topics?${qp.toString()}`,
+        orgOverride
+      )
+      return await fetchAuthedJson<Topics>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
   async function getConversation(
     botId: string,
     sessionId: string,
@@ -991,6 +1247,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         method: 'PUT',
         body: JSON.stringify(config),
       })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getEscalationCounts(botId: string): Promise<{ total: number; open: number } | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalations/counts`, orgOverride)
+      return await fetchAuthedJson<{ bot_id: string; total: number; open: number }>(path)
     } catch (err) {
       setError((err as Error).message)
       return null
@@ -1424,10 +1692,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getDiscoveryJob,
     deleteBot,
     listConversations,
+    searchConversations,
+    exportConversationsCsv,
     getConversation,
     endConversation,
+    recomputeAnalytics,
+    getAnalyticsSummary,
+    getAnalyticsTimeseries,
+    getAnalyticsTopSources,
+    getAnalyticsTopics,
     getEscalationConfig,
     saveEscalationConfig,
+    getEscalationCounts,
     listEscalations,
     getEscalationForSession,
     updateEscalationStatus,

@@ -2,7 +2,7 @@ import time
 import urllib.request
 import uuid
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -36,8 +36,16 @@ from api.schemas import (
     ConversationListResponse,
     ConversationMessageResponse,
     ConversationSessionResponse,
+    AnalyticsSummaryResponse,
+    AnalyticsTimeseriesResponse,
+    TopSourcesResponse,
+    TopicsResponse,
+    RecomputeResponse,
+    ConversationSearchResponse,
+    ConversationSearchSessionResponse,
     EscalationConfigPayload,
     EscalationConfigResponse,
+    EscalationCountsResponse,
     EscalationCreateRequest,
     EscalationListResponse,
     EscalationRecordResponse,
@@ -65,11 +73,13 @@ from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from common.di.container import bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
+from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.db.repositories import PostgresDiscoveryJobRepository
+from infrastructure.db.connection import get_connection
 from infrastructure.tasks.discovery_tasks import discovery_job_task
 from domain.entities import DiscoveryJob
 
@@ -1213,6 +1223,86 @@ async def v1_org_test_chat(
     return TestChatResponse(answer=answer, citations=citations, session_id=session.session_id)
 
 
+@router.post("/v1/org/bots/{bot_id}/analytics/recompute", response_model=RecomputeResponse)
+async def v1_org_recompute_analytics(
+    bot_id: str,
+    range: str = "30d",
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    data = analytics_service().recompute(org_id=resolved_org, bot_id=bot_id, range_str=range, from_day=from_day, to_day=to_day)
+    return RecomputeResponse(ok=bool(data.get("ok")), start_day=str(data.get("start_day") or ""), end_day=str(data.get("end_day") or ""))
+
+
+@router.get("/v1/org/bots/{bot_id}/analytics/summary", response_model=AnalyticsSummaryResponse)
+async def v1_org_analytics_summary(
+    bot_id: str,
+    range: str = "30d",
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    s = analytics_service().summary(org_id=resolved_org, bot_id=bot_id, range_str=range, from_day=from_day, to_day=to_day)
+    return AnalyticsSummaryResponse(**s.__dict__)
+
+
+@router.get("/v1/org/bots/{bot_id}/analytics/timeseries", response_model=AnalyticsTimeseriesResponse)
+async def v1_org_analytics_timeseries(
+    bot_id: str,
+    range: str = "30d",
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    data = analytics_service().timeseries(org_id=resolved_org, bot_id=bot_id, range_str=range, from_day=from_day, to_day=to_day)
+    return AnalyticsTimeseriesResponse(**data)
+
+
+@router.get("/v1/org/bots/{bot_id}/analytics/top-sources", response_model=TopSourcesResponse)
+async def v1_org_analytics_top_sources(
+    bot_id: str,
+    range: str = "30d",
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    limit: int = 10,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    data = analytics_service().top_sources(org_id=resolved_org, bot_id=bot_id, range_str=range, limit=limit, from_day=from_day, to_day=to_day)
+    return TopSourcesResponse(**data)
+
+
+@router.get("/v1/org/bots/{bot_id}/analytics/topics", response_model=TopicsResponse)
+async def v1_org_analytics_topics(
+    bot_id: str,
+    range: str = "30d",
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    limit: int = 20,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    data = analytics_service().topics(org_id=resolved_org, bot_id=bot_id, range_str=range, limit=limit, from_day=from_day, to_day=to_day)
+    return TopicsResponse(**data)
+
+
 @router.get("/v1/org/bots/{bot_id}/conversations", response_model=ConversationListResponse)
 async def v1_org_list_conversations(
     bot_id: str,
@@ -1251,6 +1341,261 @@ async def v1_org_list_conversations(
         next_cursor=next_cursor,
         total_count=total_count,
     )
+
+
+@router.get("/v1/org/bots/{bot_id}/conversations/search", response_model=ConversationSearchResponse)
+async def v1_org_search_conversations(
+    bot_id: str,
+    q: Optional[str] = None,
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    status: Optional[str] = None,
+    channel: Optional[str] = None,
+    has_escalation: Optional[bool] = None,
+    site_url: Optional[str] = None,
+    limit: int = 50,
+    cursor: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    lim = max(1, min(int(limit or 50), 200))
+
+    before_ts = None
+    before_id = None
+    if cursor:
+        if "|" in cursor:
+            before_ts, before_id = cursor.split("|", 1)
+        else:
+            before_ts = cursor
+
+    def _day_to_iso(d: Optional[str], *, end: bool = False) -> Optional[str]:
+        if not d:
+            return None
+        s = d.strip()
+        if not s:
+            return None
+        # Expect YYYY-MM-DD; treat as UTC midnight bounds.
+        try:
+            parts = s.split("-")
+            yy, mm, dd = int(parts[0]), int(parts[1]), int(parts[2])
+            dt = datetime(yy, mm, dd, tzinfo=timezone.utc)
+            if end:
+                dt = dt + timedelta(days=1)
+            return dt.isoformat()
+        except Exception:
+            return None
+
+    start_iso = _day_to_iso(from_day, end=False)
+    end_iso = _day_to_iso(to_day, end=True)
+
+    qn = (q or "").strip()
+    if len(qn) > 200:
+        qn = qn[:200]
+
+    con = get_connection()
+    try:
+        where = ["s.org_id=%s", "s.bot_id=%s"]
+        params: list = [resolved_org, bot_id]
+
+        if status:
+            where.append("s.status=%s")
+            params.append(status)
+        if channel:
+            where.append("s.channel=%s")
+            params.append(channel)
+        if site_url:
+            where.append("s.site_url ILIKE %s")
+            params.append(f"%{site_url.strip()}%")
+        if start_iso:
+            where.append("s.last_active_at >= %s")
+            params.append(start_iso)
+        if end_iso:
+            where.append("s.last_active_at < %s")
+            params.append(end_iso)
+        if before_ts:
+            where.append("(s.last_active_at, s.session_id) < (%s, %s)")
+            params.append(before_ts)
+            params.append(before_id or "")
+        if has_escalation is True:
+            where.append("EXISTS (SELECT 1 FROM conversation_escalations e WHERE e.session_id = s.session_id)")
+        if has_escalation is False:
+            where.append("NOT EXISTS (SELECT 1 FROM conversation_escalations e WHERE e.session_id = s.session_id)")
+        if qn:
+            where.append(
+                "EXISTS (SELECT 1 FROM conversation_messages m WHERE m.session_id = s.session_id AND m.content ILIKE %s)"
+            )
+            params.append(f"%{qn}%")
+
+        where_sql = " AND ".join(where)
+        rows = con.execute(
+            f"""
+            SELECT s.session_id, s.bot_id, s.org_id, s.channel, s.status, s.title, s.site_url, s.site_title,
+                   s.message_count, s.started_at, s.last_active_at, s.ended_at,
+                   (
+                     SELECT m.content
+                     FROM conversation_messages m
+                     WHERE m.session_id = s.session_id {("AND m.content ILIKE %s" if qn else "")}
+                     ORDER BY m.created_at DESC
+                     LIMIT 1
+                   ) AS snippet
+            FROM conversation_sessions s
+            WHERE {where_sql}
+            ORDER BY s.last_active_at DESC, s.session_id DESC
+            LIMIT %s
+            """,
+            tuple(params + ([f"%{qn}%"] if qn else []) + [lim]),
+        ).fetchall()
+
+        sessions = []
+        for r in rows or []:
+            sessions.append(
+                ConversationSearchSessionResponse(
+                    session_id=r[0],
+                    bot_id=r[1],
+                    channel=r[3],
+                    status=r[4],
+                    title=r[5],
+                    site_url=r[6],
+                    site_title=r[7],
+                    message_count=int(r[8] or 0),
+                    started_at=r[9],
+                    last_active_at=r[10],
+                    ended_at=r[11],
+                    snippet=(r[12] or "").strip() or None,
+                )
+            )
+
+        # total_count is optional; compute only when cheap-ish (no keyword) to avoid heavy scans at scale.
+        total_count = None
+        if not qn:
+            row = con.execute(f"SELECT COUNT(1) FROM conversation_sessions s WHERE {where_sql}", tuple(params)).fetchone()
+            total_count = int(row[0]) if row else 0
+
+        next_cursor = (
+            f"{sessions[-1].last_active_at}|{sessions[-1].session_id}"
+            if sessions and len(sessions) >= min(max(int(limit or 50), 1), 200)
+            else None
+        )
+        return ConversationSearchResponse(bot_id=bot_id, sessions=sessions, next_cursor=next_cursor, total_count=total_count)
+    finally:
+        con.close()
+
+
+@router.get("/v1/org/bots/{bot_id}/conversations/export.csv")
+async def v1_org_export_conversations_csv(
+    bot_id: str,
+    q: Optional[str] = None,
+    from_day: Optional[str] = None,
+    to_day: Optional[str] = None,
+    status: Optional[str] = None,
+    channel: Optional[str] = None,
+    has_escalation: Optional[bool] = None,
+    site_url: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+
+    # Reuse the search logic but stream results to CSV.
+    qn = (q or "").strip()
+    if len(qn) > 200:
+        qn = qn[:200]
+
+    def _day_to_iso(d: Optional[str], *, end: bool = False) -> Optional[str]:
+        if not d:
+            return None
+        s = d.strip()
+        if not s:
+            return None
+        try:
+            parts = s.split("-")
+            yy, mm, dd = int(parts[0]), int(parts[1]), int(parts[2])
+            dt = datetime(yy, mm, dd, tzinfo=timezone.utc)
+            if end:
+                dt = dt + timedelta(days=1)
+            return dt.isoformat()
+        except Exception:
+            return None
+
+    start_iso = _day_to_iso(from_day, end=False)
+    end_iso = _day_to_iso(to_day, end=True)
+
+    where = ["s.org_id=%s", "s.bot_id=%s"]
+    params: list = [resolved_org, bot_id]
+    if status:
+        where.append("s.status=%s")
+        params.append(status)
+    if channel:
+        where.append("s.channel=%s")
+        params.append(channel)
+    if site_url:
+        where.append("s.site_url ILIKE %s")
+        params.append(f"%{site_url.strip()}%")
+    if start_iso:
+        where.append("s.last_active_at >= %s")
+        params.append(start_iso)
+    if end_iso:
+        where.append("s.last_active_at < %s")
+        params.append(end_iso)
+    if has_escalation is True:
+        where.append("EXISTS (SELECT 1 FROM conversation_escalations e WHERE e.session_id = s.session_id)")
+    if has_escalation is False:
+        where.append("NOT EXISTS (SELECT 1 FROM conversation_escalations e WHERE e.session_id = s.session_id)")
+    if qn:
+        where.append("EXISTS (SELECT 1 FROM conversation_messages m WHERE m.session_id = s.session_id AND m.content ILIKE %s)")
+        params.append(f"%{qn}%")
+    where_sql = " AND ".join(where)
+
+    def _iter_csv():
+        import csv
+        import io
+
+        con = get_connection()
+        try:
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow(
+                ["session_id", "channel", "status", "title", "site_url", "site_title", "message_count", "started_at", "last_active_at", "ended_at"]
+            )
+            yield buf.getvalue()
+            buf.seek(0)
+            buf.truncate(0)
+
+            rows = con.execute(
+                f"""
+                SELECT s.session_id, s.channel, s.status, COALESCE(s.title,''), COALESCE(s.site_url,''), COALESCE(s.site_title,''),
+                       s.message_count, s.started_at, s.last_active_at, COALESCE(s.ended_at,'')
+                FROM conversation_sessions s
+                WHERE {where_sql}
+                ORDER BY s.last_active_at DESC, s.session_id DESC
+                """,
+                tuple(params),
+            ).fetchall()
+            for r in rows or []:
+                writer.writerow(list(r))
+                yield buf.getvalue()
+                buf.seek(0)
+                buf.truncate(0)
+        finally:
+            con.close()
+
+    return StreamingResponse(_iter_csv(), media_type="text/csv")
+
+
+@router.get("/v1/org/bots/{bot_id}/escalations/counts", response_model=EscalationCountsResponse)
+async def v1_org_escalation_counts(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    total = conversation_service().count_escalations(bot_id)
+    open_count = conversation_service().count_open_escalations(bot_id)
+    return EscalationCountsResponse(bot_id=bot_id, total=total, open=open_count)
 
 
 @router.get("/v1/org/bots/{bot_id}/escalations", response_model=EscalationListResponse)

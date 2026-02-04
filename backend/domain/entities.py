@@ -121,8 +121,6 @@ class DiscoveryJob:
     celery_task_id: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
-
-
 @dataclass
 class ConversationSession:
     session_id: str

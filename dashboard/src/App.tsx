@@ -16,7 +16,6 @@ import CreateBotLayout from './pages/createBot/CreateBotLayout'
 import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
 import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
 import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
-import BotAnalyticsTab from './pages/bot/BotAnalyticsTab'
 import BotDesignTab from './pages/bot/BotDesignTab'
 import BotDetailLayout from './pages/bot/BotDetailLayout'
 import AddSourcePage from './pages/bot/AddSourcePage'
@@ -102,7 +101,6 @@ export default function App() {
               <Route path="conversations" element={<BotConversationsTab />} />
               <Route path="escalations" element={<BotEscalationsTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
-              <Route path="analytics" element={<BotAnalyticsTab />} />
             </Route>
             <Route path="users" element={<UsersPage />} />
             <Route path="domain" element={<DomainPage />} />

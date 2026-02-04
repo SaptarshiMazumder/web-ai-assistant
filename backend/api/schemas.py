@@ -242,6 +242,74 @@ class ConversationEndResponse(BaseModel):
     status: str
 
 
+class AnalyticsSummaryResponse(BaseModel):
+    start_day: str
+    end_day: str
+    conversations: int = 0
+    messages_user: int = 0
+    messages_bot: int = 0
+    escalations: int = 0
+    unique_visitors_est: int = 0
+    messages_per_conversation: float = 0.0
+    escalation_rate: float = 0.0
+    positive_feedback: int = 0
+    negative_feedback: int = 0
+
+
+class UsagePoint(BaseModel):
+    day: str
+    conversations: int = 0
+    messages_user: int = 0
+    messages_bot: int = 0
+    escalations: int = 0
+    unique_visitors_est: int = 0
+
+
+class AnalyticsTimeseriesResponse(BaseModel):
+    start_day: str
+    end_day: str
+    points: List[UsagePoint] = []
+
+
+class TopSourceItem(BaseModel):
+    source_url: str
+    count: int = 0
+
+
+class TopSourcesResponse(BaseModel):
+    start_day: str
+    end_day: str
+    items: List[TopSourceItem] = []
+
+
+class TopicItem(BaseModel):
+    topic: str
+    count: int = 0
+
+
+class TopicsResponse(BaseModel):
+    start_day: str
+    end_day: str
+    items: List[TopicItem] = []
+
+
+class RecomputeResponse(BaseModel):
+    ok: bool = True
+    start_day: str
+    end_day: str
+
+
+class ConversationSearchSessionResponse(ConversationSessionResponse):
+    snippet: Optional[str] = None
+
+
+class ConversationSearchResponse(BaseModel):
+    bot_id: str
+    sessions: List[ConversationSearchSessionResponse]
+    next_cursor: Optional[str] = None
+    total_count: Optional[int] = None
+
+
 class EscalationConfigPayload(BaseModel):
     enabled: Optional[bool] = None
     notify_enabled: Optional[bool] = None
@@ -281,6 +349,12 @@ class EscalationListResponse(BaseModel):
     escalations: List[EscalationRecordResponse]
     next_cursor: Optional[str] = None
     total_count: Optional[int] = None
+
+
+class EscalationCountsResponse(BaseModel):
+    bot_id: str
+    total: int
+    open: int
 
 
 class EscalationStatusUpdateRequest(BaseModel):

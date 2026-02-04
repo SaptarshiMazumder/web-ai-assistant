@@ -189,6 +189,61 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE INDEX IF NOT EXISTS conversation_messages_session_id ON conversation_messages (session_id)",
     "CREATE INDEX IF NOT EXISTS conversation_messages_bot_id ON conversation_messages (bot_id)",
     "CREATE INDEX IF NOT EXISTS conversation_messages_created_at ON conversation_messages (created_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS conversation_feedback (
+      feedback_id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      message_id TEXT,
+      rating INTEGER NOT NULL,
+      comment TEXT,
+      created_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS conversation_feedback_bot_day ON conversation_feedback (org_id, bot_id, created_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS bot_usage_daily (
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      conversations INTEGER NOT NULL DEFAULT 0,
+      messages_user INTEGER NOT NULL DEFAULT 0,
+      messages_bot INTEGER NOT NULL DEFAULT 0,
+      escalations INTEGER NOT NULL DEFAULT 0,
+      unique_visitors_est INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (org_id, bot_id, day)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_usage_daily_bot_day ON bot_usage_daily (org_id, bot_id, day)",
+    """
+    CREATE TABLE IF NOT EXISTS bot_sources_daily (
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      source_url TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (org_id, bot_id, day, source_url)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_sources_daily_bot_day ON bot_sources_daily (org_id, bot_id, day)",
+    """
+    CREATE TABLE IF NOT EXISTS bot_topics_daily (
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (org_id, bot_id, day, topic)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_topics_daily_bot_day ON bot_topics_daily (org_id, bot_id, day)",
+    """
+    CREATE TABLE IF NOT EXISTS rollup_watermarks (
+      bot_id TEXT PRIMARY KEY,
+      last_processed_at TEXT NOT NULL
+    )
+    """,
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
 )
 

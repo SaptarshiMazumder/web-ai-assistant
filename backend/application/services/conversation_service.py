@@ -93,6 +93,9 @@ class ConversationService:
     def count_escalations(self, bot_id: str) -> int:
         return self._repo.count_escalations_for_bot(bot_id)
 
+    def count_open_escalations(self, bot_id: str) -> int:
+        return self._repo.count_open_escalations_for_bot(bot_id)
+
     def get_escalation_for_session(self, bot_id: str, session_id: str):
         return self._repo.get_escalation_for_session(bot_id, session_id)
 

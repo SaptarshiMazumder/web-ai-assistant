@@ -9,7 +9,7 @@ import type {
 } from '../../hooks/useDashboardData'
 
 export default function BotConversationsTab() {
-  const { selectedBot, listConversations, listEscalations, getConversation, endConversation, getEscalationForSession } =
+  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
@@ -17,6 +17,7 @@ export default function BotConversationsTab() {
   const [escalatedSessionIds, setEscalatedSessionIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
@@ -77,10 +78,10 @@ export default function BotConversationsTab() {
     if (!selectedBot) return
     setLoading(true)
     try {
-      const [convData, escData] = await Promise.all([
-        listConversations(selectedBot.bot_id, pageSize),
-        listEscalations(selectedBot.bot_id, pageSize),
-      ])
+      const convData = query.trim()
+        ? await searchConversations(selectedBot.bot_id, { q: query.trim(), limit: pageSize })
+        : await listConversations(selectedBot.bot_id, pageSize)
+      const escData = await listEscalations(selectedBot.bot_id, pageSize)
       setSessions(convData.sessions || [])
       setEscalatedSessionIds(
         new Set((escData.escalations || []).map((e) => e.session_id))
@@ -147,6 +148,25 @@ export default function BotConversationsTab() {
       <div className="card-grid conversation-grid">
       <section className="card conversation-panel conversation-panel--list">
         <div className="card-title">Conversation sessions</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search messages…"
+            style={{ flex: 1 }}
+          />
+          <button type="button" className="secondary" onClick={() => void loadSessions()} disabled={loading}>
+            Search
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => void exportConversationsCsv(selectedBot.bot_id, { q: query.trim() || null })}
+            disabled={loading}
+          >
+            Export CSV
+          </button>
+        </div>
         {loading && <div className="muted">Loading...</div>}
         {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
         <div className="conversation-list">

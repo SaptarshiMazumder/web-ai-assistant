@@ -4,12 +4,14 @@ from application.services.bot_service import BotService
 from application.services.indexing_service import IndexingService
 from application.services.org_service import OrgService
 from application.services.conversation_service import ConversationService
+from application.services.analytics_service import AnalyticsService
 from application.services.user_service import UserService
 from infrastructure.db.repositories import (
     PostgresBotCorpusRepository,
     PostgresBotDomainRepository,
     PostgresBotRepository,
     PostgresBotSourceRepository,
+    PostgresAnalyticsRepository,
     PostgresIndexJobRepository,
     PostgresOrgMembershipRepository,
     PostgresOrgRepository,
@@ -78,3 +80,8 @@ def url_discovery() -> UrlDiscoveryPort:
 @lru_cache(maxsize=1)
 def conversation_service() -> ConversationService:
     return ConversationService()
+
+
+@lru_cache(maxsize=1)
+def analytics_service() -> AnalyticsService:
+    return AnalyticsService(PostgresAnalyticsRepository())

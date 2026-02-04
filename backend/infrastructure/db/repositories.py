@@ -2,7 +2,7 @@ import json
 import re
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
@@ -1632,6 +1632,20 @@ class PostgresConversationRepository:
         finally:
             con.close()
 
+    def count_open_escalations_for_bot(self, bot_id: str) -> int:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return 0
+        con = _connect()
+        try:
+            row = con.execute(
+                "SELECT COUNT(1) FROM conversation_escalations WHERE bot_id = %s AND status = %s",
+                (bid, "open"),
+            ).fetchone()
+            return int(row[0]) if row else 0
+        finally:
+            con.close()
+
     def list_escalations_for_bot(
         self, bot_id: str, *, limit: int = 10, before: Optional[str] = None
     ) -> List[EscalationRecord]:
@@ -1747,5 +1761,313 @@ class PostgresConversationRepository:
             )
             con.commit()
             return True
+        finally:
+            con.close()
+
+
+class PostgresAnalyticsRepository:
+    """Rollups + analytics queries for the dashboard.
+
+    Phase 1 uses a recompute/backfill endpoint; rollups are stored in *_daily tables.
+    """
+
+    def recompute_bot_rollups(self, *, org_id: str, bot_id: str, start_day: date, end_day: date) -> None:
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not oid or not bid:
+            raise ValueError("org_id and bot_id are required")
+        if end_day < start_day:
+            raise ValueError("end_day must be >= start_day")
+
+        # inclusive date range
+        days: List[date] = []
+        d = start_day
+        while d <= end_day:
+            days.append(d)
+            d = d + timedelta(days=1)
+
+        # We'll compute over UTC day boundaries.
+        start_iso = datetime(start_day.year, start_day.month, start_day.day, tzinfo=timezone.utc).isoformat()
+        end_exclusive = end_day + timedelta(days=1)
+        end_iso = datetime(end_exclusive.year, end_exclusive.month, end_exclusive.day, tzinfo=timezone.utc).isoformat()
+
+        con = _connect()
+        try:
+            # Clear existing rollups for days in range (idempotent).
+            day_keys = [dd.isoformat() for dd in days]
+            con.execute(
+                "DELETE FROM bot_usage_daily WHERE org_id=%s AND bot_id=%s AND day = ANY(%s)",
+                (oid, bid, day_keys),
+            )
+            con.execute(
+                "DELETE FROM bot_sources_daily WHERE org_id=%s AND bot_id=%s AND day = ANY(%s)",
+                (oid, bid, day_keys),
+            )
+            con.execute(
+                "DELETE FROM bot_topics_daily WHERE org_id=%s AND bot_id=%s AND day = ANY(%s)",
+                (oid, bid, day_keys),
+            )
+
+            # Usage: conversations/day from sessions.started_at
+            rows = con.execute(
+                """
+                SELECT substring(started_at, 1, 10) AS day, COUNT(1)
+                FROM conversation_sessions
+                WHERE org_id=%s AND bot_id=%s AND started_at >= %s AND started_at < %s
+                GROUP BY 1
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            conv_by_day = {r[0]: int(r[1] or 0) for r in (rows or [])}
+
+            # Usage: messages/day split by role from messages.created_at joined to sessions for org_id.
+            rows = con.execute(
+                """
+                SELECT substring(m.created_at, 1, 10) AS day,
+                       SUM(CASE WHEN m.role='user' THEN 1 ELSE 0 END) AS user_msgs,
+                       SUM(CASE WHEN m.role='bot' THEN 1 ELSE 0 END)  AS bot_msgs
+                FROM conversation_messages m
+                JOIN conversation_sessions s ON s.session_id = m.session_id
+                WHERE s.org_id=%s AND m.bot_id=%s AND m.created_at >= %s AND m.created_at < %s
+                GROUP BY 1
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            msgs_by_day = {r[0]: (int(r[1] or 0), int(r[2] or 0)) for r in (rows or [])}
+
+            # Escalations/day from escalations.created_at joined to sessions for org_id.
+            rows = con.execute(
+                """
+                SELECT substring(e.created_at, 1, 10) AS day, COUNT(1)
+                FROM conversation_escalations e
+                JOIN conversation_sessions s ON s.session_id = e.session_id
+                WHERE s.org_id=%s AND e.bot_id=%s AND e.created_at >= %s AND e.created_at < %s
+                GROUP BY 1
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            esc_by_day = {r[0]: int(r[1] or 0) for r in (rows or [])}
+
+            # Approx unique visitors: distinct ip per day (may be null/empty).
+            rows = con.execute(
+                """
+                SELECT substring(started_at, 1, 10) AS day, COUNT(DISTINCT ip)
+                FROM conversation_sessions
+                WHERE org_id=%s AND bot_id=%s AND started_at >= %s AND started_at < %s AND ip IS NOT NULL AND ip <> ''
+                GROUP BY 1
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            uniq_by_day = {r[0]: int(r[1] or 0) for r in (rows or [])}
+
+            for dk in day_keys:
+                user_msgs, bot_msgs = msgs_by_day.get(dk, (0, 0))
+                con.execute(
+                    """
+                    INSERT INTO bot_usage_daily(org_id, bot_id, day, conversations, messages_user, messages_bot, escalations, unique_visitors_est)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        oid,
+                        bid,
+                        dk,
+                        conv_by_day.get(dk, 0),
+                        user_msgs,
+                        bot_msgs,
+                        esc_by_day.get(dk, 0),
+                        uniq_by_day.get(dk, 0),
+                    ),
+                )
+
+            # Top sources/day from bot message citations JSON (simple URL counts).
+            rows = con.execute(
+                """
+                SELECT substring(m.created_at, 1, 10) AS day, m.citations
+                FROM conversation_messages m
+                JOIN conversation_sessions s ON s.session_id = m.session_id
+                WHERE s.org_id=%s AND m.bot_id=%s AND m.role='bot' AND m.created_at >= %s AND m.created_at < %s
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            src_counts: Dict[Tuple[str, str], int] = {}
+            for day_s, citations_raw in rows or []:
+                try:
+                    citations = json.loads(citations_raw) if isinstance(citations_raw, str) else (citations_raw or [])
+                except (TypeError, ValueError):
+                    citations = []
+                if not isinstance(citations, list):
+                    continue
+                for c in citations:
+                    if not isinstance(c, dict):
+                        continue
+                    u = str(c.get("url") or "").strip()
+                    if not u:
+                        continue
+                    key = (day_s, u)
+                    src_counts[key] = src_counts.get(key, 0) + 1
+            for (day_s, u), ct in src_counts.items():
+                con.execute(
+                    """
+                    INSERT INTO bot_sources_daily(org_id, bot_id, day, source_url, count)
+                    VALUES (%s,%s,%s,%s,%s)
+                    """,
+                    (oid, bid, day_s, u, int(ct)),
+                )
+
+            # Topics/day: deterministic, based on session title (first user message).
+            rows = con.execute(
+                """
+                SELECT substring(started_at, 1, 10) AS day, COALESCE(NULLIF(title,''), '')
+                FROM conversation_sessions
+                WHERE org_id=%s AND bot_id=%s AND started_at >= %s AND started_at < %s
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchall()
+            topic_counts: Dict[Tuple[str, str], int] = {}
+            for day_s, title in rows or []:
+                t = (title or "").strip().lower()
+                if not t:
+                    continue
+                # Keep a stable short topic key: first 6 words.
+                cleaned = re.sub(r"[^a-z0-9\s]", " ", t)
+                words = [w for w in re.split(r"\s+", cleaned) if w]
+                if not words:
+                    continue
+                topic = " ".join(words[:6])
+                key = (day_s, topic)
+                topic_counts[key] = topic_counts.get(key, 0) + 1
+            for (day_s, topic), ct in topic_counts.items():
+                con.execute(
+                    """
+                    INSERT INTO bot_topics_daily(org_id, bot_id, day, topic, count)
+                    VALUES (%s,%s,%s,%s,%s)
+                    """,
+                    (oid, bid, day_s, topic, int(ct)),
+                )
+
+            # Watermark: set to end_iso (exclusive).
+            con.execute(
+                """
+                INSERT INTO rollup_watermarks(bot_id, last_processed_at)
+                VALUES (%s, %s)
+                ON CONFLICT (bot_id) DO UPDATE SET last_processed_at = EXCLUDED.last_processed_at
+                """,
+                (bid, end_iso),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_usage_timeseries(self, *, org_id: str, bot_id: str, start_day: date, end_day: date) -> List[Dict[str, Any]]:
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT day, conversations, messages_user, messages_bot, escalations, unique_visitors_est
+                FROM bot_usage_daily
+                WHERE org_id=%s AND bot_id=%s AND day >= %s AND day <= %s
+                ORDER BY day ASC
+                """,
+                (oid, bid, start_day.isoformat(), end_day.isoformat()),
+            ).fetchall()
+            return [
+                {
+                    "day": r[0],
+                    "conversations": int(r[1] or 0),
+                    "messages_user": int(r[2] or 0),
+                    "messages_bot": int(r[3] or 0),
+                    "escalations": int(r[4] or 0),
+                    "unique_visitors_est": int(r[5] or 0),
+                }
+                for r in (rows or [])
+            ]
+        finally:
+            con.close()
+
+    def get_top_sources(self, *, org_id: str, bot_id: str, start_day: date, end_day: date, limit: int = 10) -> List[Dict[str, Any]]:
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        lim = max(1, min(int(limit or 10), 50))
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT source_url, SUM(count) AS total
+                FROM bot_sources_daily
+                WHERE org_id=%s AND bot_id=%s AND day >= %s AND day <= %s
+                GROUP BY source_url
+                ORDER BY total DESC
+                LIMIT %s
+                """,
+                (oid, bid, start_day.isoformat(), end_day.isoformat(), lim),
+            ).fetchall()
+            return [{"source_url": r[0], "count": int(r[1] or 0)} for r in (rows or [])]
+        finally:
+            con.close()
+
+    def get_top_topics(self, *, org_id: str, bot_id: str, start_day: date, end_day: date, limit: int = 20) -> List[Dict[str, Any]]:
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        lim = max(1, min(int(limit or 20), 100))
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT topic, SUM(count) AS total
+                FROM bot_topics_daily
+                WHERE org_id=%s AND bot_id=%s AND day >= %s AND day <= %s
+                GROUP BY topic
+                ORDER BY total DESC
+                LIMIT %s
+                """,
+                (oid, bid, start_day.isoformat(), end_day.isoformat(), lim),
+            ).fetchall()
+            return [{"topic": r[0], "count": int(r[1] or 0)} for r in (rows or [])]
+        finally:
+            con.close()
+
+    def get_feedback_counts(self, *, org_id: str, bot_id: str, start_iso: str, end_iso: str) -> Dict[str, int]:
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT
+                  SUM(CASE WHEN rating > 0 THEN 1 ELSE 0 END) AS pos,
+                  SUM(CASE WHEN rating < 0 THEN 1 ELSE 0 END) AS neg
+                FROM conversation_feedback
+                WHERE org_id=%s AND bot_id=%s AND created_at >= %s AND created_at < %s
+                """,
+                (oid, bid, start_iso, end_iso),
+            ).fetchone()
+            return {"positive": int((row[0] if row else 0) or 0), "negative": int((row[1] if row else 0) or 0)}
+        finally:
+            con.close()
+
+    def insert_feedback(
+        self,
+        *,
+        feedback_id: str,
+        org_id: str,
+        bot_id: str,
+        session_id: str,
+        message_id: Optional[str],
+        rating: int,
+        comment: Optional[str],
+        created_at: str,
+    ) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO conversation_feedback(feedback_id, org_id, bot_id, session_id, message_id, rating, comment, created_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (feedback_id, org_id, bot_id, session_id, message_id, int(rating), comment, created_at),
+            )
+            con.commit()
         finally:
             con.close()
