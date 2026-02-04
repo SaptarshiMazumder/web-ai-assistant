@@ -188,6 +188,24 @@ export type TopSources = { start_day: string; end_day: string; items: TopSourceI
 export type TopicItem = { topic: string; count: number }
 export type Topics = { start_day: string; end_day: string; items: TopicItem[] }
 
+export type ExtractedTopic = {
+  topic_id: string
+  topic: string
+  category?: string | null
+  confidence: number
+  source_urls: string[]
+  occurrence_count: number
+  is_active: boolean
+  extracted_at?: string | null
+  updated_at?: string | null
+}
+
+export type ExtractedTopicsResponse = {
+  bot_id: string
+  topics: ExtractedTopic[]
+  total_count: number
+}
+
 export type ConversationSearchSessionRecord = ConversationSessionRecord & { snippet?: string | null }
 
 export type OrgSummary = {
@@ -358,6 +376,11 @@ type DashboardData = {
   ) => Promise<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }>
     getEscalationForSession: (botId: string, sessionId: string) => Promise<EscalationRecord | null>
     updateEscalationStatus: (botId: string, escalationId: string, status: 'open' | 'resolved') => Promise<void>
+  getExtractedTopics: (botId: string, activeOnly?: boolean, limit?: number) => Promise<ExtractedTopicsResponse | null>
+  extractTopics: (botId: string, clearExisting?: boolean) => Promise<ExtractedTopicsResponse | null>
+  updateExtractedTopic: (botId: string, topicId: string, updates: { is_active?: boolean; category?: string }) => Promise<ExtractedTopic | null>
+  createExtractedTopic: (botId: string, topic: string, category?: string) => Promise<ExtractedTopic | null>
+  deleteExtractedTopic: (botId: string, topicId: string) => Promise<boolean>
   }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -1307,6 +1330,98 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setError((err as Error).message)
     }
   }
+
+  async function getExtractedTopics(
+    botId: string,
+    activeOnly: boolean = false,
+    limit: number = 100
+  ): Promise<ExtractedTopicsResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const params = new URLSearchParams()
+      if (activeOnly) params.set('active_only', 'true')
+      params.set('limit', String(limit))
+      const path = withOrgParam(`/v1/org/bots/${botId}/extracted-topics?${params.toString()}`, orgOverride)
+      return await fetchAuthedJson<ExtractedTopicsResponse>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function extractTopics(
+    botId: string,
+    clearExisting: boolean = false
+  ): Promise<ExtractedTopicsResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/extracted-topics/extract`, orgOverride)
+      return await fetchAuthedJson<ExtractedTopicsResponse>(path, {
+        method: 'POST',
+        body: JSON.stringify({ clear_existing: clearExisting }),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function updateExtractedTopic(
+    botId: string,
+    topicId: string,
+    updates: { is_active?: boolean; category?: string }
+  ): Promise<ExtractedTopic | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/extracted-topics/${encodeURIComponent(topicId)}`, orgOverride)
+      return await fetchAuthedJson<ExtractedTopic>(path, {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function createExtractedTopic(
+    botId: string,
+    topic: string,
+    category?: string
+  ): Promise<ExtractedTopic | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/extracted-topics`, orgOverride)
+      return await fetchAuthedJson<ExtractedTopic>(path, {
+        method: 'POST',
+        body: JSON.stringify({ topic, category: category || null }),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function deleteExtractedTopic(
+    botId: string,
+    topicId: string
+  ): Promise<boolean> {
+    if (isSuperAdmin && !activeOrgId) return false
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/extracted-topics/${encodeURIComponent(topicId)}`, orgOverride)
+      await fetchAuthedJson(path, { method: 'DELETE' })
+      return true
+    } catch (err) {
+      setError((err as Error).message)
+      return false
+    }
+  }
+
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
@@ -1707,6 +1822,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     listEscalations,
     getEscalationForSession,
     updateEscalationStatus,
+    getExtractedTopics,
+    extractTopics,
+    updateExtractedTopic,
+    createExtractedTopic,
+    deleteExtractedTopic,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

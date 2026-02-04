@@ -435,3 +435,48 @@ class OrgSelfResponse(BaseModel):
 
 class OrgUpdateRequest(BaseModel):
     name: str
+
+
+# ========== Extracted Topics ==========
+
+class ExtractedTopicItem(BaseModel):
+    topic_id: str
+    topic: str
+    category: Optional[str] = None
+    confidence: float = 1.0
+    source_urls: List[str] = []
+    occurrence_count: int = 1
+    is_active: bool = True
+    extracted_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class ExtractedTopicsResponse(BaseModel):
+    bot_id: str
+    topics: List[ExtractedTopicItem] = []
+    total_count: int = 0
+
+
+class ExtractTopicsRequest(BaseModel):
+    clear_existing: bool = False
+
+
+class ExtractTopicsResponse(BaseModel):
+    bot_id: str
+    topics_extracted: int = 0
+    topics: List[ExtractedTopicItem] = []
+
+
+class CreateTopicRequest(BaseModel):
+    topic: str
+    category: Optional[str] = None
+
+
+class UpdateTopicRequest(BaseModel):
+    is_active: Optional[bool] = None
+    category: Optional[str] = None
+
+
+class DeleteTopicResponse(BaseModel):
+    ok: bool = True
+    topic_id: str

@@ -239,6 +239,22 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS bot_topics_daily_bot_day ON bot_topics_daily (org_id, bot_id, day)",
     """
+    CREATE TABLE IF NOT EXISTS bot_extracted_topics (
+      topic_id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      category TEXT,
+      confidence REAL DEFAULT 1.0,
+      source_urls TEXT DEFAULT '[]',
+      occurrence_count INTEGER DEFAULT 1,
+      is_active BOOLEAN DEFAULT TRUE,
+      extracted_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_extracted_topics_bot ON bot_extracted_topics (org_id, bot_id)",
+    """
     CREATE TABLE IF NOT EXISTS rollup_watermarks (
       bot_id TEXT PRIMARY KEY,
       last_processed_at TEXT NOT NULL

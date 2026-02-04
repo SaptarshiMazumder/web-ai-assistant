@@ -2312,6 +2312,231 @@ async def v1_org_cancel_index(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ========== Extracted Topics ==========
+
+from api.schemas import (
+    ExtractedTopicsResponse,
+    ExtractedTopicItem,
+    ExtractTopicsRequest,
+    ExtractTopicsResponse,
+    CreateTopicRequest,
+    UpdateTopicRequest,
+    DeleteTopicResponse,
+)
+from application.services.topic_extraction_service import topic_extraction_service
+
+
+@router.get("/v1/org/bots/{bot_id}/extracted-topics", response_model=ExtractedTopicsResponse)
+async def v1_org_get_extracted_topics(
+    bot_id: str,
+    active_only: bool = False,
+    limit: int = 100,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Get extracted topics for a bot."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    
+    topics = topic_extraction_service().get_topics(
+        org_id=resolved_org,
+        bot_id=bot_id,
+        active_only=active_only,
+        limit=limit,
+    )
+    
+    return ExtractedTopicsResponse(
+        bot_id=bot_id,
+        topics=[ExtractedTopicItem(**t) for t in topics],
+        total_count=len(topics),
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/extracted-topics", response_model=ExtractedTopicItem)
+async def v1_org_create_topic(
+    bot_id: str,
+    payload: CreateTopicRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Create a single topic (e.g. from Manage Topics "Add topic" in a box)."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    created = topic_extraction_service().create_topic(
+        org_id=resolved_org,
+        bot_id=bot_id,
+        topic=payload.topic,
+        category=payload.category,
+    )
+    if not created:
+        raise HTTPException(status_code=400, detail="Invalid topic (empty or duplicate)")
+    return ExtractedTopicItem(**created)
+
+
+@router.post("/v1/org/bots/{bot_id}/extracted-topics/extract", response_model=ExtractTopicsResponse)
+async def v1_org_extract_topics(
+    bot_id: str,
+    payload: ExtractTopicsRequest = ExtractTopicsRequest(),
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Trigger topic extraction from RAG content for a bot.
+    This fetches content from GCS (crawled documents) and extracts topics using LLM.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    
+    service = topic_extraction_service()
+    
+    # Get the latest completed index job to find GCS prefix
+    from infrastructure.db.repositories import PostgresIndexJobRepository
+    job_repo = PostgresIndexJobRepository()
+    jobs = job_repo.list_jobs_for_bot(bot_id)
+    
+    # Find a completed job with GCS content
+    gcs_prefix = None
+    for job in jobs:
+        if job.stage in ('done', 'import_submitted') and job.gcs_prefix:
+            gcs_prefix = job.gcs_prefix
+            break
+    
+    if not gcs_prefix:
+        # No crawled content, return empty
+        return ExtractTopicsResponse(
+            bot_id=bot_id,
+            topics_extracted=0,
+            topics=[],
+        )
+    
+    # Fetch content from GCS
+    try:
+        from google.cloud import storage
+        from common.config import config
+        import os
+        import traceback
+        
+        bucket_raw = config.GCS_BUCKET or os.environ.get("GCS_BUCKET", "")
+        if not bucket_raw:
+            print(f"[TopicExtraction] GCS_BUCKET not configured, cannot extract topics")
+            return ExtractTopicsResponse(
+                bot_id=bot_id,
+                topics_extracted=0,
+                topics=[],
+            )
+        
+        # Handle bucket name with optional path prefix (e.g., "bucket-name/prefix/")
+        # Note: gcs_prefix from DB already includes the full path (e.g., "saas/org-xxx/bots/...")
+        # so we only need to extract the bucket name, not prepend any prefix
+        bucket_parts = bucket_raw.strip("/").split("/", 1)
+        bucket_name = bucket_parts[0]
+        
+        print(f"[TopicExtraction] Fetching content from GCS bucket={bucket_name}, prefix={gcs_prefix}")
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        
+        # List and read markdown files from the GCS prefix
+        documents = []
+        blobs = list(bucket.list_blobs(prefix=gcs_prefix, max_results=50))
+        print(f"[TopicExtraction] Found {len(blobs)} blobs in GCS")
+        
+        for blob in blobs:
+            if blob.name.endswith('.md'):
+                try:
+                    content = blob.download_as_text()
+                    # Extract URL from content (first line is usually "Source URL: ...")
+                    url = ""
+                    if content.startswith("Source URL:"):
+                        first_line = content.split('\n')[0]
+                        url = first_line.replace("Source URL:", "").strip()
+                    documents.append({"url": url, "content": content})
+                except Exception as e:
+                    print(f"[TopicExtraction] Error reading blob {blob.name}: {e}")
+                    continue
+        
+        print(f"[TopicExtraction] Read {len(documents)} documents from GCS")
+        
+        if not documents:
+            return ExtractTopicsResponse(
+                bot_id=bot_id,
+                topics_extracted=0,
+                topics=[],
+            )
+        
+        # Extract topics from documents
+        print(f"[TopicExtraction] Starting LLM extraction...")
+        extracted = service.extract_topics_from_documents(
+            org_id=resolved_org,
+            bot_id=bot_id,
+            documents=documents,
+            clear_existing=payload.clear_existing,
+        )
+        print(f"[TopicExtraction] Extracted {len(extracted)} topics")
+        
+        return ExtractTopicsResponse(
+            bot_id=bot_id,
+            topics_extracted=len(extracted),
+            topics=[ExtractedTopicItem(**t) for t in extracted],
+        )
+        
+    except Exception as e:
+        import traceback
+        print(f"[TopicExtraction] Error extracting topics: {e}")
+        traceback.print_exc()
+        # Return existing topics on error
+        topics = service.get_topics(org_id=resolved_org, bot_id=bot_id, limit=100)
+        return ExtractTopicsResponse(
+            bot_id=bot_id,
+            topics_extracted=len(topics),
+            topics=[ExtractedTopicItem(**t) for t in topics],
+        )
+
+
+@router.patch("/v1/org/bots/{bot_id}/extracted-topics/{topic_id}", response_model=ExtractedTopicItem)
+async def v1_org_update_topic(
+    bot_id: str,
+    topic_id: str,
+    payload: UpdateTopicRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Update a topic's active status or category."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    
+    updated = topic_extraction_service().update_topic(
+        topic_id=topic_id,
+        is_active=payload.is_active,
+        category=payload.category,
+    )
+    
+    if not updated:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    return ExtractedTopicItem(**updated)
+
+
+@router.delete("/v1/org/bots/{bot_id}/extracted-topics/{topic_id}", response_model=DeleteTopicResponse)
+async def v1_org_delete_topic(
+    bot_id: str,
+    topic_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Delete a topic."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    
+    deleted = topic_extraction_service().delete_topic(topic_id=topic_id)
+    
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    return DeleteTopicResponse(ok=True, topic_id=topic_id)
+
+
+# ========== Admin Endpoints ==========
+
 @router.post("/v1/admin/reset/gcs")
 async def v1_admin_reset_gcs(user=Depends(require_super_admin)):
     try:

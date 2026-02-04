@@ -2071,3 +2071,295 @@ class PostgresAnalyticsRepository:
             con.commit()
         finally:
             con.close()
+
+
+def _new_topic_id() -> str:
+    return "topic_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
+@dataclass
+class ExtractedTopic:
+    topic_id: str
+    org_id: str
+    bot_id: str
+    topic: str
+    category: Optional[str]
+    confidence: float
+    source_urls: List[str]
+    occurrence_count: int
+    is_active: bool
+    extracted_at: str
+    updated_at: str
+
+
+class PostgresExtractedTopicRepository:
+    """Repository for managing extracted topics from website content."""
+
+    def save_extracted_topics(
+        self,
+        *,
+        org_id: str,
+        bot_id: str,
+        topics: List[Dict[str, Any]],
+    ) -> List[ExtractedTopic]:
+        """
+        Upsert extracted topics for a bot.
+        Each topic dict should have: topic, category (optional), confidence (optional), source_urls (optional)
+        """
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not oid or not bid:
+            raise ValueError("org_id and bot_id are required")
+
+        now = _utc_now()
+        results: List[ExtractedTopic] = []
+        con = _connect()
+        try:
+            for t in topics:
+                topic_text = (t.get("topic") or "").strip().lower()
+                if not topic_text:
+                    continue
+
+                category = (t.get("category") or "").strip() or None
+                confidence = float(t.get("confidence", 1.0))
+                source_urls = t.get("source_urls", [])
+                if isinstance(source_urls, str):
+                    try:
+                        source_urls = json.loads(source_urls)
+                    except json.JSONDecodeError:
+                        source_urls = []
+
+                # Check if topic already exists for this bot
+                existing = con.execute(
+                    """
+                    SELECT topic_id, source_urls, occurrence_count
+                    FROM bot_extracted_topics
+                    WHERE org_id = %s AND bot_id = %s AND lower(topic) = %s
+                    """,
+                    (oid, bid, topic_text),
+                ).fetchone()
+
+                if existing:
+                    # Update existing topic
+                    topic_id = existing[0]
+                    existing_urls = json.loads(existing[1] or "[]")
+                    merged_urls = list(set(existing_urls + source_urls))
+                    new_count = (existing[2] or 1) + 1
+
+                    con.execute(
+                        """
+                        UPDATE bot_extracted_topics
+                        SET category = COALESCE(%s, category),
+                            confidence = %s,
+                            source_urls = %s,
+                            occurrence_count = %s,
+                            updated_at = %s
+                        WHERE topic_id = %s
+                        """,
+                        (category, confidence, json.dumps(merged_urls), new_count, now, topic_id),
+                    )
+                    results.append(ExtractedTopic(
+                        topic_id=topic_id,
+                        org_id=oid,
+                        bot_id=bid,
+                        topic=topic_text,
+                        category=category,
+                        confidence=confidence,
+                        source_urls=merged_urls,
+                        occurrence_count=new_count,
+                        is_active=True,
+                        extracted_at=now,
+                        updated_at=now,
+                    ))
+                else:
+                    # Insert new topic
+                    topic_id = _new_topic_id()
+                    con.execute(
+                        """
+                        INSERT INTO bot_extracted_topics
+                        (topic_id, org_id, bot_id, topic, category, confidence, source_urls, occurrence_count, is_active, extracted_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (topic_id, oid, bid, topic_text, category, confidence, json.dumps(source_urls), 1, True, now, now),
+                    )
+                    results.append(ExtractedTopic(
+                        topic_id=topic_id,
+                        org_id=oid,
+                        bot_id=bid,
+                        topic=topic_text,
+                        category=category,
+                        confidence=confidence,
+                        source_urls=source_urls,
+                        occurrence_count=1,
+                        is_active=True,
+                        extracted_at=now,
+                        updated_at=now,
+                    ))
+
+            con.commit()
+            return results
+        finally:
+            con.close()
+
+    def get_extracted_topics(
+        self,
+        *,
+        org_id: str,
+        bot_id: str,
+        active_only: bool = False,
+        limit: int = 100,
+    ) -> List[ExtractedTopic]:
+        """Get extracted topics for a bot."""
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        lim = max(1, min(int(limit or 100), 500))
+
+        con = _connect()
+        try:
+            query = """
+                SELECT topic_id, org_id, bot_id, topic, category, confidence,
+                       source_urls, occurrence_count, is_active, extracted_at, updated_at
+                FROM bot_extracted_topics
+                WHERE org_id = %s AND bot_id = %s
+            """
+            params: List[Any] = [oid, bid]
+
+            if active_only:
+                query += " AND is_active = TRUE"
+
+            query += " ORDER BY occurrence_count DESC, extracted_at DESC LIMIT %s"
+            params.append(lim)
+
+            rows = con.execute(query, params).fetchall()
+            results: List[ExtractedTopic] = []
+            for r in rows or []:
+                source_urls = []
+                try:
+                    source_urls = json.loads(r[6] or "[]")
+                except json.JSONDecodeError:
+                    pass
+                results.append(ExtractedTopic(
+                    topic_id=r[0],
+                    org_id=r[1],
+                    bot_id=r[2],
+                    topic=r[3],
+                    category=r[4],
+                    confidence=float(r[5] or 1.0),
+                    source_urls=source_urls,
+                    occurrence_count=int(r[7] or 1),
+                    is_active=bool(r[8]),
+                    extracted_at=r[9],
+                    updated_at=r[10],
+                ))
+            return results
+        finally:
+            con.close()
+
+    def update_topic(
+        self,
+        *,
+        topic_id: str,
+        is_active: Optional[bool] = None,
+        category: Optional[str] = None,
+    ) -> Optional[ExtractedTopic]:
+        """Update a topic's active status or category."""
+        tid = (topic_id or "").strip()
+        if not tid:
+            return None
+
+        now = _utc_now()
+        con = _connect()
+        try:
+            updates: List[str] = ["updated_at = %s"]
+            params: List[Any] = [now]
+
+            if is_active is not None:
+                updates.append("is_active = %s")
+                params.append(is_active)
+
+            if category is not None:
+                updates.append("category = %s")
+                params.append(category if category else None)
+
+            params.append(tid)
+
+            con.execute(
+                f"""
+                UPDATE bot_extracted_topics
+                SET {', '.join(updates)}
+                WHERE topic_id = %s
+                """,
+                params,
+            )
+            con.commit()
+
+            # Fetch and return the updated topic
+            row = con.execute(
+                """
+                SELECT topic_id, org_id, bot_id, topic, category, confidence,
+                       source_urls, occurrence_count, is_active, extracted_at, updated_at
+                FROM bot_extracted_topics
+                WHERE topic_id = %s
+                """,
+                (tid,),
+            ).fetchone()
+
+            if not row:
+                return None
+
+            source_urls = []
+            try:
+                source_urls = json.loads(row[6] or "[]")
+            except json.JSONDecodeError:
+                pass
+
+            return ExtractedTopic(
+                topic_id=row[0],
+                org_id=row[1],
+                bot_id=row[2],
+                topic=row[3],
+                category=row[4],
+                confidence=float(row[5] or 1.0),
+                source_urls=source_urls,
+                occurrence_count=int(row[7] or 1),
+                is_active=bool(row[8]),
+                extracted_at=row[9],
+                updated_at=row[10],
+            )
+        finally:
+            con.close()
+
+    def delete_topic(self, *, topic_id: str) -> bool:
+        """Delete a topic by ID."""
+        tid = (topic_id or "").strip()
+        if not tid:
+            return False
+
+        con = _connect()
+        try:
+            result = con.execute(
+                "DELETE FROM bot_extracted_topics WHERE topic_id = %s",
+                (tid,),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def delete_all_topics_for_bot(self, *, org_id: str, bot_id: str) -> int:
+        """Delete all extracted topics for a bot. Returns count of deleted topics."""
+        oid = (org_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not oid or not bid:
+            return 0
+
+        con = _connect()
+        try:
+            result = con.execute(
+                "DELETE FROM bot_extracted_topics WHERE org_id = %s AND bot_id = %s",
+                (oid, bid),
+            )
+            con.commit()
+            return result.rowcount
+        finally:
+            con.close()

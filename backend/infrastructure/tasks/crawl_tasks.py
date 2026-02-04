@@ -10,7 +10,7 @@ from celery.exceptions import Retry
 from infrastructure.celery_app import celery_app
 from infrastructure.rag.crawl_service import CRAWL_MAX_CONCURRENCY
 from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
-from infrastructure.db.repositories import PostgresIndexJobRepository
+from infrastructure.db.repositories import PostgresIndexJobRepository, PostgresBotRepository
 from infrastructure.rag.error_handling import safe_execute
 from google.cloud import storage
 import google.auth
@@ -23,6 +23,49 @@ def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
     """Emit event for progress tracking (for backward compatibility)."""
     # In Celery, we update DB directly, but can also log for monitoring
     print(f"WEB_AI_EVENT {json.dumps({'type': event_type, **data}, ensure_ascii=False)}", flush=True)
+
+
+def _extract_topics_from_docs(bot_id: str, docs: List[Any]) -> None:
+    """Extract topics from crawled documents and save them for the bot."""
+    if not docs:
+        return
+    
+    try:
+        from application.services.topic_extraction_service import topic_extraction_service
+        
+        # Get org_id for the bot
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            logger.warning(f"Cannot extract topics: bot {bot_id} not found")
+            return
+        
+        org_id = bot.org_id
+        
+        # Prepare documents for extraction
+        documents = []
+        for doc in docs:
+            content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "")
+            url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "")
+            if content:
+                documents.append({"content": content, "url": url})
+        
+        if not documents:
+            return
+        
+        # Extract and save topics
+        service = topic_extraction_service()
+        extracted = service.extract_topics_from_documents(
+            org_id=org_id,
+            bot_id=bot_id,
+            documents=documents,
+            clear_existing=False,  # Merge with existing topics
+        )
+        
+        logger.info(f"Extracted {len(extracted)} topics for bot {bot_id}")
+        
+    except Exception as e:
+        logger.warning(f"Topic extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
 
 
 async def _execute_crawl(
@@ -180,6 +223,15 @@ async def _execute_crawl(
             job.stage = "error"
             job_repo.update_job(job)
             # Don't raise - return what we have
+
+        # Extract topics from crawled content
+        try:
+            _emit_event("stage", {"stage": "extracting_topics"})
+            _extract_topics_from_docs(bot_id, docs)
+            _emit_event("stage", {"stage": "topics_extracted"})
+        except Exception as topic_error:
+            # Topic extraction is non-critical - log but don't fail the job
+            logger.warning(f"Topic extraction error (non-critical): {type(topic_error).__name__}: {str(topic_error)[:200]}")
 
         return {"status": "done", "docs_count": len(docs), "gcs_prefix": gcs_prefix}
 
