@@ -8,7 +8,6 @@ import {
   type WidgetDesignState,
 } from '../../components/WidgetDesignForm'
 import { SuggestedMessagesEditor } from '../../components/SuggestedMessagesEditor'
-import { WidgetPreview } from '../createBot/WidgetPreview'
 import { useDashboardData } from '../../hooks/useDashboardData'
 
 const SAVED_FEEDBACK_MS = 2000
@@ -61,23 +60,19 @@ export default function BotSuggestedMessagesTab() {
 
   return (
     <div className="flow-panel-body">
-      <div>
-        <h2 className="card-title" style={{ marginBottom: '0.25rem' }}>Suggested messages</h2>
-        <p className="card-subtitle" style={{ margin: 0 }}>
-          Configure quick replies that appear in the chat widget.
-        </p>
-      </div>
-
       <div className="widget-design-grid">
         <div className="design-form">
           <section className="card">
-            <div className="card-title">Suggestions</div>
+            <div className="card-title">Suggested messages</div>
+            <p className="card-subtitle" style={{ marginTop: '0.25rem', marginBottom: 0 }}>
+              These appear above the input when the widget opens.
+            </p>
             <div className="design-form-section">
               <SuggestedMessagesEditor
                 suggestedMessages={state.suggestedMessages}
                 onChange={(next) => update('suggestedMessages', next)}
-                title="Suggested messages"
-                subtitle="These appear above the input when the widget opens."
+                title=""
+                subtitle=""
               />
             </div>
           </section>
@@ -103,25 +98,6 @@ export default function BotSuggestedMessagesTab() {
             </button>
           </div>
         </div>
-
-        <WidgetPreview
-          position={state.widgetPosition}
-          primaryColor={state.widgetPrimaryColor}
-          title={state.widgetTitle || 'Chat'}
-          size={state.widgetSize}
-          welcomeMessage={state.welcomeMessage}
-          placeholder={state.placeholder}
-          footerMessage={state.footerMessage}
-          theme={state.theme}
-          textColor={state.textColor}
-          headerIconUrl={state.headerIconUrl}
-          launcherIconUrl={state.launcherIconUrl}
-          launcherText={state.launcherText}
-          maxHeight={state.maxHeight}
-          fontSize={state.fontSize}
-          headerSize={state.headerSize}
-          suggestedMessages={state.suggestedMessages.map((msg) => ({ id: msg.id, label: msg.label }))}
-        />
       </div>
     </div>
   )

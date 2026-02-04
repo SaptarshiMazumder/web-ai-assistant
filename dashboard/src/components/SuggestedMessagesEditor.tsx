@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { X } from 'lucide-react'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
 
 type SuggestedMessagesEditorProps = {
@@ -62,12 +63,14 @@ export function SuggestedMessagesEditor({
   return (
     <>
       <div className="design-form-field design-form-field-full">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-          <div>
-            <label className="design-form-label">{title}</label>
-            <span className="design-form-hint">{subtitle}</span>
-          </div>
-          <button type="button" className="secondary" onClick={() => openSuggestionModal()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: title || subtitle ? 'space-between' : 'flex-end', gap: '0.75rem' }}>
+          {(title || subtitle) && (
+            <div>
+              <label className="design-form-label">{title}</label>
+              <span className="design-form-hint">{subtitle}</span>
+            </div>
+          )}
+          <button type="button" className="primary" onClick={() => openSuggestionModal()}>
             Add
           </button>
         </div>
@@ -108,8 +111,8 @@ export function SuggestedMessagesEditor({
                 </div>
                 <div className="modal-subtitle">Update the suggested message details.</div>
               </div>
-              <button type="button" className="modal-close" onClick={closeSuggestionModal} aria-label="Close">
-                x
+              <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label="Close">
+                <X size={20} strokeWidth={2.5} stroke="currentColor" />
               </button>
             </div>
             <div className="modal-body">

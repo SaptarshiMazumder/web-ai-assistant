@@ -9,11 +9,12 @@ import type {
 } from '../../hooks/useDashboardData'
 
 export default function BotConversationsTab() {
-  const { selectedBot, listConversations, getConversation, endConversation, getEscalationForSession } =
+  const { selectedBot, listConversations, listEscalations, getConversation, endConversation, getEscalationForSession } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
   const [escalation, setEscalation] = useState<EscalationRecord | null>(null)
+  const [escalatedSessionIds, setEscalatedSessionIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
@@ -23,6 +24,7 @@ export default function BotConversationsTab() {
     setSessions([])
     setMessages([])
     setEscalation(null)
+    setEscalatedSessionIds(new Set())
     setSelectedSession(null)
     void loadSessions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,8 +77,14 @@ export default function BotConversationsTab() {
     if (!selectedBot) return
     setLoading(true)
     try {
-      const data = await listConversations(selectedBot.bot_id, pageSize)
-      setSessions(data.sessions || [])
+      const [convData, escData] = await Promise.all([
+        listConversations(selectedBot.bot_id, pageSize),
+        listEscalations(selectedBot.bot_id, pageSize),
+      ])
+      setSessions(convData.sessions || [])
+      setEscalatedSessionIds(
+        new Set((escData.escalations || []).map((e) => e.session_id))
+      )
     } finally {
       setLoading(false)
     }
@@ -146,7 +154,7 @@ export default function BotConversationsTab() {
             <button
               key={s.session_id}
               type="button"
-              className="conversation-row"
+              className={`conversation-row${s.session_id === selectedSession ? ' conversation-row--selected' : ''}`}
               onClick={() => void openSession(s.session_id)}
             >
               <div className="conversation-row-top">
@@ -170,6 +178,9 @@ export default function BotConversationsTab() {
                   </span>
                 )}
                 {s.message_count} messages
+                {escalatedSessionIds.has(s.session_id) && (
+                  <span className="conversation-pill conversation-pill--escalated">Escalated</span>
+                )}
               </div>
             </button>
           ))}
@@ -236,12 +247,12 @@ export default function BotConversationsTab() {
                       {shouldShowEscalation && (
                         <div className="conversation-escalation-box">
                           <div className="conversation-escalation-row">
-                            <span>Escalation email</span>
+                            <span>Email</span>
                             <span>{escalation?.visitor_email}</span>
                           </div>
                           {escalation?.details && (
                             <div className="conversation-escalation-row">
-                              <span>Escalation details</span>
+                              <span>Details</span>
                               <span>{escalation.details}</span>
                             </div>
                           )}

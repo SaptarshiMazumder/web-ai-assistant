@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { CheckCircle, RotateCcw } from 'lucide-react'
+import { Check, CheckCircle, Clock, RotateCcw } from 'lucide-react'
 import { useDashboardData, type EscalationConfig, type EscalationRecord } from '../../hooks/useDashboardData'
 
 const DEFAULT_CONFIG: EscalationConfig = {
@@ -216,7 +216,7 @@ export default function BotEscalationsTab() {
                         <button
                           type="button"
                           className="icon-pill"
-                          aria-label="Mark as pending"
+                          aria-label="Undo resolve"
                           onClick={(evt) => {
                             evt.stopPropagation()
                             void handleReopen(e.escalation_id)
@@ -227,7 +227,10 @@ export default function BotEscalationsTab() {
                       </>
                     ) : (
                       <>
-                        <span className="conversation-status pending">Pending</span>
+                        <span className="conversation-status pending">
+                          <Clock size={14} />
+                          Pending
+                        </span>
                         <button
                           type="button"
                           className="pill-action"
@@ -236,6 +239,7 @@ export default function BotEscalationsTab() {
                             void handleResolve(e.escalation_id)
                           }}
                         >
+                          <Check size={14} />
                           Mark as resolved
                         </button>
                       </>

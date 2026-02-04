@@ -2189,6 +2189,34 @@ a.primary {
   color: #64748b;
 }
 
+.modal-close--circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.modal-close--circle svg {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  fill: none;
+  display: block;
+}
+
+.modal-close--circle:hover {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
 .modal-body {
   padding: 0.5rem 1.5rem 1rem;
   display: grid;
@@ -2220,6 +2248,16 @@ a.primary {
 .conversation-row:hover {
   border-color: #cbd5f5;
   background: #f8fafc;
+}
+
+.conversation-row--selected {
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 12%, white);
+}
+
+.conversation-row--selected:hover {
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 16%, white);
 }
 
 .conversation-list {
@@ -2270,6 +2308,22 @@ a.primary {
   align-items: center;
 }
 
+.conversation-meta .conversation-pill--escalated {
+  margin-left: auto;
+}
+
+.conversation-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.conversation-pill--escalated {
+  background: #dc2626;
+  color: #fff;
+}
+
 .escalation-meta-row {
   justify-content: space-between;
   flex-wrap: wrap;
@@ -2312,6 +2366,9 @@ a.primary {
 }
 
 .pill-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   background: var(--app-accent);
   color: #ffffff;
   border: none;
@@ -2329,13 +2386,30 @@ a.primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   width: 30px;
   height: 30px;
-  border-radius: 999px;
+  border-radius: 50%;
   border: none;
   background: #e2e8f0;
   color: #475569;
   cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.icon-pill svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+.icon-pill--with-label {
+  width: auto;
+  height: auto;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
 }
 
 .icon-pill:hover {
@@ -2457,6 +2531,40 @@ a.primary {
   padding-right: 0.25rem;
 }
 
+.conversation-list,
+.conversation-messages,
+.escalation-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+}
+
+.conversation-list::-webkit-scrollbar,
+.conversation-messages::-webkit-scrollbar,
+.escalation-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.conversation-list::-webkit-scrollbar-track,
+.conversation-messages::-webkit-scrollbar-track,
+.escalation-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversation-list::-webkit-scrollbar-thumb,
+.conversation-messages::-webkit-scrollbar-thumb,
+.escalation-list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.75);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.conversation-list::-webkit-scrollbar-thumb:hover,
+.conversation-messages::-webkit-scrollbar-thumb:hover,
+.escalation-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9);
+}
+
 .conversations-page {
   height: calc(100vh - 220px);
   min-height: 0;
@@ -2491,10 +2599,11 @@ a.primary {
   margin: 0.35rem 0 0.6rem;
 }
 
+/* Escalation details box in conversation detail - red border, neutral text */
 .conversation-escalation-box {
-  border: 1px solid #f87171;
-  background: #fef2f2;
-  color: #7f1d1d;
+  border: 1px solid #dc2626;
+  background: transparent;
+  color: #334155;
   border-radius: 12px;
   padding: 0.6rem 0.75rem;
   margin: 0.25rem auto 0.6rem;
@@ -2503,16 +2612,22 @@ a.primary {
   display: grid;
   gap: 0.35rem;
 }
-
+.conversation-escalation-box,
+.conversation-escalation-box * {
+  color: #334155;
+}
 .conversation-escalation-row {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
   font-weight: 500;
 }
-
+.conversation-escalation-row span:first-child {
+  color: #64748b;
+  font-weight: 500;
+}
 .conversation-escalation-row span:last-child {
-  color: #991b1b;
+  color: #334155;
   font-weight: 600;
 }
 
