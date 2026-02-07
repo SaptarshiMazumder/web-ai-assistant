@@ -7,6 +7,7 @@ const FOOTER_MAX_LENGTH = 200
 export type WidgetDesignState = {
   widgetPosition: 'bottom-right' | 'bottom-left'
   widgetPrimaryColor: string
+  businessType: '' | 'hotel' | 'other'
   widgetTitle: string
   widgetSize: 'small' | 'medium' | 'large'
   welcomeMessage: string
@@ -31,7 +32,7 @@ export type WidgetDesignState = {
 export type SuggestedMessageConfig = {
   id: string
   label: string
-  type: 'user_message' | 'ai_response' | 'escalate'
+  type: 'user_message' | 'ai_response' | 'escalate' | 'availability'
   message?: string
   prompt?: string
 }
@@ -39,6 +40,7 @@ export type SuggestedMessageConfig = {
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   widgetPosition: 'bottom-right',
   widgetPrimaryColor: '#6366f1',
+  businessType: '',
   widgetTitle: 'Chat',
   widgetSize: 'medium',
   welcomeMessage: 'Welcome! How can I help you today?',
@@ -71,6 +73,8 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   const pos = config.position
   if (pos === 'bottom-right' || pos === 'bottom-left') d.widgetPosition = pos
   if (typeof config.color === 'string') d.widgetPrimaryColor = config.color
+  const bt = config.businessType
+  if (bt === 'hotel' || bt === 'other') d.businessType = bt
   if (typeof config.title === 'string') d.widgetTitle = config.title
   const size = config.size
   if (size === 'small' || size === 'medium' || size === 'large') d.widgetSize = size
@@ -101,7 +105,7 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
         const label = typeof item?.label === 'string' ? item.label : ''
         if (!label) return null
         const type =
-          item?.type === 'ai_response' || item?.type === 'user_message' || item?.type === 'escalate'
+          item?.type === 'ai_response' || item?.type === 'user_message' || item?.type === 'escalate' || item?.type === 'availability'
             ? item.type
             : 'user_message'
         const message = typeof item?.message === 'string' ? item.message : undefined
@@ -117,6 +121,7 @@ export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknow
   return {
     position: s.widgetPosition,
     color: s.widgetPrimaryColor,
+    businessType: s.businessType || undefined,
     title: s.widgetTitle || 'Chat',
     size: s.widgetSize,
     welcomeMessage: s.welcomeMessage || undefined,
@@ -182,6 +187,7 @@ export function WidgetDesignForm({
   const {
     widgetPosition,
     widgetPrimaryColor,
+    businessType,
     widgetTitle,
     widgetSize,
     welcomeMessage,
@@ -269,6 +275,20 @@ export function WidgetDesignForm({
                       style={{ width: '140px' }}
                     />
                   </div>
+                </div>
+                <div className="design-form-field">
+                  <label className="design-form-label">Business type</label>
+                  <span className="design-form-hint">Hotel bots can use booking and availability features.</span>
+                  <select
+                    className="design-form-input"
+                    value={businessType}
+                    onChange={(e) => update('businessType', (e.target.value || '') as '' | 'hotel' | 'other')}
+                    style={{ minWidth: '200px' }}
+                  >
+                    <option value="">—</option>
+                    <option value="hotel">Hotel</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
               </div>
               <div className="design-form-field design-form-field-full">

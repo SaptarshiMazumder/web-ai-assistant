@@ -11,6 +11,7 @@ from domain.repositories import CrawlerRepository
 from infrastructure.rag.crawl_service import (
     _best_text,
     _get_str,
+    _is_url_under_root_path,
     _len_attr,
     _meta_attr,
     CRAWL_MAX_CONCURRENCY,
@@ -92,7 +93,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         all_docs: List[Document] = []
 
         def is_internal(url: str) -> bool:
-            return urlparse(url).netloc == root_netloc
+            return _is_url_under_root_path(url, root_url)
 
         try:
             async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -340,7 +341,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         discovered: List[str] = []
 
         def is_internal(url: str) -> bool:
-            return urlparse(url).netloc == root_netloc
+            return _is_url_under_root_path(url, root_url)
 
         try:
             async with AsyncWebCrawler(config=browser_config) as crawler:

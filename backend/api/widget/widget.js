@@ -48,6 +48,8 @@
     params.set("apiBase", apiBase);
     params.set("siteUrl", siteUrl);
     params.set("siteTitle", siteTitle);
+    var availabilityCheckEnabled = merged.businessType === "hotel" && merged.allowRealtimeAvailability === true;
+    params.set("availabilityCheckEnabled", availabilityCheckEnabled ? "true" : "false");
     for (var key in merged) if (merged.hasOwnProperty(key) && merged[key] !== "") {
       if (key === "suggestedMessages" && Array.isArray(merged[key])) {
         try {

@@ -1071,6 +1071,17 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, selectedDiscovered, queueCrawlUrls, loadJobs, trainingDiscovered])
 
+  const handleSaveAvailabilitySettings = useCallback(async () => {
+    if (!selectedBot) return
+    const existing = selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object' ? selectedBotWidgetConfig : {}
+    const merged = {
+      ...existing,
+      allowRealtimeAvailability,
+      bookingTestUrl: bookingTestUrl.trim() || undefined,
+    }
+    await saveWidgetConfig(selectedBot.bot_id, merged)
+  }, [selectedBot, selectedBotWidgetConfig, allowRealtimeAvailability, bookingTestUrl, saveWidgetConfig])
+
   const handleRunAvailabilityTest = useCallback(async () => {
     if (!selectedBot || !bookingTestUrl.trim() || availabilityTestRunning) return
     setAvailabilityTestError(null)
@@ -1437,7 +1448,8 @@ export default function BotKnowledgeTab() {
         )}
       </section>
 
-      {/* Booking links */}
+      {/* Booking links - hotel bots only */}
+      {selectedBotWidgetConfig?.businessType === 'hotel' && (
       <section className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Booking links</div>
         {bookingLinkJob ? (
@@ -1507,6 +1519,7 @@ export default function BotKnowledgeTab() {
           </p>
         )}
       </section>
+      )}
 
       {/* Topic extraction progress */}
       <section className="card" style={{ gridColumn: '1 / -1' }}>
@@ -1725,16 +1738,26 @@ export default function BotKnowledgeTab() {
           </div>
         </div>
 
+        {selectedBotWidgetConfig?.businessType === 'hotel' && (
         <div className="design-form stack" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
-          <label className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={allowRealtimeAvailability}
-              onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
-              style={{ accentColor: '#6366f1' }}
-            />
-            <span>Allow agent to check real-time room availability and answer user queries</span>
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <label className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={allowRealtimeAvailability}
+                onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
+                style={{ accentColor: '#6366f1' }}
+              />
+              <span>Allow agent to check real-time room availability and answer user queries</span>
+            </label>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => void handleSaveAvailabilitySettings()}
+            >
+              Save
+            </button>
+          </div>
           {allowRealtimeAvailability && (
             <div style={{ marginTop: '0.75rem', marginLeft: '1.5rem' }}>
               <div className="testing-field">
@@ -1752,7 +1775,7 @@ export default function BotKnowledgeTab() {
                   and guests selected. The agent will learn the URL pattern for future checks.
                 </p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="primary"
@@ -1803,6 +1826,7 @@ export default function BotKnowledgeTab() {
             </div>
           )}
         </div>
+        )}
 
         {(discoverTrainingJobId || discoverTrainingSuccess) && (
           <div className="progress-card" style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>

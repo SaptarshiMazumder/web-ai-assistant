@@ -6,7 +6,7 @@ import { PlayIcon, StopIcon } from './DiscoveryIcons'
 export default function CreateBotDetailsPage() {
   const navigate = useNavigate()
   const { step1, flow } = useCreateBotFlow()
-  const { botName, setBotName, websiteUrl, setWebsiteUrl, isDiscovering, localError, discoverUrls, stopDiscovery } = step1
+  const { botName, setBotName, websiteUrl, setWebsiteUrl, businessType, setBusinessType, isDiscovering, localError, discoverUrls, stopDiscovery } = step1
   const [starting, setStarting] = useState(false)
 
   const handleContinue = async () => {
@@ -34,6 +34,20 @@ export default function CreateBotDetailsPage() {
         <div className="card-title">Website to learn from</div>
         <div className="card-subtitle">We will scan this site and suggest pages to include.</div>
         <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://yourwebsite.com" />
+      </div>
+
+      <div>
+        <div className="card-title">Business type (optional)</div>
+        <div className="card-subtitle">Hotel bots can use booking and availability features.</div>
+        <select
+          value={businessType}
+          onChange={(e) => setBusinessType((e.target.value || '') as '' | 'hotel' | 'other')}
+          style={{ width: '100%', maxWidth: '320px', padding: '0.5rem' }}
+        >
+          <option value="">—</option>
+          <option value="hotel">Hotel</option>
+          <option value="other">Other</option>
+        </select>
       </div>
 
       {localError && (

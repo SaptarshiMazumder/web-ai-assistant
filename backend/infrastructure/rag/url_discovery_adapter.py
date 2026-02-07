@@ -9,7 +9,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 from domain.repositories import UrlDiscoveryPort
 
-from infrastructure.rag.crawl_service import discover_internal_urls_stream
+from infrastructure.rag.crawl_service import _is_url_under_root_path, discover_internal_urls_stream
 from infrastructure.rag.http_discovery import discover_internal_urls_http, discover_internal_urls_http_stream
 from infrastructure.rag.url_discovery_service import discover_urls_auto, discover_urls_from_sitemap
 from infrastructure.rag.urlfinder_discovery import discover_urls_urlfinder
@@ -336,6 +336,8 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
                     url = evt.get("url")
                     if isinstance(url, str) and url:
                         if url in seen:
+                            continue
+                        if not _is_url_under_root_path(url, root_url):
                             continue
                         seen.add(url)
                         collected.append(url)

@@ -364,6 +364,10 @@ class EscalationStatusUpdateRequest(BaseModel):
 
 class WidgetConfigUpdate(BaseModel):
     """Widget design config stored per bot (widget API shape). All fields optional."""
+    businessType: Optional[str] = None
+    allowRealtimeAvailability: Optional[bool] = None
+    bookingTestUrl: Optional[str] = None
+    bookingUrlPattern: Optional[Dict[str, Any]] = None  # written by availability job
     position: Optional[str] = None
     color: Optional[str] = None
     title: Optional[str] = None

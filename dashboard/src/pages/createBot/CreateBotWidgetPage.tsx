@@ -10,7 +10,7 @@ export default function CreateBotWidgetPage() {
   const { saveWidgetConfig } = useDashboardData()
   const { step1, step3, step4, flow } = useCreateBotFlow()
   const [saving, setSaving] = useState(false)
-  const { botName } = step1
+  const { botName, businessType: step1BusinessType } = step1
   const { botId, trainingStage, localError: trainingError } = step3
 
   useEffect(() => {
@@ -25,9 +25,16 @@ export default function CreateBotWidgetPage() {
     }
   }, [botName, step4.widgetTitle, step4.setWidgetTitle])
 
+  useEffect(() => {
+    if (step1BusinessType && !step4.businessType) {
+      step4.setBusinessType(step1BusinessType)
+    }
+  }, [step1BusinessType, step4.businessType, step4.setBusinessType])
+
   const value: WidgetDesignState = {
     widgetPosition: step4.widgetPosition,
     widgetPrimaryColor: step4.widgetPrimaryColor,
+    businessType: step4.businessType,
     widgetTitle: step4.widgetTitle,
     widgetSize: step4.widgetSize,
     welcomeMessage: step4.welcomeMessage,
@@ -59,7 +66,10 @@ export default function CreateBotWidgetPage() {
     if (!botId || !flow.nextPath || saving) return
     setSaving(true)
     try {
-      await saveWidgetConfig(botId, stateToWidgetConfig(value))
+      await saveWidgetConfig(botId, {
+        ...stateToWidgetConfig(value),
+        businessType: step1.businessType || step4.businessType || undefined,
+      })
       navigate(flow.nextPath)
     } catch {
       setSaving(false)

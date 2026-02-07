@@ -28,7 +28,8 @@ async def run_generic_extraction(
     """
     width = int(os.environ.get("AVAILABILITY_VIEWPORT_WIDTH", "1365"))
     height = int(os.environ.get("AVAILABILITY_VIEWPORT_HEIGHT", "768"))
-    headless = (os.environ.get("AVAILABILITY_HEADLESS") or "false").strip().lower() in ("true", "1", "yes")
+    # Default True so it works in API container (no display). Celery worker can use xvfb for headed if needed.
+    headless = (os.environ.get("AVAILABILITY_HEADLESS") or "true").strip().lower() in ("true", "1", "yes")
     user_agent = os.environ.get("AVAILABILITY_USER_AGENT") or (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "

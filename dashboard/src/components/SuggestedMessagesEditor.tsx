@@ -60,6 +60,16 @@ export function SuggestedMessagesEditor({
     [suggestedMessages, onChange]
   )
 
+  const addCheckAvailabilityForm = useCallback(() => {
+    const newItem: SuggestedMessageConfig = {
+      id: `availability_${Date.now()}`,
+      label: 'Check availability',
+      type: 'availability',
+      message: '',
+    }
+    onChange([...suggestedMessages, newItem])
+  }, [suggestedMessages, onChange])
+
   return (
     <>
       <div className="design-form-field design-form-field-full">
@@ -70,9 +80,14 @@ export function SuggestedMessagesEditor({
               <span className="design-form-hint">{subtitle}</span>
             </div>
           )}
-          <button type="button" className="primary" onClick={() => openSuggestionModal()}>
-            Add
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className="primary" onClick={() => openSuggestionModal()}>
+              Add
+            </button>
+            <button type="button" className="secondary" onClick={addCheckAvailabilityForm}>
+              Add Check availability form
+            </button>
+          </div>
         </div>
         <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.75rem' }}>
           {suggestedMessages.length === 0 && <span className="muted">No suggested messages yet.</span>}
@@ -85,6 +100,8 @@ export function SuggestedMessagesEditor({
                     ? 'AI response'
                     : msg.type === 'escalate'
                     ? 'Escalate to support'
+                    : msg.type === 'availability'
+                    ? 'Check availability form'
                     : 'User message'}
                 </div>
               </div>
@@ -132,15 +149,22 @@ export function SuggestedMessagesEditor({
               <select
                 className="design-form-input"
                 value={suggestionDraft.type}
-                onChange={(e) =>
-                  setSuggestionDraft((prev) =>
-                    prev ? { ...prev, type: e.target.value as SuggestedMessageConfig['type'] } : prev
-                  )
-                }
+                onChange={(e) => {
+                  const newType = e.target.value as SuggestedMessageConfig['type']
+                  setSuggestionDraft((prev) => {
+                    if (!prev) return prev
+                    const next = { ...prev, type: newType }
+                    if (newType === 'availability' && !prev.label.trim()) {
+                      next.label = 'Check availability'
+                    }
+                    return next
+                  })
+                }}
               >
                 <option value="user_message">User message</option>
                 <option value="ai_response">AI response</option>
                 <option value="escalate">Escalate to support</option>
+                <option value="availability">Check availability form</option>
               </select>
               {suggestionDraft.type === 'ai_response' && (
                 <>
@@ -177,6 +201,11 @@ export function SuggestedMessagesEditor({
               {suggestionDraft.type === 'escalate' && (
                 <div className="muted" style={{ marginTop: '0.75rem' }}>
                   Visitors will be prompted for their email before escalation is submitted.
+                </div>
+              )}
+              {suggestionDraft.type === 'availability' && (
+                <div className="muted" style={{ marginTop: '0.75rem' }}>
+                  Visitors will see a form to enter check-in, check-out dates, and guest details before the availability check runs.
                 </div>
               )}
             </div>

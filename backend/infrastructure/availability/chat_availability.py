@@ -1,6 +1,7 @@
 """Chat widget availability: intent detection and sync check."""
 
 import asyncio
+import concurrent.futures
 import json
 import os
 import re
@@ -33,6 +34,28 @@ def detect_availability_intent(message: str) -> bool:
         return False
     words = set(re.findall(r"\b\w+\b", norm))
     return bool(words & AVAILABILITY_KEYWORDS)
+
+
+# Regex for structured format from availability form: "Check room availability: check-in YYYY-MM-DD, check-out YYYY-MM-DD, N adults, N room(s)"
+_STRUCTURED_PATTERN = re.compile(
+    r"check-in\s+(\d{4}-\d{2}-\d{2})\s*,\s*check-out\s+(\d{4}-\d{2}-\d{2})\s*,\s*(\d+)\s+adults?\s*,\s*(\d+)\s+rooms?",
+    re.IGNORECASE,
+)
+
+
+def _parse_structured_availability(message: str) -> Optional[Tuple[str, str, int, int]]:
+    """
+    Parse structured availability message from the widget form.
+    Returns (check_in, check_out, adults, rooms) or None if no match.
+    """
+    match = _STRUCTURED_PATTERN.search(message)
+    if not match:
+        return None
+    check_in = match.group(1).strip()
+    check_out = match.group(2).strip()
+    adults = max(1, int(match.group(3)))
+    rooms = max(1, int(match.group(4)))
+    return (check_in, check_out, adults, rooms)
 
 
 def _extract_json_text(response: Any) -> str:
@@ -161,8 +184,9 @@ def run_availability_check_sync(
                 rooms=rooms,
             )
 
-    try:
-        summary, _, raw_text, _ = asyncio.run(
+    def _run_in_thread() -> Tuple[str, int, str, str]:
+        # Run in a thread so asyncio.run() works when called from FastAPI's async handler (which has a running event loop).
+        return asyncio.run(
             run_generic_extraction(
                 url=resolved_url,
                 check_in=check_in,
@@ -174,6 +198,13 @@ def run_availability_check_sync(
                 write_screenshot=None,
             )
         )
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_run_in_thread)
+            summary, _, raw_text, _ = future.result(timeout=timeout + 15)
+    except concurrent.futures.TimeoutError:
+        return "The availability check is taking longer than expected. Please try again or check the Testing tab."
     except asyncio.TimeoutError:
         return "The availability check is taking longer than expected. Please try again or check the Testing tab."
     except Exception as e:
@@ -201,6 +232,8 @@ def maybe_run_chat_availability(
     If message asks about availability and bot has booking config, run check and return summary.
     Otherwise return None.
     """
+    if widget_config.get("businessType") != "hotel":
+        return None
     if not widget_config.get("allowRealtimeAvailability"):
         return None
     if not (widget_config.get("bookingUrlPattern") or widget_config.get("bookingTestUrl")):
@@ -208,7 +241,11 @@ def maybe_run_chat_availability(
     if not detect_availability_intent(message):
         return None
 
-    check_in, check_out, rooms, adults = _parse_dates_from_message(message)
+    parsed = _parse_structured_availability(message)
+    if parsed is not None:
+        check_in, check_out, adults, rooms = parsed
+    else:
+        check_in, check_out, rooms, adults = _parse_dates_from_message(message)
 
     return run_availability_check_sync(
         bot_id=bot_id,

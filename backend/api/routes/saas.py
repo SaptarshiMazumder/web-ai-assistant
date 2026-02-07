@@ -81,6 +81,17 @@ from common.di.container import bot_service, conversation_service, indexing_serv
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
+
+# Prefixes that indicate availability check failed; don't inject as success.
+_AVAILABILITY_ERROR_PREFIXES = ("Could not complete availability check", "The availability check is taking longer")
+
+
+def _is_real_availability_summary(text: Optional[str]) -> bool:
+    """True if we should inject this as availability evidence (not an error message)."""
+    if not (text and text.strip()):
+        return False
+    t = text.strip()
+    return not any(t.startswith(prefix) for prefix in _AVAILABILITY_ERROR_PREFIXES)
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
@@ -602,7 +613,7 @@ async def v1_widget_chat(
         except (TypeError, ValueError):
             pass
     availability_summary = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
-    if availability_summary:
+    if availability_summary and _is_real_availability_summary(availability_summary):
         extra_evidence = [{"url": "Live availability check", "snippet": availability_summary}]
         chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
 
@@ -782,7 +793,7 @@ async def v1_widget_chat_stream(
         except (TypeError, ValueError):
             pass
     availability_summary_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
-    if availability_summary_stream:
+    if availability_summary_stream and _is_real_availability_summary(availability_summary_stream):
         extra_evidence_stream = [{"url": "Live availability check", "snippet": availability_summary_stream}]
         chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
 

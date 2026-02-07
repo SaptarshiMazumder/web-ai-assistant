@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 
 import requests
 
-from infrastructure.rag.crawl_service import discover_internal_urls, _normalize_url
+from infrastructure.rag.crawl_service import discover_internal_urls, _is_url_under_root_path, _normalize_url
 from infrastructure.rag.error_handling import (
     is_bot_detected,
     is_captcha_page,
@@ -360,16 +360,16 @@ def _dedupe_and_filter(
     limit: int,
     robots_parser: Optional[RobotFileParser] = None,  # Ignored - kept for API compatibility
 ) -> List[str]:
-    """Deduplicate and filter URLs by domain. No robots.txt filtering."""
+    """Deduplicate and filter URLs by domain and path scope (only URLs under root path). No robots.txt filtering."""
+    root_url = _ensure_url(root_url)
     seen: Set[str] = set()
     filtered = []
     for url in urls:
         norm = _normalize_url(url)
         if not norm or norm in seen:
             continue
-        if not _is_same_domain(norm, root_url):
+        if not _is_url_under_root_path(norm, root_url):
             continue
-        # No robots.txt filtering - we don't care about robots.txt rules
         seen.add(norm)
         filtered.append(norm)
         if len(filtered) >= limit:

@@ -10,7 +10,7 @@ from urllib.parse import urljoin, urlparse, urldefrag
 import httpx
 from bs4 import BeautifulSoup
 
-from infrastructure.rag.crawl_service import _is_probably_page_url, _normalize_url
+from infrastructure.rag.crawl_service import _is_probably_page_url, _is_url_under_root_path, _normalize_url
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,9 @@ async def discover_internal_urls_http(
     except Exception:
         return []
 
+    def is_internal(url: str) -> bool:
+        return _is_url_under_root_path(url, root_url)
+
     discovered: Set[str] = set()
     visited: Set[str] = set()
     current_level: Set[str] = {_normalize_url(root_url)}
@@ -123,7 +126,7 @@ async def discover_internal_urls_http(
                     if _is_probably_page_url(norm, root_netloc=root_netloc):
                         level_norms.add(norm)
                     for link in _extract_links_from_html(html, url, root_netloc):
-                        if link not in visited:
+                        if link not in visited and is_internal(link):
                             next_level.add(link)
 
             await asyncio.gather(*[fetch_one(u) for u in to_fetch])
@@ -165,6 +168,9 @@ async def discover_internal_urls_http_stream(
         yield {"type": "done", "urls": []}
         return
 
+    def is_internal(url: str) -> bool:
+        return _is_url_under_root_path(url, root_url)
+
     yield {"type": "start", "root_url": root_url, "max_depth": max_depth, "max_urls": max_urls}
 
     discovered_set: Set[str] = set()
@@ -202,7 +208,7 @@ async def discover_internal_urls_http_stream(
                         if _is_probably_page_url(norm, root_netloc=root_netloc):
                             level_norms.add(norm)
                         for link in _extract_links_from_html(html, url, root_netloc):
-                            if link not in visited:
+                            if link not in visited and is_internal(link):
                                 next_level.add(link)
 
                 await asyncio.gather(*[fetch_one(u) for u in to_fetch])

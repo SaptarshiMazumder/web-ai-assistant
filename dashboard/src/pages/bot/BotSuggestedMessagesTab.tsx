@@ -38,7 +38,10 @@ export default function BotSuggestedMessagesTab() {
     setSaving(true)
     setSavedJustNow(false)
     try {
-      await saveWidgetConfig(botId, stateToWidgetConfig(state))
+      await saveWidgetConfig(botId, {
+        ...(selectedBotWidgetConfig ?? {}),
+        ...stateToWidgetConfig(state),
+      })
       setSavedJustNow(true)
       setTimeout(() => setSavedJustNow(false), SAVED_FEEDBACK_MS)
     } finally {

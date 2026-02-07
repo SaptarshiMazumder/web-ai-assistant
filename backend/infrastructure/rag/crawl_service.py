@@ -119,6 +119,26 @@ _NON_PAGE_EXTENSIONS = {
 }
 
 
+def _is_url_under_root_path(url: str, root_url: str) -> bool:
+    """
+    True if url has same domain as root_url AND path is under root_url's path.
+    E.g. root https://example.com/hotel/tokyoshiodome/ → allows /hotel/tokyoshiodome/* only.
+    If root path is / (domain root), allows all paths on that domain.
+    """
+    try:
+        pu = urlparse(url)
+        pr = urlparse(root_url)
+    except Exception:
+        return False
+    if pu.netloc != pr.netloc:
+        return False
+    root_path = (pr.path or "/").rstrip("/") or "/"
+    url_path = (pu.path or "/").rstrip("/") or "/"
+    if root_path == "/":
+        return True
+    return url_path == root_path or url_path.startswith(root_path + "/")
+
+
 def _is_probably_page_url(url: str, *, root_netloc: str) -> bool:
     """
     Heuristic filter to keep discovery focused on content pages.
@@ -590,7 +610,7 @@ async def crawl_site_bfs(
     all_results: List[Dict[str, Any]] = []
 
     def is_internal(url: str) -> bool:
-        return urlparse(url).netloc == root_netloc
+        return _is_url_under_root_path(url, root_url)
 
     try:
         async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -726,7 +746,7 @@ async def discover_internal_urls(
     max_depth_reached = -1
 
     def is_internal(url: str) -> bool:
-        return urlparse(url).netloc == root_netloc
+        return _is_url_under_root_path(url, root_url)
 
     try:
         async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -829,7 +849,7 @@ async def discover_internal_urls(
                             if not raw or not isinstance(raw, str):
                                 continue
                             for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                if href not in visited:
+                                if href not in visited and is_internal(href):
                                     next_level_urls.add(href)
                     except Exception:
                         continue
@@ -903,7 +923,7 @@ async def discover_internal_urls_stream(
     yielded_global: set = set()
 
     def is_internal(url: str) -> bool:
-        return urlparse(url).netloc == root_netloc
+        return _is_url_under_root_path(url, root_url)
 
     yield {"type": "start", "root_url": root_url, "max_depth": max_depth, "max_urls": max_urls}
 
@@ -1018,7 +1038,7 @@ async def discover_internal_urls_stream(
                                 if not raw or not isinstance(raw, str):
                                     continue
                                 for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                    if href not in visited:
+                                    if href not in visited and is_internal(href):
                                         next_level_urls.add(href)
                         except Exception:
                             continue

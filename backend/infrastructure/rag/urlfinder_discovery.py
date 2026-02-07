@@ -10,6 +10,8 @@ import shutil
 from typing import List, Set
 from urllib.parse import urlparse, urldefrag, urlunparse
 
+from infrastructure.rag.crawl_service import _is_url_under_root_path
+
 logger = logging.getLogger(__name__)
 
 URLFINDER_BINARY = "urlfinder"
@@ -114,6 +116,8 @@ async def discover_urls_urlfinder(
         if not u or not u.startswith(("http://", "https://")):
             continue
         if not _is_same_netloc(u, root_url):
+            continue
+        if not _is_url_under_root_path(u, root_url):
             continue
         norm = _normalize_url(u)
         if norm in seen:

@@ -12,6 +12,8 @@ export type CreateBotStep1Slice = {
   setBotName: (value: string) => void
   websiteUrl: string
   setWebsiteUrl: (value: string) => void
+  businessType: '' | 'hotel' | 'other'
+  setBusinessType: (value: '' | 'hotel' | 'other') => void
   discoveryMethod: string
   setDiscoveryMethod: (value: string) => void
   normalizedWebsiteUrl: string
@@ -63,6 +65,8 @@ export type CreateBotStep4Slice = {
   setWidgetPosition: (value: 'bottom-right' | 'bottom-left') => void
   widgetPrimaryColor: string
   setWidgetPrimaryColor: (value: string) => void
+  businessType: '' | 'hotel' | 'other'
+  setBusinessType: (value: '' | 'hotel' | 'other') => void
   widgetTitle: string
   setWidgetTitle: (value: string) => void
   widgetSize: 'small' | 'medium' | 'large'
@@ -139,6 +143,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, startBackgroundDiscovery, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
+  const [businessType, setBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
@@ -162,6 +167,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#6366f1')
+  const [widgetBusinessType, setWidgetBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [widgetTitle, setWidgetTitle] = useState('Chat')
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large'>('medium')
   const [welcomeMessage, setWelcomeMessage] = useState('Welcome! How can I help you today?')
@@ -186,6 +192,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
+    setBusinessType('')
     setDiscoveryMethod('auto')
     setNormalizedWebsiteUrl('')
     setDiscoveredUrls([])
@@ -204,6 +211,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setLocalError(null)
     setWidgetPosition('bottom-right')
     setWidgetPrimaryColor('#6366f1')
+    setWidgetBusinessType('')
     setWidgetTitle('Chat')
     setWidgetSize('medium')
     setWelcomeMessage('Welcome! How can I help you today?')
@@ -445,6 +453,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setBotName,
         websiteUrl,
         setWebsiteUrl,
+        businessType,
+        setBusinessType,
         discoveryMethod,
         setDiscoveryMethod,
         normalizedWebsiteUrl,
@@ -490,6 +500,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setWidgetPosition,
         widgetPrimaryColor,
         setWidgetPrimaryColor,
+        businessType: widgetBusinessType,
+        setBusinessType: setWidgetBusinessType,
         widgetTitle,
         setWidgetTitle,
         widgetSize,
@@ -539,6 +551,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     [
       botName,
       websiteUrl,
+      businessType,
       discoveryMethod,
       normalizedWebsiteUrl,
       discoveredUrls,
@@ -556,6 +569,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       localError,
       widgetPosition,
       widgetPrimaryColor,
+      widgetBusinessType,
       widgetTitle,
       widgetSize,
       welcomeMessage,

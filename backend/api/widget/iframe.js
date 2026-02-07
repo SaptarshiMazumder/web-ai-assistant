@@ -16,6 +16,7 @@
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
   const suggestedMessagesParam = params.get("suggestedMessages");
   const escalationsEnabled = parseBool(params.get("escalationsEnabled"), false);
+  const availabilityCheckEnabled = parseBool(params.get("availabilityCheckEnabled"), false);
   const sessionKey = pk ? `webai_session_${pk}` : null;
   let sessionId = sessionKey ? localStorage.getItem(sessionKey) || "" : "";
   let isSessionEnded = false;
@@ -34,7 +35,7 @@
     return list
       .map((item, idx) => {
         const label = item && typeof item.label === "string" ? item.label : "";
-        const type = item && (item.type === "ai_response" || item.type === "escalate") ? item.type : "user_message";
+        const type = item && (item.type === "ai_response" || item.type === "escalate" || item.type === "availability") ? item.type : "user_message";
         const message = item && typeof item.message === "string" ? item.message : "";
         const prompt = item && typeof item.prompt === "string" ? item.prompt : "";
         return { id: String(item && item.id ? item.id : `suggest_${idx}`), label, type, message, prompt };
@@ -191,6 +192,10 @@
       }
       if (item.type === "escalate") {
         openEscalationModal();
+        return;
+      }
+      if (item.type === "availability") {
+        openAvailabilityModal();
         return;
       }
       const content = item.message || item.label;
@@ -449,6 +454,156 @@
     overlay.appendChild(card);
     document.body.appendChild(overlay);
     setTimeout(() => inputEl.focus(), 0);
+  }
+
+  function openAvailabilityModal() {
+    if (document.getElementById("availability-modal")) return;
+
+    const today = new Date();
+    const checkInDefault = new Date(today);
+    checkInDefault.setDate(checkInDefault.getDate() + 7);
+    const checkOutDefault = new Date(checkInDefault);
+    checkOutDefault.setDate(checkOutDefault.getDate() + 2);
+
+    const fmt = (d) => d.toISOString().slice(0, 10);
+
+    const overlay = document.createElement("div");
+    overlay.id = "availability-modal";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(15, 23, 42, 0.6)";
+    overlay.style.display = "flex";
+    overlay.style.alignItems = "center";
+    overlay.style.justifyContent = "center";
+    overlay.style.zIndex = "9999";
+
+    const card = document.createElement("div");
+    card.style.background = theme === "dark" ? "#0f172a" : "#ffffff";
+    card.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+    card.style.borderRadius = "14px";
+    card.style.padding = "18px";
+    card.style.width = "90%";
+    card.style.maxWidth = "320px";
+    card.style.boxShadow = "0 16px 40px rgba(0,0,0,0.25)";
+
+    const title = document.createElement("div");
+    title.textContent = "Check room availability";
+    title.style.fontWeight = "600";
+    title.style.marginBottom = "6px";
+
+    const subtitle = document.createElement("div");
+    subtitle.textContent = "Enter your dates and guest details.";
+    subtitle.style.fontSize = "12px";
+    subtitle.style.color = theme === "dark" ? "#94a3b8" : "#64748b";
+    subtitle.style.marginBottom = "12px";
+
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: theme === "dark" ? "#0b1220" : "#ffffff", color: theme === "dark" ? "#e2e8f0" : "#0f172a", boxSizing: "border-box" };
+    const labelStyle = { fontSize: "12px", color: theme === "dark" ? "#94a3b8" : "#64748b", marginTop: "10px", marginBottom: "4px" };
+
+    const checkInLabel = document.createElement("div");
+    checkInLabel.textContent = "Check-in";
+    Object.assign(checkInLabel.style, labelStyle);
+    const checkInEl = document.createElement("input");
+    checkInEl.type = "date";
+    checkInEl.value = fmt(checkInDefault);
+    Object.assign(checkInEl.style, inputStyle);
+
+    const checkOutLabel = document.createElement("div");
+    checkOutLabel.textContent = "Check-out";
+    Object.assign(checkOutLabel.style, labelStyle);
+    const checkOutEl = document.createElement("input");
+    checkOutEl.type = "date";
+    checkOutEl.value = fmt(checkOutDefault);
+    Object.assign(checkOutEl.style, inputStyle);
+
+    const adultsLabel = document.createElement("div");
+    adultsLabel.textContent = "Adults";
+    Object.assign(adultsLabel.style, labelStyle);
+    const adultsEl = document.createElement("input");
+    adultsEl.type = "number";
+    adultsEl.min = 1;
+    adultsEl.value = 2;
+    Object.assign(adultsEl.style, inputStyle);
+
+    const roomsLabel = document.createElement("div");
+    roomsLabel.textContent = "Rooms";
+    Object.assign(roomsLabel.style, labelStyle);
+    const roomsEl = document.createElement("input");
+    roomsEl.type = "number";
+    roomsEl.min = 1;
+    roomsEl.value = 1;
+    Object.assign(roomsEl.style, inputStyle);
+
+    const errorEl = document.createElement("div");
+    errorEl.style.fontSize = "12px";
+    errorEl.style.color = "#ef4444";
+    errorEl.style.marginTop = "6px";
+    errorEl.style.display = "none";
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "8px";
+    actions.style.marginTop = "12px";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.flex = "1";
+    cancelBtn.style.height = "36px";
+    cancelBtn.style.borderRadius = "10px";
+    cancelBtn.style.border = "1px solid #e2e8f0";
+    cancelBtn.style.background = "transparent";
+    cancelBtn.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
+
+    const submitBtn = document.createElement("button");
+    submitBtn.textContent = "Check availability";
+    submitBtn.style.flex = "1";
+    submitBtn.style.height = "36px";
+    submitBtn.style.borderRadius = "10px";
+    submitBtn.style.border = "0";
+    submitBtn.style.background = "var(--widget-color)";
+    submitBtn.style.color = "var(--widget-text-color)";
+
+    cancelBtn.onclick = () => overlay.remove();
+    submitBtn.onclick = () => {
+      const checkIn = (checkInEl.value || "").trim();
+      const checkOut = (checkOutEl.value || "").trim();
+      const adults = Math.max(1, parseInt(adultsEl.value, 10) || 2);
+      const rooms = Math.max(1, parseInt(roomsEl.value, 10) || 1);
+
+      if (!checkIn || !checkOut) {
+        errorEl.textContent = "Please enter check-in and check-out dates.";
+        errorEl.style.display = "block";
+        return;
+      }
+      if (new Date(checkOut) <= new Date(checkIn)) {
+        errorEl.textContent = "Check-out must be after check-in.";
+        errorEl.style.display = "block";
+        return;
+      }
+
+      const message = "Check room availability: check-in " + checkIn + ", check-out " + checkOut + ", " + adults + " adults, " + rooms + " room" + (rooms !== 1 ? "s" : "");
+      const display = "Check room availability for " + checkIn + " to " + checkOut + ", " + adults + " adults, " + rooms + " room" + (rooms !== 1 ? "s" : "");
+      overlay.remove();
+      sendMessageWithContent(message, display);
+    };
+
+    card.appendChild(title);
+    card.appendChild(subtitle);
+    card.appendChild(checkInLabel);
+    card.appendChild(checkInEl);
+    card.appendChild(checkOutLabel);
+    card.appendChild(checkOutEl);
+    card.appendChild(adultsLabel);
+    card.appendChild(adultsEl);
+    card.appendChild(roomsLabel);
+    card.appendChild(roomsEl);
+    card.appendChild(errorEl);
+    card.appendChild(actions);
+    actions.appendChild(cancelBtn);
+    actions.appendChild(submitBtn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    setTimeout(() => checkInEl.focus(), 0);
   }
 
   async function loadHistory() {

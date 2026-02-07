@@ -392,6 +392,7 @@ export default function BotTestingTab() {
           </div>
         </div>
 
+        {selectedBotWidgetConfig?.businessType === 'hotel' && (
         <div className="testing-config-card" style={{ marginTop: '1.5rem' }}>
           <h3 className="testing-config-title">Availability agent test</h3>
           <div className="testing-field">
@@ -564,6 +565,7 @@ export default function BotTestingTab() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <div className="testing-right">
