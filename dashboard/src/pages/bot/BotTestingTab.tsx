@@ -112,7 +112,7 @@ export default function BotTestingTab() {
   const [availabilityJobs, setAvailabilityJobs] = useState<AvailabilityJobRecord[]>([])
   const [availabilityError, setAvailabilityError] = useState<string | null>(null)
   const availabilityPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [rawAvailabilityFormat, setRawAvailabilityFormat] = useState<'text' | 'html'>('text')
+  const [rawAvailabilityFormat, setRawAvailabilityFormat] = useState<'text' | 'html' | 'debug'>('text')
   const [rawAvailabilityContent, setRawAvailabilityContent] = useState<string | null>(null)
   const [rawAvailabilityLoading, setRawAvailabilityLoading] = useState(false)
 
@@ -130,9 +130,15 @@ export default function BotTestingTab() {
     return { siteUrl: url, siteTitle: title }
   }, [domains, sources, selectedBot?.bot_id, selectedBot?.display_name])
 
+  // Pre-fill availability URL: prefer bookingTestUrl from Knowledge tab, else siteUrl
   useEffect(() => {
-    if (!availabilityUrl && siteUrl) setAvailabilityUrl(siteUrl)
-  }, [availabilityUrl, siteUrl])
+    const bookingUrl =
+      selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object'
+        ? (selectedBotWidgetConfig.bookingTestUrl as string)
+        : null
+    const url = (typeof bookingUrl === 'string' && bookingUrl.trim()) || siteUrl
+    if (url) setAvailabilityUrl((prev) => prev || url.trim())
+  }, [availabilityUrl, siteUrl, selectedBotWidgetConfig])
 
   const widgetIframeSrc = useMemo(() => {
     if (!selectedBot?.publishable_key) return ''
@@ -268,18 +274,30 @@ export default function BotTestingTab() {
   }, [availabilityJob?.job_id])
 
   const handleRunAvailability = async () => {
-    if (!selectedBot || !availabilityUrl.trim() || !checkIn || !checkOut) return
+    if (!selectedBot || !availabilityUrl.trim()) return
     setAvailabilityError(null)
-    const created = await startAvailabilityJob(selectedBot.bot_id, {
+    const payload: {
+      url: string
+      check_in?: string
+      check_out?: string
+      adults?: number
+      children?: number
+      rooms?: number
+      max_seconds?: number
+      question?: string
+    } = {
       url: availabilityUrl.trim(),
-      check_in: checkIn,
-      check_out: checkOut,
-      adults,
-      children,
-      rooms,
       max_seconds: maxSeconds,
       question: availabilityQuestion.trim() || undefined,
-    })
+    }
+    if (checkIn && checkOut) {
+      payload.check_in = checkIn
+      payload.check_out = checkOut
+      payload.adults = adults
+      payload.children = children
+      payload.rooms = rooms
+    }
+    const created = await startAvailabilityJob(selectedBot.bot_id, payload)
     if (!created) {
       setAvailabilityError('Failed to start availability job')
       return
@@ -288,7 +306,7 @@ export default function BotTestingTab() {
     void loadAvailabilityJobs()
   }
 
-  const handleLoadRawAvailability = async (format: 'text' | 'html') => {
+  const handleLoadRawAvailability = async (format: 'text' | 'html' | 'debug') => {
     if (!selectedBot || !availabilityJob) return
     setRawAvailabilityLoading(true)
     setRawAvailabilityFormat(format)
@@ -383,7 +401,7 @@ export default function BotTestingTab() {
               type="url"
               value={availabilityUrl}
               onChange={(e) => setAvailabilityUrl(e.target.value)}
-              placeholder="https://example.com/hotel/..."
+              placeholder="Paste full booking URL, or base URL + dates below (Agoda, Expedia, Booking.com, etc.)"
             />
           </div>
           <div className="testing-field" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -464,7 +482,7 @@ export default function BotTestingTab() {
               type="button"
               className="primary"
               onClick={() => void handleRunAvailability()}
-              disabled={!availabilityUrl.trim() || !checkIn || !checkOut}
+              disabled={!availabilityUrl.trim()}
             >
               Run availability check
             </button>
@@ -496,6 +514,14 @@ export default function BotTestingTab() {
                   disabled={rawAvailabilityLoading}
                 >
                   {rawAvailabilityLoading && rawAvailabilityFormat === 'html' ? 'Loading...' : 'Load raw HTML'}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => void handleLoadRawAvailability('debug')}
+                  disabled={rawAvailabilityLoading}
+                >
+                  {rawAvailabilityLoading && rawAvailabilityFormat === 'debug' ? 'Loading...' : 'Load debug log'}
                 </button>
               </div>
               {availabilityJob.summary && (

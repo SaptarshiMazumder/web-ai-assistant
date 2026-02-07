@@ -384,7 +384,7 @@ type DashboardData = {
   getAvailabilityRaw: (
     botId: string,
     jobId: string,
-    format?: 'text' | 'html',
+    format?: 'text' | 'html' | 'debug',
     maxChars?: number
   ) => Promise<{ format: string; content: string } | null>
     deleteBot: (botId: string) => Promise<boolean>
@@ -1199,7 +1199,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function getAvailabilityRaw(
     botId: string,
     jobId: string,
-    format: 'text' | 'html' = 'text',
+    format: 'text' | 'html' | 'debug' = 'text',
     maxChars = 0
   ): Promise<{ format: string; content: string } | null> {
     if (isSuperAdmin && !activeOrgId) return null

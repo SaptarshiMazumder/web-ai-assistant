@@ -6,7 +6,7 @@ import secrets
 import os
 from datetime import datetime, timezone
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -80,6 +80,7 @@ from application.services.conversation_service import CONVERSATION_HISTORY_MESSA
 from common.di.container import bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
+from infrastructure.availability.chat_availability import maybe_run_chat_availability
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
@@ -591,6 +592,20 @@ async def v1_widget_chat(
     )
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
+
+    # If message asks about availability and bot has booking config, run sync check and inject as evidence
+    extra_evidence: List[Dict[str, str]] = []
+    widget_config: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+    availability_summary = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
+    if availability_summary:
+        extra_evidence = [{"url": "Live availability check", "snippet": availability_summary}]
+        chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -600,6 +615,7 @@ async def v1_widget_chat(
         model_name=model_name,
         temperature=temperature,
         conversation_context=conversation_context or None,
+        extra_evidence=extra_evidence if extra_evidence else None,
     )
     chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
     sources = result.get("sources") or []
@@ -757,6 +773,19 @@ async def v1_widget_chat_stream(
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
 
+    # If message asks about availability and bot has booking config, run sync check and inject as evidence
+    extra_evidence_stream: List[Dict[str, str]] = []
+    widget_config_stream: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config_stream = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+    availability_summary_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
+    if availability_summary_stream:
+        extra_evidence_stream = [{"url": "Live availability check", "snippet": availability_summary_stream}]
+        chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
@@ -769,6 +798,7 @@ async def v1_widget_chat_stream(
                 model_name=model_name,
                 temperature=temperature,
                 conversation_context=conversation_context or None,
+                extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
             ):
                 if evt.get("type") == "delta":
                     yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
@@ -2386,6 +2416,7 @@ from api.schemas import (
 from application.services.topic_extraction_service import topic_extraction_service
 from infrastructure.db.repositories import PostgresTopicJobRepository, PostgresAvailabilityJobRepository
 from domain.entities import AvailabilityJob
+from infrastructure.availability.url_pattern import build_url, get_default_pattern, infer_pattern
 from infrastructure.tasks.availability_tasks import availability_job_task
 
 
@@ -2641,14 +2672,114 @@ async def v1_org_start_availability_job(
     _assert_bot_org(bot_id, resolved_org)
     if not payload.url:
         raise HTTPException(status_code=400, detail="Missing url")
+
+    url_input = payload.url.strip()
+    if not url_input.startswith(("http://", "https://")):
+        url_input = "https://" + url_input
+
+    check_in = payload.check_in or ""
+    check_out = payload.check_out or ""
+    adults = payload.adults or 2
+    children = payload.children or 0
+    rooms = payload.rooms or 1
+
+    # Load widget_config for bookingUrlPattern
+    bot = bot_service().get_bot_record(bot_id)
+    widget_config: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+
+    booking_pattern = widget_config.get("bookingUrlPattern") if isinstance(widget_config, dict) else None
+    resolved_url: str
+    debug_info: Dict[str, Any] = {
+        "url_input": url_input,
+        "check_in": check_in,
+        "check_out": check_out,
+        "adults": adults,
+        "children": children,
+        "rooms": rooms,
+    }
+
+    if check_in and check_out:
+        # User provided dates: build URL from pattern
+        if booking_pattern and isinstance(booking_pattern, dict) and booking_pattern.get("param_mapping"):
+            debug_info["pattern_source"] = "saved_bookingUrlPattern"
+            debug_info["pattern"] = booking_pattern
+            resolved_url = build_url(
+                booking_pattern,
+                check_in=check_in,
+                check_out=check_out,
+                adults=adults,
+                children=children,
+                rooms=rooms,
+            )
+        else:
+            inferred = infer_pattern(url_input)
+            debug_info["pattern_inferred"] = inferred
+            if inferred:
+                debug_info["pattern_source"] = "infer_pattern"
+                bot_service().update_widget_config(
+                    bot_id,
+                    json.dumps({
+                        **widget_config,
+                        "bookingUrlPattern": inferred,
+                        "bookingTestUrl": url_input,
+                    }),
+                )
+                resolved_url = build_url(
+                    inferred,
+                    check_in=check_in,
+                    check_out=check_out,
+                    adults=adults,
+                    children=children,
+                    rooms=rooms,
+                )
+            else:
+                default_pat = get_default_pattern(url_input)
+                debug_info["pattern_source"] = "get_default_pattern"
+                debug_info["pattern"] = default_pat
+                resolved_url = build_url(
+                    default_pat,
+                    check_in=check_in,
+                    check_out=check_out,
+                    adults=adults,
+                    children=children,
+                    rooms=rooms,
+                )
+    else:
+        # User pasted full URL: use as-is and infer/save pattern for future
+        resolved_url = url_input
+        debug_info["pattern_source"] = "url_as_is"
+        inferred = infer_pattern(url_input)
+        debug_info["pattern_inferred"] = inferred
+        if inferred:
+            bot_service().update_widget_config(
+                bot_id,
+                json.dumps({
+                    **widget_config,
+                    "bookingUrlPattern": inferred,
+                    "bookingTestUrl": url_input,
+                }),
+            )
+
     now = datetime.now(timezone.utc).isoformat()
     job_id = "avail_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
     screenshots_dir = f"/app/backend/data/availability/{job_id}"
+    debug_info["resolved_url"] = resolved_url
+    os.makedirs(screenshots_dir, exist_ok=True)
+    try:
+        with open(os.path.join(screenshots_dir, "debug_info.json"), "w", encoding="utf-8") as f:
+            json.dump(debug_info, f, indent=2)
+    except Exception:
+        pass
     job = AvailabilityJob(
         job_id=job_id,
         org_id=resolved_org,
         bot_id=bot_id,
-        url=payload.url,
+        url=resolved_url,
         status="queued",
         question=(payload.question or None),
         summary=None,
@@ -2666,13 +2797,13 @@ async def v1_org_start_availability_job(
         job_id=job_id,
         bot_id=bot_id,
         org_id=resolved_org,
-        url=payload.url,
+        url=resolved_url,
         question=payload.question or "",
-        check_in=payload.check_in or "",
-        check_out=payload.check_out or "",
-        adults=payload.adults,
-        children=payload.children,
-        rooms=payload.rooms,
+        check_in=check_in,
+        check_out=check_out,
+        adults=adults,
+        children=children,
+        rooms=rooms,
         max_seconds=job.max_seconds,
         screenshots_dir=screenshots_dir,
     )
@@ -2729,11 +2860,16 @@ async def v1_org_get_availability_raw(
     if not job:
         raise HTTPException(status_code=404, detail="Availability job not found")
     fmt = (format or "text").lower()
-    if fmt not in ("text", "html"):
-        raise HTTPException(status_code=400, detail="format must be text or html")
-    path = job.raw_text_path if fmt == "text" else job.raw_html_path
+    if fmt not in ("text", "html", "debug"):
+        raise HTTPException(status_code=400, detail="format must be text, html, or debug")
+    if fmt == "debug":
+        path = os.path.join(job.screenshots_dir, "availability_debug.log") if job.screenshots_dir else None
+    elif fmt == "text":
+        path = job.raw_text_path
+    else:
+        path = job.raw_html_path
     if not path or not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Raw availability file not found")
+        raise HTTPException(status_code=404, detail=f"File not found (format={fmt})")
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()

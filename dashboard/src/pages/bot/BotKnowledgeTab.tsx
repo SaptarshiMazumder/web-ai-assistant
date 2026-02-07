@@ -1744,11 +1744,12 @@ export default function BotKnowledgeTab() {
                   className="design-form-input"
                   value={bookingTestUrl}
                   onChange={(e) => setBookingTestUrl(e.target.value)}
-                  placeholder="https://www.booking.com/hotel/..."
+                  placeholder="https://www.booking.com/hotel/... or Agoda, Expedia, etc."
                   style={{ width: '100%', maxWidth: '500px' }}
                 />
                 <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                  Go to booking.com, select your dates and guests, then paste the full URL here.
+                  Paste a booking URL from any site (Agoda, Expedia, Booking.com, hotel site) with your dates
+                  and guests selected. The agent will learn the URL pattern for future checks.
                 </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>

@@ -524,6 +524,7 @@ def run_vertex_rag(
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     conversation_context: Optional[str] = None,
+    extra_evidence: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
@@ -575,6 +576,10 @@ def run_vertex_rag(
         for i, e in enumerate(evidence, 1):
             _dbg({"type": "filtered_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
 
+    if extra_evidence:
+        evidence = list(extra_evidence) + evidence
+        _dbg({"type": "extra_evidence_prepended", "count": len(extra_evidence)})
+
     if not evidence:
         _dbg({"type": "rag_no_evidence", "answer": "", "sources": []})
         return {
@@ -623,6 +628,7 @@ def run_vertex_rag_stream(
     model_name: Optional[str] = None,
     temperature: Optional[float] = None,
     conversation_context: Optional[str] = None,
+    extra_evidence: Optional[List[Dict[str, str]]] = None,
 ):
     """Stream deltas as they are generated, then emit a final done event with sources."""
     def _dbg(evt: Dict[str, Any]) -> None:
@@ -665,6 +671,10 @@ def run_vertex_rag_stream(
         _dbg({"type": "host_filter_done", "allowed_host": allowed_host, "evidence_count": len(evidence)})
         for i, e in enumerate(evidence, 1):
             _dbg({"type": "filtered_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+
+    if extra_evidence:
+        evidence = list(extra_evidence) + evidence
+        _dbg({"type": "extra_evidence_prepended", "count": len(extra_evidence)})
 
     if not evidence:
         _dbg({"type": "rag_no_evidence", "answer": "", "sources": []})
