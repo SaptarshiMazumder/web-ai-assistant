@@ -77,6 +77,7 @@ class BotDomainListResponse(BaseModel):
 class BotIndexRequest(BaseModel):
     url: str = ""  # required when source_id not provided
     source_id: Optional[str] = None  # when provided, start crawl for this source (url from source.config)
+    headless: Optional[bool] = None  # override headless browser mode for this crawl
 
 
 class BotIndexBatchRequest(BaseModel):
@@ -480,3 +481,79 @@ class UpdateTopicRequest(BaseModel):
 class DeleteTopicResponse(BaseModel):
     ok: bool = True
     topic_id: str
+
+
+# ========== Topic Extraction Jobs ==========
+
+class TopicJobItem(BaseModel):
+    job_id: str
+    org_id: str
+    bot_id: str
+    status: str
+    stage: str
+    gcs_prefix: Optional[str] = None
+    docs_count: int = 0
+    topics_count: int = 0
+    last_error: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class TopicJobsResponse(BaseModel):
+    bot_id: str
+    jobs: List[TopicJobItem] = []
+
+
+# ========== Availability Jobs ==========
+
+class AvailabilityRequest(BaseModel):
+    url: str
+    check_in: Optional[str] = None  # omit to use URL as-is (user pastes full URL with params)
+    check_out: Optional[str] = None
+    adults: int = 2
+    children: int = 0
+    rooms: int = 1
+    max_seconds: int = 60
+    question: Optional[str] = None
+
+
+class AvailabilityJobItem(BaseModel):
+    job_id: str
+    org_id: str
+    bot_id: str
+    url: str
+    status: str
+    question: Optional[str] = None
+    summary: Optional[str] = None
+    raw_text_path: Optional[str] = None
+    raw_html_path: Optional[str] = None
+    last_error: Optional[str] = None
+    max_seconds: int = 60
+    steps_count: int = 0
+    screenshots_dir: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class AvailabilityJobsResponse(BaseModel):
+    bot_id: str
+    jobs: List[AvailabilityJobItem] = []
+
+
+# ========== Booking Link Jobs ==========
+
+class BookingLinkJobItem(BaseModel):
+    job_id: str
+    bot_id: str
+    index_job_id: Optional[str] = None
+    root_url: str
+    status: str
+    links: List[Dict[str, Any]] = []
+    error: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class BookingLinkJobsResponse(BaseModel):
+    bot_id: str
+    jobs: List[BookingLinkJobItem] = []

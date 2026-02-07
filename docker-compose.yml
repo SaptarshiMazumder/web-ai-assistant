@@ -36,7 +36,12 @@ services:
       CELERY_RESULT_BACKEND: "redis://redis:6379/0"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
-    command: celery -A infrastructure.celery_app worker --loglevel=info --concurrency=10
+    command:
+      [
+        "sh",
+        "-lc",
+        "xvfb-run -a -s \"-screen 0 1920x1080x24\" --error-file=/dev/stdout celery -A infrastructure.celery_app worker --loglevel=info --concurrency=10"
+      ]
   redis:
     image: redis:7-alpine
     ports:

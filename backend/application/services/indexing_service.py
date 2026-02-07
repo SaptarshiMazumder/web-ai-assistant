@@ -24,6 +24,7 @@ from domain.repositories import (
 
 from infrastructure.celery_app import celery_app
 from infrastructure.tasks.crawl_tasks import crawl_job_task
+from infrastructure.tasks.single_page_crawl_tasks import single_page_crawl_job
 from infrastructure.services.indexing_service import (
     _bot_base_prefix,
     _display_name_from_url,
@@ -100,12 +101,24 @@ class IndexingService:
                 pass
         self._source_repo.delete_source(bot_id, source_id)
 
-    async def start_indexing_for_bot(self, bot_id: str, raw_url: str, source_id: Optional[str] = None) -> Dict[str, Any]:
+    async def start_indexing_for_bot(
+        self,
+        bot_id: str,
+        raw_url: str,
+        source_id: Optional[str] = None,
+        *,
+        headless: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """Start BFS crawling from a single URL. Creates a source (unless source_id given) and links the job to it."""
-        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id)
+        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id, headless=headless)
 
     async def _start_indexing_for_bot_inner(
-        self, bot_id: str, raw_url: str, source_id: Optional[str] = None
+        self,
+        bot_id: str,
+        raw_url: str,
+        source_id: Optional[str] = None,
+        *,
+        headless: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """Inner: start crawl for URL; if source_id is None, create a new source first."""
         url, host = _parse_and_validate_url(raw_url)
@@ -151,7 +164,7 @@ class IndexingService:
         self._job_repo.create_job(job)
 
         try:
-            task = crawl_job_task.delay(job_id, bot_id, url, None, bucket_name, base_prefix, corpus)
+            task = crawl_job_task.delay(job_id, bot_id, url, None, bucket_name, base_prefix, corpus, headless)
             task_id = task.id if task else None
         except Exception as e:
             job.stage = "error"
@@ -161,7 +174,13 @@ class IndexingService:
 
         return {"status": "started", "job_id": job_id, "hostname": host, "task_id": task_id}
 
-    async def start_indexing_for_source(self, bot_id: str, source_id: str) -> Dict[str, Any]:
+    async def start_indexing_for_source(
+        self,
+        bot_id: str,
+        source_id: str,
+        *,
+        headless: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """Start crawling for an existing source (type=url). Creates a job linked to this source and adds to RAG."""
         source = self._source_repo.get_source(bot_id, source_id)
         if not source:
@@ -171,9 +190,70 @@ class IndexingService:
         raw_url = (source.config or {}).get("url") if isinstance(source.config, dict) else None
         if not raw_url or not isinstance(raw_url, str):
             raise ValueError("Source has no URL in config")
-        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id)
+        return await self._start_indexing_for_bot_inner(bot_id, raw_url, source_id=source_id, headless=headless)
 
-    async def start_indexing_batch_for_bot(self, bot_id: str, urls: List[str]) -> Dict[str, Any]:
+    async def start_single_page_crawl_for_source(self, bot_id: str, source_id: str) -> Dict[str, Any]:
+        """Start a dedicated single-page crawl for an existing source (type=url)."""
+        source = self._source_repo.get_source(bot_id, source_id)
+        if not source:
+            raise ValueError("Source not found")
+        if (source.type or "").lower() != "url":
+            raise ValueError("Only URL sources can be crawled; use the source's URL")
+        raw_url = (source.config or {}).get("url") if isinstance(source.config, dict) else None
+        if not raw_url or not isinstance(raw_url, str):
+            raise ValueError("Source has no URL in config")
+
+        url, host = _parse_and_validate_url(raw_url)
+
+        if config.REQUIRE_DOMAIN_VERIFICATION:
+            verified_hosts = set(self._domain_repo.list_verified_hosts(bot_id))
+            if host not in verified_hosts:
+                raise PermissionError(f"Domain '{host}' is not verified for this bot")
+
+        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
+            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+
+        corpus = self._rag_repo.ensure_corpus(bot_id)
+        bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+        base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        job_id = uuid.uuid4().hex
+        job = IndexJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            url=url,
+            hostname=host,
+            stage="queued",
+            pages_crawled=0,
+            docs_count=0,
+            last_crawled_url="",
+            last_depth=-1,
+            gcs_prefix="",
+            last_error="",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source_id,
+        )
+        self._job_repo.create_job(job)
+
+        try:
+            task = single_page_crawl_job.delay(job_id, bot_id, url, bucket_name, base_prefix, corpus)
+            task_id = task.id if task else None
+        except Exception as e:
+            job.stage = "error"
+            job.last_error = f"Failed to queue task: {str(e)}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue crawl task: {str(e)}")
+
+        return {"status": "started", "job_id": job_id, "hostname": host, "task_id": task_id}
+
+    async def start_indexing_batch_for_bot(
+        self,
+        bot_id: str,
+        urls: List[str],
+        *,
+        headless: Optional[bool] = None,
+    ) -> Dict[str, Any]:
         """Start crawling for a list of URLs (no BFS expansion). Creates one source per URL so the Sources table shows each URL."""
         cleaned = _validate_urls_for_bot(bot_id, urls)
 
@@ -218,7 +298,7 @@ class IndexingService:
 
         # Queue Celery task immediately; worker will call ensure_corpus so API returns fast
         try:
-            task = crawl_job_task.delay(job_id, bot_id, None, cleaned, bucket_name, base_prefix, None)
+            task = crawl_job_task.delay(job_id, bot_id, None, cleaned, bucket_name, base_prefix, None, headless)
             task_id = task.id if task else None
         except Exception as e:
             # If Celery task fails to queue, mark job as error

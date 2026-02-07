@@ -11,6 +11,7 @@ export default function AddSourcePage() {
   const [sourceType, setSourceType] = useState<'url' | 'drive' | 'docs'>('url')
   const [url, setUrl] = useState('')
   const [displayName, setDisplayName] = useState('')
+  const [language, setLanguage] = useState<'auto' | 'ja'>('auto')
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -27,7 +28,9 @@ export default function AddSourcePage() {
       setLocalError(null)
       setError(null)
       try {
-        const source = await createSource(selectedBot.bot_id, 'url', { url: u }, displayName.trim() || null)
+        const config: Record<string, unknown> = { url: u }
+        if (language && language !== 'auto') config.language = language
+        const source = await createSource(selectedBot.bot_id, 'url', config, displayName.trim() || null)
         if (!source) {
           setLocalError('Failed to add source')
           return
@@ -131,6 +134,22 @@ export default function AddSourcePage() {
                 placeholder="e.g. Homepage"
                 style={{ width: '100%' }}
               />
+            </div>
+            <div>
+              <label className="design-form-label" htmlFor="add-source-language">Language (optional)</label>
+              <select
+                id="add-source-language"
+                className="design-form-input"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as 'auto' | 'ja')}
+                style={{ width: '100%' }}
+              >
+                <option value="auto">Auto (detect)</option>
+                <option value="ja">Japanese</option>
+              </select>
+              <div className="muted" style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
+                If text appears garbled, set Japanese to force charset-based decoding.
+              </div>
             </div>
           </>
         )}

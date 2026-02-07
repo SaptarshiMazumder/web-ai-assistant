@@ -2,6 +2,9 @@ import time
 import urllib.request
 import uuid
 import json
+import secrets
+import os
+from datetime import datetime, timezone
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
@@ -65,6 +68,8 @@ from api.schemas import (
     DiscoveryJobCreateRequest,
     DiscoveryJobResponse,
     DiscoveryJobListResponse,
+    BookingLinkJobItem,
+    BookingLinkJobsResponse,
     WidgetChatRequest,
     WidgetChatResponse,
     WidgetConfigUpdate,
@@ -78,8 +83,9 @@ from common.logging.chat_debug import chat_debug_emit
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
-from infrastructure.db.repositories import PostgresDiscoveryJobRepository
+from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository
 from infrastructure.db.connection import get_connection
+from infrastructure.celery_app import celery_app
 from infrastructure.tasks.discovery_tasks import discovery_job_task
 from domain.entities import DiscoveryJob
 
@@ -334,7 +340,7 @@ async def v1_start_index(
         raise HTTPException(status_code=403, detail="Bot secret does not match bot_id")
 
     try:
-        return await indexing_service().start_indexing_for_bot(bot_id, payload.url)
+        return await indexing_service().start_indexing_for_bot(bot_id, payload.url, headless=payload.headless)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -411,7 +417,7 @@ async def v1_pk_start_index(
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     _rate_limit(bot.bot_id)
     try:
-        return await indexing_service().start_indexing_for_bot(bot.bot_id, payload.url)
+        return await indexing_service().start_indexing_for_bot(bot.bot_id, payload.url, headless=payload.headless)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -2147,10 +2153,33 @@ async def v1_org_start_index(
     _assert_bot_org(bot_id, resolved_org)
     try:
         if payload.source_id and payload.source_id.strip():
-            return await indexing_service().start_indexing_for_source(bot_id, payload.source_id.strip())
+            return await indexing_service().start_indexing_for_source(
+                bot_id,
+                payload.source_id.strip(),
+                headless=payload.headless,
+            )
         if not (payload.url and payload.url.strip()):
             raise HTTPException(status_code=400, detail="Provide url or source_id")
-        return await indexing_service().start_indexing_for_bot(bot_id, payload.url.strip())
+        return await indexing_service().start_indexing_for_bot(bot_id, payload.url.strip(), headless=payload.headless)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/v1/org/bots/{bot_id}/sources/{source_id}/crawl-single")
+async def v1_org_start_single_page_crawl(
+    bot_id: str,
+    source_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        return await indexing_service().start_single_page_crawl_for_source(bot_id, source_id)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -2277,6 +2306,32 @@ async def v1_org_get_discovery_job(
     )
 
 
+@router.post("/v1/org/bots/{bot_id}/discovery-jobs/{job_id}/cancel")
+async def v1_org_cancel_discovery_job(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Cancel a running or queued background discovery job. Stops the process and hides discovery logs."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresDiscoveryJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Discovery job not found")
+    if job.status not in ("queued", "running"):
+        return {"status": "already_done", "job_id": job_id}
+    if job.celery_task_id:
+        try:
+            celery_app.control.revoke(job.celery_task_id, terminate=True)
+        except Exception:
+            pass
+    job.status = "cancelled"
+    repo.update(job)
+    return {"status": "cancelled", "job_id": job_id}
+
+
 @router.get("/v1/org/bots/{bot_id}/index/status")
 async def v1_org_index_status(
     bot_id: str,
@@ -2322,8 +2377,16 @@ from api.schemas import (
     CreateTopicRequest,
     UpdateTopicRequest,
     DeleteTopicResponse,
+    TopicJobItem,
+    TopicJobsResponse,
+    AvailabilityRequest,
+    AvailabilityJobItem,
+    AvailabilityJobsResponse,
 )
 from application.services.topic_extraction_service import topic_extraction_service
+from infrastructure.db.repositories import PostgresTopicJobRepository, PostgresAvailabilityJobRepository
+from domain.entities import AvailabilityJob
+from infrastructure.tasks.availability_tasks import availability_job_task
 
 
 @router.get("/v1/org/bots/{bot_id}/extracted-topics", response_model=ExtractedTopicsResponse)
@@ -2443,7 +2506,7 @@ async def v1_org_extract_topics(
         for blob in blobs:
             if blob.name.endswith('.md'):
                 try:
-                    content = blob.download_as_text()
+                    content = blob.download_as_text(encoding="utf-8")
                     # Extract URL from content (first line is usually "Source URL: ...")
                     url = ""
                     if content.startswith("Source URL:"):
@@ -2533,6 +2596,209 @@ async def v1_org_delete_topic(
         raise HTTPException(status_code=404, detail="Topic not found")
     
     return DeleteTopicResponse(ok=True, topic_id=topic_id)
+
+
+@router.get("/v1/org/bots/{bot_id}/topic-jobs", response_model=TopicJobsResponse)
+async def v1_org_list_topic_jobs(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresTopicJobRepository()
+    jobs = repo.list_by_bot(bot_id) or []
+    return TopicJobsResponse(
+        bot_id=bot_id,
+        jobs=[TopicJobItem(**job.__dict__) for job in jobs],
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/topic-jobs/{job_id}", response_model=TopicJobItem)
+async def v1_org_get_topic_job(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresTopicJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Topic job not found")
+    return TopicJobItem(**job.__dict__)
+
+
+@router.post("/v1/org/bots/{bot_id}/availability", response_model=AvailabilityJobItem)
+async def v1_org_start_availability_job(
+    bot_id: str,
+    payload: AvailabilityRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    if not payload.url:
+        raise HTTPException(status_code=400, detail="Missing url")
+    now = datetime.now(timezone.utc).isoformat()
+    job_id = "avail_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+    screenshots_dir = f"/app/backend/data/availability/{job_id}"
+    job = AvailabilityJob(
+        job_id=job_id,
+        org_id=resolved_org,
+        bot_id=bot_id,
+        url=payload.url,
+        status="queued",
+        question=(payload.question or None),
+        summary=None,
+        last_error=None,
+        max_seconds=max(15, min(payload.max_seconds or 60, 180)),
+        steps_count=0,
+        screenshots_dir=screenshots_dir,
+        celery_task_id=None,
+        created_at=now,
+        updated_at=now,
+    )
+    repo = PostgresAvailabilityJobRepository()
+    repo.create(job)
+    task = availability_job_task.delay(
+        job_id=job_id,
+        bot_id=bot_id,
+        org_id=resolved_org,
+        url=payload.url,
+        question=payload.question or "",
+        check_in=payload.check_in or "",
+        check_out=payload.check_out or "",
+        adults=payload.adults,
+        children=payload.children,
+        rooms=payload.rooms,
+        max_seconds=job.max_seconds,
+        screenshots_dir=screenshots_dir,
+    )
+    job.celery_task_id = task.id if task else None
+    repo.update(job)
+    return AvailabilityJobItem(**job.__dict__)
+
+
+@router.get("/v1/org/bots/{bot_id}/availability", response_model=AvailabilityJobsResponse)
+async def v1_org_list_availability_jobs(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresAvailabilityJobRepository()
+    jobs = repo.list_by_bot(bot_id)
+    return AvailabilityJobsResponse(
+        bot_id=bot_id,
+        jobs=[AvailabilityJobItem(**job.__dict__) for job in jobs],
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/availability/{job_id}", response_model=AvailabilityJobItem)
+async def v1_org_get_availability_job(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresAvailabilityJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Availability job not found")
+    return AvailabilityJobItem(**job.__dict__)
+
+
+@router.get("/v1/org/bots/{bot_id}/availability/{job_id}/raw")
+async def v1_org_get_availability_raw(
+    bot_id: str,
+    job_id: str,
+    format: str = "text",
+    max_chars: int = 0,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresAvailabilityJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Availability job not found")
+    fmt = (format or "text").lower()
+    if fmt not in ("text", "html"):
+        raise HTTPException(status_code=400, detail="format must be text or html")
+    path = job.raw_text_path if fmt == "text" else job.raw_html_path
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Raw availability file not found")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read raw file: {exc}")
+    if max_chars and max_chars > 0:
+        content = content[: max_chars]
+    return {"format": fmt, "content": content}
+
+
+# ========== Booking Link Jobs ==========
+
+@router.get("/v1/org/bots/{bot_id}/booking-links", response_model=BookingLinkJobsResponse)
+async def v1_org_list_booking_link_jobs(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresBookingLinkJobRepository()
+    jobs = repo.list_by_bot(bot_id)
+    return BookingLinkJobsResponse(
+        bot_id=bot_id,
+        jobs=[
+            BookingLinkJobItem(
+                job_id=job.job_id,
+                bot_id=job.bot_id,
+                index_job_id=job.index_job_id,
+                root_url=job.root_url,
+                status=job.status,
+                links=job.links,
+                error=job.error,
+                created_at=job.created_at,
+                updated_at=job.updated_at,
+            )
+            for job in jobs
+        ],
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/booking-links/{job_id}", response_model=BookingLinkJobItem)
+async def v1_org_get_booking_link_job(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    repo = PostgresBookingLinkJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Booking link job not found")
+    return BookingLinkJobItem(
+        job_id=job.job_id,
+        bot_id=job.bot_id,
+        index_job_id=job.index_job_id,
+        root_url=job.root_url,
+        status=job.status,
+        links=job.links,
+        error=job.error,
+        created_at=job.created_at,
+        updated_at=job.updated_at,
+    )
 
 
 # ========== Admin Endpoints ==========

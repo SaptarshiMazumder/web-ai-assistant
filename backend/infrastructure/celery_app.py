@@ -23,6 +23,21 @@ except ImportError as e:
     import sys
     print(f"WARNING: Failed to import crawl_tasks: {e}", file=sys.stderr)
 try:
+    from infrastructure.tasks import single_page_crawl_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import single_page_crawl_tasks: {e}", file=sys.stderr)
+try:
+    from infrastructure.tasks import availability_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import availability_tasks: {e}", file=sys.stderr)
+try:
+    from infrastructure.tasks import booking_link_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import booking_link_tasks: {e}", file=sys.stderr)
+try:
     from infrastructure.tasks import discovery_tasks  # noqa: E402, F401
 except ImportError as e:
     import sys

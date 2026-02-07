@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import os
+import secrets
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from celery import Task
@@ -9,12 +11,24 @@ from celery.exceptions import Retry
 
 from infrastructure.celery_app import celery_app
 from infrastructure.rag.crawl_service import CRAWL_MAX_CONCURRENCY
+import httpx
+from markdownify import markdownify
+import re
+import codecs
+
 from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
-from infrastructure.db.repositories import PostgresIndexJobRepository, PostgresBotRepository
+from infrastructure.db.repositories import (
+    PostgresBookingLinkJobRepository,
+    PostgresBotRepository,
+    PostgresIndexJobRepository,
+    PostgresTopicJobRepository,
+)
 from infrastructure.rag.error_handling import safe_execute
 from google.cloud import storage
 import google.auth
 import vertexai
+from domain.entities import BookingLinkJob, Document, TopicJob
+from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +37,254 @@ def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
     """Emit event for progress tracking (for backward compatibility)."""
     # In Celery, we update DB directly, but can also log for monitoring
     print(f"WEB_AI_EVENT {json.dumps({'type': event_type, **data}, ensure_ascii=False)}", flush=True)
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _new_topic_job_id() -> str:
+    return "tjob_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
+def _new_booking_link_job_id() -> str:
+    return "blj_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
+def _get_source_language(bot_id: str, source_id: Optional[str]) -> str:
+    # Hardcode JP for now (do not read env or source config).
+    return "ja"
+
+
+def _detect_declared_charset(raw: bytes) -> str:
+    if not raw:
+        return ""
+    try:
+        head = raw[:8192].decode("latin-1", errors="ignore")
+    except Exception:
+        return ""
+    match = re.search(r"charset\s*=\s*['\"]?([a-zA-Z0-9_\-]+)", head, re.IGNORECASE)
+    if match:
+        return match.group(1).strip().lower()
+    return ""
+
+
+def _score_decoded_text(text: str) -> float:
+    if not text:
+        return -1e9
+    total = max(1, len(text))
+    replacement = text.count("\ufffd")
+    controls = sum(1 for ch in text if (ord(ch) < 32 and ch not in "\n\r\t"))
+    jp = 0
+    for ch in text:
+        code = ord(ch)
+        if 0x3040 <= code <= 0x30FF or 0x4E00 <= code <= 0x9FFF or 0x3400 <= code <= 0x4DBF:
+            jp += 1
+    latin = sum(1 for ch in text if "A" <= ch <= "Z" or "a" <= ch <= "z")
+    mojibake = sum(text.count(tok) for tok in ("Ã", "Â", "â", "ã", "¤", "¢", "»", "œ", "ƒ"))
+    jp_ratio = jp / total
+    return (jp * 5.0) + (latin * 0.1) + (jp_ratio * 200.0) - (replacement * 15.0) - (controls * 5.0) - (mojibake * 8.0)
+
+
+def _decode_bytes_with_charset(
+    data: bytes, content_type: str | None = None
+) -> tuple[str, str, float, str, str]:
+    if not data:
+        return "", "", -1e9, "", ""
+    header_charset = ""
+    meta_charset = ""
+    if content_type:
+        match = re.search(r"charset\s*=\s*([a-zA-Z0-9_\-]+)", content_type, re.IGNORECASE)
+        if match:
+            header_charset = match.group(1).strip().lower()
+    meta_charset = _detect_declared_charset(data)
+
+    candidates: list[tuple[str, float]] = []
+
+    def add_candidate(enc: str, bonus: float = 0.0) -> None:
+        enc = (enc or "").strip().lower()
+        if not enc:
+            return
+        for existing, _ in candidates:
+            if existing == enc:
+                return
+        try:
+            codecs.lookup(enc)
+        except Exception:
+            return
+        candidates.append((enc, bonus))
+
+    if data.startswith(codecs.BOM_UTF8):
+        add_candidate("utf-8-sig", bonus=3.0)
+    if header_charset:
+        add_candidate(header_charset, bonus=2.5)
+    if meta_charset:
+        add_candidate(meta_charset, bonus=2.0)
+    try:
+        from charset_normalizer import from_bytes  # type: ignore
+        best = from_bytes(data).best()
+        if best is not None and getattr(best, "encoding", None):
+            add_candidate(str(best.encoding), bonus=1.5)
+    except Exception:
+        pass
+
+    for enc in ("utf-8", "cp932", "shift_jis", "euc_jp", "iso2022_jp", "latin-1"):
+        add_candidate(enc)
+
+    best_text = ""
+    best_enc = ""
+    best_score = -1e9
+    for enc, bonus in candidates:
+        try:
+            decoded = data.decode(enc, errors="replace")
+        except Exception:
+            continue
+        score = _score_decoded_text(decoded) + bonus
+        if score > best_score:
+            best_score = score
+            best_text = decoded
+            best_enc = enc
+
+    if not best_text:
+        try:
+            fallback = data.decode("utf-8", errors="replace")
+        except Exception:
+            fallback = ""
+        return fallback, "utf-8", _score_decoded_text(fallback), header_charset, meta_charset
+
+    return best_text, best_enc, best_score, header_charset, meta_charset
+
+
+def _default_user_agent() -> str:
+    return (os.environ.get("CRAWL_USER_AGENT") or "").strip() or (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+
+
+def _is_japanese_lang(lang: str) -> bool:
+    return lang in ("ja", "jpn", "jp", "japanese")
+
+
+def _text_quality(text: str) -> float:
+    if not text:
+        return 0.0
+    total = max(1, len(text))
+    printable = sum(1 for ch in text if ch.isprintable())
+    replacement = text.count("\ufffd")
+    return (printable / total) - (replacement * 0.02)
+
+
+def _preview_text(text: str, max_chars: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "\n...[truncated]"
+
+
+def _repair_docs_for_language(docs: List[Document], *, lang: str) -> List[Document]:
+    if not docs or not _is_japanese_lang(lang):
+        return docs
+    timeout = float(os.environ.get("CRAWL_REPAIR_TIMEOUT", "15"))
+    max_chars = int(os.environ.get("CRAWL_REPAIR_MAX_CHARS", "120000"))
+    headers = {"User-Agent": _default_user_agent(), "Accept-Language": "ja,en;q=0.8"}
+    with httpx.Client(timeout=timeout, follow_redirects=True, headers=headers) as client:
+        for doc in docs:
+            url = (doc.url or "").strip()
+            if not url:
+                continue
+            try:
+                resp = client.get(url)
+                if resp.status_code >= 400:
+                    continue
+                data = resp.content or b""
+                if not data:
+                    continue
+                html, enc, score, header_cs, meta_cs = _decode_bytes_with_charset(
+                    data, resp.headers.get("content-type")
+                )
+                if not html:
+                    continue
+                logger.info(
+                    "JP decode url=%s header_charset=%s meta_charset=%s chosen=%s score=%.2f",
+                    url,
+                    header_cs or "",
+                    meta_cs or "",
+                    enc or "",
+                    score,
+                )
+                md = markdownify(html, heading_style="ATX")
+                if not md:
+                    continue
+                if len(md) > max_chars:
+                    md = md[:max_chars]
+                doc.content = f"Source URL: {url}\n\n{md}"
+            except Exception:
+                continue
+    return docs
+
+
+def _start_topic_extraction_job(bot_id: str, gcs_prefix: str) -> None:
+    if not bot_id or not gcs_prefix:
+        return
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            logger.warning(f"Cannot start topic job: bot {bot_id} not found")
+            return
+        repo = PostgresTopicJobRepository()
+        job_id = _new_topic_job_id()
+        now = _utc_now()
+        job = TopicJob(
+            job_id=job_id,
+            org_id=bot.org_id,
+            bot_id=bot_id,
+            status="queued",
+            stage="queued",
+            gcs_prefix=gcs_prefix,
+            docs_count=0,
+            topics_count=0,
+            last_error=None,
+            celery_task_id=None,
+            created_at=now,
+            updated_at=now,
+        )
+        repo.create(job)
+        async_result = topic_extraction_job.delay(job_id=job_id, bot_id=bot_id, org_id=bot.org_id, gcs_prefix=gcs_prefix)
+        job.celery_task_id = async_result.id
+        repo.update(job)
+    except Exception as e:
+        logger.warning(f"Failed to start topic extraction job for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+
+
+def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) -> None:
+    if not bot_id or not index_job_id:
+        return
+    auto_start = (os.environ.get("BOOKING_RAG_AUTO_START") or "true").strip().lower()
+    if auto_start not in ("1", "true", "yes", "on"):
+        return
+    delay_sec = int(os.environ.get("BOOKING_RAG_START_DELAY_SEC", "90"))
+    repo = PostgresBookingLinkJobRepository()
+    now = _utc_now()
+    job = BookingLinkJob(
+        job_id=_new_booking_link_job_id(),
+        bot_id=bot_id,
+        index_job_id=index_job_id,
+        root_url=root_url or "",
+        status="queued",
+        links=[],
+        error=None,
+        celery_task_id=None,
+        created_at=now,
+        updated_at=now,
+    )
+    repo.create(job)
+    async_result = booking_link_job_task.apply_async((job.job_id, bot_id), countdown=max(0, delay_sec))
+    job.celery_task_id = async_result.id
+    repo.update(job)
 
 
 def _extract_topics_from_docs(bot_id: str, docs: List[Any]) -> None:
@@ -68,6 +330,89 @@ def _extract_topics_from_docs(bot_id: str, docs: List[Any]) -> None:
         logger.warning(f"Topic extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
 
 
+def _load_docs_from_gcs_prefix(gcs_prefix: str) -> List[Dict[str, Any]]:
+    if not gcs_prefix:
+        return []
+    try:
+        from common.config import config
+    except Exception:
+        return []
+    bucket_raw = (config.GCS_BUCKET or os.environ.get("GCS_BUCKET", "")).strip()
+    if not bucket_raw:
+        return []
+    bucket_name = bucket_raw.strip("/").split("/", 1)[0]
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blobs = list(bucket.list_blobs(prefix=gcs_prefix, max_results=200))
+    documents: List[Dict[str, Any]] = []
+    for blob in blobs:
+        if not blob.name.endswith(".md"):
+            continue
+        try:
+            content = blob.download_as_text(encoding="utf-8")
+        except Exception:
+            continue
+        url = ""
+        if content.startswith("Source URL:"):
+            first_line = content.split("\n")[0]
+            url = first_line.replace("Source URL:", "").strip()
+        if content:
+            documents.append({"content": content, "url": url})
+    return documents
+
+
+@celery_app.task(name="infrastructure.tasks.crawl_tasks.topic_extraction_job", bind=True)
+def topic_extraction_job(
+    self: Task,
+    job_id: str,
+    bot_id: str,
+    org_id: str,
+    gcs_prefix: str,
+) -> Dict[str, Any]:
+    repo = PostgresTopicJobRepository()
+    job = repo.get(bot_id, job_id)
+    if not job:
+        return {"status": "error", "error": "job not found"}
+    try:
+        job.status = "running"
+        job.stage = "loading_docs"
+        repo.update(job)
+
+        documents = _load_docs_from_gcs_prefix(gcs_prefix)
+        job.docs_count = len(documents)
+        repo.update(job)
+
+        if not documents:
+            job.status = "done"
+            job.stage = "done"
+            repo.update(job)
+            return {"status": "done", "docs_count": 0, "topics_count": 0}
+
+        job.stage = "extracting"
+        repo.update(job)
+
+        from application.services.topic_extraction_service import topic_extraction_service
+        service = topic_extraction_service()
+        extracted = service.extract_topics_from_documents(
+            org_id=org_id,
+            bot_id=bot_id,
+            documents=documents,
+            clear_existing=False,
+        )
+
+        job.topics_count = len(extracted)
+        job.stage = "done"
+        job.status = "done"
+        repo.update(job)
+        return {"status": "done", "docs_count": job.docs_count, "topics_count": job.topics_count}
+    except Exception as e:
+        job.status = "error"
+        job.stage = "error"
+        job.last_error = f"{type(e).__name__}: {str(e)[:200]}"
+        repo.update(job)
+        return {"status": "error", "error": job.last_error}
+
+
 async def _execute_crawl(
     job_id: str,
     bot_id: str,
@@ -76,6 +421,7 @@ async def _execute_crawl(
     bucket_name: str,
     base_prefix: str,
     corpus_resource: str,
+    headless: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Execute the crawl job (async function)."""
     job_repo = PostgresIndexJobRepository()
@@ -84,6 +430,7 @@ async def _execute_crawl(
         raise ValueError(f"Job {job_id} not found")
 
     try:
+        source_lang = _get_source_language(bot_id, job.source_id)
         job.stage = "crawling"
         job_repo.update_job(job)
         _emit_event("stage", {"stage": "starting_browser"})
@@ -127,6 +474,7 @@ async def _execute_crawl(
                     urls,
                     max_concurrent=CRAWL_MAX_CONCURRENCY,
                     progress_cb=_on_progress,
+                    headless=headless,
                 )
             else:
                 # Single URL: crawl only that page (no nested pages)
@@ -136,6 +484,7 @@ async def _execute_crawl(
                         [single_url],
                         max_concurrent=CRAWL_MAX_CONCURRENCY,
                         progress_cb=_on_progress,
+                        headless=headless,
                     )
         except Exception as crawl_error:
             # Log error but continue - we might have partial results
@@ -143,6 +492,27 @@ async def _execute_crawl(
             logger.warning(f"Crawl error (continuing with partial results): {type(crawl_error).__name__}: {error_msg}")
             job.last_error = f"Crawl error: {error_msg}"
             # Don't raise - continue to process whatever we got
+
+        if docs:
+            preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
+            for idx, doc in enumerate(docs):
+                url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
+                content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
+                if content:
+                    logger.info("Crawl raw preview [%s] %s:\n%s", idx + 1, url, _preview_text(content, preview_limit))
+
+            docs = _repair_docs_for_language(docs, lang=source_lang)
+
+            for idx, doc in enumerate(docs):
+                url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
+                content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
+                if content:
+                    logger.info(
+                        "GCS upload preview [%s] %s:\n%s",
+                        idx + 1,
+                        url,
+                        _preview_text(content, preview_limit),
+                    )
 
         job.docs_count = len(docs) if docs else 0
         # Store every URL we discovered and indexed (for display in dashboard)
@@ -199,6 +569,14 @@ async def _execute_crawl(
             job_repo.update_job(job)
             # Continue even if upload fails - at least we tried
 
+        # Start topic extraction in parallel once docs are in GCS
+        if gcs_prefix:
+            try:
+                _emit_event("stage", {"stage": "topics_queued"})
+                _start_topic_extraction_job(bot_id, gcs_prefix)
+            except Exception as topic_error:
+                logger.warning(f"Topic extraction queue failed: {type(topic_error).__name__}: {str(topic_error)[:200]}")
+
         # Import to RAG with error handling
         job.stage = "importing"
         job_repo.update_job(job)
@@ -216,6 +594,13 @@ async def _execute_crawl(
             job.stage = "import_submitted"
             job_repo.update_job(job)
             _emit_event("stage", {"stage": "import_submitted"})
+            try:
+                root_url = job.url if (job.url or "").startswith(("http://", "https://")) else ""
+                _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
+            except Exception as booking_error:
+                logger.warning(
+                    f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"
+                )
         except Exception as import_error:
             error_msg = str(import_error)[:200]
             logger.error(f"RAG import error: {type(import_error).__name__}: {error_msg}")
@@ -223,15 +608,6 @@ async def _execute_crawl(
             job.stage = "error"
             job_repo.update_job(job)
             # Don't raise - return what we have
-
-        # Extract topics from crawled content
-        try:
-            _emit_event("stage", {"stage": "extracting_topics"})
-            _extract_topics_from_docs(bot_id, docs)
-            _emit_event("stage", {"stage": "topics_extracted"})
-        except Exception as topic_error:
-            # Topic extraction is non-critical - log but don't fail the job
-            logger.warning(f"Topic extraction error (non-critical): {type(topic_error).__name__}: {str(topic_error)[:200]}")
 
         return {"status": "done", "docs_count": len(docs), "gcs_prefix": gcs_prefix}
 
@@ -270,6 +646,7 @@ def crawl_job_task(
     bucket_name: str,
     base_prefix: str,
     corpus_resource: Optional[str],
+    headless: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """
     Celery task to execute crawling job.
@@ -302,7 +679,7 @@ def crawl_job_task(
     try:
         # Run async function - create new event loop for Celery worker
         result = asyncio.run(
-            _execute_crawl(job_id, bot_id, url, urls, bucket_name, base_prefix, corpus_resource)
+            _execute_crawl(job_id, bot_id, url, urls, bucket_name, base_prefix, corpus_resource, headless)
         )
         return result
     except (ConnectionError, TimeoutError, OSError) as exc:

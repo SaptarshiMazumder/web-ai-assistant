@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { RefreshCw, Trash2, X, Check, Plus, FolderPlus } from 'lucide-react'
 import { useDashboardData, type ExtractedTopic } from '../../hooks/useDashboardData'
 
+const CATEGORY_COLOR_STORAGE_PREFIX = 'webai.topicCategoryColors.'
+
 const CATEGORY_OPTIONS = [
   { value: 'product', label: 'Product' },
   { value: 'pricing', label: 'Pricing' },
@@ -16,6 +18,27 @@ const CATEGORY_OPTIONS = [
   { value: 'event', label: 'Event' },
   { value: 'other', label: 'Other' },
 ]
+
+const DYNAMIC_CATEGORY_PALETTE = [
+  '#0ea5e9',
+  '#22c55e',
+  '#f97316',
+  '#a855f7',
+  '#14b8a6',
+  '#e11d48',
+  '#eab308',
+  '#6366f1',
+  '#84cc16',
+  '#64748b',
+]
+
+function hashCategoryToColor(category: string): string {
+  let hash = 0
+  for (let i = 0; i < category.length; i += 1) {
+    hash = (hash * 31 + category.charCodeAt(i)) >>> 0
+  }
+  return DYNAMIC_CATEGORY_PALETTE[hash % DYNAMIC_CATEGORY_PALETTE.length]
+}
 
 function getCategoryColor(category: string | null | undefined): string {
   const colors: Record<string, string> = {
@@ -32,7 +55,12 @@ function getCategoryColor(category: string | null | undefined): string {
     other: '#64748b',
   }
   const key = (category || 'other').toLowerCase()
-  return colors[key] || colors.other
+  return colors[key] || hashCategoryToColor(key)
+}
+
+function normalizeHexColor(value: string): string | null {
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value.toLowerCase()
+  return null
 }
 
 function categoryLabel(category: string): string {
@@ -60,6 +88,7 @@ export default function BotTopicsTab() {
   const [showInactive, setShowInactive] = useState(false)
   /** Empty category boxes (no topics yet). Persisted only in session; gone on refresh until user adds a topic. */
   const [emptyCategories, setEmptyCategories] = useState<string[]>([])
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>({})
 
   const loadTopics = useCallback(async () => {
     if (!botId) return
@@ -79,6 +108,33 @@ export default function BotTopicsTab() {
   useEffect(() => {
     void loadTopics()
   }, [loadTopics])
+
+  useEffect(() => {
+    if (!botId) return
+    const storageKey = `${CATEGORY_COLOR_STORAGE_PREFIX}${botId}`
+    const raw = window.localStorage.getItem(storageKey)
+    if (!raw) {
+      setCategoryColors({})
+      return
+    }
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>
+      const cleaned: Record<string, string> = {}
+      for (const [key, value] of Object.entries(parsed || {})) {
+        const normalized = normalizeHexColor(value)
+        if (normalized) cleaned[key.toLowerCase()] = normalized
+      }
+      setCategoryColors(cleaned)
+    } catch {
+      setCategoryColors({})
+    }
+  }, [botId])
+
+  useEffect(() => {
+    if (!botId) return
+    const storageKey = `${CATEGORY_COLOR_STORAGE_PREFIX}${botId}`
+    window.localStorage.setItem(storageKey, JSON.stringify(categoryColors))
+  }, [botId, categoryColors])
 
   const handleExtract = async (clearExisting: boolean = false) => {
     if (!botId || extracting) return
@@ -119,6 +175,13 @@ export default function BotTopicsTab() {
       setError('Failed to add topic')
       console.error(err)
     }
+  }
+
+  const handleCategoryColorChange = (category: string, color: string) => {
+    const normalized = normalizeHexColor(color)
+    if (!normalized) return
+    const key = (category || 'other').toLowerCase()
+    setCategoryColors((prev) => ({ ...prev, [key]: normalized }))
   }
 
   const handleToggleActive = async (topic: ExtractedTopic) => {
@@ -175,9 +238,9 @@ export default function BotTopicsTab() {
       <section className="card">
         <div className="topics-header">
           <div>
-            <div className="card-title">Extracted Topics</div>
+            <div className="card-title">Manage Topics</div>
             <p className="card-subtitle" style={{ marginTop: '0.25rem' }}>
-              Topics are grouped by category. Add boxes (categories) and add topics inside each box.
+              Topics are grouped by category. Add categories, and add topics inside each category box.
             </p>
           </div>
           <div className="topics-actions">
@@ -188,7 +251,7 @@ export default function BotTopicsTab() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <FolderPlus size={16} />
-              Add box
+              Add Category
             </button>
             <button
               type="button"
@@ -242,12 +305,24 @@ export default function BotTopicsTab() {
               const boxTopics = byCategory.get(catKey) || []
               const isEmpty = boxTopics.length === 0
               const displayName = categoryLabel(catKey)
-              const color = getCategoryColor(catKey)
+              const color = categoryColors[catKey] || getCategoryColor(catKey)
 
               return (
                 <div key={catKey} className="topic-box">
-                  <div className="topic-box-header" style={{ borderLeftColor: color }}>
-                    <span className="topic-box-title">{displayName}</span>
+                  <div className="topic-box-header">
+                    <div className="topic-box-heading">
+                      <label className="topic-box-color" title={`Change color for ${displayName}`}>
+                        <input
+                          type="color"
+                          className="topic-box-color-input"
+                          value={color}
+                          onChange={(event) => handleCategoryColorChange(catKey, event.target.value)}
+                          aria-label={`Color for ${displayName}`}
+                        />
+                        <span className="topic-box-color-swatch" style={{ backgroundColor: color }} />
+                      </label>
+                      <span className="topic-box-title">{displayName}</span>
+                    </div>
                     <button
                       type="button"
                       className="topic-box-add"

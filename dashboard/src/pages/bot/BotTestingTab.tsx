@@ -1,8 +1,8 @@
 import { useAuth0 } from '@auth0/auth0-react'
-import { useCallback, useMemo, useEffect, useState } from 'react'
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
-import { useDashboardData, type SourceRecord, type DomainRecord } from '../../hooks/useDashboardData'
+import { useDashboardData, type SourceRecord, type DomainRecord, type AvailabilityJobRecord } from '../../hooks/useDashboardData'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 
@@ -81,7 +81,17 @@ function pickSourceOrigin(sources: SourceRecord[], botId?: string | null): { ori
 export default function BotTestingTab() {
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
-  const { selectedBot, activeOrgId, selectedBotWidgetConfig, domains, sources } = useDashboardData()
+  const {
+    selectedBot,
+    activeOrgId,
+    selectedBotWidgetConfig,
+    domains,
+    sources,
+    startAvailabilityJob,
+    listAvailabilityJobs,
+    getAvailabilityJob,
+    getAvailabilityRaw,
+  } = useDashboardData()
 
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({})
   const [modelId, setModelId] = useState('')
@@ -90,6 +100,21 @@ export default function BotTestingTab() {
   const [configLoading, setConfigLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [availabilityUrl, setAvailabilityUrl] = useState('')
+  const [checkIn, setCheckIn] = useState('')
+  const [checkOut, setCheckOut] = useState('')
+  const [adults, setAdults] = useState(2)
+  const [children, setChildren] = useState(0)
+  const [rooms, setRooms] = useState(1)
+  const [maxSeconds, setMaxSeconds] = useState(60)
+  const [availabilityQuestion, setAvailabilityQuestion] = useState('')
+  const [availabilityJob, setAvailabilityJob] = useState<AvailabilityJobRecord | null>(null)
+  const [availabilityJobs, setAvailabilityJobs] = useState<AvailabilityJobRecord[]>([])
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null)
+  const availabilityPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [rawAvailabilityFormat, setRawAvailabilityFormat] = useState<'text' | 'html'>('text')
+  const [rawAvailabilityContent, setRawAvailabilityContent] = useState<string | null>(null)
+  const [rawAvailabilityLoading, setRawAvailabilityLoading] = useState(false)
 
   const { siteUrl, siteTitle } = useMemo(() => {
     const primaryDomain = pickPrimaryDomain(domains, selectedBot?.bot_id)
@@ -104,6 +129,10 @@ export default function BotTestingTab() {
       'Website'
     return { siteUrl: url, siteTitle: title }
   }, [domains, sources, selectedBot?.bot_id, selectedBot?.display_name])
+
+  useEffect(() => {
+    if (!availabilityUrl && siteUrl) setAvailabilityUrl(siteUrl)
+  }, [availabilityUrl, siteUrl])
 
   const widgetIframeSrc = useMemo(() => {
     if (!selectedBot?.publishable_key) return ''
@@ -202,6 +231,72 @@ export default function BotTestingTab() {
     )
   }
 
+  const loadAvailabilityJobs = useCallback(async () => {
+    if (!selectedBot) return
+    const jobs = await listAvailabilityJobs(selectedBot.bot_id)
+    setAvailabilityJobs(jobs)
+    if (!availabilityJob && jobs.length > 0) {
+      setAvailabilityJob(jobs[0])
+    }
+  }, [selectedBot, listAvailabilityJobs, availabilityJob])
+
+  useEffect(() => {
+    void loadAvailabilityJobs()
+  }, [loadAvailabilityJobs])
+
+  useEffect(() => {
+    if (!selectedBot || !availabilityJob) return
+    const status = (availabilityJob.status || '').toLowerCase()
+    if (status === 'done' || status === 'error') return
+    if (availabilityPollRef.current) window.clearInterval(availabilityPollRef.current)
+    availabilityPollRef.current = window.setInterval(async () => {
+      const updated = await getAvailabilityJob(selectedBot.bot_id, availabilityJob.job_id)
+      if (updated) {
+        setAvailabilityJob(updated)
+      }
+    }, 4000)
+    return () => {
+      if (availabilityPollRef.current) {
+        window.clearInterval(availabilityPollRef.current)
+        availabilityPollRef.current = null
+      }
+    }
+  }, [selectedBot, availabilityJob, getAvailabilityJob])
+
+  useEffect(() => {
+    setRawAvailabilityContent(null)
+  }, [availabilityJob?.job_id])
+
+  const handleRunAvailability = async () => {
+    if (!selectedBot || !availabilityUrl.trim() || !checkIn || !checkOut) return
+    setAvailabilityError(null)
+    const created = await startAvailabilityJob(selectedBot.bot_id, {
+      url: availabilityUrl.trim(),
+      check_in: checkIn,
+      check_out: checkOut,
+      adults,
+      children,
+      rooms,
+      max_seconds: maxSeconds,
+      question: availabilityQuestion.trim() || undefined,
+    })
+    if (!created) {
+      setAvailabilityError('Failed to start availability job')
+      return
+    }
+    setAvailabilityJob(created)
+    void loadAvailabilityJobs()
+  }
+
+  const handleLoadRawAvailability = async (format: 'text' | 'html') => {
+    if (!selectedBot || !availabilityJob) return
+    setRawAvailabilityLoading(true)
+    setRawAvailabilityFormat(format)
+    const raw = await getAvailabilityRaw(selectedBot.bot_id, availabilityJob.job_id, format)
+    setRawAvailabilityContent(raw?.content ?? null)
+    setRawAvailabilityLoading(false)
+  }
+
   if (!selectedBot) {
     return <div className="empty-panel">Select a bot to test.</div>
   }
@@ -277,6 +372,171 @@ export default function BotTestingTab() {
               {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
             </button>
           </div>
+        </div>
+
+        <div className="testing-config-card" style={{ marginTop: '1.5rem' }}>
+          <h3 className="testing-config-title">Availability agent test</h3>
+          <div className="testing-field">
+            <label className="testing-label">Hotel URL</label>
+            <input
+              className="testing-input"
+              type="url"
+              value={availabilityUrl}
+              onChange={(e) => setAvailabilityUrl(e.target.value)}
+              placeholder="https://example.com/hotel/..."
+            />
+          </div>
+          <div className="testing-field" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="testing-label">Check-in</label>
+              <input
+                className="testing-input"
+                type="date"
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+              />
+            </div>
+            <div style={{ flex: '1 1 140px' }}>
+              <label className="testing-label">Check-out</label>
+              <input
+                className="testing-input"
+                type="date"
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="testing-field" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 80px' }}>
+              <label className="testing-label">Adults</label>
+              <input
+                className="testing-input"
+                type="number"
+                min={1}
+                value={adults}
+                onChange={(e) => setAdults(Number(e.target.value))}
+              />
+            </div>
+            <div style={{ flex: '1 1 80px' }}>
+              <label className="testing-label">Children</label>
+              <input
+                className="testing-input"
+                type="number"
+                min={0}
+                value={children}
+                onChange={(e) => setChildren(Number(e.target.value))}
+              />
+            </div>
+            <div style={{ flex: '1 1 80px' }}>
+              <label className="testing-label">Rooms</label>
+              <input
+                className="testing-input"
+                type="number"
+                min={1}
+                value={rooms}
+                onChange={(e) => setRooms(Number(e.target.value))}
+              />
+            </div>
+            <div style={{ flex: '1 1 120px' }}>
+              <label className="testing-label">Max seconds</label>
+              <input
+                className="testing-input"
+                type="number"
+                min={15}
+                max={180}
+                value={maxSeconds}
+                onChange={(e) => setMaxSeconds(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="testing-field">
+            <label className="testing-label">Question</label>
+            <textarea
+              className="testing-textarea"
+              rows={3}
+              value={availabilityQuestion}
+              onChange={(e) => setAvailabilityQuestion(e.target.value)}
+              placeholder="e.g. Is there availability for these dates? What are the cheapest room options?"
+            />
+          </div>
+          <div className="testing-actions">
+            <button
+              type="button"
+              className="primary"
+              onClick={() => void handleRunAvailability()}
+              disabled={!availabilityUrl.trim() || !checkIn || !checkOut}
+            >
+              Run availability check
+            </button>
+          </div>
+          {availabilityError && <div className="alert error">{availabilityError}</div>}
+          {availabilityJob && (
+            <div className="testing-field" style={{ marginTop: '1rem' }}>
+              <div className="muted" style={{ marginBottom: '0.5rem' }}>
+                Status: <strong>{availabilityJob.status}</strong>
+              </div>
+              {availabilityJob.question && (
+                <div className="muted" style={{ marginBottom: '0.5rem' }}>
+                  Question: {availabilityJob.question}
+                </div>
+              )}
+              <div className="testing-actions" style={{ justifyContent: 'flex-start', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => void handleLoadRawAvailability('text')}
+                  disabled={rawAvailabilityLoading}
+                >
+                  {rawAvailabilityLoading && rawAvailabilityFormat === 'text' ? 'Loading...' : 'Load raw text'}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => void handleLoadRawAvailability('html')}
+                  disabled={rawAvailabilityLoading}
+                >
+                  {rawAvailabilityLoading && rawAvailabilityFormat === 'html' ? 'Loading...' : 'Load raw HTML'}
+                </button>
+              </div>
+              {availabilityJob.summary && (
+                <div className="alert info" style={{ whiteSpace: 'pre-wrap' }}>
+                  {availabilityJob.summary}
+                </div>
+              )}
+              {availabilityJob.last_error && (
+                <div className="alert error" style={{ whiteSpace: 'pre-wrap' }}>
+                  {availabilityJob.last_error}
+                </div>
+              )}
+              {rawAvailabilityContent && (
+                <pre className="testing-raw-block">{rawAvailabilityContent}</pre>
+              )}
+              {availabilityJob.screenshots_dir && (
+                <div className="muted" style={{ marginTop: '0.5rem' }}>
+                  Screenshots: {availabilityJob.screenshots_dir}
+                </div>
+              )}
+            </div>
+          )}
+          {availabilityJobs.length > 1 && (
+            <div className="testing-field" style={{ marginTop: '1rem' }}>
+              <label className="testing-label">Recent runs</label>
+              <select
+                className="testing-select"
+                value={availabilityJob?.job_id || ''}
+                onChange={(e) => {
+                  const selected = availabilityJobs.find((j) => j.job_id === e.target.value)
+                  if (selected) setAvailabilityJob(selected)
+                }}
+              >
+                {availabilityJobs.map((j) => (
+                  <option key={j.job_id} value={j.job_id}>
+                    {new Date(j.created_at).toLocaleString()} — {j.status}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 

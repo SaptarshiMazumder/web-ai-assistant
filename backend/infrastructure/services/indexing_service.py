@@ -189,7 +189,12 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
     return corpus.name
 
 
-async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
+async def start_index_for_bot(
+    bot_id: str,
+    raw_url: str,
+    *,
+    headless: Optional[bool] = None,
+) -> Dict[str, Any]:
     url, host = _parse_and_validate_url(raw_url)
 
     if config.REQUIRE_DOMAIN_VERIFICATION:
@@ -226,21 +231,25 @@ async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     worker_path = os.path.abspath(worker_path)
 
     backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    args = [
+        (config.WORKER_PYTHON or sys.executable),
+        worker_path,
+        "--url",
+        url,
+        "--bucket",
+        bucket_name,
+        "--base-prefix",
+        base_prefix,
+        "--corpus",
+        corpus,
+        "--creds",
+        (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
+    ]
+    if headless is not None:
+        args.extend(["--headless", "true" if headless else "false"])
+
     proc = subprocess.Popen(
-        [
-            (config.WORKER_PYTHON or sys.executable),
-            worker_path,
-            "--url",
-            url,
-            "--bucket",
-            bucket_name,
-            "--base-prefix",
-            base_prefix,
-            "--corpus",
-            corpus,
-            "--creds",
-            (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
-        ],
+        args,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -337,7 +346,12 @@ async def start_index_for_bot(bot_id: str, raw_url: str) -> Dict[str, Any]:
     return {"status": "started", "job_id": job_id, "hostname": host}
 
 
-async def start_index_for_bot_batch(bot_id: str, urls: List[str]) -> Dict[str, Any]:
+async def start_index_for_bot_batch(
+    bot_id: str,
+    urls: List[str],
+    *,
+    headless: Optional[bool] = None,
+) -> Dict[str, Any]:
     cleaned = _validate_urls_for_bot(bot_id, urls)
 
     # Hard fail early if creds are missing; otherwise the worker may start with
@@ -361,21 +375,25 @@ async def start_index_for_bot_batch(bot_id: str, urls: List[str]) -> Dict[str, A
     worker_path = os.path.abspath(worker_path)
     backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
+    args = [
+        (config.WORKER_PYTHON or sys.executable),
+        worker_path,
+        "--urls-json",
+        json.dumps(cleaned),
+        "--bucket",
+        bucket_name,
+        "--base-prefix",
+        base_prefix,
+        "--corpus",
+        corpus,
+        "--creds",
+        (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
+    ]
+    if headless is not None:
+        args.extend(["--headless", "true" if headless else "false"])
+
     proc = subprocess.Popen(
-        [
-            (config.WORKER_PYTHON or sys.executable),
-            worker_path,
-            "--urls-json",
-            json.dumps(cleaned),
-            "--bucket",
-            bucket_name,
-            "--base-prefix",
-            base_prefix,
-            "--corpus",
-            corpus,
-            "--creds",
-            (config.GOOGLE_APPLICATION_CREDENTIALS or ""),
-        ],
+        args,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,

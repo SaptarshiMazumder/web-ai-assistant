@@ -71,8 +71,9 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         *,
         stop_event: Optional[asyncio.Event] = None,
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+        headless: Optional[bool] = None,
     ) -> List[Document]:
-        browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+        browser_config = BrowserConfig(headless=HEADLESS if headless is None else headless, verbose=False)
         run_config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,
@@ -220,6 +221,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         *,
         max_concurrent: int,
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+        headless: Optional[bool] = None,
     ) -> List[Document]:
         """Crawl a list of URLs. Reports progress after each URL completes (not per chunk)."""
         if not urls:
@@ -229,7 +231,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         if not filtered_urls:
             return []
 
-        browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+        browser_config = BrowserConfig(headless=HEADLESS if headless is None else headless, verbose=False)
         run_config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,
@@ -317,8 +319,9 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         max_concurrent: int,
         *,
         max_urls: int = 2000,
+        headless: Optional[bool] = None,
     ) -> List[str]:
-        browser_config = BrowserConfig(headless=HEADLESS, verbose=False)
+        browser_config = BrowserConfig(headless=HEADLESS if headless is None else headless, verbose=False)
         run_config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,

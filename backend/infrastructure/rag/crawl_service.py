@@ -349,7 +349,46 @@ def _best_text(result: Any) -> Tuple[str, str]:
     combined = "\n".join(parts).strip()
     if len(combined) > 120_000:
         combined = combined[:120_000]
-    return combined, used_src or primary_src or ""
+    return _normalize_text_encoding(combined), used_src or primary_src or ""
+
+
+def _quality_score(text: str) -> float:
+    if not text:
+        return 0.0
+    total = max(1, len(text))
+    printable = sum(1 for ch in text if ch.isprintable())
+    replacement = text.count("\ufffd")
+    # Favor printable text and penalize replacement chars.
+    return (printable / total) - (replacement * 0.01)
+
+
+def _normalize_text_encoding(text: str) -> str:
+    """Best-effort cleanup using charset detection (no language-specific rules)."""
+    if not text:
+        return text
+    fixed = text
+    try:
+        import ftfy  # type: ignore
+        fixed = ftfy.fix_text(fixed, normalization="NFC")
+    except Exception:
+        fixed = text
+    # Skip re-encoding for text that contains non-Latin-1 characters (e.g., Japanese)
+    if any(ord(c) > 0xFF for c in fixed):
+        return fixed
+    try:
+        from charset_normalizer import from_bytes  # type: ignore
+        # Treat the current string as a byte sequence that may have been
+        # decoded with the wrong codec. This is language-agnostic.
+        raw_bytes = fixed.encode("latin-1", errors="ignore")
+        if raw_bytes:
+            best = from_bytes(raw_bytes).best()
+            if best and best.encoding:
+                repaired = str(best)
+                if _quality_score(repaired) > _quality_score(fixed):
+                    fixed = repaired
+    except Exception:
+        pass
+    return fixed
 
 def _slugify(text: str) -> str:
     text = text.strip().lower()
@@ -465,7 +504,8 @@ def upload_markdown_docs_to_gcs(
         filename = f"{path_slug or 'index'}-{url_hash}.md"
         blob_name = f"{prefix}/{filename}"
         blob = bucket.blob(blob_name)
-        blob.upload_from_string(md, content_type="text/markdown")
+        md_bytes = md.encode("utf-8") if isinstance(md, str) else md
+        blob.upload_from_string(md_bytes, content_type="text/markdown; charset=utf-8")
 
     return prefix  # e.g., saas/<tenant>/bots/<bot_id>/hosts/example.com/20250814-010203
 

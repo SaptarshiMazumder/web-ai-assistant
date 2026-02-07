@@ -21,43 +21,83 @@ from infrastructure.db.repositories import PostgresExtractedTopicRepository
 PROJECT_ID = (config.PROJECT_ID or os.environ.get("PROJECT_ID") or "").strip()
 GENAI_LOCATION = (os.environ.get("GENAI_LOCATION") or "global").strip()
 RAG_LOCATION = (config.LOCATION or os.environ.get("RAG_LOCATION") or "us-central1").strip()
-MODEL_NAME = os.environ.get("VERTEX_RAG_MODEL", "gemini-2.0-flash-001")
 
-# Topic extraction prompt
-TOPIC_EXTRACTION_PROMPT = """Analyze the following website content and extract business-relevant topics that users might ask about.
 
-Focus on extracting topics like:
-- Products or services offered
-- Pricing and payment information
-- Shipping and delivery
-- Returns and refunds
-- Hours of operation
-- Location and contact information
-- Support and help topics
-- Policies (privacy, terms, etc.)
-- FAQs and common questions
-- Events or promotions
-- Industry-specific terms
+def _get_int_env(name: str, default: int) -> int:
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        value = int(raw)
+        return value if value > 0 else default
+    except ValueError:
+        return default
 
-Return ONLY a JSON array with no markdown fences or commentary. Each topic should have:
-- "topic": The topic name (lowercase, 1-3 words)
-- "category": Category type (one of: product, pricing, shipping, support, policy, location, hours, contact, faq, event, other)
-- "confidence": Confidence score from 0.0 to 1.0
+
+DEFAULT_MODEL_NAME = (os.environ.get("VERTEX_RAG_MODEL") or "gemini-2.0-flash-001").strip()
+TOPIC_MODEL_NAME = (os.environ.get("VERTEX_TOPIC_MODEL") or "").strip() or DEFAULT_MODEL_NAME
+
+TOPIC_CHUNK_CHARS = _get_int_env("TOPIC_CHUNK_CHARS", 25000)
+TOPIC_MAX_CHUNKS = _get_int_env("TOPIC_MAX_CHUNKS", 8)
+TOPIC_MAX_TOPICS_PER_CHUNK = _get_int_env("TOPIC_MAX_TOPICS_PER_CHUNK", 25)
+TOPIC_MAX_TOPICS_TOTAL = _get_int_env("TOPIC_MAX_TOPICS_TOTAL", 60)
+
+# Topic extraction prompts
+DEFAULT_CATEGORIES = [
+    "product",
+    "pricing",
+    "shipping",
+    "support",
+    "policy",
+    "location",
+    "hours",
+    "contact",
+    "faq",
+    "event",
+    "other",
+]
+
+TOPIC_DISCOVERY_PROMPT = """Analyze the following website content and extract business-relevant topics that users might ask about.
+
+Rules:
+- Return ONLY a JSON array with no markdown fences or commentary.
+- Each item should be an object with:
+  - "topic": lowercase, 1-3 words
+  - "confidence": 0.0 to 1.0 (optional)
 
 Example output:
 [
-  {"topic": "refunds", "category": "policy", "confidence": 0.95},
-  {"topic": "pricing plans", "category": "pricing", "confidence": 0.9},
-  {"topic": "business hours", "category": "hours", "confidence": 0.85}
+  {"topic": "refunds", "confidence": 0.95},
+  {"topic": "pricing plans", "confidence": 0.9},
+  {"topic": "business hours", "confidence": 0.85}
 ]
 
-Extract up to 30 most relevant topics. Be specific and practical.
+Extract up to {max_topics} most relevant topics. Be specific and practical.
 
 WEBSITE CONTENT:
 """
 
+TOPIC_CATEGORIZATION_PROMPT = """Group the following topics into 5-10 categories and assign each topic to a category.
 
-def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
+Guidelines:
+- Categories should be lowercase, 1-3 words.
+- Use categories that fit the business domain. Examples only: pricing, faq, refunds, shipping, support.
+- Return ONLY a JSON object with no markdown fences or commentary:
+  {
+    "categories": ["category1", "category2", "..."],
+    "topics": [
+      {"topic": "topic text", "category": "category1"},
+      ...
+    ]
+  }
+- Every topic must appear exactly once in "topics".
+- Each topic's category must be one of "categories".
+- Include "other" as a category if needed.
+
+Topics (JSON array):
+{topics_json}
+"""
+
+
+def _extract_json_array(text: str) -> Optional[List[Any]]:
     """Extract JSON array from text, handling markdown fences."""
     if not text:
         return None
@@ -89,6 +129,35 @@ def _extract_json_array(text: str) -> Optional[List[Dict[str, Any]]]:
     return None
 
 
+def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Extract JSON object from text, handling markdown fences."""
+    if not text:
+        return None
+    
+    m = re.search(r"```(?:json)?\s*({.*?})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    m = re.search(r"({.*})", text, flags=re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    try:
+        result = json.loads(text)
+        if isinstance(result, dict):
+            return result
+    except json.JSONDecodeError:
+        pass
+    
+    return None
+
+
 def _get_genai_client() -> genai.Client:
     """Get an initialized Gemini client."""
     if not PROJECT_ID:
@@ -97,16 +166,222 @@ def _get_genai_client() -> genai.Client:
     return genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
 
 
-def _validate_topic(topic: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def _generate_text_with_fallback(
+    client: genai.Client,
+    prompt: str,
+    *,
+    temperature: float,
+    max_output_tokens: int,
+) -> str:
+    """Generate text with a cheap model first, then fall back to default if it fails."""
+    def _call(model_name: str) -> str:
+        resp = client.models.generate_content(
+            model=model_name,
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+            ),
+        )
+        return (resp.text or "").strip()
+
+    primary = TOPIC_MODEL_NAME
+    try:
+        return _call(primary)
+    except Exception as e:
+        if primary != DEFAULT_MODEL_NAME:
+            print(f"[TopicExtraction] Model '{primary}' failed, falling back to '{DEFAULT_MODEL_NAME}': {e}")
+            return _call(DEFAULT_MODEL_NAME)
+        raise
+
+
+def _sanitize_category_list(raw_categories: List[Any]) -> List[str]:
+    cleaned: List[str] = []
+    seen = set()
+    for item in raw_categories:
+        if not isinstance(item, str):
+            continue
+        label = re.sub(r"\s+", " ", item.strip().lower())
+        if not label or len(label) > 40:
+            continue
+        if label in seen:
+            continue
+        seen.add(label)
+        cleaned.append(label)
+    return cleaned
+
+
+_STOPWORDS = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "for",
+    "to",
+    "in",
+    "on",
+    "with",
+    "by",
+    "at",
+    "from",
+    "is",
+    "are",
+    "be",
+    "how",
+    "what",
+    "when",
+    "where",
+}
+
+
+def _normalize_topic_key(topic: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9\s]", " ", topic.lower())
+    tokens = [t for t in cleaned.split() if t and t not in _STOPWORDS]
+    normalized: List[str] = []
+    for token in tokens:
+        if token.endswith("ies") and len(token) > 4:
+            token = token[:-3] + "y"
+        elif token.endswith("s") and len(token) > 4 and not token.endswith("ss"):
+            token = token[:-1]
+        normalized.append(token)
+    return " ".join(normalized) or " ".join(tokens) or cleaned.strip()
+
+
+def _dedupe_topic_candidates(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    by_key: Dict[str, Dict[str, Any]] = {}
+    for item in items:
+        topic = (item.get("topic") or "").strip()
+        if not topic:
+            continue
+        key = _normalize_topic_key(topic)
+        if not key:
+            continue
+        existing = by_key.get(key)
+        if not existing:
+            by_key[key] = item
+            continue
+        # Prefer shorter label to reduce redundancy (e.g., "shipping cost" vs "shipping costs")
+        if len(topic) < len((existing.get("topic") or "")):
+            by_key[key] = item
+    return list(by_key.values())
+
+
+def _split_content_into_chunks(content: str, max_chars: int, max_chunks: int) -> List[str]:
+    if len(content) <= max_chars:
+        return [content]
+    chunks: List[str] = []
+    current: List[str] = []
+    current_len = 0
+    for line in content.splitlines():
+        line_len = len(line) + 1
+        if current_len + line_len > max_chars and current:
+            chunks.append("\n".join(current))
+            if len(chunks) >= max_chunks:
+                return chunks
+            current = []
+            current_len = 0
+        current.append(line)
+        current_len += line_len
+    if current and len(chunks) < max_chunks:
+        chunks.append("\n".join(current))
+    return chunks
+
+
+def _extract_topic_candidates_from_chunk(
+    client: genai.Client,
+    content: str,
+    max_topics: int,
+) -> List[Dict[str, Any]]:
+    prompt = TOPIC_DISCOVERY_PROMPT.format(max_topics=max_topics) + content
+    raw_text = _generate_text_with_fallback(
+        client,
+        prompt,
+        temperature=0.2,
+        max_output_tokens=2048,
+    )
+    parsed = _extract_json_array(raw_text) or []
+    topics: List[Dict[str, Any]] = []
+    for item in parsed:
+        if isinstance(item, str):
+            text = item.strip().lower()
+            if text:
+                topics.append({"topic": text, "confidence": 1.0})
+            continue
+        if not isinstance(item, dict):
+            continue
+        text = (item.get("topic") or "").strip().lower()
+        if not text:
+            continue
+        confidence = item.get("confidence", 1.0)
+        try:
+            confidence = float(confidence)
+            confidence = max(0.0, min(1.0, confidence))
+        except (ValueError, TypeError):
+            confidence = 1.0
+        topics.append({"topic": text, "confidence": confidence})
+    return topics
+
+
+def _categorize_topics(
+    client: genai.Client,
+    topics: List[str],
+) -> Dict[str, str]:
+    if not topics:
+        return {}
+    topics_json = json.dumps(topics)
+    prompt = TOPIC_CATEGORIZATION_PROMPT.format(topics_json=topics_json)
+    raw_text = _generate_text_with_fallback(
+        client,
+        prompt,
+        temperature=0.1,
+        max_output_tokens=2048,
+    )
+    parsed = _extract_json_object(raw_text) or {}
+    categories_raw = parsed.get("categories") if isinstance(parsed, dict) else None
+    topics_raw = parsed.get("topics") if isinstance(parsed, dict) else None
+
+    categories = _sanitize_category_list(categories_raw or [])
+    if not categories:
+        categories = DEFAULT_CATEGORIES.copy()
+    if "other" not in categories:
+        categories.append("other")
+
+    allowed_categories = set(categories)
+    topic_set = set(topics)
+    mapping: Dict[str, str] = {}
+
+    if isinstance(topics_raw, list):
+        for item in topics_raw:
+            if not isinstance(item, dict):
+                continue
+            topic = (item.get("topic") or "").strip().lower()
+            if not topic or topic not in topic_set:
+                continue
+            category = re.sub(r"\s+", " ", (item.get("category") or "other").strip().lower())
+            if not category or category not in allowed_categories:
+                category = "other"
+            mapping[topic] = category
+
+    # Fill any missing topics as "other"
+    for topic in topics:
+        if topic not in mapping:
+            mapping[topic] = "other"
+
+    return mapping
+
+
+def _validate_topic(topic: Dict[str, Any], allowed_categories: Optional[set] = None) -> Optional[Dict[str, Any]]:
     """Validate and normalize a topic dict."""
     topic_text = (topic.get("topic") or "").strip().lower()
     if not topic_text or len(topic_text) > 100:
         return None
     
-    category = (topic.get("category") or "other").strip().lower()
-    valid_categories = {"product", "pricing", "shipping", "support", "policy", 
-                       "location", "hours", "contact", "faq", "event", "other"}
-    if category not in valid_categories:
+    category = re.sub(r"\s+", " ", (topic.get("category") or "other").strip().lower())
+    if not category or len(category) > 40:
+        category = "other"
+    if allowed_categories and category not in allowed_categories:
         category = "other"
     
     confidence = topic.get("confidence", 1.0)
@@ -147,39 +422,47 @@ class TopicExtractionService:
         if not content or len(content.strip()) < 50:
             return []
         
-        # Truncate content if too long (Gemini has token limits)
-        max_chars = 100000  # ~25k tokens
-        if len(content) > max_chars:
-            content = content[:max_chars] + "\n... (content truncated)"
-        
-        client = _get_genai_client()
-        
-        prompt = TOPIC_EXTRACTION_PROMPT + content
-        
         try:
-            resp = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
-                config=types.GenerateContentConfig(
-                    temperature=0.1,
-                    max_output_tokens=4096,
-                ),
-            )
-            
-            raw_text = (resp.text or "").strip()
-            parsed = _extract_json_array(raw_text)
-            
-            if not parsed:
+            client = _get_genai_client()
+            chunks = _split_content_into_chunks(content, TOPIC_CHUNK_CHARS, TOPIC_MAX_CHUNKS)
+            candidates: List[Dict[str, Any]] = []
+            for chunk in chunks:
+                candidates.extend(_extract_topic_candidates_from_chunk(
+                    client,
+                    chunk,
+                    TOPIC_MAX_TOPICS_PER_CHUNK,
+                ))
+
+            if not candidates:
                 return []
-            
+
+            deduped = _dedupe_topic_candidates(candidates)
+            if not deduped:
+                return []
+            if len(deduped) > TOPIC_MAX_TOPICS_TOTAL:
+                deduped = deduped[:TOPIC_MAX_TOPICS_TOTAL]
+
+            topic_names = [t["topic"] for t in deduped if t.get("topic")]
+            topic_names = [t for t in topic_names if t]
+            if not topic_names:
+                return []
+
+            category_map = _categorize_topics(client, topic_names)
             topics: List[Dict[str, Any]] = []
-            for item in parsed:
-                validated = _validate_topic(item)
+            for item in deduped:
+                topic_text = (item.get("topic") or "").strip().lower()
+                if not topic_text:
+                    continue
+                validated = _validate_topic({
+                    "topic": topic_text,
+                    "category": category_map.get(topic_text, "other"),
+                    "confidence": item.get("confidence", 1.0),
+                })
                 if validated:
                     validated["source_urls"] = source_urls or []
                     topics.append(validated)
-            
-            return topics[:30]  # Limit to 30 topics
+
+            return topics
             
         except Exception as e:
             print(f"[TopicExtraction] Error extracting topics: {e}")

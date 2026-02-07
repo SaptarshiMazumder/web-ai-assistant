@@ -141,6 +141,65 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS discovery_jobs_bot_id ON discovery_jobs (bot_id)",
     """
+    CREATE TABLE IF NOT EXISTS booking_link_jobs (
+      job_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      index_job_id TEXT,
+      root_url TEXT NOT NULL,
+      status TEXT NOT NULL,
+      links TEXT NOT NULL DEFAULT '[]',
+      error TEXT,
+      celery_task_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS booking_link_jobs_bot_id ON booking_link_jobs (bot_id)",
+    "CREATE INDEX IF NOT EXISTS booking_link_jobs_updated_at ON booking_link_jobs (updated_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS topic_jobs (
+      job_id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      stage TEXT NOT NULL,
+      gcs_prefix TEXT,
+      docs_count INTEGER NOT NULL DEFAULT 0,
+      topics_count INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      celery_task_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS topic_jobs_bot_id ON topic_jobs (bot_id)",
+    "CREATE INDEX IF NOT EXISTS topic_jobs_updated_at ON topic_jobs (updated_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS availability_jobs (
+      job_id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      url TEXT NOT NULL,
+      status TEXT NOT NULL,
+      question TEXT,
+      summary TEXT,
+      raw_text_path TEXT,
+      raw_html_path TEXT,
+      last_error TEXT,
+      max_seconds INTEGER NOT NULL DEFAULT 60,
+      steps_count INTEGER NOT NULL DEFAULT 0,
+      screenshots_dir TEXT,
+      celery_task_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "ALTER TABLE availability_jobs ADD COLUMN IF NOT EXISTS question TEXT",
+    "ALTER TABLE availability_jobs ADD COLUMN IF NOT EXISTS raw_text_path TEXT",
+    "ALTER TABLE availability_jobs ADD COLUMN IF NOT EXISTS raw_html_path TEXT",
+    "CREATE INDEX IF NOT EXISTS availability_jobs_bot_id ON availability_jobs (bot_id)",
+    "CREATE INDEX IF NOT EXISTS availability_jobs_updated_at ON availability_jobs (updated_at DESC)",
+    """
     CREATE TABLE IF NOT EXISTS conversation_sessions (
       session_id TEXT PRIMARY KEY,
       bot_id TEXT NOT NULL,

@@ -15,7 +15,15 @@ def _emit(obj: Dict[str, Any]) -> None:
     sys.stdout.flush()
 
 
-async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, base_prefix: str, corpus_resource: str) -> None:
+async def _run(
+    url: str | None,
+    urls: list[str] | None,
+    *,
+    bucket_name: str,
+    base_prefix: str,
+    corpus_resource: str,
+    headless: Optional[bool],
+) -> None:
     from infrastructure.rag.crawl_service import CRAWL_MAX_DEPTH, CRAWL_MAX_CONCURRENCY
     from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
     from google.cloud import storage
@@ -64,6 +72,7 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
                 urls,
                 max_concurrent=CRAWL_MAX_CONCURRENCY,
                 progress_cb=_on_progress,
+                headless=headless,
             )
         else:
             # STRICT MODE: only crawl the explicit URL provided (no BFS expansion).
@@ -71,6 +80,7 @@ async def _run(url: str | None, urls: list[str] | None, *, bucket_name: str, bas
                 [url or ""],
                 max_concurrent=CRAWL_MAX_CONCURRENCY,
                 progress_cb=_on_progress,
+                headless=headless,
             )
     except Exception as e:
         _emit({"type": "error", "error": str(e)})
@@ -143,6 +153,7 @@ def main() -> int:
     parser.add_argument("--base-prefix", required=True)
     parser.add_argument("--corpus", required=True)
     parser.add_argument("--creds", required=False, default="")
+    parser.add_argument("--headless", required=False, default="")
     args = parser.parse_args()
 
     try:
@@ -170,6 +181,15 @@ def main() -> int:
         if not args.url and not url_list:
             raise RuntimeError("Missing url(s) for crawl")
 
+        headless_arg = (args.headless or "").strip().lower()
+        headless_value: Optional[bool]
+        if headless_arg in ("true", "1", "yes"):
+            headless_value = True
+        elif headless_arg in ("false", "0", "no"):
+            headless_value = False
+        else:
+            headless_value = None
+
         asyncio.run(
             _run(
                 args.url or None,
@@ -177,6 +197,7 @@ def main() -> int:
                 bucket_name=args.bucket,
                 base_prefix=args.base_prefix,
                 corpus_resource=args.corpus,
+                headless=headless_value,
             )
         )
         return 0

@@ -78,6 +78,7 @@ def reset_postgres_data() -> None:
             """
             TRUNCATE TABLE
               index_jobs,
+              booking_link_jobs,
               bot_sources,
               bot_domains,
               bot_corpora,

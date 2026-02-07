@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
-import { useDashboardData, type DiscoveryJobRecord } from '../../hooks/useDashboardData'
+import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord, type DiscoveryJobRecord } from '../../hooks/useDashboardData'
 import {
   categorizeUrls,
   getAllExpandablePaths,
@@ -84,6 +84,55 @@ function trainingProgressLabel(stage: string | undefined): string {
 
 const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled', 'import_submitted'])
 
+const TOPIC_JOB_TERMINAL_STATUS = new Set(['done', 'error'])
+const BOOKING_LINK_JOB_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
+
+function topicProgressPercent(status?: string, stage?: string): number {
+  const s = (status || '').toLowerCase()
+  const st = (stage || '').toLowerCase()
+  if (s === 'done' || st === 'done') return 100
+  if (s === 'error' || st === 'error') return 100
+  if (st === 'saving') return 90
+  if (st === 'categorizing') return 80
+  if (st === 'extracting') return 60
+  if (st === 'loading_docs') return 30
+  if (s === 'queued' || st === 'queued') return 15
+  if (s === 'running') return 45
+  return 10
+}
+
+function topicStatusLabel(status?: string, stage?: string): string {
+  const s = (status || '').toLowerCase()
+  const st = (stage || '').toLowerCase()
+  if (s === 'done' || st === 'done') return '✓ Topics ready'
+  if (s === 'error' || st === 'error') return 'Topic extraction failed'
+  if (st === 'loading_docs') return 'Loading documents…'
+  if (st === 'extracting') return 'Extracting topics…'
+  if (st === 'categorizing') return 'Categorizing topics…'
+  if (st === 'saving') return 'Saving topics…'
+  if (s === 'queued' || st === 'queued') return 'Topics queued…'
+  if (s === 'running') return 'Topics in progress…'
+  return 'Topics…'
+}
+
+function bookingStatusLabel(status?: string): string {
+  const s = (status || '').toLowerCase()
+  if (s === 'done') return '✓ Booking links ready'
+  if (s === 'failed' || s === 'error') return 'Booking link extraction failed'
+  if (s === 'running' || s === 'queued') return 'Booking links in progress…'
+  return 'Booking links…'
+}
+
+const AVAILABILITY_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
+
+type BookingLinkEntry = {
+  url: string
+  confidence?: number
+  reasons?: string[]
+  sources?: string[]
+  snippets?: string[]
+}
+
 export default function BotKnowledgeTab() {
   const { botId } = useParams()
   const {
@@ -98,8 +147,17 @@ export default function BotKnowledgeTab() {
     cancelIndexJob,
     discoverUrls,
     getJobStatus,
+    cancelDiscoveryJob,
     listDiscoveryJobs,
     getDiscoveryJob,
+    listTopicJobs,
+    getTopicJob,
+    listBookingLinkJobs,
+    getBookingLinkJob,
+    startAvailabilityJob,
+    getAvailabilityJob,
+    saveWidgetConfig,
+    selectedBotWidgetConfig,
   } = useDashboardData()
 
   const [discoverInputUrl, setDiscoverInputUrl] = useState('')
@@ -128,6 +186,7 @@ export default function BotKnowledgeTab() {
   const [bgDiscoveryTrainingPhase, setBgDiscoveryTrainingPhase] = useState<'idle' | 'training_started' | 'training_complete'>( 'idle')
   const [bgDiscoveryCardDismissed, setBgDiscoveryCardDismissed] = useState(false)
   const [bgDiscoveryZeroNotice, setBgDiscoveryZeroNotice] = useState(false)
+  const [bgDiscoveryStopping, setBgDiscoveryStopping] = useState(false)
   const hadActiveSourcesJobRef = useRef(false)
   const bgDiscoveryDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bgDiscoveryPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -140,6 +199,22 @@ export default function BotKnowledgeTab() {
     docs_count?: number
     last_error?: string
   } | null>(null)
+  const [topicJobStatus, setTopicJobStatus] = useState<{
+    status?: string
+    stage?: string
+    docs_count?: number
+    topics_count?: number
+    last_error?: string | null
+    updated_at?: string
+  } | null>(null)
+  const [bookingLinkJob, setBookingLinkJob] = useState<BookingLinkJobRecord | null>(null)
+
+  const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
+  const [bookingTestUrl, setBookingTestUrl] = useState('')
+  const [availabilityTestJob, setAvailabilityTestJob] = useState<AvailabilityJobRecord | null>(null)
+  const [availabilityTestError, setAvailabilityTestError] = useState<string | null>(null)
+  const [availabilityTestRunning, setAvailabilityTestRunning] = useState(false)
+  const availabilityTestPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const discoverSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const DISCOVER_TERMINAL_STAGES = new Set(['done', 'error', 'cancelled', 'import_submitted'])
@@ -181,6 +256,46 @@ export default function BotKnowledgeTab() {
       }
     }
   }, [selectedBot, discoverTrainingJobId, getJobStatus, loadJobs, loadSources])
+
+  // Initialize booking settings from widget config
+  useEffect(() => {
+    const cfg = selectedBotWidgetConfig
+    if (cfg && typeof cfg === 'object') {
+      const allow = cfg.allowRealtimeAvailability
+      const url = cfg.bookingTestUrl
+      if (typeof allow === 'boolean') setAllowRealtimeAvailability(allow)
+      if (typeof url === 'string' && url) setBookingTestUrl(url)
+    }
+  }, [selectedBotWidgetConfig])
+
+  // Poll availability test job when running
+  useEffect(() => {
+    if (!selectedBot || !availabilityTestJob) return
+    if (AVAILABILITY_TERMINAL_STATUS.has(availabilityTestJob.status)) {
+      setAvailabilityTestRunning(false)
+      return
+    }
+    setAvailabilityTestRunning(true)
+    availabilityTestPollRef.current = setInterval(async () => {
+      const updated = await getAvailabilityJob(selectedBot.bot_id, availabilityTestJob.job_id)
+      if (updated) {
+        setAvailabilityTestJob(updated)
+        if (AVAILABILITY_TERMINAL_STATUS.has(updated.status)) {
+          if (availabilityTestPollRef.current) {
+            clearInterval(availabilityTestPollRef.current)
+            availabilityTestPollRef.current = null
+          }
+          setAvailabilityTestRunning(false)
+        }
+      }
+    }, 4000)
+    return () => {
+      if (availabilityTestPollRef.current) {
+        clearInterval(availabilityTestPollRef.current)
+        availabilityTestPollRef.current = null
+      }
+    }
+  }, [selectedBot, availabilityTestJob?.job_id, availabilityTestJob?.status, getAvailabilityJob])
 
   // Background discovery: load list when bot is set; poll latest job if running/queued
   useEffect(() => {
@@ -280,6 +395,103 @@ export default function BotKnowledgeTab() {
       clearInterval(timer)
     }
   }, [selectedBot, activeSourcesJob?.job_id, getJobStatus, loadJobs, loadSources])
+
+  // Topic extraction progress (separate job)
+  useEffect(() => {
+    if (!selectedBot) {
+      setTopicJobStatus(null)
+      return
+    }
+    let cancelled = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+
+    const load = async () => {
+      const jobs = await listTopicJobs(selectedBot.bot_id)
+      if (cancelled) return
+      if (!jobs.length) {
+        setTopicJobStatus(null)
+        return
+      }
+      const latest = jobs[0]
+      setTopicJobStatus({
+        status: latest.status,
+        stage: latest.stage,
+        docs_count: latest.docs_count,
+        topics_count: latest.topics_count,
+        last_error: latest.last_error,
+        updated_at: latest.updated_at,
+      })
+
+      const isTerminal = TOPIC_JOB_TERMINAL_STATUS.has((latest.status || '').toLowerCase())
+      const stale = isJobStale({ updated_at: latest.updated_at })
+      if (isTerminal || stale) return
+
+      pollTimer = setInterval(async () => {
+        const current = await getTopicJob(selectedBot.bot_id, latest.job_id)
+        if (cancelled || !current) return
+        setTopicJobStatus({
+          status: current.status,
+          stage: current.stage,
+          docs_count: current.docs_count,
+          topics_count: current.topics_count,
+          last_error: current.last_error,
+          updated_at: current.updated_at,
+        })
+        const terminalNow = TOPIC_JOB_TERMINAL_STATUS.has((current.status || '').toLowerCase())
+        if (terminalNow && pollTimer) {
+          clearInterval(pollTimer)
+          pollTimer = null
+        }
+      }, 4000)
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+      if (pollTimer) clearInterval(pollTimer)
+    }
+  }, [selectedBot, listTopicJobs, getTopicJob])
+
+  // Booking link extraction (RAG) progress
+  useEffect(() => {
+    if (!selectedBot) {
+      setBookingLinkJob(null)
+      return
+    }
+    let cancelled = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+
+    const load = async () => {
+      const jobs = await listBookingLinkJobs(selectedBot.bot_id)
+      if (cancelled) return
+      if (!jobs.length) {
+        setBookingLinkJob(null)
+        return
+      }
+      const latest = jobs[0]
+      setBookingLinkJob(latest)
+      const isTerminal = BOOKING_LINK_JOB_TERMINAL_STATUS.has((latest.status || '').toLowerCase())
+      const stale = isJobStale({ updated_at: latest.updated_at })
+      if (isTerminal || stale) return
+
+      pollTimer = setInterval(async () => {
+        const current = await getBookingLinkJob(selectedBot.bot_id, latest.job_id)
+        if (cancelled || !current) return
+        setBookingLinkJob(current)
+        const terminalNow = BOOKING_LINK_JOB_TERMINAL_STATUS.has((current.status || '').toLowerCase())
+        if (terminalNow && pollTimer) {
+          clearInterval(pollTimer)
+          pollTimer = null
+        }
+      }, 4000)
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+      if (pollTimer) clearInterval(pollTimer)
+    }
+  }, [selectedBot, listBookingLinkJobs, getBookingLinkJob])
 
   // When background-discovery "Add to training" job finishes: show "Training complete" then dismiss card
   useEffect(() => {
@@ -467,6 +679,23 @@ export default function BotKnowledgeTab() {
       setBgDiscoveryAdding(false)
     }
   }, [selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
+
+  const handleStopBgDiscovery = useCallback(async () => {
+    if (!selectedBot || !bgDiscoveryJob || bgDiscoveryStopping) return
+    if (bgDiscoveryJob.status !== 'running' && bgDiscoveryJob.status !== 'queued') return
+    setBgDiscoveryStopping(true)
+    try {
+      await cancelDiscoveryJob(selectedBot.bot_id, bgDiscoveryJob.job_id)
+      setBgDiscoveryCardDismissed(true)
+      setBgDiscoveryJob(null)
+      if (bgDiscoveryPollRef.current) {
+        clearInterval(bgDiscoveryPollRef.current)
+        bgDiscoveryPollRef.current = null
+      }
+    } finally {
+      setBgDiscoveryStopping(false)
+    }
+  }, [selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
 
   const renderBgDiscoveryCategory = useCallback(
     (category: UrlCategory): React.ReactNode => {
@@ -842,6 +1071,36 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, selectedDiscovered, queueCrawlUrls, loadJobs, trainingDiscovered])
 
+  const handleRunAvailabilityTest = useCallback(async () => {
+    if (!selectedBot || !bookingTestUrl.trim() || availabilityTestRunning) return
+    setAvailabilityTestError(null)
+    try {
+      const existing = selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object' ? selectedBotWidgetConfig : {}
+      const merged = { ...existing, allowRealtimeAvailability, bookingTestUrl: bookingTestUrl.trim() }
+      await saveWidgetConfig(selectedBot.bot_id, merged)
+    } catch {
+      // Non-blocking; continue with test
+    }
+    const created = await startAvailabilityJob(selectedBot.bot_id, {
+      url: bookingTestUrl.trim(),
+      max_seconds: 60,
+      question: 'Summarize availability and pricing from the page.',
+    })
+    if (!created) {
+      setAvailabilityTestError('Failed to start availability test')
+      return
+    }
+    setAvailabilityTestJob(created)
+  }, [
+    selectedBot,
+    bookingTestUrl,
+    availabilityTestRunning,
+    allowRealtimeAvailability,
+    selectedBotWidgetConfig,
+    saveWidgetConfig,
+    startAvailabilityJob,
+  ])
+
   const showBgDiscoveryCard = Boolean(
     selectedBot &&
       bgDiscoveryJob &&
@@ -1178,6 +1437,135 @@ export default function BotKnowledgeTab() {
         )}
       </section>
 
+      {/* Booking links */}
+      <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="card-title">Booking links</div>
+        {bookingLinkJob ? (
+          (() => {
+            const status = (bookingLinkJob.status || '').toLowerCase()
+            const isError = status === 'failed' || status === 'error'
+            const isDone = status === 'done'
+            const links = (bookingLinkJob.links || []) as BookingLinkEntry[]
+            return (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  {!isDone && !isError && (
+                    <span className="discovery-loading-dots" aria-hidden>
+                      <span /><span /><span />
+                    </span>
+                  )}
+                  <span style={{ color: isError ? '#dc2626' : '#0f766e', fontWeight: 600 }}>
+                    {bookingStatusLabel(bookingLinkJob.status)}
+                  </span>
+                  {bookingLinkJob.updated_at && (
+                    <span className="muted" style={{ fontSize: '0.875rem' }}>
+                      · Updated {formatRelativeTime(bookingLinkJob.updated_at)}
+                    </span>
+                  )}
+                </div>
+                {bookingLinkJob.error && (
+                  <div className="alert error" style={{ marginBottom: '0.75rem' }}>
+                    {bookingLinkJob.error}
+                  </div>
+                )}
+                {links.length > 0 ? (
+                  <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px' }}>
+                    {links.map((link) => {
+                      const url = link.url || ''
+                      const rawConfidence = typeof link.confidence === 'number' ? link.confidence : Number(link.confidence || 0)
+                      const confidence = Number.isFinite(rawConfidence) ? rawConfidence : 0
+                      const confidencePct = Math.round(confidence * 100)
+                      const reason = Array.isArray(link.reasons) && link.reasons.length > 0 ? link.reasons[0] : ''
+                      return (
+                        <div key={url} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <a href={url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', wordBreak: 'break-all' }}>
+                              {url}
+                            </a>
+                            <span className="muted" style={{ fontSize: '0.85rem' }}>
+                              · Confidence {confidencePct}%
+                            </span>
+                          </div>
+                          {reason && (
+                            <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                              {reason}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="muted">No booking links found yet.</div>
+                )}
+              </>
+            )
+          })()
+        ) : (
+          <p className="card-subtitle" style={{ marginTop: 0 }}>
+            Booking links are extracted from your trained knowledge after import completes.
+          </p>
+        )}
+      </section>
+
+      {/* Topic extraction progress */}
+      <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="card-title">Topics extraction</div>
+        {topicJobStatus ? (
+          (() => {
+            const pct = topicProgressPercent(topicJobStatus.status, topicJobStatus.stage)
+            const isError = (topicJobStatus.status || '').toLowerCase() === 'error' || (topicJobStatus.stage || '').toLowerCase() === 'error'
+            const isDone = (topicJobStatus.status || '').toLowerCase() === 'done' || (topicJobStatus.stage || '').toLowerCase() === 'done'
+            const label = topicStatusLabel(topicJobStatus.status, topicJobStatus.stage)
+            return (
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  {!isDone && !isError && (
+                    <span className="discovery-loading-dots" aria-hidden>
+                      <span /><span /><span />
+                    </span>
+                  )}
+                  <span style={{ color: isError ? '#dc2626' : '#0f766e', fontWeight: 600 }}>
+                    {label} {pct}%
+                  </span>
+                  {topicJobStatus.docs_count != null && (
+                    <span className="muted" style={{ fontSize: '0.875rem' }}>
+                      · {topicJobStatus.docs_count} docs · {topicJobStatus.topics_count ?? 0} topics
+                    </span>
+                  )}
+                  {topicJobStatus.updated_at && (
+                    <span className="muted" style={{ fontSize: '0.875rem' }}>
+                      · Updated {formatRelativeTime(topicJobStatus.updated_at)}
+                    </span>
+                  )}
+                </div>
+                <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: '#e2e8f0' }}>
+                  <div
+                    className="progress-fill"
+                    style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      background: isError ? '#f87171' : '#0f766e',
+                      borderRadius: '4px',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+                {topicJobStatus.last_error && (
+                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                    {topicJobStatus.last_error}
+                  </div>
+                )}
+              </div>
+            )
+          })()
+        ) : (
+          <p className="card-subtitle" style={{ marginTop: '0.5rem' }}>
+            No topic extraction jobs yet. Topics run in parallel during training.
+          </p>
+        )}
+      </section>
+
       {bgDiscoveryZeroNotice && (
         <div className="alert info" style={{ gridColumn: '1 / -1' }}>
           Background discovery completed. No new URLs were found.
@@ -1194,11 +1582,21 @@ export default function BotKnowledgeTab() {
             </p>
           )}
           {bgDiscoveryJobForCard.status === 'running' || bgDiscoveryJobForCard.status === 'queued' ? (
-            <div className="alert info" style={{ marginBottom: 0 }}>
-              <span className="discovery-loading-dots" aria-hidden style={{ marginRight: '8px' }}>
-                <span /><span /><span />
-              </span>
-              Discovering… {bgDiscoveryJobForCard.discovered_count ?? bgDiscoveryJobForCard.discovered_urls?.length ?? 0} URLs so far
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div className="alert info" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
+                <span className="discovery-loading-dots" aria-hidden style={{ marginRight: '8px' }}>
+                  <span /><span /><span />
+                </span>
+                Discovering… {bgDiscoveryJobForCard.discovered_count ?? bgDiscoveryJobForCard.discovered_urls?.length ?? 0} URLs so far
+              </div>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => void handleStopBgDiscovery()}
+                disabled={bgDiscoveryStopping}
+              >
+                {bgDiscoveryStopping ? 'Stopping…' : 'Stop discovery'}
+              </button>
             </div>
           ) : bgDiscoveryJobForCard.status === 'failed' ? (
             <div className="alert error">{bgDiscoveryJobForCard.error ?? 'Discovery failed'}</div>
@@ -1325,6 +1723,84 @@ export default function BotKnowledgeTab() {
               {isDiscovering ? 'Discovering…' : 'Discover'}
             </button>
           </div>
+        </div>
+
+        <div className="design-form stack" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+          <label className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              checked={allowRealtimeAvailability}
+              onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
+              style={{ accentColor: '#6366f1' }}
+            />
+            <span>Allow agent to check real-time room availability and answer user queries</span>
+          </label>
+          {allowRealtimeAvailability && (
+            <div style={{ marginTop: '0.75rem', marginLeft: '1.5rem' }}>
+              <div className="testing-field">
+                <label className="testing-label">Booking test URL</label>
+                <input
+                  type="url"
+                  className="design-form-input"
+                  value={bookingTestUrl}
+                  onChange={(e) => setBookingTestUrl(e.target.value)}
+                  placeholder="https://www.booking.com/hotel/..."
+                  style={{ width: '100%', maxWidth: '500px' }}
+                />
+                <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
+                  Go to booking.com, select your dates and guests, then paste the full URL here.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => void handleRunAvailabilityTest()}
+                  disabled={!bookingTestUrl.trim() || availabilityTestRunning}
+                >
+                  {availabilityTestRunning ? 'Agent testing…' : 'Run availability test'}
+                </button>
+              </div>
+              {availabilityTestError && (
+                <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                  {availabilityTestError}
+                </div>
+              )}
+              {availabilityTestJob && (
+                <div className="progress-card" style={{ marginTop: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem' }}>
+                  {availabilityTestRunning ? (
+                    <div className="muted" style={{ fontSize: '0.875rem' }}>
+                      Agent testing… Status: <strong>{availabilityTestJob.status}</strong>
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontWeight: 500, marginBottom: '0.35rem' }}>Agent test results</div>
+                      <div className="muted" style={{ fontSize: '0.875rem' }}>
+                        Status: <strong>{availabilityTestJob.status}</strong>
+                      </div>
+                      {availabilityTestJob.summary && (
+                        <div className="alert info" style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
+                          {availabilityTestJob.summary}
+                        </div>
+                      )}
+                      {availabilityTestJob.last_error && (
+                        <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
+                          {availabilityTestJob.last_error}
+                        </div>
+                      )}
+                      <Link
+                        to={botId ? `/bots/${botId}/testing` : '#'}
+                        className="secondary"
+                        style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.875rem' }}
+                      >
+                        View in Testing tab
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {(discoverTrainingJobId || discoverTrainingSuccess) && (

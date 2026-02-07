@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from psycopg import errors as pg_errors
 
 from domain.entities import (
+    BookingLinkJob,
     Bot,
     BotDomainRecord,
     BotRecord,
@@ -19,9 +20,18 @@ from domain.entities import (
     IndexJob,
     OrgMemberRecord,
     OrgRecord,
+    TopicJob,
+    AvailabilityJob,
     UserRecord,
 )
-from domain.repositories import BotSourceRepository, DiscoveryJobRepository, IndexJobRepository
+from domain.repositories import (
+    AvailabilityJobRepository,
+    BookingLinkJobRepository,
+    BotSourceRepository,
+    DiscoveryJobRepository,
+    IndexJobRepository,
+    TopicJobRepository,
+)
 from infrastructure.db.connection import get_connection
 
 
@@ -259,6 +269,9 @@ class PostgresBotRepository:
         con = _connect()
         try:
             # Delete in order: index_jobs, bot_sources, bot_domains, bot_corpora, bots
+            con.execute("DELETE FROM availability_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM booking_link_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM topic_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM index_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_sources WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_domains WHERE bot_id = %s", (bid,))
@@ -1233,6 +1246,437 @@ class PostgresDiscoveryJobRepository(DiscoveryJobRepository):
                 WHERE job_id = %s
                 """,
                 (job.status, urls_json, job.error, job.celery_task_id, now, job.job_id),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+
+class PostgresBookingLinkJobRepository(BookingLinkJobRepository):
+    def create(self, job: BookingLinkJob) -> None:
+        con = _connect()
+        try:
+            links_json = json.dumps(getattr(job, "links", None) or [])
+            con.execute(
+                """
+                INSERT INTO booking_link_jobs(
+                  job_id, bot_id, index_job_id, root_url, status,
+                  links, error, celery_task_id, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id,
+                    job.bot_id,
+                    job.index_job_id,
+                    job.root_url,
+                    job.status,
+                    links_json,
+                    job.error,
+                    job.celery_task_id,
+                    job.created_at,
+                    job.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get(self, bot_id: str, job_id: str) -> Optional[BookingLinkJob]:
+        bid = (bot_id or "").strip()
+        jid = (job_id or "").strip()
+        if not bid or not jid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, index_job_id, root_url, status,
+                       links, error, celery_task_id, created_at, updated_at
+                FROM booking_link_jobs
+                WHERE bot_id = %s AND job_id = %s
+                """,
+                (bid, jid),
+            ).fetchone()
+            if not row:
+                return None
+            links_raw = row[5] if len(row) > 5 else "[]"
+            try:
+                links_list = json.loads(links_raw) if isinstance(links_raw, str) else (links_raw or [])
+            except (TypeError, ValueError):
+                links_list = []
+            return BookingLinkJob(
+                job_id=row[0],
+                bot_id=row[1],
+                index_job_id=row[2],
+                root_url=row[3],
+                status=row[4],
+                links=links_list if isinstance(links_list, list) else [],
+                error=row[6],
+                celery_task_id=row[7],
+                created_at=row[8],
+                updated_at=row[9],
+            )
+        finally:
+            con.close()
+
+    def list_by_bot(self, bot_id: str) -> List[BookingLinkJob]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT job_id, bot_id, index_job_id, root_url, status,
+                       links, error, celery_task_id, created_at, updated_at
+                FROM booking_link_jobs
+                WHERE bot_id = %s
+                ORDER BY created_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            result = []
+            for row in rows:
+                links_raw = row[5] if len(row) > 5 else "[]"
+                try:
+                    links_list = json.loads(links_raw) if isinstance(links_raw, str) else (links_raw or [])
+                except (TypeError, ValueError):
+                    links_list = []
+                result.append(
+                    BookingLinkJob(
+                        job_id=row[0],
+                        bot_id=row[1],
+                        index_job_id=row[2],
+                        root_url=row[3],
+                        status=row[4],
+                        links=links_list if isinstance(links_list, list) else [],
+                        error=row[6],
+                        celery_task_id=row[7],
+                        created_at=row[8],
+                        updated_at=row[9],
+                    )
+                )
+            return result
+        finally:
+            con.close()
+
+    def update(self, job: BookingLinkJob) -> None:
+        now = _utc_now()
+        links_json = json.dumps(getattr(job, "links", None) or [])
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE booking_link_jobs
+                SET status = %s, links = %s, error = %s,
+                    celery_task_id = COALESCE(%s, celery_task_id), updated_at = %s
+                WHERE job_id = %s
+                """,
+                (
+                    job.status,
+                    links_json,
+                    job.error,
+                    job.celery_task_id,
+                    now,
+                    job.job_id,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+
+class PostgresTopicJobRepository(TopicJobRepository):
+    def create(self, job: TopicJob) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO topic_jobs(
+                  job_id, org_id, bot_id, status, stage, gcs_prefix,
+                  docs_count, topics_count, last_error, celery_task_id,
+                  created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id,
+                    job.org_id,
+                    job.bot_id,
+                    job.status,
+                    job.stage,
+                    job.gcs_prefix,
+                    job.docs_count,
+                    job.topics_count,
+                    job.last_error,
+                    job.celery_task_id,
+                    job.created_at,
+                    job.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get(self, bot_id: str, job_id: str) -> Optional[TopicJob]:
+        bid = (bot_id or "").strip()
+        jid = (job_id or "").strip()
+        if not bid or not jid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, org_id, bot_id, status, stage, gcs_prefix,
+                       docs_count, topics_count, last_error, celery_task_id,
+                       created_at, updated_at
+                FROM topic_jobs
+                WHERE bot_id = %s AND job_id = %s
+                """,
+                (bid, jid),
+            ).fetchone()
+            if not row:
+                return None
+            return TopicJob(
+                job_id=row[0],
+                org_id=row[1],
+                bot_id=row[2],
+                status=row[3],
+                stage=row[4],
+                gcs_prefix=row[5],
+                docs_count=row[6] or 0,
+                topics_count=row[7] or 0,
+                last_error=row[8],
+                celery_task_id=row[9],
+                created_at=row[10],
+                updated_at=row[11],
+            )
+        finally:
+            con.close()
+
+    def list_by_bot(self, bot_id: str) -> List[TopicJob]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT job_id, org_id, bot_id, status, stage, gcs_prefix,
+                       docs_count, topics_count, last_error, celery_task_id,
+                       created_at, updated_at
+                FROM topic_jobs
+                WHERE bot_id = %s
+                ORDER BY updated_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            return [
+                TopicJob(
+                    job_id=row[0],
+                    org_id=row[1],
+                    bot_id=row[2],
+                    status=row[3],
+                    stage=row[4],
+                    gcs_prefix=row[5],
+                    docs_count=row[6] or 0,
+                    topics_count=row[7] or 0,
+                    last_error=row[8],
+                    celery_task_id=row[9],
+                    created_at=row[10],
+                    updated_at=row[11],
+                )
+                for row in rows or []
+            ]
+        finally:
+            con.close()
+
+    def update(self, job: TopicJob) -> None:
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE topic_jobs
+                SET status = %s,
+                    stage = %s,
+                    gcs_prefix = COALESCE(%s, gcs_prefix),
+                    docs_count = %s,
+                    topics_count = %s,
+                    last_error = %s,
+                    celery_task_id = COALESCE(%s, celery_task_id),
+                    updated_at = %s
+                WHERE job_id = %s
+                """,
+                (
+                    job.status,
+                    job.stage,
+                    job.gcs_prefix,
+                    job.docs_count,
+                    job.topics_count,
+                    job.last_error,
+                    job.celery_task_id,
+                    now,
+                    job.job_id,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+
+class PostgresAvailabilityJobRepository(AvailabilityJobRepository):
+    def create(self, job: AvailabilityJob) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO availability_jobs(
+                  job_id, org_id, bot_id, url, status, question, summary, raw_text_path, raw_html_path, last_error,
+                  max_seconds, steps_count, screenshots_dir, celery_task_id,
+                  created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id,
+                    job.org_id,
+                    job.bot_id,
+                    job.url,
+                    job.status,
+                    job.question,
+                    job.summary,
+                    job.raw_text_path,
+                    job.raw_html_path,
+                    job.last_error,
+                    job.max_seconds,
+                    job.steps_count,
+                    job.screenshots_dir,
+                    job.celery_task_id,
+                    job.created_at,
+                    job.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get(self, bot_id: str, job_id: str) -> Optional[AvailabilityJob]:
+        bid = (bot_id or "").strip()
+        jid = (job_id or "").strip()
+        if not bid or not jid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, org_id, bot_id, url, status, question, summary, raw_text_path, raw_html_path, last_error,
+                       max_seconds, steps_count, screenshots_dir, celery_task_id,
+                       created_at, updated_at
+                FROM availability_jobs
+                WHERE bot_id = %s AND job_id = %s
+                """,
+                (bid, jid),
+            ).fetchone()
+            if not row:
+                return None
+            return AvailabilityJob(
+                job_id=row[0],
+                org_id=row[1],
+                bot_id=row[2],
+                url=row[3],
+                status=row[4],
+                question=row[5],
+                summary=row[6],
+                raw_text_path=row[7],
+                raw_html_path=row[8],
+                last_error=row[9],
+                max_seconds=row[10] or 60,
+                steps_count=row[11] or 0,
+                screenshots_dir=row[12],
+                celery_task_id=row[13],
+                created_at=row[14],
+                updated_at=row[15],
+            )
+        finally:
+            con.close()
+
+    def list_by_bot(self, bot_id: str) -> List[AvailabilityJob]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT job_id, org_id, bot_id, url, status, question, summary, raw_text_path, raw_html_path, last_error,
+                       max_seconds, steps_count, screenshots_dir, celery_task_id,
+                       created_at, updated_at
+                FROM availability_jobs
+                WHERE bot_id = %s
+                ORDER BY updated_at DESC
+                """,
+                (bid,),
+            ).fetchall()
+            return [
+                AvailabilityJob(
+                    job_id=row[0],
+                    org_id=row[1],
+                    bot_id=row[2],
+                    url=row[3],
+                    status=row[4],
+                    question=row[5],
+                    summary=row[6],
+                    raw_text_path=row[7],
+                    raw_html_path=row[8],
+                    last_error=row[9],
+                    max_seconds=row[10] or 60,
+                    steps_count=row[11] or 0,
+                    screenshots_dir=row[12],
+                    celery_task_id=row[13],
+                    created_at=row[14],
+                    updated_at=row[15],
+                )
+                for row in rows or []
+            ]
+        finally:
+            con.close()
+
+    def update(self, job: AvailabilityJob) -> None:
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE availability_jobs
+                SET status = %s,
+                    question = COALESCE(%s, question),
+                    summary = %s,
+                    raw_text_path = COALESCE(%s, raw_text_path),
+                    raw_html_path = COALESCE(%s, raw_html_path),
+                    last_error = %s,
+                    max_seconds = %s,
+                    steps_count = %s,
+                    screenshots_dir = %s,
+                    celery_task_id = COALESCE(%s, celery_task_id),
+                    updated_at = %s
+                WHERE job_id = %s
+                """,
+                (
+                    job.status,
+                    job.question,
+                    job.summary,
+                    job.raw_text_path,
+                    job.raw_html_path,
+                    job.last_error,
+                    job.max_seconds,
+                    job.steps_count,
+                    job.screenshots_dir,
+                    job.celery_task_id,
+                    now,
+                    job.job_id,
+                ),
             )
             con.commit()
         finally:

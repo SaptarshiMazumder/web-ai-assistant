@@ -121,6 +121,57 @@ class DiscoveryJob:
     celery_task_id: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+
+
+@dataclass
+class BookingLinkJob:
+    """Background booking URL extraction job (RAG-based)."""
+    job_id: str
+    bot_id: str
+    index_job_id: Optional[str] = None
+    root_url: str = ""
+    status: str = "queued"  # queued, running, done, failed
+    links: List[Dict[str, Any]] = field(default_factory=list)
+    error: Optional[str] = None
+    celery_task_id: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
+class TopicJob:
+    job_id: str
+    org_id: str
+    bot_id: str
+    status: str  # queued|running|done|error
+    stage: str  # queued|loading_docs|extracting|categorizing|saving|done|error
+    gcs_prefix: Optional[str] = None
+    docs_count: int = 0
+    topics_count: int = 0
+    last_error: Optional[str] = None
+    celery_task_id: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
+class AvailabilityJob:
+    job_id: str
+    org_id: str
+    bot_id: str
+    url: str
+    status: str  # queued|running|done|error
+    question: Optional[str] = None
+    summary: Optional[str] = None
+    raw_text_path: Optional[str] = None
+    raw_html_path: Optional[str] = None
+    last_error: Optional[str] = None
+    max_seconds: int = 60
+    steps_count: int = 0
+    screenshots_dir: Optional[str] = None
+    celery_task_id: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
 @dataclass
 class ConversationSession:
     session_id: str

@@ -102,6 +102,50 @@ export type DiscoveryJobRecord = {
   updated_at: string
 }
 
+export type TopicJobRecord = {
+  job_id: string
+  org_id: string
+  bot_id: string
+  status: string
+  stage: string
+  gcs_prefix?: string | null
+  docs_count: number
+  topics_count: number
+  last_error?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AvailabilityJobRecord = {
+  job_id: string
+  org_id: string
+  bot_id: string
+  url: string
+  status: string
+  question?: string | null
+  summary?: string | null
+  raw_text_path?: string | null
+  raw_html_path?: string | null
+  last_error?: string | null
+  max_seconds: number
+  steps_count: number
+  screenshots_dir?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BookingLinkJobRecord = {
+  job_id: string
+  bot_id: string
+  index_job_id?: string | null
+  root_url: string
+  status: string
+  links: Record<string, unknown>[]
+  error?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export type ConversationSessionRecord = {
   session_id: string
   bot_id: string
@@ -315,8 +359,34 @@ type DashboardData = {
     options?: { max_duration_sec?: number }
   ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
   startBackgroundDiscovery: (botId: string, url: string, method: string) => Promise<void>
-    listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
-    getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
+  cancelDiscoveryJob: (botId: string, jobId: string) => Promise<{ status: string } | null>
+  listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
+  getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
+  listTopicJobs: (botId: string) => Promise<TopicJobRecord[]>
+  getTopicJob: (botId: string, jobId: string) => Promise<TopicJobRecord | null>
+  listBookingLinkJobs: (botId: string) => Promise<BookingLinkJobRecord[]>
+  getBookingLinkJob: (botId: string, jobId: string) => Promise<BookingLinkJobRecord | null>
+  startAvailabilityJob: (
+    botId: string,
+    payload: {
+      url: string
+      check_in?: string
+      check_out?: string
+      adults?: number
+      children?: number
+      rooms?: number
+      max_seconds?: number
+      question?: string
+    }
+  ) => Promise<AvailabilityJobRecord | null>
+  listAvailabilityJobs: (botId: string) => Promise<AvailabilityJobRecord[]>
+  getAvailabilityJob: (botId: string, jobId: string) => Promise<AvailabilityJobRecord | null>
+  getAvailabilityRaw: (
+    botId: string,
+    jobId: string,
+    format?: 'text' | 'html',
+    maxChars?: number
+  ) => Promise<{ format: string; content: string } | null>
     deleteBot: (botId: string) => Promise<boolean>
     listConversations: (
       botId: string,
@@ -944,9 +1014,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setError(null)
     try {
       const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
-      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/index`, orgOverride), {
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}/crawl-single`, orgOverride), {
         method: 'POST',
-        body: JSON.stringify({ source_id: sourceId }),
       })
       await loadJobs(botId)
       await loadSources(botId)
@@ -993,6 +1062,22 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function cancelDiscoveryJob(
+    botId: string,
+    jobId: string
+  ): Promise<{ status: string } | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      return await fetchAuthedJson<{ status: string }>(
+        withOrgParam(`/v1/org/bots/${botId}/discovery-jobs/${encodeURIComponent(jobId)}/cancel`, orgOverride),
+        { method: 'POST' }
+      )
+    } catch {
+      return null
+    }
+  }
+
   async function listDiscoveryJobs(botId: string): Promise<DiscoveryJobRecord[]> {
     if (isSuperAdmin && !activeOrgId) return []
     try {
@@ -1003,6 +1088,131 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       return data.jobs || []
     } catch {
       return []
+    }
+  }
+
+  async function listTopicJobs(botId: string): Promise<TopicJobRecord[]> {
+    if (isSuperAdmin && !activeOrgId) return []
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topic-jobs`, orgOverride)
+      const data = await fetchAuthedJson<{ jobs: TopicJobRecord[] }>(path)
+      return data.jobs || []
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    }
+  }
+
+  async function getTopicJob(botId: string, jobId: string): Promise<TopicJobRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topic-jobs/${encodeURIComponent(jobId)}`, orgOverride)
+      return await fetchAuthedJson<TopicJobRecord>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function listBookingLinkJobs(botId: string): Promise<BookingLinkJobRecord[]> {
+    if (isSuperAdmin && !activeOrgId) return []
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/booking-links`, orgOverride)
+      const data = await fetchAuthedJson<{ jobs: BookingLinkJobRecord[] }>(path)
+      return data.jobs || []
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    }
+  }
+
+  async function getBookingLinkJob(botId: string, jobId: string): Promise<BookingLinkJobRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/booking-links/${encodeURIComponent(jobId)}`, orgOverride)
+      return await fetchAuthedJson<BookingLinkJobRecord>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function startAvailabilityJob(
+    botId: string,
+    payload: {
+      url: string
+      check_in?: string
+      check_out?: string
+      adults?: number
+      children?: number
+      rooms?: number
+      max_seconds?: number
+      question?: string
+    }
+  ): Promise<AvailabilityJobRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/availability`, orgOverride)
+      return await fetchAuthedJson<AvailabilityJobRecord>(path, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function listAvailabilityJobs(botId: string): Promise<AvailabilityJobRecord[]> {
+    if (isSuperAdmin && !activeOrgId) return []
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/availability`, orgOverride)
+      const data = await fetchAuthedJson<{ jobs: AvailabilityJobRecord[] }>(path)
+      return data.jobs || []
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    }
+  }
+
+  async function getAvailabilityJob(
+    botId: string,
+    jobId: string
+  ): Promise<AvailabilityJobRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/availability/${encodeURIComponent(jobId)}`, orgOverride)
+      return await fetchAuthedJson<AvailabilityJobRecord>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getAvailabilityRaw(
+    botId: string,
+    jobId: string,
+    format: 'text' | 'html' = 'text',
+    maxChars = 0
+  ): Promise<{ format: string; content: string } | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const params = new URLSearchParams()
+      params.set('format', format)
+      if (maxChars > 0) params.set('max_chars', String(maxChars))
+      const path = withOrgParam(`/v1/org/bots/${botId}/availability/${jobId}/raw?${params.toString()}`, orgOverride)
+      return await fetchAuthedJson<{ format: string; content: string }>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
     }
   }
 
@@ -1803,8 +2013,17 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     setSelectedBotId,
     discoverUrls,
     startBackgroundDiscovery,
+    cancelDiscoveryJob,
     listDiscoveryJobs,
     getDiscoveryJob,
+    listTopicJobs,
+    getTopicJob,
+    listBookingLinkJobs,
+    getBookingLinkJob,
+    startAvailabilityJob,
+    listAvailabilityJobs,
+    getAvailabilityJob,
+    getAvailabilityRaw,
     deleteBot,
     listConversations,
     searchConversations,

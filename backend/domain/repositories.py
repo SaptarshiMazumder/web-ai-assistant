@@ -1,6 +1,20 @@
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Protocol, Tuple
 
-from .entities import Bot, BotDomainRecord, BotRecord, BotSource, DiscoveryJob, Document, IndexJob, OrgMemberRecord, OrgRecord, UserRecord
+from .entities import (
+    AvailabilityJob,
+    BookingLinkJob,
+    Bot,
+    BotDomainRecord,
+    BotRecord,
+    BotSource,
+    DiscoveryJob,
+    Document,
+    IndexJob,
+    OrgMemberRecord,
+    OrgRecord,
+    TopicJob,
+    UserRecord,
+)
 
 
 class BotRepository(Protocol):
@@ -159,6 +173,48 @@ class DiscoveryJobRepository(Protocol):
         ...
 
 
+class BookingLinkJobRepository(Protocol):
+    def create(self, job: BookingLinkJob) -> None:
+        ...
+
+    def get(self, bot_id: str, job_id: str) -> Optional[BookingLinkJob]:
+        ...
+
+    def list_by_bot(self, bot_id: str) -> List[BookingLinkJob]:
+        ...
+
+    def update(self, job: BookingLinkJob) -> None:
+        ...
+
+
+class TopicJobRepository(Protocol):
+    def create(self, job: TopicJob) -> None:
+        ...
+
+    def get(self, bot_id: str, job_id: str) -> Optional[TopicJob]:
+        ...
+
+    def list_by_bot(self, bot_id: str) -> List[TopicJob]:
+        ...
+
+    def update(self, job: TopicJob) -> None:
+        ...
+
+
+class AvailabilityJobRepository(Protocol):
+    def create(self, job: AvailabilityJob) -> None:
+        ...
+
+    def get(self, bot_id: str, job_id: str) -> Optional[AvailabilityJob]:
+        ...
+
+    def list_by_bot(self, bot_id: str) -> List[AvailabilityJob]:
+        ...
+
+    def update(self, job: AvailabilityJob) -> None:
+        ...
+
+
 class CrawlerRepository(Protocol):
     async def crawl_urls_bfs(
         self,
@@ -168,6 +224,7 @@ class CrawlerRepository(Protocol):
         *,
         stop_event: Optional[Any] = None,
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+        headless: Optional[bool] = None,
     ) -> List[Document]:
         ...
 
@@ -177,6 +234,7 @@ class CrawlerRepository(Protocol):
         *,
         max_concurrent: int,
         progress_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
+        headless: Optional[bool] = None,
     ) -> List[Document]:
         ...
 
@@ -187,6 +245,7 @@ class CrawlerRepository(Protocol):
         max_concurrent: int,
         *,
         max_urls: int = 2000,
+        headless: Optional[bool] = None,
     ) -> List[str]:
         ...
 
