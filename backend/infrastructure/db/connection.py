@@ -320,6 +320,33 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "CREATE UNIQUE INDEX IF NOT EXISTS organizations_name_unique ON organizations (lower(name))",
+    # ── LINE integration ──
+    """
+    CREATE TABLE IF NOT EXISTS line_channels (
+      channel_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL UNIQUE,
+      org_id TEXT NOT NULL,
+      line_channel_id TEXT NOT NULL,
+      line_channel_secret TEXT NOT NULL,
+      line_channel_access_token TEXT NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS line_channels_bot_id ON line_channels (bot_id)",
+    """
+    CREATE TABLE IF NOT EXISTS line_user_sessions (
+      line_user_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      is_escalated BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (line_user_id, bot_id)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS line_user_sessions_session_id ON line_user_sessions (session_id)",
 )
 
 _SCHEMA_INITIALIZED = False

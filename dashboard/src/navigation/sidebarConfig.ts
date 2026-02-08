@@ -15,6 +15,7 @@ import {
   Bell,
   Settings,
   Tags,
+  MessagesSquare,
 } from 'lucide-react'
 
 export type PrimaryNavItem = {
@@ -70,6 +71,7 @@ export const botTabSecondaryItems = (botId: string) => [
   { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical },
   { id: 'conversations', label: 'Conversations', to: `/bots/${botId}/conversations`, icon: MessageSquare },
   { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: Bell },
+  { id: 'line', label: 'LINE', to: `/bots/${botId}/line`, icon: MessagesSquare },
   { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings },
 ]
 

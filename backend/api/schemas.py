@@ -561,3 +561,28 @@ class BookingLinkJobItem(BaseModel):
 class BookingLinkJobsResponse(BaseModel):
     bot_id: str
     jobs: List[BookingLinkJobItem] = []
+
+
+# ========== LINE Integration ==========
+
+class LineChannelUpsertRequest(BaseModel):
+    line_channel_id: str
+    line_channel_secret: Optional[str] = None  # blank = keep existing on update
+    line_channel_access_token: Optional[str] = None  # blank = keep existing on update
+    is_active: bool = True
+
+
+class LineChannelResponse(BaseModel):
+    channel_id: str
+    bot_id: str
+    org_id: str
+    line_channel_id: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+    # Secrets are NOT returned
+
+
+class LineChannelDeleteResponse(BaseModel):
+    ok: bool = True
+    bot_id: str

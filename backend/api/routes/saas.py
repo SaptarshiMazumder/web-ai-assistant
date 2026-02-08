@@ -1761,6 +1761,40 @@ async def v1_org_update_escalation_status(
     updated = conversation_service().update_escalation_status(bot_id, escalation_id, status)
     if not updated:
         raise HTTPException(status_code=404, detail="Escalation not found")
+
+    # When resolving, de-escalate any LINE user session and notify user
+    if status == "resolved":
+        try:
+            from infrastructure.db.repositories import PostgresLineUserSessionRepository, PostgresLineChannelRepository
+            from infrastructure.clients.line_client import push_message as line_push
+
+            esc_record = conversation_service().get_escalation_for_session(bot_id, "")
+            # We need the session_id from the escalation -- look it up by escalation_id
+            # The escalation record holds session_id, get it from the list
+            all_escs = conversation_service().list_escalations(bot_id, limit=200)
+            session_id = None
+            for e in all_escs:
+                if e.escalation_id == escalation_id:
+                    session_id = e.session_id
+                    break
+            if session_id:
+                line_session_repo = PostgresLineUserSessionRepository()
+                mapping = line_session_repo.de_escalate_by_session_id(session_id)
+                if mapping:
+                    line_channel_repo = PostgresLineChannelRepository()
+                    lc = line_channel_repo.get_by_bot_id(bot_id)
+                    if lc and lc.is_active:
+                        import asyncio
+                        asyncio.ensure_future(
+                            line_push(
+                                mapping.line_user_id,
+                                ["Your conversation has been resolved. You're now back with our AI assistant. How can I help you?"],
+                                lc.line_channel_access_token,
+                            )
+                        )
+        except Exception:
+            pass  # Best-effort; don't block the status update
+
     return {"status": status}
 
 

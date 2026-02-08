@@ -18,6 +18,8 @@ from domain.entities import (
     EscalationRecord,
     DiscoveryJob,
     IndexJob,
+    LineChannel,
+    LineUserSession,
     OrgMemberRecord,
     OrgRecord,
     TopicJob,
@@ -2805,5 +2807,319 @@ class PostgresExtractedTopicRepository:
             )
             con.commit()
             return result.rowcount
+        finally:
+            con.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# LINE integration repositories
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _new_line_channel_id() -> str:
+    return "lch_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
+class PostgresLineChannelRepository:
+    """CRUD for LINE channel credentials linked to a bot."""
+
+    def upsert(
+        self,
+        *,
+        bot_id: str,
+        org_id: str,
+        line_channel_id: str,
+        line_channel_secret: str,
+        line_channel_access_token: str,
+        is_active: bool = True,
+    ) -> LineChannel:
+        bid = (bot_id or "").strip()
+        oid = (org_id or "").strip()
+        if not bid or not oid:
+            raise ValueError("bot_id and org_id are required")
+        now = _utc_now()
+        cid = _new_line_channel_id()
+        con = _connect()
+        try:
+            # Try update first
+            row = con.execute(
+                "SELECT channel_id FROM line_channels WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            if row:
+                cid = row[0]
+                con.execute(
+                    """
+                    UPDATE line_channels
+                    SET line_channel_id = %s,
+                        line_channel_secret = %s,
+                        line_channel_access_token = %s,
+                        is_active = %s,
+                        updated_at = %s
+                    WHERE bot_id = %s
+                    """,
+                    (line_channel_id, line_channel_secret, line_channel_access_token, is_active, now, bid),
+                )
+            else:
+                con.execute(
+                    """
+                    INSERT INTO line_channels(
+                      channel_id, bot_id, org_id, line_channel_id,
+                      line_channel_secret, line_channel_access_token,
+                      is_active, created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (cid, bid, oid, line_channel_id, line_channel_secret, line_channel_access_token, is_active, now, now),
+                )
+            con.commit()
+            return LineChannel(
+                channel_id=cid,
+                bot_id=bid,
+                org_id=oid,
+                line_channel_id=line_channel_id,
+                line_channel_secret=line_channel_secret,
+                line_channel_access_token=line_channel_access_token,
+                is_active=is_active,
+                created_at=now,
+                updated_at=now,
+            )
+        finally:
+            con.close()
+
+    def get_by_bot_id(self, bot_id: str) -> Optional[LineChannel]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT channel_id, bot_id, org_id, line_channel_id,
+                       line_channel_secret, line_channel_access_token,
+                       is_active, created_at, updated_at
+                FROM line_channels
+                WHERE bot_id = %s
+                """,
+                (bid,),
+            ).fetchone()
+            if not row:
+                return None
+            return LineChannel(
+                channel_id=row[0],
+                bot_id=row[1],
+                org_id=row[2],
+                line_channel_id=row[3],
+                line_channel_secret=row[4],
+                line_channel_access_token=row[5],
+                is_active=bool(row[6]),
+                created_at=row[7],
+                updated_at=row[8],
+            )
+        finally:
+            con.close()
+
+    def delete_by_bot_id(self, bot_id: str) -> bool:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return False
+        con = _connect()
+        try:
+            result = con.execute(
+                "DELETE FROM line_channels WHERE bot_id = %s",
+                (bid,),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+
+class PostgresLineUserSessionRepository:
+    """Maps LINE user IDs to conversation sessions per bot."""
+
+    def get_or_create(
+        self,
+        *,
+        line_user_id: str,
+        bot_id: str,
+        session_id: str,
+    ) -> LineUserSession:
+        """Get existing mapping or create one. Returns the mapping."""
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            raise ValueError("line_user_id and bot_id are required")
+        now = _utc_now()
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                return LineUserSession(
+                    line_user_id=row[0],
+                    bot_id=row[1],
+                    session_id=row[2],
+                    is_escalated=bool(row[3]),
+                    created_at=row[4],
+                    updated_at=row[5],
+                )
+            con.execute(
+                """
+                INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, created_at, updated_at)
+                VALUES (%s, %s, %s, FALSE, %s, %s)
+                """,
+                (uid, bid, session_id, now, now),
+            )
+            con.commit()
+            return LineUserSession(
+                line_user_id=uid,
+                bot_id=bid,
+                session_id=session_id,
+                is_escalated=False,
+                created_at=now,
+                updated_at=now,
+            )
+        finally:
+            con.close()
+
+    def get(self, *, line_user_id: str, bot_id: str) -> Optional[LineUserSession]:
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if not row:
+                return None
+            return LineUserSession(
+                line_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+            )
+        finally:
+            con.close()
+
+    def get_by_session_id(self, session_id: str) -> Optional[LineUserSession]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM line_user_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return LineUserSession(
+                line_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+            )
+        finally:
+            con.close()
+
+    def set_escalated(self, *, line_user_id: str, bot_id: str, escalated: bool) -> bool:
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE line_user_sessions
+                SET is_escalated = %s, updated_at = %s
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (escalated, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def update_session_id(self, *, line_user_id: str, bot_id: str, session_id: str) -> bool:
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE line_user_sessions
+                SET session_id = %s, updated_at = %s
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (session_id, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def de_escalate_by_session_id(self, session_id: str) -> Optional[LineUserSession]:
+        """Reset is_escalated=False for the mapping matching this session_id. Returns updated mapping or None."""
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE line_user_sessions
+                SET is_escalated = FALSE, updated_at = %s
+                WHERE session_id = %s
+                """,
+                (now, sid),
+            )
+            con.commit()
+            row = con.execute(
+                """
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM line_user_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return LineUserSession(
+                line_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+            )
         finally:
             con.close()

@@ -214,3 +214,26 @@ class EscalationRecord:
     site_title: Optional[str] = None
     last_active_at: Optional[str] = None
     session_status: Optional[str] = None
+
+
+@dataclass
+class LineChannel:
+    channel_id: str
+    bot_id: str
+    org_id: str
+    line_channel_id: str
+    line_channel_secret: str
+    line_channel_access_token: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass
+class LineUserSession:
+    line_user_id: str
+    bot_id: str
+    session_id: str
+    is_escalated: bool
+    created_at: str
+    updated_at: str
