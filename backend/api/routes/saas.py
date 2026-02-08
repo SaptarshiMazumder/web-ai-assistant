@@ -92,6 +92,27 @@ def _is_real_availability_summary(text: Optional[str]) -> bool:
         return False
     t = text.strip()
     return not any(t.startswith(prefix) for prefix in _AVAILABILITY_ERROR_PREFIXES)
+
+
+def _get_booking_url_for_chat(widget_config: Dict[str, Any]) -> Optional[str]:
+    """Return a stable booking URL for hotel bots so the model can cite it. None if not hotel or no URL."""
+    if widget_config.get("businessType") != "hotel":
+        return None
+    url = (widget_config.get("bookingTestUrl") or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    if url:
+        return url
+    pattern = widget_config.get("bookingUrlPattern")
+    if isinstance(pattern, dict):
+        base = (pattern.get("base_url") or "").strip()
+        if base and not base.startswith(("http://", "https://")):
+            base = "https://" + base
+        if base:
+            return base
+    return None
+
+
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
@@ -612,10 +633,15 @@ async def v1_widget_chat(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    availability_summary = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
+    availability_summary, availability_skip_reason = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
+    if availability_skip_reason:
+        chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason})
     if availability_summary and _is_real_availability_summary(availability_summary):
-        extra_evidence = [{"url": "Live availability check", "snippet": availability_summary}]
+        extra_evidence.append({"url": "Live availability check", "snippet": availability_summary})
         chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+    booking_url = _get_booking_url_for_chat(widget_config)
+    if booking_url:
+        extra_evidence.append({"url": booking_url, "snippet": f"To book or check availability, visit: {booking_url}"})
 
     result = run_vertex_rag(
         query,
@@ -792,10 +818,15 @@ async def v1_widget_chat_stream(
             widget_config_stream = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    availability_summary_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
+    availability_summary_stream, availability_skip_reason_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
+    if availability_skip_reason_stream:
+        chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason_stream})
     if availability_summary_stream and _is_real_availability_summary(availability_summary_stream):
-        extra_evidence_stream = [{"url": "Live availability check", "snippet": availability_summary_stream}]
+        extra_evidence_stream.append({"url": "Live availability check", "snippet": availability_summary_stream})
         chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+    booking_url_stream = _get_booking_url_for_chat(widget_config_stream)
+    if booking_url_stream:
+        extra_evidence_stream.append({"url": booking_url_stream, "snippet": f"To book or check availability, visit: {booking_url_stream}"})
 
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"

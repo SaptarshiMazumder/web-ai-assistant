@@ -8,6 +8,12 @@ import re
 from datetime import date, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
+# Skip reasons for chat availability (for debugging)
+SKIP_NOT_HOTEL = "businessType is not hotel"
+SKIP_REALTIME_DISABLED = "allowRealtimeAvailability is false or missing"
+SKIP_NO_BOOKING_URL = "bookingUrlPattern and bookingTestUrl both missing"
+SKIP_NO_INTENT = "message does not look like availability/booking intent"
+
 from openai import OpenAI
 
 from common.di.container import bot_service
@@ -227,19 +233,19 @@ def maybe_run_chat_availability(
     bot_id: str,
     message: str,
     widget_config: Dict[str, Any],
-) -> Optional[str]:
+) -> Tuple[Optional[str], Optional[str]]:
     """
     If message asks about availability and bot has booking config, run check and return summary.
-    Otherwise return None.
+    Returns (summary, skip_reason). summary is set when check ran; skip_reason is set when we skipped (for debugging).
     """
     if widget_config.get("businessType") != "hotel":
-        return None
+        return (None, SKIP_NOT_HOTEL)
     if not widget_config.get("allowRealtimeAvailability"):
-        return None
+        return (None, SKIP_REALTIME_DISABLED)
     if not (widget_config.get("bookingUrlPattern") or widget_config.get("bookingTestUrl")):
-        return None
+        return (None, SKIP_NO_BOOKING_URL)
     if not detect_availability_intent(message):
-        return None
+        return (None, SKIP_NO_INTENT)
 
     parsed = _parse_structured_availability(message)
     if parsed is not None:
@@ -247,7 +253,7 @@ def maybe_run_chat_availability(
     else:
         check_in, check_out, rooms, adults = _parse_dates_from_message(message)
 
-    return run_availability_check_sync(
+    summary = run_availability_check_sync(
         bot_id=bot_id,
         check_in=check_in,
         check_out=check_out,
@@ -255,3 +261,8 @@ def maybe_run_chat_availability(
         rooms=rooms,
         timeout=30,
     )
+    if summary:
+        # Prepend dates so the RAG model knows this availability is for the user's requested dates
+        # (avoids confusion when cancellation dates like 2026/02/26 appear in the summary)
+        summary = f"**Live availability for check-in {check_in}, check-out {check_out}:**\n\n{summary}"
+    return (summary, None)

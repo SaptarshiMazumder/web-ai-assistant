@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import logging
 from datetime import datetime
@@ -14,6 +15,9 @@ from infrastructure.rag.crawl_service import host_prefix_from_url
 
 
 logger = logging.getLogger(__name__)
+
+# Written at index time so retrieval can resolve GCS URIs to page URLs for citations.
+URL_MAP_FILENAME = "url_map.json"
 
 
 def _slugify(text: str) -> str:
@@ -45,6 +49,7 @@ class GCSDocumentStorageRepository(DocumentStorageRepository):
         host_prefix = host_prefix_from_url(first_url)
         prefix = f"{self._base_prefix}/{host_prefix}/{timestamp}"
 
+        url_map: dict = {}  # filename -> page URL for citation resolution at retrieval
         max_log_docs = 5
         for idx, doc in enumerate(documents):
             url = doc.url
@@ -53,6 +58,7 @@ class GCSDocumentStorageRepository(DocumentStorageRepository):
             path_slug = _slugify(parsed.path or "index")
             url_hash = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
             filename = f"{path_slug or 'index'}-{url_hash}.md"
+            url_map[filename] = url
             blob_name = f"{prefix}/{filename}"
             blob = bucket.blob(blob_name)
             content_bytes = content.encode("utf-8") if isinstance(content, str) else content
@@ -65,4 +71,9 @@ class GCSDocumentStorageRepository(DocumentStorageRepository):
                 except Exception:
                     logger.warning("GCS saved preview failed for %s", url)
 
+        map_blob = bucket.blob(f"{prefix}/{URL_MAP_FILENAME}")
+        map_blob.upload_from_string(
+            json.dumps(url_map, ensure_ascii=False),
+            content_type="application/json; charset=utf-8",
+        )
         return prefix

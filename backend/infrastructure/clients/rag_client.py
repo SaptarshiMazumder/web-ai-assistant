@@ -14,6 +14,7 @@ import contextlib
 from urllib.parse import urlparse
 
 from common.config import config
+from infrastructure.rag.url_map import resolve_evidence_urls
 
 # =========================
 # Config
@@ -21,6 +22,7 @@ from common.config import config
 PROJECT_ID = (config.PROJECT_ID or os.environ.get("PROJECT_ID") or "").strip()
 GENAI_LOCATION = (os.environ.get("GENAI_LOCATION") or "global").strip()
 RAG_LOCATION = (config.LOCATION or os.environ.get("RAG_LOCATION") or "us-central1").strip()
+GCS_BUCKET = (config.GCS_BUCKET or "").strip()
 
 DEFAULT_RAG_CORPUS = (os.environ.get("DEFAULT_RAG_CORPUS") or "").strip()
 
@@ -64,13 +66,40 @@ def _ctx_uri(ctx) -> str:
 
 def format_evidence_block(evidence: List[Dict[str, str]], limit: int = 60) -> str:
     lines = []
-    for i, e in enumerate(evidence[:limit], 1):
+    for e in evidence[:limit]:
         snip = (e.get("snippet") or "").replace("\n", " ").strip()
         if len(snip) > 600:
             snip = snip[:600] + " ..."
         url = e.get("url") or ""
-        lines.append(f"{i}. {snip} [{url}]")
-    return "\n".join(lines)
+        lines.append(f"--- snippet from {url} ---\n{snip}")
+    return "\n\n".join(lines)
+
+def sanitize_answer_citations(text: str) -> str:
+    """Post-process LLM answer to strip forbidden citation patterns.
+
+    Removes:
+    - Numbered bracket references: [1], [2, 3], [1, 11, 35, 75]
+    - Trailing bullet/numbered URL lists
+    - Standalone raw URL lines
+    - Leftover double spaces / excess blank lines
+    """
+    if not text:
+        return text
+    # Strip numbered bracket references like [1], [1, 2], [1, 11, 35, 75]
+    # Negative lookbehind avoids clobbering markdown links like [text](url)
+    text = re.sub(r"(?<!\])\s*\[[\d,\s]+\]", "", text)
+    # Strip trailing lines that are bullet/numbered URL lists
+    # e.g. "- https://...", "* https://...", "1. https://..."
+    text = re.sub(r"(?m)^[\s]*[-*•]\s*https?://\S+.*$", "", text)
+    text = re.sub(r"(?m)^[\s]*\d+\.\s*https?://\S+.*$", "", text)
+    # Strip standalone raw URL lines (a line that is just a URL)
+    text = re.sub(r"(?m)^[\s]*https?://\S+[\s]*$", "", text)
+    # Clean up excess blank lines (3+ newlines -> 2)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    # Clean up double spaces
+    text = re.sub(r"  +", " ", text)
+    return text.strip()
+
 
 def dedupe_evidence(evidence: List[Dict[str, str]]) -> List[Dict[str, str]]:
     seen = set()
@@ -278,8 +307,10 @@ def one_shot_answer(client: genai.Client, question: str, *, rag_corpus: str):
         max_output_tokens=MAX_OUTPUT_TOKENS,
         tools=tools,
         system_instruction=(
-            "Answer using the RAG tool. Retrieve before answering. "
-            "Be concise and include 2–6 bullet citations with URLs at the end."
+            "Answer using the RAG tool. Retrieve before answering. Be concise.\n"
+            "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+            "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. NEVER list URLs as bullets or append them at the end.\n"
+            "NEVER show raw URLs or domains in the text."
         ),
     )
     if ENABLE_THINKING:
@@ -322,8 +353,12 @@ def verify_answer_supported(client: genai.Client, question: str, evidence: List[
 def resynthesize_grounded(client: genai.Client, question: str, evidence: List[Dict[str, str]]) -> str:
     SYSTEM = (
         "Write a concise, well-structured answer using ONLY the provided evidence snippets. "
-        "Avoid claims not present. Prefer quoting short phrases and naming/including the source URL. "
-        "End with 2–6 bullet citations (URLs)."
+        "Avoid claims not present.\n"
+        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+        "Link text must be a short descriptive phrase like 'here', 'this page', 'the website', 'about page'. "
+        "NEVER put a URL, hostname, or domain as the link text.\n"
+        "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. "
+        "NEVER list URLs as bullets or append them at the end. NEVER show raw URLs in the text."
     )
     user_block = (
         f"QUESTION:\n{question}\n\n"
@@ -354,7 +389,11 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
         "Use the provided evidence snippets as primary sources. "
         "Compare, aggregate, deduplicate; compute counts/sums/ratios when useful; check consistency. "
         "Write a concise, well-structured final answer.\n"
-        "After the answer, include 2–6 bullet citations with URLs of the strongest sources."
+        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+        "Link text must be a short descriptive phrase like 'here', 'this page', 'the website', 'about page'. "
+        "NEVER put a URL, hostname, or domain as the link text.\n"
+        "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. "
+        "NEVER list URLs as bullets or append them at the end. NEVER show raw URLs in the text."
     )
     user_block = (
         f"QUESTION:\n{question}\n\n"
@@ -387,13 +426,28 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 DEFAULT_SYSTEM = (
     "Answer the user's question using ONLY the provided evidence snippets.\n"
     "If the evidence is insufficient, say so and ask a clarifying question.\n"
-    "Keep it concise.\n"
-    "End with 2–6 bullet citations using the source URLs."
+    "Keep it concise.\n\n"
+    "CITATION LINK RULES (follow exactly):\n"
+    "- Cite sources ONLY as inline markdown hyperlinks woven naturally into sentences: [link text](URL).\n"
+    "- NEVER put URL, hostname, or domain inside the brackets. WRONG: [chocozap.jp](URL), [example.com/about](URL).\n"
+    "- For root URL (ends with / or has no path): use exactly 'the website'. Example: [the website](https://example.com/).\n"
+    "- For other pages: use one of 'here', 'this page', or a phrase from the path (e.g. /about -> 'about page', /products -> 'product page', /parking -> 'parking page').\n"
+    "- Valid link text examples: 'here', 'this page', 'the website', 'about page', 'product page', 'parking page'.\n"
+    "- ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35, 75]. Never refer to sources by number.\n"
+    "- ABSOLUTELY FORBIDDEN: appending a list of URLs or bullet-point citations at the end of the answer.\n"
+    "- ABSOLUTELY FORBIDDEN: showing raw URLs as plain text anywhere in the answer.\n"
+    "- Every source reference MUST be an inline [descriptive text](URL) hyperlink within a sentence."
 )
 
 # Appended to custom system instructions so the model still stays grounded and cites sources.
 GROUNDING_SUFFIX = (
-    "\n\nYou must answer using ONLY the provided evidence snippets and cite source URLs. "
+    "\n\nYou must answer using ONLY the provided evidence snippets and cite sources via inline markdown hyperlinks woven into sentences. "
+    "CITATION RULES: Link text must be 'the website' for root URLs; for other pages use 'here', 'this page', or path-based phrases like 'about page', 'product page'. "
+    "NEVER use URL or domain as link text. "
+    "ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35]. Never refer to sources by number. "
+    "ABSOLUTELY FORBIDDEN: appending bullet-point URL lists at the end. "
+    "ABSOLUTELY FORBIDDEN: showing raw URLs as plain text. "
+    "Every source reference must be an inline [descriptive text](URL) link. "
     "If the evidence is insufficient, say so. Keep responses concise."
 )
 
@@ -567,6 +621,8 @@ def run_vertex_rag(
     _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
     evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
     evidence = dedupe_evidence(evidence)
+    bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
+    resolve_evidence_urls(evidence, bucket_name)
     _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
     for i, e in enumerate(evidence, 1):
         _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
@@ -602,6 +658,7 @@ def run_vertex_rag(
         debug_cb=_dbg,
         conversation_context=conversation_context,
     )
+    answer = sanitize_answer_citations(answer)
     _dbg({"type": "model_answer", "answer": answer})
 
     # Prepare sources from evidence
@@ -663,6 +720,8 @@ def run_vertex_rag_stream(
     _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
     evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
     evidence = dedupe_evidence(evidence)
+    bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
+    resolve_evidence_urls(evidence, bucket_name)
     _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
     for i, e in enumerate(evidence, 1):
         _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
@@ -702,7 +761,7 @@ def run_vertex_rag_stream(
         answer_parts.append(delta)
         yield {"type": "delta", "text": delta}
 
-    answer = "".join(answer_parts).strip()
+    answer = sanitize_answer_citations("".join(answer_parts).strip())
     _dbg({"type": "model_answer", "answer": answer})
 
     for e in evidence:

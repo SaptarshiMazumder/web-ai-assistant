@@ -262,6 +262,37 @@
     return av;
   }
 
+  function friendlyLabelFromUrl(url) {
+    try {
+      var m = url.match(/^https?:\/\/([^\/]+)(\/[^?#]*)?/);
+      if (!m) return "";
+      var host = m[1] || "";
+      var path = ((m[2] || "/").replace(/\/$/, "") || "/").replace(/^\//, "");
+      if (path && path !== "") {
+        var last = path.split("/").pop();
+        var cleaned = last.replace(/-/g, " ").replace(/_/g, " ");
+        return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1) : host;
+      }
+      return host;
+    } catch (e) {}
+    return "";
+  }
+
+  function formatCitationHtml(c) {
+    const url = (c && c.url) || "";
+    if (!url) return "";
+    var u = url.trim().toLowerCase();
+    if (u.startsWith("gs://")) return "";
+    if (!u.startsWith("http://") && !u.startsWith("https://")) return "";
+    const safe = url.replace(/"/g, "&quot;");
+    var label = friendlyLabelFromUrl(url);
+    if (!label) {
+      var m = url.match(/^https?:\/\/([^\/]+)(\/[^?#]*)?/);
+      label = (m && (m[2] || m[1])) ? (m[2] || m[1]).replace(/^\//, "") || m[1] : url;
+    }
+    return '<div><a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + String(label).replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</a></div>";
+  }
+
   function appendBubble(text, who, citations, senderName) {
     hideWelcome();
 
@@ -280,26 +311,21 @@
       label.textContent = senderName;
       div.appendChild(label);
     }
-    setBubbleText(div, text);
+    setBubbleText(div, text, who);
     if (who === "user") {
       div.style.background = color;
       div.style.color = textColor;
     }
     if (citations && citations.length && displaySources) {
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.innerHTML =
-        "<div><b>" + (sourcesLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")) + "</b></div>" +
-        citations
-          .slice(0, 6)
-          .map((c) => {
-            const url = (c && c.url) || "";
-            if (!url) return "";
-            const safe = url.replace(/"/g, "&quot;");
-            return '<div><a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + safe + "</a></div>";
-          })
-          .join("");
-      div.appendChild(meta);
+      const items = citations.slice(0, 6).map(formatCitationHtml).filter(Boolean);
+      if (items.length) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.innerHTML =
+          "<div><b>" + (sourcesLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")) + "</b></div>" +
+          items.join("");
+        div.appendChild(meta);
+      }
     }
     rowDiv.appendChild(div);
 
@@ -631,11 +657,79 @@
     renderQuickActions();
   }
 
-  function setBubbleText(bubble, text) {
+  // Strip numbered bracket citations like [1], [1, 2], [1, 11, 35, 75]
+  // Negative lookbehind avoids clobbering markdown links like [text](url)
+  function stripBracketCitations(text) {
+    if (!text) return text;
+    // Remove bracket-number references not followed by ( (which would be markdown links)
+    text = text.replace(/\[[\d,\s]+\](?!\()/g, "");
+    // Remove trailing bullet URL lists
+    text = text.replace(/(?:^|\n)[\s]*[-*•]\s*https?:\/\/\S+.*/g, "");
+    text = text.replace(/(?:^|\n)[\s]*\d+\.\s*https?:\/\/\S+.*/g, "");
+    // Clean up double spaces and excess newlines
+    text = text.replace(/  +/g, " ");
+    text = text.replace(/\n{3,}/g, "\n\n");
+    return text.trim();
+  }
+
+  function parseMarkdownLinks(text) {
+    var parts = [];
+    // First: parse markdown links [text](url)
+    var re = /\[([^\]]*)\]\(([^)]*)\)/g;
+    var last = 0;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var url = (m[2] || "").trim();
+      if (url && (url.toLowerCase().startsWith("http://") || url.toLowerCase().startsWith("https://"))) {
+        if (m.index > last) parts.push({ type: "text", content: text.slice(last, m.index) });
+        parts.push({ type: "link", text: (m[1] || "").trim() || "here", url: url });
+        last = m.index + m[0].length;
+      }
+    }
+    if (last < text.length) parts.push({ type: "text", content: text.slice(last) });
+    if (!parts.length) return null;
+    // Second pass: find bare URLs in text segments and convert to links
+    var final = [];
+    var urlRe = /\bhttps?:\/\/[^\s<>\[\]"']+/g;
+    parts.forEach(function (p) {
+      if (p.type !== "text") { final.push(p); return; }
+      var content = p.content;
+      var um;
+      var uLast = 0;
+      while ((um = urlRe.exec(content)) !== null) {
+        if (um.index > uLast) final.push({ type: "text", content: content.slice(uLast, um.index) });
+        var bareUrl = um[0].replace(/[.,;:!?)]+$/, "");
+        var trailingPunct = um[0].slice(bareUrl.length);
+        final.push({ type: "link", text: friendlyLabelFromUrl(bareUrl) || "here", url: bareUrl });
+        uLast = um.index + bareUrl.length;
+        if (trailingPunct) final.push({ type: "text", content: trailingPunct });
+      }
+      if (uLast < content.length) final.push({ type: "text", content: content.slice(uLast) });
+    });
+    return final.length ? final : null;
+  }
+
+  function setBubbleText(bubble, text, who) {
     const existingLabel = bubble.querySelector(".sender-label");
     bubble.innerHTML = "";
     if (existingLabel) bubble.appendChild(existingLabel);
-    appendSoftWrappedText(bubble, text);
+    var cleaned = who === "bot" && typeof text === "string" ? stripBracketCitations(text) : text;
+    var parsed = who === "bot" && typeof cleaned === "string" ? parseMarkdownLinks(cleaned) : null;
+    if (parsed && parsed.length > 0) {
+      parsed.forEach(function (p) {
+        if (p.type === "text") appendSoftWrappedText(bubble, p.content);
+        else if (p.type === "link") {
+          var a = document.createElement("a");
+          a.href = p.url.replace(/"/g, "&quot;");
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.textContent = p.text;
+          bubble.appendChild(a);
+        }
+      });
+    } else {
+      appendSoftWrappedText(bubble, cleaned || "");
+    }
   }
 
   function ensureStreamingBubble() {
@@ -653,19 +747,13 @@
 
   function appendCitationsToBubble(bubble, citations) {
     if (!citations || !citations.length || !displaySources) return;
+    const items = citations.slice(0, 6).map(formatCitationHtml).filter(Boolean);
+    if (!items.length) return;
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.innerHTML =
       "<div><b>" + (sourcesLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")) + "</b></div>" +
-      citations
-        .slice(0, 6)
-        .map((c) => {
-          const url = (c && c.url) || "";
-          if (!url) return "";
-          const safe = url.replace(/"/g, "&quot;");
-          return '<div><a href="' + safe + '" target="_blank" rel="noopener noreferrer">' + safe + "</a></div>";
-        })
-        .join("");
+      items.join("");
     bubble.appendChild(meta);
   }
 
@@ -694,7 +782,7 @@
           const slice = pending.slice(0, STREAM_CHARS_PER_TICK);
           pending = pending.slice(STREAM_CHARS_PER_TICK);
           text += slice;
-          setBubbleText(bubble, text);
+          setBubbleText(bubble, text, "bot");
           if (chat) chat.scrollTop = chat.scrollHeight;
           setTimeout(tick, STREAM_TICK_MS);
           return;
@@ -702,7 +790,7 @@
         ticking = false;
         if (doneEvent) {
           text = doneEvent.answer || text;
-          setBubbleText(bubble, text);
+          setBubbleText(bubble, text, "bot");
           appendCitationsToBubble(bubble, doneEvent.citations || []);
           if (chat) chat.scrollTop = chat.scrollHeight;
           doneEvent = null;
@@ -738,7 +826,7 @@
             if (evt.session_id) setSession(evt.session_id);
             startTicker();
           } else if (evt && evt.type === "error") {
-            setBubbleText(bubble, evt.message || "Request failed.");
+            setBubbleText(bubble, evt.message || "Request failed.", "bot");
           }
         }
         idx = buffer.indexOf("\n");
@@ -750,7 +838,7 @@
     }
     if (doneEvent) {
       text = doneEvent.answer || text;
-      setBubbleText(bubble, text);
+      setBubbleText(bubble, text, "bot");
       appendCitationsToBubble(bubble, doneEvent.citations || []);
       if (chat) chat.scrollTop = chat.scrollHeight;
       botPending = false;

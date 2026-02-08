@@ -152,8 +152,6 @@ class TopicJob:
     celery_task_id: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
-
-
 @dataclass
 class AvailabilityJob:
     job_id: str

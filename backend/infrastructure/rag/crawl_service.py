@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -18,6 +19,7 @@ from vertexai import rag as vx_rag
 import vertexai
 
 from common.config import config
+from infrastructure.rag.url_map import URL_MAP_FILENAME
 
 # =========================
 # ---- CONFIG -------------
@@ -515,6 +517,7 @@ def upload_markdown_docs_to_gcs(
     host_prefix = host_prefix_from_url(first_url)
     prefix = f"{base_prefix}/{host_prefix}/{timestamp}"
 
+    url_map: Dict[str, str] = {}  # filename -> page URL for citation resolution at retrieval
     for doc in docs:
         url = doc["url"]
         md = doc["markdown"]
@@ -522,11 +525,17 @@ def upload_markdown_docs_to_gcs(
         path_slug = _slugify(parsed.path or "index")
         url_hash = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
         filename = f"{path_slug or 'index'}-{url_hash}.md"
+        url_map[filename] = url
         blob_name = f"{prefix}/{filename}"
         blob = bucket.blob(blob_name)
         md_bytes = md.encode("utf-8") if isinstance(md, str) else md
         blob.upload_from_string(md_bytes, content_type="text/markdown; charset=utf-8")
 
+    map_blob = bucket.blob(f"{prefix}/{URL_MAP_FILENAME}")
+    map_blob.upload_from_string(
+        json.dumps(url_map, ensure_ascii=False),
+        content_type="application/json; charset=utf-8",
+    )
     return prefix  # e.g., saas/<tenant>/bots/<bot_id>/hosts/example.com/20250814-010203
 
 def list_existing_site_prefixes(bucket_name: str, base_prefix: str, site_url: str) -> List[str]:
