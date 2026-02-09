@@ -5,6 +5,7 @@ import { DEFAULT_WIDGET_DESIGN_STATE, type SuggestedMessageConfig } from '../../
 import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath } from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
+type ContentHosting = 'own' | 'shared'
 
 /** Step 1: Name + Website. Change only this slice when editing the first step. */
 export type CreateBotStep1Slice = {
@@ -12,6 +13,8 @@ export type CreateBotStep1Slice = {
   setBotName: (value: string) => void
   websiteUrl: string
   setWebsiteUrl: (value: string) => void
+  contentHosting: ContentHosting
+  setContentHosting: (value: ContentHosting) => void
   businessType: '' | 'hotel' | 'other'
   setBusinessType: (value: '' | 'hotel' | 'other') => void
   discoveryMethod: string
@@ -22,6 +25,7 @@ export type CreateBotStep1Slice = {
   discoveryTimedOutMessage: string | null
   localError: string | null
   setLocalError: (value: string | null) => void
+  continueWithoutSources: () => Promise<string | null>
   discoverUrls: () => Promise<boolean>
   stopDiscovery: () => void
 }
@@ -31,6 +35,10 @@ export type CreateBotStep2Slice = {
   discoveredUrls: string[]
   selectedUrls: string[]
   normalizedWebsiteUrl: string
+  contentHosting: ContentHosting
+  manualUrlsText: string
+  setManualUrlsText: (value: string) => void
+  manualUrls: string[]
   discoveryDurationMs: number | null
   discoveryTimedOutMessage: string | null
   isDiscovering: boolean
@@ -140,14 +148,27 @@ function normalizeUrl(value: string) {
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { createBot, discoverUrls: discoverUrlsFromHook, queueCrawlUrls, startBackgroundDiscovery, getJobStatus, setSelectedBotId, orgs, activeOrgId, isSuperAdmin } = useDashboardData()
+  const {
+    createBot,
+    discoverUrls: discoverUrlsFromHook,
+    queueCrawlUrls,
+    startBackgroundDiscovery,
+    saveWidgetConfig,
+    getJobStatus,
+    setSelectedBotId,
+    orgs,
+    activeOrgId,
+    isSuperAdmin,
+  } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
+  const [contentHosting, setContentHosting] = useState<ContentHosting>('own')
   const [businessType, setBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
+  const [manualUrlsText, setManualUrlsText] = useState('')
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
@@ -192,11 +213,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
+    setContentHosting('own')
     setBusinessType('')
     setDiscoveryMethod('auto')
     setNormalizedWebsiteUrl('')
     setDiscoveredUrls([])
     setSelectedUrls([])
+    setManualUrlsText('')
     setIsDiscovering(false)
     setIsStartingTraining(false)
     setDiscoveryDurationMs(null)
@@ -336,6 +359,56 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     return true
   }, [botName, websiteUrl, discoveryMethod, discoverUrlsFromHook])
 
+  const continueWithoutSources = useCallback(async () => {
+    setLocalError(null)
+    if (!botName.trim()) {
+      setLocalError('Enter a bot name to continue.')
+      return null
+    }
+    setIsStartingTraining(true)
+    const orgOverride =
+      isSuperAdmin && (!activeOrgId || activeOrgId === '__all__') && orgs.length > 0 ? orgs[0].org_id : undefined
+    const created = await createBot(botName.trim(), orgOverride)
+    if (!created) {
+      setIsStartingTraining(false)
+      setLocalError('Failed to create bot. Select an organization above if you are an admin.')
+      return null
+    }
+    setBotId(created.bot_id)
+    setSelectedBotId(created.bot_id)
+    void saveWidgetConfig(created.bot_id, {
+      contentHosting,
+      businessType: businessType || undefined,
+    }).catch(() => {})
+    setTrainingStage('complete')
+    setTrainingProgress(100)
+    setTrainingPagesCrawled(0)
+    setTrainingDocsCount(0)
+    setTrainingStageName('skipped')
+    setJobId(null)
+    setIsStartingTraining(false)
+    return created.bot_id
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType])
+
+  const parseManualUrls = useCallback((text: string): string[] => {
+    const raw = (text || '')
+      .split(/[\n,]/g)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const normalized: string[] = []
+    for (const entry of raw) {
+      try {
+        const u = new URL(/^https?:\/\//i.test(entry) ? entry : `https://${entry}`)
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') continue
+        const clean = u.toString()
+        if (!normalized.includes(clean)) normalized.push(clean)
+      } catch {
+        // ignore invalid entries
+      }
+    }
+    return normalized
+  }, [])
+
   const toggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
     setSelectedUrls((prev) => (prev.includes(url) ? prev.filter((item) => item !== url) : [...prev, url]))
@@ -385,10 +458,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError('Enter a bot name to continue.')
       return null
     }
-    if (!selectedUrls.length) {
-      setLocalError('Select at least one URL to train on.')
-      return null
-    }
+    const finalUrls = contentHosting === 'shared' ? parseManualUrls(manualUrlsText) : selectedUrls
     setIsStartingTraining(true)
     const orgOverride =
       isSuperAdmin && (!activeOrgId || activeOrgId === '__all__') && orgs.length > 0 ? orgs[0].org_id : undefined
@@ -400,21 +470,38 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
+    void saveWidgetConfig(created.bot_id, {
+      contentHosting,
+      businessType: businessType || undefined,
+    }).catch(() => {})
+    if (!finalUrls.length) {
+      setTrainingStage('complete')
+      setTrainingProgress(100)
+      setTrainingPagesCrawled(0)
+      setTrainingDocsCount(0)
+      setTrainingStageName('skipped')
+      setJobId(null)
+      setIsStartingTraining(false)
+      return created.bot_id
+    }
+
     setTrainingStage('training')
     setTrainingProgress(0)
     setTrainingPagesCrawled(0)
     setTrainingDocsCount(0)
     setTrainingStageName('crawling')
-    void queueCrawlUrls(created.bot_id, selectedUrls)
+    void queueCrawlUrls(created.bot_id, finalUrls)
       .then((jobIdResult) => {
         if (jobIdResult) setJobId(jobIdResult)
         else setLocalError('Failed to start crawl job')
       })
       .catch(() => {})
       .finally(() => setIsStartingTraining(false))
-    void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
+    if (contentHosting === 'own') {
+      void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
+    }
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, selectedUrls, normalizedWebsiteUrl, discoveryMethod, setSelectedBotId, orgs, activeOrgId, isSuperAdmin])
+  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, manualUrlsText, parseManualUrls, normalizedWebsiteUrl, discoveryMethod, businessType])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId || !jobId) return
@@ -431,7 +518,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setTrainingStage('complete')
         setLocalError(status.last_error || 'Training failed')
       } else {
-        const totalUrls = selectedUrls.length
+        const totalUrls = contentHosting === 'shared' ? parseManualUrls(manualUrlsText).length : selectedUrls.length
         if (totalUrls > 0 && status.pages_crawled) {
           const progress = Math.min(Math.round((status.pages_crawled / totalUrls) * 100), 95)
           setTrainingProgress(progress)
@@ -441,7 +528,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, getJobStatus, selectedUrls.length])
+  }, [trainingStage, botId, jobId, getJobStatus, selectedUrls.length, contentHosting, manualUrlsText, parseManualUrls])
 
   const nextPath = getCreateBotNextPath(location.pathname)
   const prevPath = getCreateBotPrevPath(location.pathname)
@@ -453,6 +540,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setBotName,
         websiteUrl,
         setWebsiteUrl,
+        contentHosting,
+        setContentHosting,
         businessType,
         setBusinessType,
         discoveryMethod,
@@ -463,6 +552,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         discoveryTimedOutMessage,
         localError,
         setLocalError,
+        continueWithoutSources,
         discoverUrls,
         stopDiscovery,
       },
@@ -470,6 +560,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         discoveredUrls,
         selectedUrls,
         normalizedWebsiteUrl,
+        contentHosting,
+        manualUrlsText,
+        setManualUrlsText,
+        manualUrls: parseManualUrls(manualUrlsText),
         discoveryDurationMs,
         discoveryTimedOutMessage,
         isDiscovering,
@@ -551,11 +645,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     [
       botName,
       websiteUrl,
+      contentHosting,
       businessType,
       discoveryMethod,
       normalizedWebsiteUrl,
       discoveredUrls,
       selectedUrls,
+      manualUrlsText,
+      parseManualUrls,
       isDiscovering,
       isStartingTraining,
       discoveryDurationMs,
@@ -588,6 +685,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       autoScrollNewMessages,
       displaySourcesInMessages,
       sourcesLabel,
+      continueWithoutSources,
       discoverUrls,
       stopDiscovery,
       toggleUrl,

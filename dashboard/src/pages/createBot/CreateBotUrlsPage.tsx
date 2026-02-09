@@ -11,6 +11,10 @@ export default function CreateBotUrlsPage() {
     discoveredUrls,
     selectedUrls,
     normalizedWebsiteUrl,
+    contentHosting,
+    manualUrlsText,
+    setManualUrlsText,
+    manualUrls,
     isDiscovering,
     isStartingTraining,
     discoveryDurationMs,
@@ -43,10 +47,10 @@ export default function CreateBotUrlsPage() {
   }, [discoveredUrls, normalizedWebsiteUrl])
 
   useEffect(() => {
-    if (!discoveredUrls.length && !isDiscovering) {
+    if (contentHosting === 'own' && !discoveredUrls.length && !isDiscovering) {
       navigate(flow.firstPath)
     }
-  }, [discoveredUrls.length, isDiscovering, navigate, flow.firstPath])
+  }, [discoveredUrls.length, isDiscovering, navigate, flow.firstPath, contentHosting])
 
   const hasExpandedDefault = useRef(false)
   useEffect(() => {
@@ -220,9 +224,14 @@ export default function CreateBotUrlsPage() {
             {discoveryTimedOutMessage}
           </div>
         )}
-        <div className="card-title">Select URLs to train on</div>
+        <div className="card-title">{contentHosting === 'shared' ? 'Paste page URLs to train on' : 'Select URLs to train on'}</div>
         <div className="card-subtitle">
-          {isDiscovering ? (
+          {contentHosting === 'shared' ? (
+            <>
+              Paste the exact page URLs you want included. We will only fetch these pages (no site-wide crawl).
+              <span style={{ marginLeft: '8px', color: '#64748b' }}>You can also leave this empty and add sources later.</span>
+            </>
+          ) : isDiscovering ? (
             <span className="discovery-loading">
               <span className="discovery-loading-dots" aria-hidden>
                 <span />
@@ -246,66 +255,101 @@ export default function CreateBotUrlsPage() {
         </div>
       </div>
 
-      <div className="flow-toolbar">
-        <button
-          className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
-          onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
-        >
-          {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
-        </button>
-        <button
-          className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
-          onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
-        >
-          {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-        </button>
-        <div className="muted">{selectedUrls.length} selected</div>
-      </div>
+      {contentHosting === 'own' ? (
+        <div className="flow-toolbar">
+          <button
+            className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+            onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
+          >
+            {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+          </button>
+          <button
+            className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+            onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
+          >
+            {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+          </button>
+          <div className="muted">{selectedUrls.length} selected</div>
+        </div>
+      ) : (
+        <div className="flow-toolbar">
+          <div className="muted">{manualUrls.length} URL{manualUrls.length === 1 ? '' : 's'} ready</div>
+        </div>
+      )}
 
-      <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
-        {isDiscovering && (
-          <div style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-            Discovering URLs… ({discoveredUrls.length} found so far)
-          </div>
-        )}
-        {urlCategories ? (
-          <div>
-            {Array.from(urlCategories.children.values())
-              .sort((a, b) => {
-                const countA = getCategoryUrlCount(a)
-                const countB = getCategoryUrlCount(b)
-                if (countA !== countB) return countB - countA
-                return a.name.localeCompare(b.name)
-              })
-              .map(category => renderCategory(category))}
-            {urlCategories.urls.length > 0 && (
-              <div style={{ marginLeft: '0px' }}>
-                {urlCategories.urls.map(url => (
-                  <label
-                    key={url}
-                    className="url-list-item"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedUrls.includes(url)}
-                      onChange={() => toggleUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-                    />
-                    <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
-                  </label>
+      {contentHosting === 'shared' ? (
+        <div className="url-list" style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
+          <label className="design-form-label" htmlFor="manual-urls" style={{ display: 'block', marginBottom: '6px' }}>
+            URLs (one per line or comma-separated)
+          </label>
+          <textarea
+            id="manual-urls"
+            className="design-form-input"
+            value={manualUrlsText}
+            onChange={(e) => setManualUrlsText(e.target.value)}
+            placeholder={"https://example.com/page-1\nhttps://example.com/page-2"}
+            rows={8}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+          {manualUrls.length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <div className="muted" style={{ marginBottom: '6px' }}>Preview ({manualUrls.length})</div>
+              <div style={{ maxHeight: '260px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '8px' }}>
+                {manualUrls.map((u) => (
+                  <div key={u} style={{ fontSize: '14px', color: '#334155', padding: '4px 0' }}>
+                    {u}
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-        ) : (
-          <div>{isDiscovering ? 'Discovering…' : 'Loading categories…'}</div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
+          {isDiscovering && (
+            <div style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+              Discovering URLs… ({discoveredUrls.length} found so far)
+            </div>
+          )}
+          {urlCategories ? (
+            <div>
+              {Array.from(urlCategories.children.values())
+                .sort((a, b) => {
+                  const countA = getCategoryUrlCount(a)
+                  const countB = getCategoryUrlCount(b)
+                  if (countA !== countB) return countB - countA
+                  return a.name.localeCompare(b.name)
+                })
+                .map(category => renderCategory(category))}
+              {urlCategories.urls.length > 0 && (
+                <div style={{ marginLeft: '0px' }}>
+                  {urlCategories.urls.map(url => (
+                    <label
+                      key={url}
+                      className="url-list-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUrls.includes(url)}
+                        onChange={() => toggleUrl(url)}
+                        style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                      />
+                      <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>{isDiscovering ? 'Discovering…' : 'Loading categories…'}</div>
+          )}
+        </div>
+      )}
 
       {localError && <div className="alert error">{localError}</div>}
 
@@ -319,9 +363,9 @@ export default function CreateBotUrlsPage() {
             Stop
           </button>
         ) : (
-          <button type="button" className="primary" onClick={handleStartTraining} disabled={selectedUrls.length === 0 || isStartingTraining} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <button type="button" className="primary" onClick={handleStartTraining} disabled={isStartingTraining} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <PlayIcon />
-            {isStartingTraining ? 'Starting…' : 'Start training'}
+            {isStartingTraining ? 'Starting…' : (contentHosting === 'shared' ? (manualUrls.length ? 'Start training' : 'Continue without training') : (selectedUrls.length ? 'Start training' : 'Continue without training'))}
           </button>
         )}
       </div>

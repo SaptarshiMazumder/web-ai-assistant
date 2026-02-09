@@ -33,6 +33,15 @@ export default function CreateBotProgressPage() {
     return () => window.clearTimeout(t)
   }, [jobId, trainingStage, flow.nextPath, navigate])
 
+  // If user skipped sources, there's no jobId; let them move on immediately.
+  useEffect(() => {
+    if (trainingStage !== 'complete' || jobId || !flow.nextPath) return
+    const t = window.setTimeout(() => {
+      navigate(flow.nextPath!)
+    }, 800)
+    return () => window.clearTimeout(t)
+  }, [trainingStage, jobId, flow.nextPath, navigate])
+
   const handleFinish = () => {
     resetFlow()
   }
@@ -44,7 +53,9 @@ export default function CreateBotProgressPage() {
       <div>
         <div className="card-title">Training your bot</div>
         <div className="card-subtitle">
-          {trainingStage === 'complete'
+          {trainingStageName === 'skipped'
+            ? 'No sources added, skipping training. You can add sources later in Knowledge.'
+            : trainingStage === 'complete'
             ? 'Training completed successfully!'
             : 'We are crawling the selected pages and preparing your chatbot knowledge base.'}
         </div>
@@ -63,6 +74,12 @@ export default function CreateBotProgressPage() {
         </div>
         <div className="muted">{trainingProgress}% complete</div>
       </div>
+
+      {trainingStageName === 'skipped' && botId && (
+        <div className="alert info">
+          You can add sources later from <b>Bot → Knowledge</b>.
+        </div>
+      )}
 
       <div className="flow-actions">
         {trainingStage === 'complete' ? (

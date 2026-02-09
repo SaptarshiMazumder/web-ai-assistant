@@ -13,8 +13,8 @@ export const CREATE_BOT_STEPS = [
   {
     id: 'urls',
     path: '/create-bot/urls',
-    label: 'Select URLs',
-    description: 'Choose which pages should be included.',
+    label: 'Add pages',
+    description: 'Choose pages to include (or skip for now).',
   },
   {
     id: 'training',

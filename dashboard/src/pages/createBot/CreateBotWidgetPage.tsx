@@ -69,6 +69,7 @@ export default function CreateBotWidgetPage() {
       await saveWidgetConfig(botId, {
         ...stateToWidgetConfig(value),
         businessType: step1.businessType || step4.businessType || undefined,
+        contentHosting: step1.contentHosting,
       })
       navigate(flow.nextPath)
     } catch {

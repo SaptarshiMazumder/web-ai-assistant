@@ -53,7 +53,7 @@ function trainingProgressPercent(stage: string | undefined): number {
   return 10
 }
 
-/** Progress % for display: use pages_crawled/total when crawling and total is known, else stage-based. */
+/** Rough progress 0–100 for training stage (for progress bar). */
 function trainingProgressDisplayPercent(
   stage: string | undefined,
   pagesCrawled: number | undefined,
@@ -160,16 +160,24 @@ export default function BotKnowledgeTab() {
     selectedBotWidgetConfig,
   } = useDashboardData()
 
+  const allowKnowledgeDiscovery = !(
+    selectedBotWidgetConfig &&
+    typeof selectedBotWidgetConfig === 'object' &&
+    (selectedBotWidgetConfig as Record<string, unknown>).contentHosting === 'shared'
+  )
+
+  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null)
+  const [sourcesSelected, setSourcesSelected] = useState<Set<string>>(new Set())
+  const [deletingSelectedSources, setDeletingSelectedSources] = useState(false)
+  const [stoppingTraining, setStoppingTraining] = useState(false)
+
+  // Discovery UI (Add more pages)
   const [discoverInputUrl, setDiscoverInputUrl] = useState('')
   const discoveryMethod: 'auto' = 'auto'
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedDiscovered, setSelectedDiscovered] = useState<Set<string>>(new Set())
   const [trainingDiscovered, setTrainingDiscovered] = useState(false)
-  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null)
-  const [sourcesSelected, setSourcesSelected] = useState<Set<string>>(new Set())
-  const [deletingSelectedSources, setDeletingSelectedSources] = useState(false)
-  const [stoppingTraining, setStoppingTraining] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [discoverTrainingJobId, setDiscoverTrainingJobId] = useState<string | null>(null)
   const [discoverTrainingStatus, setDiscoverTrainingStatus] = useState<{
@@ -179,11 +187,13 @@ export default function BotKnowledgeTab() {
   } | null>(null)
   const [discoverTrainingUrlCount, setDiscoverTrainingUrlCount] = useState(0)
   const [discoverTrainingSuccess, setDiscoverTrainingSuccess] = useState(false)
+
+  // Background discovery jobs (created during onboarding)
   const [bgDiscoveryJob, setBgDiscoveryJob] = useState<DiscoveryJobRecord | null>(null)
   const [bgDiscoverySelected, setBgDiscoverySelected] = useState<Set<string>>(new Set())
   const [bgDiscoveryExpanded, setBgDiscoveryExpanded] = useState<Set<string>>(new Set())
   const [bgDiscoveryAdding, setBgDiscoveryAdding] = useState(false)
-  const [bgDiscoveryTrainingPhase, setBgDiscoveryTrainingPhase] = useState<'idle' | 'training_started' | 'training_complete'>( 'idle')
+  const [bgDiscoveryTrainingPhase, setBgDiscoveryTrainingPhase] = useState<'idle' | 'training_started' | 'training_complete'>('idle')
   const [bgDiscoveryCardDismissed, setBgDiscoveryCardDismissed] = useState(false)
   const [bgDiscoveryZeroNotice, setBgDiscoveryZeroNotice] = useState(false)
   const [bgDiscoveryStopping, setBgDiscoveryStopping] = useState(false)
@@ -192,6 +202,7 @@ export default function BotKnowledgeTab() {
   const bgDiscoveryPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bgDiscoveryZeroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bgDiscoveryPrevStatusRef = useRef<{ jobId: string | null; status: string | null }>({ jobId: null, status: null })
+
   const [sourcesTrainingJobId, setSourcesTrainingJobId] = useState<string | null>(null)
   const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<{
     stage?: string
@@ -219,7 +230,9 @@ export default function BotKnowledgeTab() {
   const discoverSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const DISCOVER_TERMINAL_STAGES = new Set(['done', 'error', 'cancelled', 'import_submitted'])
   const DISCOVER_SUCCESS_STAGES = new Set(['done', 'import_submitted'])
+
   useEffect(() => {
+    if (!allowKnowledgeDiscovery) return
     if (!selectedBot || !discoverTrainingJobId) return
     let cancelled = false
     const poll = async () => {
@@ -255,7 +268,7 @@ export default function BotKnowledgeTab() {
         discoverSuccessTimeoutRef.current = null
       }
     }
-  }, [selectedBot, discoverTrainingJobId, getJobStatus, loadJobs, loadSources])
+  }, [allowKnowledgeDiscovery, selectedBot, discoverTrainingJobId, getJobStatus, loadJobs, loadSources])
 
   // Initialize booking settings from widget config
   useEffect(() => {
@@ -299,6 +312,16 @@ export default function BotKnowledgeTab() {
 
   // Background discovery: load list when bot is set; poll latest job if running/queued
   useEffect(() => {
+    if (!allowKnowledgeDiscovery) {
+      setBgDiscoveryJob(null)
+      setBgDiscoveryCardDismissed(false)
+      setBgDiscoveryTrainingPhase('idle')
+      if (bgDiscoveryPollRef.current) {
+        clearInterval(bgDiscoveryPollRef.current)
+        bgDiscoveryPollRef.current = null
+      }
+      return
+    }
     if (!botId || !selectedBot) {
       setBgDiscoveryJob(null)
       setBgDiscoveryCardDismissed(false)
@@ -343,7 +366,7 @@ export default function BotKnowledgeTab() {
         bgDiscoveryPollRef.current = null
       }
     }
-  }, [botId, selectedBot, listDiscoveryJobs, getDiscoveryJob])
+  }, [allowKnowledgeDiscovery, botId, selectedBot, listDiscoveryJobs, getDiscoveryJob])
 
   // Sources section: detect in-progress index job and poll so we can show training progress bar (ignore stale jobs)
   const activeSourcesJob = useMemo(() => {
@@ -495,6 +518,7 @@ export default function BotKnowledgeTab() {
 
   // When background-discovery "Add to training" job finishes: show "Training complete" then dismiss card
   useEffect(() => {
+    if (!allowKnowledgeDiscovery) return
     if (bgDiscoveryTrainingPhase !== 'training_started') return
     if (activeSourcesJob) {
       hadActiveSourcesJobRef.current = true
@@ -509,7 +533,7 @@ export default function BotKnowledgeTab() {
       setBgDiscoveryTrainingPhase('idle')
       bgDiscoveryDismissTimerRef.current = null
     }, 3500)
-  }, [bgDiscoveryTrainingPhase, activeSourcesJob])
+  }, [allowKnowledgeDiscovery, bgDiscoveryTrainingPhase, activeSourcesJob])
 
   useEffect(() => {
     return () => {
@@ -565,6 +589,7 @@ export default function BotKnowledgeTab() {
   }, [bgDiscoveryJob, existingSourceUrls, normalizeUrlForCompare])
 
   useEffect(() => {
+    if (!allowKnowledgeDiscovery) return
     if (!bgDiscoveryJob) {
       bgDiscoveryPrevStatusRef.current = { jobId: null, status: null }
       return
@@ -590,7 +615,7 @@ export default function BotKnowledgeTab() {
       setBgDiscoveryZeroNotice(false)
       bgDiscoveryZeroTimerRef.current = null
     }, 4000)
-  }, [bgDiscoveryJob, bgDiscoveryNewUrls.length])
+  }, [allowKnowledgeDiscovery, bgDiscoveryJob, bgDiscoveryNewUrls.length])
 
   const bgDiscoveryUrlCategories = useMemo(() => {
     if (!bgDiscoveryNewUrls.length || !bgDiscoveryJob?.root_url) return null
@@ -599,12 +624,13 @@ export default function BotKnowledgeTab() {
 
   const bgDiscoveryHasExpandedDefault = useRef(false)
   useEffect(() => {
+    if (!allowKnowledgeDiscovery) return
     if (bgDiscoveryUrlCategories && !bgDiscoveryHasExpandedDefault.current) {
       setBgDiscoveryExpanded(new Set(getAllExpandablePaths(bgDiscoveryUrlCategories)))
       bgDiscoveryHasExpandedDefault.current = true
     }
     if (!bgDiscoveryUrlCategories) bgDiscoveryHasExpandedDefault.current = false
-  }, [bgDiscoveryUrlCategories])
+  }, [allowKnowledgeDiscovery, bgDiscoveryUrlCategories])
 
   const bgDiscoverySelectAll = useCallback(() => {
     if (bgDiscoveryNewUrls.length > 0 && bgDiscoverySelected.size === bgDiscoveryNewUrls.length) {
@@ -666,6 +692,7 @@ export default function BotKnowledgeTab() {
   }, [])
 
   const handleBgDiscoveryAddToTraining = useCallback(async () => {
+    if (!allowKnowledgeDiscovery) return
     if (!selectedBot || bgDiscoverySelected.size === 0 || bgDiscoveryAdding) return
     const urls = Array.from(bgDiscoverySelected)
     setBgDiscoveryTrainingPhase('training_started')
@@ -678,9 +705,10 @@ export default function BotKnowledgeTab() {
     } finally {
       setBgDiscoveryAdding(false)
     }
-  }, [selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
+  }, [allowKnowledgeDiscovery, selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
 
   const handleStopBgDiscovery = useCallback(async () => {
+    if (!allowKnowledgeDiscovery) return
     if (!selectedBot || !bgDiscoveryJob || bgDiscoveryStopping) return
     if (bgDiscoveryJob.status !== 'running' && bgDiscoveryJob.status !== 'queued') return
     setBgDiscoveryStopping(true)
@@ -695,7 +723,7 @@ export default function BotKnowledgeTab() {
     } finally {
       setBgDiscoveryStopping(false)
     }
-  }, [selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
+  }, [allowKnowledgeDiscovery, selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
 
   const renderBgDiscoveryCategory = useCallback(
     (category: UrlCategory): React.ReactNode => {
@@ -853,6 +881,7 @@ export default function BotKnowledgeTab() {
   }, [botId, selectedBot?.bot_id, sources.length, jobs.length, emptyPollCount, loadJobs, loadSources])
 
   const handleDiscover = useCallback(async () => {
+    if (!allowKnowledgeDiscovery) return
     if (!discoverInputUrl.trim() || isDiscovering) return
     setIsDiscovering(true)
     setDiscoveredUrls([])
@@ -870,7 +899,7 @@ export default function BotKnowledgeTab() {
     } finally {
       setIsDiscovering(false)
     }
-  }, [discoverInputUrl, discoveryMethod, isDiscovering, discoverUrls])
+  }, [allowKnowledgeDiscovery, discoverInputUrl, discoveryMethod, isDiscovering, discoverUrls])
 
   const toggleDiscovered = useCallback((url: string) => {
     setSelectedDiscovered((prev) => {
@@ -1052,6 +1081,7 @@ export default function BotKnowledgeTab() {
   )
 
   const handleTrainDiscovered = useCallback(async () => {
+    if (!allowKnowledgeDiscovery) return
     if (!selectedBot || selectedDiscovered.size === 0 || trainingDiscovered) return
     const urls = Array.from(selectedDiscovered)
     setTrainingDiscovered(true)
@@ -1069,7 +1099,7 @@ export default function BotKnowledgeTab() {
     } finally {
       setTrainingDiscovered(false)
     }
-  }, [selectedBot, selectedDiscovered, queueCrawlUrls, loadJobs, trainingDiscovered])
+  }, [allowKnowledgeDiscovery, selectedBot, selectedDiscovered, queueCrawlUrls, loadJobs, trainingDiscovered])
 
   const handleSaveAvailabilitySettings = useCallback(async () => {
     if (!selectedBot) return
@@ -1113,7 +1143,8 @@ export default function BotKnowledgeTab() {
   ])
 
   const showBgDiscoveryCard = Boolean(
-    selectedBot &&
+    allowKnowledgeDiscovery &&
+      selectedBot &&
       bgDiscoveryJob &&
       !bgDiscoveryCardDismissed &&
       (
@@ -1182,7 +1213,6 @@ export default function BotKnowledgeTab() {
 
   const handleStopTraining = useCallback(async () => {
     if (!selectedBot || !activeSourcesJob || stoppingTraining) return
-    setBgDiscoveryTrainingPhase('idle')
     setStoppingTraining(true)
     try {
       const cancelUrl =
@@ -1521,6 +1551,116 @@ export default function BotKnowledgeTab() {
       </section>
       )}
 
+      {/* Realtime availability (hotel bots only) */}
+      {selectedBotWidgetConfig?.businessType === 'hotel' && (
+        <section className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-title">Realtime availability</div>
+          <p className="card-subtitle" style={{ marginTop: 0 }}>
+            Optional: allow the agent to check real-time room availability/pricing using a booking URL pattern.
+          </p>
+
+          <div className="design-form stack" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <label
+                className="url-list-item"
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '0.5rem' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={allowRealtimeAvailability}
+                  onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
+                  style={{ accentColor: '#6366f1' }}
+                />
+                <span>Allow agent to check real-time room availability and answer user queries</span>
+              </label>
+              <button type="button" className="secondary" onClick={() => void handleSaveAvailabilitySettings()}>
+                Save
+              </button>
+            </div>
+
+            {allowRealtimeAvailability && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <div className="testing-field">
+                  <label className="testing-label">Booking test URL</label>
+                  <input
+                    type="url"
+                    className="design-form-input"
+                    value={bookingTestUrl}
+                    onChange={(e) => setBookingTestUrl(e.target.value)}
+                    placeholder="https://www.booking.com/hotel/... or Agoda, Expedia, etc."
+                    style={{ width: '100%', maxWidth: '700px' }}
+                  />
+                  <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
+                    Paste a booking URL (Agoda, Expedia, Booking.com, hotel site) with your dates and guests selected.
+                    The agent will learn the URL pattern for future checks.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() => void handleRunAvailabilityTest()}
+                    disabled={!bookingTestUrl.trim() || availabilityTestRunning}
+                  >
+                    {availabilityTestRunning ? 'Agent testing…' : 'Run availability test'}
+                  </button>
+                </div>
+
+                {availabilityTestError && (
+                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                    {availabilityTestError}
+                  </div>
+                )}
+
+                {availabilityTestJob && (
+                  <div
+                    className="progress-card"
+                    style={{ marginTop: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem' }}
+                  >
+                    {availabilityTestRunning ? (
+                      <div className="muted" style={{ fontSize: '0.875rem' }}>
+                        Agent testing… Status: <strong>{availabilityTestJob.status}</strong>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontWeight: 500, marginBottom: '0.35rem' }}>Agent test results</div>
+                        <div className="muted" style={{ fontSize: '0.875rem' }}>
+                          Status: <strong>{availabilityTestJob.status}</strong>
+                        </div>
+                        {availabilityTestJob.summary && (
+                          <div
+                            className="alert info"
+                            style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}
+                          >
+                            {availabilityTestJob.summary}
+                          </div>
+                        )}
+                        {availabilityTestJob.last_error && (
+                          <div
+                            className="alert error"
+                            style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}
+                          >
+                            {availabilityTestJob.last_error}
+                          </div>
+                        )}
+                        <Link
+                          to={botId ? `/bots/${botId}/testing` : '#'}
+                          className="secondary"
+                          style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.875rem' }}
+                        >
+                          View in Testing tab
+                        </Link>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Topic extraction progress */}
       <section className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Topics extraction</div>
@@ -1579,14 +1719,14 @@ export default function BotKnowledgeTab() {
         )}
       </section>
 
-      {bgDiscoveryZeroNotice && (
+      {allowKnowledgeDiscovery && bgDiscoveryZeroNotice && (
         <div className="alert info" style={{ gridColumn: '1 / -1' }}>
           Background discovery completed. No new URLs were found.
         </div>
       )}
 
-      {/* Background discovery — only show when there is at least one discovery job and not dismissed */}
-      {bgDiscoveryJobForCard && (
+      {/* Background discovery — show only for own-website bots */}
+      {allowKnowledgeDiscovery && bgDiscoveryJobForCard && (
         <section className="card" style={{ gridColumn: '1 / -1' }}>
           <div className="card-title">Background discovery</div>
           {(bgDiscoveryJobForCard.status !== 'running' && bgDiscoveryJobForCard.status !== 'queued') && (
@@ -1622,7 +1762,7 @@ export default function BotKnowledgeTab() {
           ) : bgDiscoveryJobForCard.status === 'done' ? (
             <>
               <div style={{ marginBottom: '0.75rem', color: '#6366f1', fontWeight: 500 }}>
-                Discovery complete: <strong>{bgDiscoveryNewUrls.length}</strong> new URL{bgDiscoveryNewUrls.length !== 1 ? 's' : ''} ({bgDiscoveryJobForCard.discovered_count - bgDiscoveryNewUrls.length} already in knowledge)
+                Discovery complete: <strong>{bgDiscoveryNewUrls.length}</strong> new URL{bgDiscoveryNewUrls.length !== 1 ? 's' : ''} ({(bgDiscoveryJobForCard.discovered_count ?? 0) - bgDiscoveryNewUrls.length} already in knowledge)
               </div>
               {bgDiscoveryNewUrls.length > 0 ? (
                 <>
@@ -1695,243 +1835,160 @@ export default function BotKnowledgeTab() {
         </section>
       )}
 
-      {/* Add more pages — same UI as create-bot URL selection */}
-      <section className="card" style={{ gridColumn: '1 / -1' }}>
-        <div className="card-title">Add more pages</div>
-        <p className="card-subtitle" style={{ marginTop: 0 }}>
-          {isDiscovering ? (
-            <span className="discovery-loading" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="discovery-loading-dots" aria-hidden>
-                <span />
-                <span />
-                <span />
-              </span>
-              <span style={{ color: '#6366f1', fontWeight: 500 }}>
-                Discovering pages… {discoveredUrls.length} found so far
-              </span>
-            </span>
-          ) : (
-            <>
-              Enter a website URL to discover pages. Choose the ones your bot should learn from.
-              {discoveredUrls.length > 0 && (
-                <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
-                  {discoveredUrls.length} page{discoveredUrls.length === 1 ? '' : 's'} found.
+      {/* Add more pages — own-website bots only */}
+      {allowKnowledgeDiscovery && (
+        <section className="card" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-title">Add more pages</div>
+          <p className="card-subtitle" style={{ marginTop: 0 }}>
+            {isDiscovering ? (
+              <span className="discovery-loading" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="discovery-loading-dots" aria-hidden>
+                  <span />
+                  <span />
+                  <span />
                 </span>
-              )}
-            </>
-          )}
-        </p>
-        <div className="design-form stack" style={{ marginBottom: '1rem' }}>
-          <div className="row" style={{ flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-            <input
-              type="url"
-              value={discoverInputUrl}
-              onChange={(e) => setDiscoverInputUrl(e.target.value)}
-              placeholder="https://example.com"
-              className="design-form-input"
-              style={{ flex: 1, minWidth: '200px' }}
-              disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-            />
-            <button type="button" className="primary" onClick={handleDiscover} disabled={!discoverInputUrl.trim() || loading || isDiscovering || !!(sourcesTrainingJobId && sourcesTrainingStatus)}>
-              {isDiscovering ? 'Discovering…' : 'Discover'}
-            </button>
-          </div>
-        </div>
-
-        {selectedBotWidgetConfig?.businessType === 'hotel' && (
-        <div className="design-form stack" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <label className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '0.5rem' }}>
-              <input
-                type="checkbox"
-                checked={allowRealtimeAvailability}
-                onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
-                style={{ accentColor: '#6366f1' }}
-              />
-              <span>Allow agent to check real-time room availability and answer user queries</span>
-            </label>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => void handleSaveAvailabilitySettings()}
-            >
-              Save
-            </button>
-          </div>
-          {allowRealtimeAvailability && (
-            <div style={{ marginTop: '0.75rem', marginLeft: '1.5rem' }}>
-              <div className="testing-field">
-                <label className="testing-label">Booking test URL</label>
-                <input
-                  type="url"
-                  className="design-form-input"
-                  value={bookingTestUrl}
-                  onChange={(e) => setBookingTestUrl(e.target.value)}
-                  placeholder="https://www.booking.com/hotel/... or Agoda, Expedia, etc."
-                  style={{ width: '100%', maxWidth: '500px' }}
-                />
-                <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                  Paste a booking URL from any site (Agoda, Expedia, Booking.com, hotel site) with your dates
-                  and guests selected. The agent will learn the URL pattern for future checks.
-                </p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => void handleRunAvailabilityTest()}
-                  disabled={!bookingTestUrl.trim() || availabilityTestRunning}
-                >
-                  {availabilityTestRunning ? 'Agent testing…' : 'Run availability test'}
-                </button>
-              </div>
-              {availabilityTestError && (
-                <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                  {availabilityTestError}
-                </div>
-              )}
-              {availabilityTestJob && (
-                <div className="progress-card" style={{ marginTop: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem' }}>
-                  {availabilityTestRunning ? (
-                    <div className="muted" style={{ fontSize: '0.875rem' }}>
-                      Agent testing… Status: <strong>{availabilityTestJob.status}</strong>
-                    </div>
-                  ) : (
-                    <>
-                      <div style={{ fontWeight: 500, marginBottom: '0.35rem' }}>Agent test results</div>
-                      <div className="muted" style={{ fontSize: '0.875rem' }}>
-                        Status: <strong>{availabilityTestJob.status}</strong>
-                      </div>
-                      {availabilityTestJob.summary && (
-                        <div className="alert info" style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
-                          {availabilityTestJob.summary}
-                        </div>
-                      )}
-                      {availabilityTestJob.last_error && (
-                        <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>
-                          {availabilityTestJob.last_error}
-                        </div>
-                      )}
-                      <Link
-                        to={botId ? `/bots/${botId}/testing` : '#'}
-                        className="secondary"
-                        style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.875rem' }}
-                      >
-                        View in Testing tab
-                      </Link>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        )}
-
-        {(discoverTrainingJobId || discoverTrainingSuccess) && (
-          <div className="progress-card" style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-            {discoverTrainingSuccess ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 500 }}>
-                <span aria-hidden style={{ fontSize: '1.25rem' }}>✓</span>
-                <span>Added to bot knowledge</span>
-              </div>
+                <span style={{ color: '#6366f1', fontWeight: 500 }}>
+                  Discovering pages… {discoveredUrls.length} found so far
+                </span>
+              </span>
             ) : (
               <>
-                <div className="progress-label" style={{ color: '#334155' }}>
-                  Training in progress… {discoverTrainingUrlCount} page{discoverTrainingUrlCount === 1 ? '' : 's'}
-                </div>
-                <div className="progress-track" style={{ marginTop: '0.5rem' }}>
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${trainingProgressPercent(discoverTrainingStatus?.stage)}%` }}
-                  />
-                </div>
-                <div className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                  {discoverTrainingStatus?.stage ? statusLabel(discoverTrainingStatus.stage) : 'Starting…'}
-                  {discoverTrainingStatus?.docs_count != null && discoverTrainingStatus.docs_count > 0 && (
-                    <> · {discoverTrainingStatus.docs_count} doc{discoverTrainingStatus.docs_count === 1 ? '' : 's'}</>
-                  )}
-                </div>
-                {discoverTrainingStatus?.last_error && (
-                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                    {discoverTrainingStatus.last_error}
-                  </div>
+                Enter a website URL to discover pages. Choose the ones your bot should learn from.
+                {discoveredUrls.length > 0 && (
+                  <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
+                    {discoveredUrls.length} page{discoveredUrls.length === 1 ? '' : 's'} found.
+                  </span>
                 )}
               </>
             )}
-          </div>
-        )}
-
-        {discoveredUrls.length > 0 && !isDiscovering && !discoverTrainingJobId && !discoverTrainingSuccess && (
-          <>
-            <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
-              <button
-                type="button"
-                className={allDiscoveredSelected ? 'ghost' : 'secondary'}
-                onClick={toggleAllDiscovered}
+          </p>
+          <div className="design-form stack" style={{ marginBottom: '1rem' }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+              <input
+                type="url"
+                value={discoverInputUrl}
+                onChange={(e) => setDiscoverInputUrl(e.target.value)}
+                placeholder="https://example.com"
+                className="design-form-input"
+                style={{ flex: 1, minWidth: '200px' }}
                 disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-              >
-                {allDiscoveredSelected ? 'Deselect all' : 'Select all'}
-              </button>
-              <button
-                type="button"
-                className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
-                onClick={expandedCategories.size > 0 ? collapseAllCategories : expandAllCategories}
-                disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-              >
-                {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-              </button>
-              <div className="muted">{selectedDiscovered.size} selected</div>
-            </div>
-            <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
-              {urlCategories ? (
-                <div>
-                  {Array.from(urlCategories.children.values())
-                    .sort((a, b) => {
-                      const countA = getCategoryUrlCount(a)
-                      const countB = getCategoryUrlCount(b)
-                      if (countA !== countB) return countB - countA
-                      return a.name.localeCompare(b.name)
-                    })
-                    .map((category) => renderDiscoverCategory(category))}
-                  {urlCategories.urls.length > 0 && (
-                    <div style={{ marginLeft: 0 }}>
-                      {urlCategories.urls.map((url) => (
-                        <label
-                          key={url}
-                          className="url-list-item"
-                          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedDiscovered.has(url)}
-                            onChange={() => toggleDiscovered(url)}
-                            style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-                          />
-                          <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="muted">Loading categories…</div>
-              )}
-            </div>
-            <div className="flow-actions" style={{ marginTop: '1rem' }}>
+              />
               <button
                 type="button"
                 className="primary"
-                onClick={handleTrainDiscovered}
-                disabled={selectedDiscovered.size === 0 || loading || trainingDiscovered || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                onClick={handleDiscover}
+                disabled={!discoverInputUrl.trim() || loading || isDiscovering || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
               >
-                {trainingDiscovered ? 'Starting…' : '▷ Start training'}
+                {isDiscovering ? 'Discovering…' : 'Discover'}
               </button>
             </div>
-          </>
-        )}
-      </section>
+          </div>
+
+          {(discoverTrainingJobId || discoverTrainingSuccess) && (
+            <div className="progress-card" style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              {discoverTrainingSuccess ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 500 }}>
+                  <span aria-hidden style={{ fontSize: '1.25rem' }}>✓</span>
+                  <span>Added to bot knowledge</span>
+                </div>
+              ) : (
+                <>
+                  <div className="progress-label" style={{ color: '#334155' }}>
+                    Training in progress… {discoverTrainingUrlCount} page{discoverTrainingUrlCount === 1 ? '' : 's'}
+                  </div>
+                  <div className="progress-track" style={{ marginTop: '0.5rem' }}>
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${trainingProgressPercent(discoverTrainingStatus?.stage)}%` }}
+                    />
+                  </div>
+                  <div className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
+                    {discoverTrainingStatus?.stage ? statusLabel(discoverTrainingStatus.stage) : 'Starting…'}
+                    {discoverTrainingStatus?.docs_count != null && discoverTrainingStatus.docs_count > 0 && (
+                      <> · {discoverTrainingStatus.docs_count} doc{discoverTrainingStatus.docs_count === 1 ? '' : 's'}</>
+                    )}
+                  </div>
+                  {discoverTrainingStatus?.last_error && (
+                    <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                      {discoverTrainingStatus.last_error}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {discoveredUrls.length > 0 && !isDiscovering && !discoverTrainingJobId && !discoverTrainingSuccess && (
+            <>
+              <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className={allDiscoveredSelected ? 'ghost' : 'secondary'}
+                  onClick={toggleAllDiscovered}
+                  disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                >
+                  {allDiscoveredSelected ? 'Deselect all' : 'Select all'}
+                </button>
+                <button
+                  type="button"
+                  className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+                  onClick={expandedCategories.size > 0 ? collapseAllCategories : expandAllCategories}
+                  disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                >
+                  {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                </button>
+                <div className="muted">{selectedDiscovered.size} selected</div>
+              </div>
+              <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
+                {urlCategories ? (
+                  <div>
+                    {Array.from(urlCategories.children.values())
+                      .sort((a, b) => {
+                        const countA = getCategoryUrlCount(a)
+                        const countB = getCategoryUrlCount(b)
+                        if (countA !== countB) return countB - countA
+                        return a.name.localeCompare(b.name)
+                      })
+                      .map((category) => renderDiscoverCategory(category))}
+                    {urlCategories.urls.length > 0 && (
+                      <div style={{ marginLeft: 0 }}>
+                        {urlCategories.urls.map((url) => (
+                          <label
+                            key={url}
+                            className="url-list-item"
+                            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedDiscovered.has(url)}
+                              onChange={() => toggleDiscovered(url)}
+                              style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                            />
+                            <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="muted">Loading categories…</div>
+                )}
+              </div>
+              <div className="flow-actions" style={{ marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={handleTrainDiscovered}
+                  disabled={selectedDiscovered.size === 0 || loading || trainingDiscovered || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {trainingDiscovered ? 'Starting…' : '▷ Start training'}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
     </div>
   )

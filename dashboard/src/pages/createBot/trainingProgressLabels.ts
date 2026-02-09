@@ -10,6 +10,7 @@ export const TRAINING_STAGE_LABELS: Record<string, string> = {
   uploading: 'Uploading to storage',
   importing: 'Importing to knowledge base',
   import_submitted: 'Import submitted',
+  skipped: 'Skipped (no sources)',
   done: 'Complete',
   error: 'Error',
 }
