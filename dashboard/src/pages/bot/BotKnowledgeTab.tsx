@@ -1228,6 +1228,7 @@ export default function BotKnowledgeTab() {
   /** For Source column: URL or config summary (not display name). */
   function sourceUrlOrConfig(source: { type: string; config: Record<string, unknown> }): string {
     if (source.type === 'url' && typeof source.config?.url === 'string') return source.config.url
+    if (source.type === 'pdf' && typeof source.config?.filename === 'string') return `PDF: ${source.config.filename}`
     if (source.type === 'drive' && typeof source.config?.folder_id === 'string') return `Drive folder: ${source.config.folder_id}`
     if (source.type === 'docs' && typeof source.config?.doc_id === 'string') return `Doc: ${source.config.doc_id}`
     return source.type || '—'
@@ -1236,6 +1237,7 @@ export default function BotKnowledgeTab() {
   /** For Name column: display_name or fallback from URL (pathname/hostname) for URL sources. */
   function sourceDisplayName(source: { type: string; config: Record<string, unknown>; display_name?: string | null }): string {
     if (source.display_name?.trim()) return source.display_name.trim()
+    if (source.type === 'pdf' && typeof source.config?.filename === 'string') return source.config.filename
     if (source.type === 'url' && typeof source.config?.url === 'string') {
       try {
         const u = new URL(source.config.url)
@@ -1252,6 +1254,7 @@ export default function BotKnowledgeTab() {
   function sourceTypeLabel(type: string): string {
     const t = (type || '').toLowerCase()
     if (t === 'url') return 'URL'
+    if (t === 'pdf') return 'PDF'
     if (t === 'drive') return 'Drive'
     if (t === 'docs') return 'Google Docs'
     return type || '—'
@@ -1336,7 +1339,7 @@ export default function BotKnowledgeTab() {
           })()
         ) : (
           <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Every source (URL, Drive, Docs, etc.) this bot learns from. Add a URL or connect Drive/Docs. Training runs in the background.
+            Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.
           </p>
         )}
         <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1473,7 +1476,7 @@ export default function BotKnowledgeTab() {
           </div>
         ) : (
           <div className="empty muted" style={{ padding: '1.5rem' }}>
-            No sources yet. Add a URL or connect Drive/Google Docs to train this bot.
+            No sources yet. Add a URL or PDF to train this bot.
           </div>
         )}
       </section>

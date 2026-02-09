@@ -159,6 +159,17 @@ class BotSourceListResponse(BaseModel):
     sources: List[BotSourceResponse] = []
 
 
+class PdfSourceUploadItem(BaseModel):
+    source: BotSourceResponse
+    job_id: str
+    status: str = "queued"
+
+
+class PdfSourceUploadResponse(BaseModel):
+    bot_id: str
+    items: List[PdfSourceUploadItem] = []
+
+
 class WidgetChatRequest(BaseModel):
     message: str
     site_url: Optional[str] = None

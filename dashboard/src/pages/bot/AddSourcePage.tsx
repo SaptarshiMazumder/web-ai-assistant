@@ -2,16 +2,18 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { FileDropzone } from '../../components/FileDropzone'
 
 export default function AddSourcePage() {
   const { botId } = useParams()
   const navigate = useNavigate()
-  const { selectedBot, createSource, startCrawlForSource, loadSources, loadJobs, loading, error, setError } = useDashboardData()
+  const { selectedBot, createSource, uploadPdfSources, startCrawlForSource, loadSources, loadJobs, loading, error, setError } = useDashboardData()
 
-  const [sourceType, setSourceType] = useState<'url' | 'drive' | 'docs'>('url')
+  const [sourceType, setSourceType] = useState<'url' | 'pdf' | 'drive' | 'docs'>('url')
   const [url, setUrl] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [language, setLanguage] = useState<'auto' | 'ja'>('auto')
+  const [pdfFiles, setPdfFiles] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -36,6 +38,28 @@ export default function AddSourcePage() {
           return
         }
         await startCrawlForSource(selectedBot.bot_id, source.source_id)
+        await loadSources(selectedBot.bot_id)
+        await loadJobs(selectedBot.bot_id)
+        navigate('../../knowledge', { relative: 'path' })
+      } catch (err) {
+        setLocalError((err as Error).message)
+      } finally {
+        setSubmitting(false)
+      }
+    } else if (sourceType === 'pdf') {
+      if (!pdfFiles.length) {
+        setLocalError('Add at least one PDF')
+        return
+      }
+      setSubmitting(true)
+      setLocalError(null)
+      setError(null)
+      try {
+        const resp = await uploadPdfSources(selectedBot.bot_id, pdfFiles, displayName.trim() || null)
+        if (!resp || !resp.items?.length) {
+          setLocalError('Failed to upload PDF')
+          return
+        }
         await loadSources(selectedBot.bot_id)
         await loadJobs(selectedBot.bot_id)
         navigate('../../knowledge', { relative: 'path' })
@@ -84,6 +108,16 @@ export default function AddSourcePage() {
                 onChange={() => setSourceType('url')}
               />
               <span>URL</span>
+            </label>
+            <label className="design-form-radio-card">
+              <input
+                type="radio"
+                name="sourceType"
+                value="pdf"
+                checked={sourceType === 'pdf'}
+                onChange={() => setSourceType('pdf')}
+              />
+              <span>PDF</span>
             </label>
             <label className="design-form-radio-card">
               <input
@@ -154,6 +188,32 @@ export default function AddSourcePage() {
           </>
         )}
 
+        {sourceType === 'pdf' && (
+          <>
+            <FileDropzone
+              label="PDF files"
+              helperText="Drag & drop PDFs here. We'll extract text (JP/EN), upload to storage, and index in the background."
+              files={pdfFiles}
+              setFiles={setPdfFiles}
+              accept="application/pdf"
+              multiple
+              maxFiles={20}
+            />
+            <div>
+              <label className="design-form-label" htmlFor="add-source-display-pdf">Display name (optional)</label>
+              <input
+                id="add-source-display-pdf"
+                type="text"
+                className="design-form-input"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Company brochure"
+                style={{ width: '100%' }}
+              />
+            </div>
+          </>
+        )}
+
         {(sourceType === 'drive' || sourceType === 'docs') && (
           <div className="muted" style={{ padding: '1rem', background: 'var(--surface)', borderRadius: '10px' }}>
             Google Drive and Google Docs integration is coming soon. Use a URL for now.
@@ -170,7 +230,12 @@ export default function AddSourcePage() {
           <button
             type="submit"
             className="primary"
-            disabled={loading || submitting || (sourceType === 'url' && !url.trim())}
+            disabled={
+              loading ||
+              submitting ||
+              (sourceType === 'url' && !url.trim()) ||
+              (sourceType === 'pdf' && pdfFiles.length === 0)
+            }
           >
             {submitting ? 'Adding & training…' : 'Add & train'}
           </button>

@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { MousePointerClick, Printer, UploadCloud } from 'lucide-react'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon, StopIcon } from './DiscoveryIcons'
 import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategoryDisplayPath, getAllExpandablePaths, type UrlCategory } from './urlCategorizer'
+import { FileDropzone } from '../../components/FileDropzone'
 
 export default function CreateBotUrlsPage() {
   const navigate = useNavigate()
@@ -12,13 +14,13 @@ export default function CreateBotUrlsPage() {
     selectedUrls,
     normalizedWebsiteUrl,
     contentHosting,
-    manualUrlsText,
-    setManualUrlsText,
-    manualUrls,
+    pdfFiles,
+    setPdfFiles,
     isDiscovering,
     isStartingTraining,
     discoveryDurationMs,
     discoveryTimedOutMessage,
+    continueWithoutSources,
     toggleUrl,
     toggleCategory,
     selectAll,
@@ -27,6 +29,8 @@ export default function CreateBotUrlsPage() {
     localError,
     startTraining,
   } = step2
+
+  const hasAnySources = selectedUrls.length > 0 || pdfFiles.length > 0
 
   const discoveryDurationLabel =
     discoveryDurationMs != null && !isDiscovering
@@ -47,8 +51,12 @@ export default function CreateBotUrlsPage() {
   }, [discoveredUrls, normalizedWebsiteUrl])
 
   useEffect(() => {
+    if (!contentHosting) {
+      if (flow.prevPath) navigate(flow.prevPath)
+      return
+    }
     if (contentHosting === 'own' && !discoveredUrls.length && !isDiscovering) {
-      navigate(flow.firstPath)
+      if (flow.prevPath) navigate(flow.prevPath)
     }
   }, [discoveredUrls.length, isDiscovering, navigate, flow.firstPath, contentHosting])
 
@@ -71,6 +79,92 @@ export default function CreateBotUrlsPage() {
     if (botId && flow.nextPath) {
       navigate(flow.nextPath)
     }
+  }
+
+  const handleSkip = async () => {
+    const botId = await continueWithoutSources()
+    if (botId && flow.nextPath) {
+      navigate(flow.nextPath)
+    }
+  }
+
+  if (contentHosting === 'shared') {
+    return (
+      <div className="flow-panel-body">
+        <div>
+          <div className="card-title">Add info for your helper</div>
+          <div className="card-subtitle">Save your important website pages as PDFs, then upload them here.</div>
+        </div>
+
+        <div className="muted" style={{ marginTop: '8px' }}>
+          Do this for <b>every page</b> on your website that has helpful info about your business (services, prices, hours, booking, contact, location, FAQs).
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="icon-pill" style={{ background: 'rgba(99,102,241,0.10)', color: '#4f46e5' }}>
+                <MousePointerClick size={16} aria-hidden />
+              </div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>1</div>
+            </div>
+            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Open the page on your website</div>
+            <div className="muted" style={{ marginTop: '6px' }}>
+              Go to one important page at a time (services, prices, hours, booking, contact).
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="icon-pill" style={{ background: 'rgba(34,197,94,0.12)', color: '#166534' }}>
+                <Printer size={16} aria-hidden />
+              </div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>2</div>
+            </div>
+            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Print → Save as PDF</div>
+            <div className="muted" style={{ marginTop: '6px' }}>
+              Right click the page → <b>Print</b> → choose <b>Save as PDF</b> (or “Microsoft Print to PDF”).
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="icon-pill" style={{ background: 'rgba(14,165,233,0.12)', color: '#075985' }}>
+                <UploadCloud size={16} aria-hidden />
+              </div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>3</div>
+            </div>
+            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Upload the PDF here</div>
+            <div className="muted" style={{ marginTop: '6px' }}>
+              Drop the saved PDF below. Your helper will learn from what’s inside.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '10px' }}>
+          <FileDropzone
+            label="Upload PDFs"
+            helperText="Drag & drop PDFs here."
+            files={pdfFiles}
+            setFiles={setPdfFiles}
+            accept="application/pdf"
+            multiple
+            maxFiles={20}
+          />
+        </div>
+
+        {localError && <div className="alert error">{localError}</div>}
+
+        <div className="flow-actions">
+          <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+            Back
+          </button>
+          <button type="button" className="primary" onClick={() => flow.nextPath && navigate(flow.nextPath)}>
+            Continue
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const toggleCategoryExpand = (path: string) => {
@@ -224,14 +318,9 @@ export default function CreateBotUrlsPage() {
             {discoveryTimedOutMessage}
           </div>
         )}
-        <div className="card-title">{contentHosting === 'shared' ? 'Paste page URLs to train on' : 'Select URLs to train on'}</div>
+        <div className="card-title">Pick pages from your website</div>
         <div className="card-subtitle">
-          {contentHosting === 'shared' ? (
-            <>
-              Paste the exact page URLs you want included. We will only fetch these pages (no site-wide crawl).
-              <span style={{ marginLeft: '8px', color: '#64748b' }}>You can also leave this empty and add sources later.</span>
-            </>
-          ) : isDiscovering ? (
+          {isDiscovering ? (
             <span className="discovery-loading">
               <span className="discovery-loading-dots" aria-hidden>
                 <span />
@@ -239,15 +328,15 @@ export default function CreateBotUrlsPage() {
                 <span />
               </span>
               <span style={{ color: '#6366f1', fontWeight: 500 }}>
-                Discovering pages at ⚡lightning speed… {discoveredUrls.length} found so far
+                Looking for pages on your website… {discoveredUrls.length} found so far
               </span>
             </span>
           ) : (
             <>
-              We found <span style={{ color: '#6366f1', fontWeight: 600 }}>{discoveredUrls.length}</span> pages on {normalizedWebsiteUrl}. Choose the ones your bot should learn from.
+              We found <span style={{ color: '#6366f1', fontWeight: 600 }}>{discoveredUrls.length}</span> pages on {normalizedWebsiteUrl}. Choose the ones your helper should learn from.
               {discoveryDurationLabel != null && (
                 <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
-                  Discovery took {discoveryDurationLabel}.
+                  This took {discoveryDurationLabel}.
                 </span>
               )}
             </>
@@ -255,101 +344,78 @@ export default function CreateBotUrlsPage() {
         </div>
       </div>
 
-      {contentHosting === 'own' ? (
-        <div className="flow-toolbar">
-          <button
-            className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
-            onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
-          >
-            {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
-          </button>
-          <button
-            className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
-            onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
-          >
-            {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-          </button>
-          <div className="muted">{selectedUrls.length} selected</div>
-        </div>
-      ) : (
-        <div className="flow-toolbar">
-          <div className="muted">{manualUrls.length} URL{manualUrls.length === 1 ? '' : 's'} ready</div>
-        </div>
-      )}
+      <div style={{ marginTop: '10px' }}>
+        <FileDropzone
+          label="PDF files (optional)"
+          helperText="Drag & drop PDFs here. Your helper can learn from these too."
+          files={pdfFiles}
+          setFiles={setPdfFiles}
+          accept="application/pdf"
+          multiple
+          maxFiles={20}
+        />
+      </div>
 
-      {contentHosting === 'shared' ? (
-        <div className="url-list" style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
-          <label className="design-form-label" htmlFor="manual-urls" style={{ display: 'block', marginBottom: '6px' }}>
-            URLs (one per line or comma-separated)
-          </label>
-          <textarea
-            id="manual-urls"
-            className="design-form-input"
-            value={manualUrlsText}
-            onChange={(e) => setManualUrlsText(e.target.value)}
-            placeholder={"https://example.com/page-1\nhttps://example.com/page-2"}
-            rows={8}
-            style={{ width: '100%', resize: 'vertical' }}
-          />
-          {manualUrls.length > 0 && (
-            <div style={{ marginTop: '10px' }}>
-              <div className="muted" style={{ marginBottom: '6px' }}>Preview ({manualUrls.length})</div>
-              <div style={{ maxHeight: '260px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '6px', padding: '8px' }}>
-                {manualUrls.map((u) => (
-                  <div key={u} style={{ fontSize: '14px', color: '#334155', padding: '4px 0' }}>
-                    {u}
-                  </div>
+      <div className="flow-toolbar">
+        <button
+          className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+          onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
+        >
+          {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+        </button>
+        <button
+          className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+          onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
+        >
+          {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+        </button>
+        <div className="muted">{selectedUrls.length} selected</div>
+      </div>
+
+      <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
+        {isDiscovering && (
+          <div style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
+            Looking for pages… ({discoveredUrls.length} found so far)
+          </div>
+        )}
+        {urlCategories ? (
+          <div>
+            {Array.from(urlCategories.children.values())
+              .sort((a, b) => {
+                const countA = getCategoryUrlCount(a)
+                const countB = getCategoryUrlCount(b)
+                if (countA !== countB) return countB - countA
+                return a.name.localeCompare(b.name)
+              })
+              .map(category => renderCategory(category))}
+            {urlCategories.urls.length > 0 && (
+              <div style={{ marginLeft: '0px' }}>
+                {urlCategories.urls.map(url => (
+                  <label
+                    key={url}
+                    className="url-list-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUrls.includes(url)}
+                      onChange={() => toggleUrl(url)}
+                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                    />
+                    <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
+                  </label>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
-          {isDiscovering && (
-            <div style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-              Discovering URLs… ({discoveredUrls.length} found so far)
-            </div>
-          )}
-          {urlCategories ? (
-            <div>
-              {Array.from(urlCategories.children.values())
-                .sort((a, b) => {
-                  const countA = getCategoryUrlCount(a)
-                  const countB = getCategoryUrlCount(b)
-                  if (countA !== countB) return countB - countA
-                  return a.name.localeCompare(b.name)
-                })
-                .map(category => renderCategory(category))}
-              {urlCategories.urls.length > 0 && (
-                <div style={{ marginLeft: '0px' }}>
-                  {urlCategories.urls.map(url => (
-                    <label
-                      key={url}
-                      className="url-list-item"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedUrls.includes(url)}
-                        onChange={() => toggleUrl(url)}
-                        style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-                      />
-                      <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>{isDiscovering ? 'Discovering…' : 'Loading categories…'}</div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        ) : (
+          <div>{isDiscovering ? 'Discovering…' : 'Loading categories…'}</div>
+        )}
+      </div>
 
       {localError && <div className="alert error">{localError}</div>}
 
@@ -363,10 +429,24 @@ export default function CreateBotUrlsPage() {
             Stop
           </button>
         ) : (
-          <button type="button" className="primary" onClick={handleStartTraining} disabled={isStartingTraining} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <PlayIcon />
-            {isStartingTraining ? 'Starting…' : (contentHosting === 'shared' ? (manualUrls.length ? 'Start training' : 'Continue without training') : (selectedUrls.length ? 'Start training' : 'Continue without training'))}
-          </button>
+          <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button type="button" className="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
+              Skip for now
+            </button>
+            {hasAnySources && (
+              <button
+                type="button"
+                className="primary"
+                onClick={handleStartTraining}
+                disabled={isStartingTraining}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                aria-disabled={isStartingTraining}
+              >
+                <PlayIcon />
+                {isStartingTraining ? 'Starting…' : 'Start training'}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

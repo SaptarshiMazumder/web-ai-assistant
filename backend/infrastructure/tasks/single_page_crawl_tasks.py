@@ -24,6 +24,7 @@ from infrastructure.db.repositories import (
     PostgresTopicJobRepository,
 )
 from infrastructure.rag.crawl_service import CRAWL_WAIT_FOR_CONTENT, _normalize_text_encoding
+from infrastructure.rag.robots_policy import robots_policy
 from infrastructure.repositories import GCSDocumentStorageRepository, VertexRAGRepository
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 
@@ -281,6 +282,18 @@ async def _execute_single_page_crawl(
 
     job.stage = "crawling"
     job_repo.update_job(job)
+
+    # Robots.txt compliance: never fetch disallowed URLs.
+    try:
+        allowed = await robots_policy().is_allowed(url)
+    except Exception:
+        allowed = True
+    if not allowed:
+        job.docs_count = 0
+        job.last_error = "Blocked by robots.txt"
+        job.stage = "done"
+        job_repo.update_job(job)
+        return {"status": "done", "docs_count": 0, "blocked_by_robots": True}
 
     wait_for = (os.environ.get("SINGLE_PAGE_WAIT_FOR") or "").strip() or ""
     delay_before_return_html = float(os.environ.get("SINGLE_PAGE_DELAY_BEFORE_RETURN_HTML", "3.0"))

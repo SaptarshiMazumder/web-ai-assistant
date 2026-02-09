@@ -135,6 +135,9 @@ class BotSourceRepository(Protocol):
     def create_source(self, source: BotSource) -> None:
         ...
 
+    def update_source(self, source: BotSource) -> None:
+        ...
+
     def get_source(self, bot_id: str, source_id: str) -> Optional[BotSource]:
         ...
 

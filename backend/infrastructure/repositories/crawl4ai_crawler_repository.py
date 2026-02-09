@@ -19,8 +19,8 @@ from infrastructure.rag.crawl_service import (
     CRAWL_WAIT_FOR_CONTENT,
     HEADLESS,
 )
-# robots.txt filtering removed - we don't care about robots.txt rules
 from infrastructure.rag.error_handling import safe_execute, safe_execute_async
+from infrastructure.rag.robots_policy import robots_policy
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         visited = set()
         current_urls = set([_normalize_url(root_url)])
         all_docs: List[Document] = []
+        rp = robots_policy()
 
         def is_internal(url: str) -> bool:
             return _is_url_under_root_path(url, root_url)
@@ -100,8 +101,9 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                 for depth in range(max_depth):
                     if stop_event and stop_event.is_set():
                         break
-                    # No robots.txt filtering - crawl all internal URLs
                     urls_to_crawl = [u for u in current_urls if u not in visited]
+                    if urls_to_crawl:
+                        urls_to_crawl = await rp.filter_urls(urls_to_crawl)
                     if not urls_to_crawl:
                         break
 
@@ -182,7 +184,8 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                                         "",
                                     )
                                     if href and href not in visited and is_internal(href):
-                                        next_level_urls.add(href)
+                                        if await rp.is_allowed(href):
+                                            next_level_urls.add(href)
                             else:
                                 # Failed result - still report progress
                                 if progress_cb:
@@ -228,7 +231,8 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         if not urls:
             return []
 
-        filtered_urls = urls
+        rp = robots_policy()
+        filtered_urls = await rp.filter_urls(urls)
         if not filtered_urls:
             return []
 
@@ -339,6 +343,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
         visited = set()
         current_urls = set([_normalize_url(root_url)])
         discovered: List[str] = []
+        rp = robots_policy()
 
         def is_internal(url: str) -> bool:
             return _is_url_under_root_path(url, root_url)
@@ -350,6 +355,10 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                     if not urls_to_crawl:
                         break
                     if len(discovered) >= max_urls:
+                        break
+
+                    urls_to_crawl = await rp.filter_urls(urls_to_crawl)
+                    if not urls_to_crawl:
                         break
                     
                     try:
@@ -363,12 +372,12 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                                 single_result = await crawler.arun(url=root_url, config=run_config)
                                 if single_result and single_result.success:
                                     norm = _normalize_url(single_result.url)
-                                    if norm and is_internal(norm):
+                                    if norm and is_internal(norm) and await rp.is_allowed(norm):
                                         discovered.append(norm)
                                     if hasattr(single_result, "links") and single_result.links:
                                         for link in single_result.links.get("internal", []):
                                             href = _normalize_url(link.get("href", ""))
-                                            if href and is_internal(href):
+                                            if href and is_internal(href) and await rp.is_allowed(href):
                                                 current_urls.add(href)
                             except Exception:
                                 pass
@@ -386,7 +395,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                                 
                                 if norm:
                                     visited.add(norm)
-                                    if norm not in discovered and is_internal(norm):
+                                    if norm not in discovered and is_internal(norm) and await rp.is_allowed(norm):
                                         discovered.append(norm)
                                         if len(discovered) >= max_urls:
                                             break
@@ -395,7 +404,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                                 if hasattr(result, "links") and result.links:
                                     for link in result.links.get("internal", []):
                                         href = _normalize_url(link.get("href", ""))
-                                        if href and href not in visited and is_internal(href):
+                                        if href and href not in visited and is_internal(href) and await rp.is_allowed(href):
                                             next_level_urls.add(href)
                             except Exception:
                                 # Continue processing other results even if one fails

@@ -104,7 +104,7 @@ export function TrainingProgressCircle({
         <div style={{ textAlign: 'center', minHeight: '48px' }}>
           <div style={{ fontWeight: 600, color: '#334155', marginBottom: '4px' }}>{label}</div>
           <div style={{ fontSize: '14px', color: '#64748b' }}>
-            {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages crawled</span>}
+            {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages read</span>}
             {trainingPagesCrawled > 0 && trainingDocsCount > 0 && ' • '}
             {trainingDocsCount > 0 && <span>{trainingDocsCount} documents</span>}
             {trainingPagesCrawled === 0 && trainingDocsCount === 0 && (

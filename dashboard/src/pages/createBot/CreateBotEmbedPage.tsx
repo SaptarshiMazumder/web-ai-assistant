@@ -38,9 +38,9 @@ export default function CreateBotEmbedPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Add the bot to your website</div>
+        <div className="card-title">Add chat to your website</div>
         <div className="card-subtitle">
-          Paste this snippet before the closing <code>&lt;/body&gt;</code> tag on your site to display the chat agent.
+          If you have a web person, send them this code. They will add it to your website to show the chat.
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export default function CreateBotEmbedPage() {
       </div>
 
       <div className="muted" style={{ marginTop: '16px', fontSize: '14px' }}>
-        The widget loads its design from the bot settings. When you change design later in the bot overview, the website will show the updated look on next load.
+        If you change the design later, your website will show the new look the next time it loads.
       </div>
 
       <div className="flow-actions">

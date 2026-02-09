@@ -12,8 +12,10 @@ import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
 import CreateBotDetailsPage from './pages/createBot/CreateBotDetailsPage'
 import CreateBotEmbedPage from './pages/createBot/CreateBotEmbedPage'
+import CreateBotHostingPage from './pages/createBot/CreateBotHostingPage'
 import CreateBotLayout from './pages/createBot/CreateBotLayout'
 import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
+import CreateBotSharedUrlsPage from './pages/createBot/CreateBotSharedUrlsPage'
 import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
 import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
 import BotDesignTab from './pages/bot/BotDesignTab'
@@ -80,7 +82,9 @@ export default function App() {
           {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
           <Route path="/create-bot" element={<CreateBotLayout />}>
             <Route index element={<CreateBotDetailsPage />} />
-            <Route path="urls" element={<CreateBotUrlsPage />} />
+            <Route path="hosting" element={<CreateBotHostingPage />} />
+            <Route path="sources" element={<CreateBotUrlsPage />} />
+            <Route path="urls" element={<CreateBotSharedUrlsPage />} />
             <Route path="progress" element={<CreateBotProgressPage />} />
             <Route path="widget" element={<CreateBotWidgetPage />} />
             <Route path="embed" element={<CreateBotEmbedPage />} />

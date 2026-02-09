@@ -799,6 +799,27 @@ class PostgresBotSourceRepository(BotSourceRepository):
         finally:
             con.close()
 
+    def update_source(self, source: BotSource) -> None:
+        bid = (source.bot_id or "").strip()
+        sid = (source.source_id or "").strip()
+        if not bid or not sid:
+            return
+        con = _connect()
+        try:
+            config_json = json.dumps(source.config if isinstance(source.config, dict) else {}, ensure_ascii=False)
+            now = source.updated_at or datetime.now(timezone.utc).isoformat()
+            con.execute(
+                """
+                UPDATE bot_sources
+                SET type = %s, config = %s, display_name = %s, updated_at = %s
+                WHERE bot_id = %s AND source_id = %s
+                """,
+                (source.type, config_json, source.display_name, now, bid, sid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
     def get_source(self, bot_id: str, source_id: str) -> Optional[BotSource]:
         bid = (bot_id or "").strip()
         sid = (source_id or "").strip()

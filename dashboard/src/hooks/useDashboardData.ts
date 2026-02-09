@@ -55,6 +55,17 @@ export type SourceRecord = {
   updated_at: string
 }
 
+export type PdfSourceUploadItem = {
+  source: SourceRecord
+  job_id: string
+  status: string
+}
+
+export type PdfSourceUploadResponse = {
+  bot_id: string
+  items: PdfSourceUploadItem[]
+}
+
 /** Optional widget config for embed snippet (create-bot flow or custom embed). */
 export type EmbedSnippetConfig = {
   position?: string
@@ -327,6 +338,7 @@ type DashboardData = {
   loadJobs: (botId: string) => Promise<void>
   loadSources: (botId: string) => Promise<void>
   createSource: (botId: string, type: string, config: Record<string, unknown>, displayName?: string | null) => Promise<SourceRecord | null>
+  uploadPdfSources: (botId: string, files: File[], displayName?: string | null) => Promise<PdfSourceUploadResponse | null>
   deleteSource: (botId: string, sourceId: string) => Promise<void>
   createBot: (displayName?: string, orgIdOverride?: string | null) => Promise<BotCreateResponse | null>
   loadOrgs: () => Promise<void>
@@ -482,10 +494,11 @@ async function fetchJson<T>(
   const initHeaders = init?.headers
   const headerEntries =
     initHeaders instanceof Headers ? Object.fromEntries(initHeaders.entries()) : (initHeaders as Record<string, string> | undefined)
+  const isFormDataBody = typeof FormData !== 'undefined' && init?.body instanceof FormData
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
       ...(headerEntries || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -696,6 +709,36 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         body: JSON.stringify({ type, config, display_name: displayName || null }),
       })
       await loadSources(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function uploadPdfSources(
+    botId: string,
+    files: File[],
+    displayName?: string | null
+  ): Promise<PdfSourceUploadResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    const valid = (files || []).filter(Boolean)
+    if (!valid.length) return null
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const form = new FormData()
+      for (const f of valid) {
+        form.append('files', f, f.name)
+      }
+      if (displayName && displayName.trim()) {
+        form.append('display_name', displayName.trim())
+      }
+      const data = await fetchAuthedJson<PdfSourceUploadResponse>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/pdf`, orgOverride),
+        { method: 'POST', body: form }
+      )
+      await loadSources(botId)
+      await loadJobs(botId)
       return data
     } catch (err) {
       setError((err as Error).message)
@@ -1987,6 +2030,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     loadJobs,
     loadSources,
     createSource,
+    uploadPdfSources,
     deleteSource,
     createBot,
     loadOrgs,

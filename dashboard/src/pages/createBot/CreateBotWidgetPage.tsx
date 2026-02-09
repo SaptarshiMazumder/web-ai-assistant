@@ -8,10 +8,11 @@ import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '.
 export default function CreateBotWidgetPage() {
   const navigate = useNavigate()
   const { saveWidgetConfig } = useDashboardData()
-  const { step1, step3, step4, flow } = useCreateBotFlow()
+  const { step1, step2, step3, step4, flow } = useCreateBotFlow()
   const [saving, setSaving] = useState(false)
   const { botName, businessType: step1BusinessType } = step1
   const { botId, trainingStage, localError: trainingError } = step3
+  const { contentHosting } = step2
 
   useEffect(() => {
     if (!botId) {
@@ -69,7 +70,7 @@ export default function CreateBotWidgetPage() {
       await saveWidgetConfig(botId, {
         ...stateToWidgetConfig(value),
         businessType: step1.businessType || step4.businessType || undefined,
-        contentHosting: step1.contentHosting,
+        contentHosting: contentHosting || undefined,
       })
       navigate(flow.nextPath)
     } catch {
@@ -86,7 +87,7 @@ export default function CreateBotWidgetPage() {
             <span />
             <span />
           </span>
-          <span>Your bot is training. Design your widget in the meantime.</span>
+          <span>Your helper is getting ready. You can design the chat now.</span>
         </div>
       )}
       {trainingStage === 'complete' && !trainingError && (
@@ -95,7 +96,7 @@ export default function CreateBotWidgetPage() {
           style={{ color: step4.widgetPrimaryColor, marginBottom: 0 }}
         >
           <Check size={20} strokeWidth={2.5} aria-hidden />
-          <span>Your bot has finished learning from your website.</span>
+          <span>Your helper has learned from what you added.</span>
         </div>
       )}
       {trainingError && (

@@ -2,49 +2,50 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useLocation } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { DEFAULT_WIDGET_DESIGN_STATE, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
-import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath } from './flowConfig'
+import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath, getCreateBotSteps } from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
 type ContentHosting = 'own' | 'shared'
 
-/** Step 1: Name + Website. Change only this slice when editing the first step. */
+/** Step 1: Bot details. */
 export type CreateBotStep1Slice = {
   botName: string
   setBotName: (value: string) => void
-  websiteUrl: string
-  setWebsiteUrl: (value: string) => void
-  contentHosting: ContentHosting
-  setContentHosting: (value: ContentHosting) => void
   businessType: '' | 'hotel' | 'other'
   setBusinessType: (value: '' | 'hotel' | 'other') => void
-  discoveryMethod: string
-  setDiscoveryMethod: (value: string) => void
-  normalizedWebsiteUrl: string
-  isDiscovering: boolean
-  discoveryDurationMs: number | null
-  discoveryTimedOutMessage: string | null
   localError: string | null
   setLocalError: (value: string | null) => void
-  continueWithoutSources: () => Promise<string | null>
-  discoverUrls: () => Promise<boolean>
-  stopDiscovery: () => void
 }
 
-/** Step 2: Select URLs. Change only this slice when editing the second step. */
+export type SharedUrlRow = {
+  url: string
+  label: string
+}
+
+/** Step 2: Hosting + sources (Step 2 + Step 3 pages consume different parts of this slice). */
 export type CreateBotStep2Slice = {
+  contentHosting: ContentHosting | null
+  setContentHosting: (value: ContentHosting) => void
+  websiteUrl: string
+  setWebsiteUrl: (value: string) => void
+  discoveryMethod: string
+  setDiscoveryMethod: (value: string) => void
   discoveredUrls: string[]
   selectedUrls: string[]
   normalizedWebsiteUrl: string
-  contentHosting: ContentHosting
-  manualUrlsText: string
-  setManualUrlsText: (value: string) => void
-  manualUrls: string[]
+  sharedUrlRows: SharedUrlRow[]
+  setSharedUrlRows: (rows: SharedUrlRow[]) => void
+  sharedUrls: string[]
+  pdfFiles: File[]
+  setPdfFiles: (files: File[]) => void
   discoveryDurationMs: number | null
   discoveryTimedOutMessage: string | null
   isDiscovering: boolean
   isStartingTraining: boolean
   localError: string | null
   setLocalError: (value: string | null) => void
+  continueWithoutSources: () => Promise<string | null>
+  discoverUrls: () => Promise<boolean>
   toggleUrl: (url: string) => void
   toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
   selectAll: () => void
@@ -62,6 +63,14 @@ export type CreateBotStep3Slice = {
   trainingStageName: string
   botId: string | null
   jobId: string | null
+  pdfJobIds: string[]
+  pdfJobs: Array<{
+    job_id: string
+    stage: string
+    pages_crawled?: number
+    docs_count?: number
+    last_error?: string
+  }>
   localError: string | null
   setLocalError: (value: string | null) => void
   resetFlow: () => void
@@ -155,6 +164,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     startBackgroundDiscovery,
     saveWidgetConfig,
     getJobStatus,
+    uploadPdfSources,
     setSelectedBotId,
     orgs,
     activeOrgId,
@@ -162,13 +172,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
-  const [contentHosting, setContentHosting] = useState<ContentHosting>('own')
+  const [contentHosting, setContentHosting] = useState<ContentHosting | null>(null)
   const [businessType, setBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
-  const [manualUrlsText, setManualUrlsText] = useState('')
+  const [sharedUrlRows, setSharedUrlRows] = useState<SharedUrlRow[]>([{ url: '', label: '' }])
+  const [pdfFiles, setPdfFiles] = useState<File[]>([])
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
@@ -185,6 +196,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [trainingStageName, setTrainingStageName] = useState('')
   const [botId, setBotId] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [pdfJobIds, setPdfJobIds] = useState<string[]>([])
+  const [pdfJobStatusById, setPdfJobStatusById] = useState<Record<string, any>>({})
   const [localError, setLocalError] = useState<string | null>(null)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#6366f1')
@@ -213,13 +226,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
-    setContentHosting('own')
+    setContentHosting(null)
     setBusinessType('')
     setDiscoveryMethod('auto')
     setNormalizedWebsiteUrl('')
     setDiscoveredUrls([])
     setSelectedUrls([])
-    setManualUrlsText('')
+    setSharedUrlRows([{ url: '', label: '' }])
+    setPdfFiles([])
     setIsDiscovering(false)
     setIsStartingTraining(false)
     setDiscoveryDurationMs(null)
@@ -231,6 +245,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setTrainingStageName('')
     setBotId(null)
     setJobId(null)
+    setPdfJobIds([])
+    setPdfJobStatusById({})
     setLocalError(null)
     setWidgetPosition('bottom-right')
     setWidgetPrimaryColor('#6366f1')
@@ -377,7 +393,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
     void saveWidgetConfig(created.bot_id, {
-      contentHosting,
+      contentHosting: contentHosting || undefined,
       businessType: businessType || undefined,
     }).catch(() => {})
     setTrainingStage('complete')
@@ -390,24 +406,26 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     return created.bot_id
   }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType])
 
-  const parseManualUrls = useCallback((text: string): string[] => {
-    const raw = (text || '')
-      .split(/[\n,]/g)
-      .map((s) => s.trim())
-      .filter(Boolean)
-    const normalized: string[] = []
-    for (const entry of raw) {
-      try {
-        const u = new URL(/^https?:\/\//i.test(entry) ? entry : `https://${entry}`)
-        if (u.protocol !== 'http:' && u.protocol !== 'https:') continue
-        const clean = u.toString()
-        if (!normalized.includes(clean)) normalized.push(clean)
-      } catch {
-        // ignore invalid entries
-      }
+  const normalizeOneUrl = useCallback((entry: string): string => {
+    const raw = (entry || '').trim()
+    if (!raw) return ''
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+      return u.toString()
+    } catch {
+      return ''
     }
-    return normalized
   }, [])
+
+  const sharedUrls = useMemo(() => {
+    const out: string[] = []
+    for (const row of sharedUrlRows) {
+      const u = normalizeOneUrl(row.url)
+      if (u && !out.includes(u)) out.push(u)
+    }
+    return out
+  }, [sharedUrlRows, normalizeOneUrl])
 
   const toggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
@@ -458,7 +476,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError('Enter a bot name to continue.')
       return null
     }
-    const finalUrls = contentHosting === 'shared' ? parseManualUrls(manualUrlsText) : selectedUrls
+    if (!contentHosting) {
+      setLocalError('Choose where your content is hosted to continue.')
+      return null
+    }
+    const finalUrls = contentHosting === 'shared' ? sharedUrls : selectedUrls
+    const hasPdfs = pdfFiles.length > 0
     setIsStartingTraining(true)
     const orgOverride =
       isSuperAdmin && (!activeOrgId || activeOrgId === '__all__') && orgs.length > 0 ? orgs[0].org_id : undefined
@@ -471,16 +494,18 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
     void saveWidgetConfig(created.bot_id, {
-      contentHosting,
+      contentHosting: contentHosting || undefined,
       businessType: businessType || undefined,
     }).catch(() => {})
-    if (!finalUrls.length) {
+    if (!finalUrls.length && !hasPdfs) {
       setTrainingStage('complete')
       setTrainingProgress(100)
       setTrainingPagesCrawled(0)
       setTrainingDocsCount(0)
       setTrainingStageName('skipped')
       setJobId(null)
+      setPdfJobIds([])
+      setPdfJobStatusById({})
       setIsStartingTraining(false)
       return created.bot_id
     }
@@ -490,86 +515,157 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setTrainingPagesCrawled(0)
     setTrainingDocsCount(0)
     setTrainingStageName('crawling')
-    void queueCrawlUrls(created.bot_id, finalUrls)
-      .then((jobIdResult) => {
-        if (jobIdResult) setJobId(jobIdResult)
-        else setLocalError('Failed to start crawl job')
-      })
-      .catch(() => {})
-      .finally(() => setIsStartingTraining(false))
+    setJobId(null)
+    setPdfJobIds([])
+    setPdfJobStatusById({})
+
+    const starters: Promise<unknown>[] = []
+    if (finalUrls.length > 0) {
+      starters.push(
+        queueCrawlUrls(created.bot_id, finalUrls)
+          .then((jobIdResult) => {
+            if (jobIdResult) setJobId(jobIdResult)
+            else setLocalError('Could not start. Please try again.')
+          })
+          .catch(() => {})
+      )
+    }
+    if (hasPdfs) {
+      const startPdfUpload = uploadPdfSources(created.bot_id, pdfFiles, null)
+        .then((resp) => {
+          const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
+          setPdfJobIds(ids)
+          return ids
+        })
+        .catch(() => {
+          return []
+        })
+
+      // If this is a PDF-only training run, wait until we have job ids before navigating,
+      // otherwise the progress page can't poll and will sit at 0%.
+      if (finalUrls.length === 0) {
+        const ids = await startPdfUpload
+        if (!ids.length) {
+          setLocalError('Could not start. Please try again.')
+        }
+      } else {
+        starters.push(startPdfUpload)
+      }
+    }
+    Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     if (contentHosting === 'own') {
       void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, manualUrlsText, parseManualUrls, normalizedWebsiteUrl, discoveryMethod, businessType])
+  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, sharedUrls])
 
   useEffect(() => {
-    if (trainingStage !== 'training' || !botId || !jobId) return
+    if (trainingStage !== 'training' || !botId) return
+    if (!jobId && pdfJobIds.length === 0) return
+
+    function stagePercent(stage: string): number {
+      const st = (stage || '').toLowerCase()
+      if (st === 'queued') return 5
+      if (st === 'crawling') return 40
+      if (st === 'uploading') return 70
+      if (st === 'importing') return 85
+      if (st === 'import_submitted') return 100
+      if (st === 'done') return 100
+      if (st === 'error') return 100
+      return 15
+    }
+
     const pollStatus = async () => {
-      const status = await getJobStatus(botId, jobId)
-      if (!status) return
-      setTrainingStageName(status.stage || 'crawling')
-      setTrainingPagesCrawled(status.pages_crawled || 0)
-      setTrainingDocsCount(status.docs_count || 0)
-      if (status.stage === 'done' || status.stage === 'import_submitted') {
+      let urlStatus: any | null = null
+      if (jobId) {
+        urlStatus = await getJobStatus(botId, jobId)
+      }
+      const pdfStatuses: Record<string, any> = {}
+      for (const id of pdfJobIds) {
+        const st = await getJobStatus(botId, id)
+        if (st) pdfStatuses[id] = st
+      }
+      setPdfJobStatusById(pdfStatuses)
+
+      const urlStage = (urlStatus?.stage || '').toLowerCase()
+      const urlTerminal = urlStage === 'done' || urlStage === 'import_submitted' || urlStage === 'error' || urlStage === 'cancelled'
+
+      const pdfStages = Object.values(pdfStatuses).map((s: any) => (s?.stage || '').toLowerCase())
+      const pdfTerminal = pdfStages.length > 0 ? pdfStages.every((st) => ['done', 'import_submitted', 'error', 'cancelled'].includes(st)) : true
+
+      const pages = (urlStatus?.pages_crawled || 0) + Object.values(pdfStatuses).reduce((sum: number, s: any) => sum + (s?.pages_crawled || 0), 0)
+      const docs = (urlStatus?.docs_count || 0) + Object.values(pdfStatuses).reduce((sum: number, s: any) => sum + (s?.docs_count || 0), 0)
+      setTrainingPagesCrawled(pages)
+      setTrainingDocsCount(docs)
+
+      const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
+      setTrainingStageName(stageName)
+
+      const totalUrls = contentHosting === 'shared' ? sharedUrls.length : selectedUrls.length
+      const urlProgress =
+        jobId && urlStatus
+          ? totalUrls > 0 && urlStatus.pages_crawled
+            ? Math.min(Math.round((urlStatus.pages_crawled / totalUrls) * 100), 95)
+            : stagePercent(urlStatus.stage || 'queued')
+          : null
+
+      const pdfProgresses = Object.values(pdfStatuses).map((s: any) => stagePercent(s?.stage || 'queued'))
+      const parts: number[] = []
+      if (typeof urlProgress === 'number') parts.push(urlProgress)
+      parts.push(...pdfProgresses)
+      const combined = parts.length ? Math.min(Math.round(parts.reduce((a, b) => a + b, 0) / parts.length), 100) : 0
+      setTrainingProgress(combined)
+
+      if ((urlTerminal || !jobId) && pdfTerminal) {
         setTrainingStage('complete')
         setTrainingProgress(100)
-      } else if (status.stage === 'error') {
-        setTrainingStage('complete')
-        setLocalError(status.last_error || 'Training failed')
-      } else {
-        const totalUrls = contentHosting === 'shared' ? parseManualUrls(manualUrlsText).length : selectedUrls.length
-        if (totalUrls > 0 && status.pages_crawled) {
-          const progress = Math.min(Math.round((status.pages_crawled / totalUrls) * 100), 95)
-          setTrainingProgress(progress)
-        }
+        if (urlStage === 'error') setLocalError(urlStatus?.last_error || 'Training failed')
+        const pdfError = Object.values(pdfStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
+        if (pdfError) setLocalError((pdfError as any).last_error || 'PDF processing failed')
       }
     }
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, getJobStatus, selectedUrls.length, contentHosting, manualUrlsText, parseManualUrls])
+  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, selectedUrls.length, contentHosting, sharedUrls.length])
 
-  const nextPath = getCreateBotNextPath(location.pathname)
-  const prevPath = getCreateBotPrevPath(location.pathname)
+  const steps = getCreateBotSteps(contentHosting)
+  const nextPath = getCreateBotNextPath(location.pathname, steps)
+  const prevPath = getCreateBotPrevPath(location.pathname, steps)
 
   const value = useMemo(
     () => ({
       step1: {
         botName,
         setBotName,
-        websiteUrl,
-        setWebsiteUrl,
-        contentHosting,
-        setContentHosting,
         businessType,
         setBusinessType,
-        discoveryMethod,
-        setDiscoveryMethod,
-        normalizedWebsiteUrl,
-        isDiscovering,
-        discoveryDurationMs,
-        discoveryTimedOutMessage,
         localError,
         setLocalError,
-        continueWithoutSources,
-        discoverUrls,
-        stopDiscovery,
       },
       step2: {
+        contentHosting,
+        setContentHosting,
+        websiteUrl,
+        setWebsiteUrl,
+        discoveryMethod,
+        setDiscoveryMethod,
         discoveredUrls,
         selectedUrls,
         normalizedWebsiteUrl,
-        contentHosting,
-        manualUrlsText,
-        setManualUrlsText,
-        manualUrls: parseManualUrls(manualUrlsText),
+        sharedUrlRows,
+        setSharedUrlRows,
+        sharedUrls,
+        pdfFiles,
+        setPdfFiles,
         discoveryDurationMs,
         discoveryTimedOutMessage,
         isDiscovering,
         isStartingTraining,
         localError,
         setLocalError,
+        continueWithoutSources,
+        discoverUrls,
         toggleUrl,
         toggleCategory,
         selectAll,
@@ -585,6 +681,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         trainingStageName,
         botId,
         jobId,
+        pdfJobIds,
+        pdfJobs: pdfJobIds.map((id) => ({ job_id: id, ...(pdfJobStatusById[id] || {}) })),
         localError,
         setLocalError,
         resetFlow,
@@ -644,18 +742,27 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       botName,
+      setBotName,
       websiteUrl,
+      setWebsiteUrl,
       contentHosting,
+      setContentHosting,
       businessType,
+      setBusinessType,
       discoveryMethod,
+      setDiscoveryMethod,
       normalizedWebsiteUrl,
       discoveredUrls,
       selectedUrls,
-      manualUrlsText,
-      parseManualUrls,
+      sharedUrlRows,
+      setSharedUrlRows,
+      sharedUrls,
+      pdfFiles,
+      setPdfFiles,
       isDiscovering,
       isStartingTraining,
       discoveryDurationMs,
+      discoveryTimedOutMessage,
       trainingStage,
       trainingProgress,
       trainingPagesCrawled,
@@ -663,28 +770,53 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       trainingStageName,
       botId,
       jobId,
+      pdfJobIds,
+      pdfJobStatusById,
       localError,
       widgetPosition,
+      setWidgetPosition,
       widgetPrimaryColor,
+      setWidgetPrimaryColor,
       widgetBusinessType,
+      setWidgetBusinessType,
       widgetTitle,
+      setWidgetTitle,
       widgetSize,
+      setWidgetSize,
       welcomeMessage,
+      setWelcomeMessage,
       placeholder,
+      setPlaceholder,
       footerMessage,
+      setFooterMessage,
       theme,
+      setTheme,
       textColor,
+      setTextColor,
       launcherIconUrl,
+      setLauncherIconUrl,
       launcherText,
+      setLauncherText,
       headerIconUrl,
+      setHeaderIconUrl,
       shareIconUrl,
+      setShareIconUrl,
       maxHeight,
+      setMaxHeight,
       fontSize,
+      setFontSize,
       headerSize,
+      setHeaderSize,
       autoPopupWelcome,
+      setAutoPopupWelcome,
       autoScrollNewMessages,
+      setAutoScrollNewMessages,
       displaySourcesInMessages,
+      setDisplaySourcesInMessages,
       sourcesLabel,
+      setSourcesLabel,
+      suggestedMessages,
+      setSuggestedMessages,
       continueWithoutSources,
       discoverUrls,
       stopDiscovery,

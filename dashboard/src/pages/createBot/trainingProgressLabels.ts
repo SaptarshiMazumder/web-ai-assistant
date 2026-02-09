@@ -5,13 +5,13 @@
  */
 
 export const TRAINING_STAGE_LABELS: Record<string, string> = {
-  queued: 'Queued',
-  crawling: 'Crawling pages',
-  uploading: 'Uploading to storage',
-  importing: 'Importing to knowledge base',
-  import_submitted: 'Import submitted',
-  skipped: 'Skipped (no sources)',
-  done: 'Complete',
+  queued: 'Starting',
+  crawling: 'Reading your pages',
+  uploading: 'Saving what we found',
+  importing: 'Getting your helper ready',
+  import_submitted: 'Almost done',
+  skipped: 'Skipped (nothing added)',
+  done: 'Done',
   error: 'Error',
 }
 
@@ -21,7 +21,7 @@ export function getTrainingStageLabel(
   trainingStageName: string
 ): string {
   if (!jobId && trainingStage === 'training') {
-    return 'Starting crawl…'
+    return 'Getting started…'
   }
   return TRAINING_STAGE_LABELS[trainingStageName] || trainingStageName || 'Processing'
 }

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 
 from api.deps.auth import get_current_user, require_org_admin, require_super_admin
@@ -32,6 +32,8 @@ from api.schemas import (
     BotSourceCreateRequest,
     BotSourceListResponse,
     BotSourceResponse,
+    PdfSourceUploadResponse,
+    PdfSourceUploadItem,
     BotSummary,
     Citation,
     ConversationDetailResponse,
@@ -2153,6 +2155,65 @@ async def v1_org_create_source(
         created_at=source.created_at,
         updated_at=source.updated_at,
     )
+
+
+@router.post("/v1/org/bots/{bot_id}/sources/pdf", response_model=PdfSourceUploadResponse)
+async def v1_org_upload_pdf_sources(
+    bot_id: str,
+    files: List[UploadFile] = File(...),
+    display_name: Optional[str] = Form(default=None),
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Upload one or more PDFs as sources and start background ingestion immediately.
+    Each file creates a BotSource(type='pdf') and a corresponding IndexJob.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    if not files:
+        raise HTTPException(status_code=400, detail="Missing files")
+
+    try:
+        items: List[PdfSourceUploadItem] = []
+        for f in files:
+            filename = (getattr(f, "filename", None) or "").strip() or "document.pdf"
+            content_type = (getattr(f, "content_type", None) or "").strip().lower()
+            if content_type and content_type not in ("application/pdf", "application/x-pdf"):
+                raise HTTPException(status_code=400, detail=f"Invalid content type for {filename}: {content_type}")
+            data = await f.read()
+            if not data:
+                raise HTTPException(status_code=400, detail=f"Empty file: {filename}")
+            source, job_id = await indexing_service().create_pdf_source_and_start_ingest(
+                bot_id=bot_id,
+                filename=filename,
+                pdf_bytes=data,
+                display_name=display_name,
+            )
+            items.append(
+                PdfSourceUploadItem(
+                    source=BotSourceResponse(
+                        source_id=source.source_id,
+                        bot_id=source.bot_id,
+                        type=source.type,
+                        config=source.config,
+                        display_name=source.display_name,
+                        created_at=source.created_at,
+                        updated_at=source.updated_at,
+                    ),
+                    job_id=job_id,
+                    status="queued",
+                )
+            )
+        return PdfSourceUploadResponse(bot_id=bot_id, items=items)
+    except HTTPException:
+        raise
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/v1/org/bots/{bot_id}/sources/{source_id}", response_model=BotSourceResponse)

@@ -2010,9 +2010,14 @@ a.primary {
 }
 
 .flow-shell {
+  /* Body is overflow:hidden globally, so the create-bot wizard must provide its own scroll area. */
   min-height: 100vh;
+  height: 100vh;
   padding: 2.5rem;
   background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .flow-header {
@@ -2021,6 +2026,7 @@ a.primary {
   align-items: flex-start;
   gap: 1.5rem;
   margin-bottom: 2rem;
+  flex-shrink: 0;
 }
 
 .flow-eyebrow {
@@ -2049,10 +2055,15 @@ a.primary {
 }
 
 .flow-grid {
+  /* Allow children to be scroll containers inside a fixed-height wizard shell. */
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 2rem;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .flow-steps {
@@ -2063,6 +2074,8 @@ a.primary {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-height: 0;
+  overflow: auto;
 }
 
 .flow-steps-list {
@@ -2119,7 +2132,8 @@ a.primary {
   border: 1px solid #e2e8f0;
   border-radius: 20px;
   padding: 2rem;
-  min-height: 420px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .flow-panel-body {

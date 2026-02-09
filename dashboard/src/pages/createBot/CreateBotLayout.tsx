@@ -2,14 +2,16 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
-import { CREATE_BOT_STEPS, getCreateBotStepIndex } from './flowConfig'
+import { getCreateBotStepIndex, getCreateBotSteps } from './flowConfig'
 import { TrainingProgressCircle } from './TrainingProgressCircle'
 
 function FlowStepsWithProgress() {
   const location = useLocation()
-  const activeStep = getCreateBotStepIndex(location.pathname)
-  const { step3 } = useCreateBotFlow()
-  const showProgress = activeStep === 3 || activeStep === 4 // step 4 (Design widget) or step 5 (Add script)
+  const { step2, step3 } = useCreateBotFlow()
+  const steps = getCreateBotSteps(step2.contentHosting)
+  const activeStep = getCreateBotStepIndex(location.pathname, steps)
+  const activeId = steps[activeStep]?.id
+  const showProgress = activeId === 'widget' || activeId === 'embed'
   const {
     trainingStage,
     trainingProgress,
@@ -22,7 +24,7 @@ function FlowStepsWithProgress() {
   return (
     <aside className="flow-steps">
       <div className="flow-steps-list">
-        {CREATE_BOT_STEPS.map((step, index) => (
+        {steps.map((step, index) => (
           <div key={step.id} className={`flow-step ${index === activeStep ? 'active' : ''}`}>
             <div className="flow-step-number">{index + 1}</div>
             <div>
@@ -57,8 +59,8 @@ export default function CreateBotLayout() {
       <div className="flow-shell">
         <header className="flow-header">
           <div>
-            <div className="flow-eyebrow">Create bot</div>
-            <div className="flow-title">Set up a new chatbot agent</div>
+            <div className="flow-eyebrow">Set up</div>
+            <div className="flow-title">Create your AI helper</div>
           </div>
           <button type="button" className="ghost flow-back flow-close" onClick={() => navigate('/bots')} aria-label="Close">
             <X size={20} strokeWidth={2} aria-hidden />

@@ -239,21 +239,21 @@ async def _crawl_sitemap_single(sitemap_url: str, browser_config, run_config) ->
     return None
 
 
-def _fetch_sitemap_urls(sitemap_url: str, depth: int = 0) -> Tuple[List[str], bool]:
+def _fetch_sitemap_urls(sitemap_url: str, depth: int = 0) -> Tuple[List[str], bool, bool]:
     """
     Fetch sitemap URLs using requests (fast, but may fail on protected sites).
-    Returns (urls, is_valid_xml) tuple. Never fails - returns empty on error.
+    Returns (urls, is_valid_xml, is_protected) tuple. Never fails - returns empty on error.
     """
     if depth > _MAX_SITEMAP_DEPTH:
-        return [], False
+        return [], False, False
     
     return safe_execute(
         lambda: _fetch_sitemap_urls_impl(sitemap_url, depth),
-        ([], False),
+        ([], False, False),
     )
 
 
-def _fetch_sitemap_urls_impl(sitemap_url: str, depth: int = 0) -> Tuple[List[str], bool]:
+def _fetch_sitemap_urls_impl(sitemap_url: str, depth: int = 0) -> Tuple[List[str], bool, bool]:
     """Internal implementation of sitemap fetching."""
     try:
         resp = requests.get(
@@ -264,23 +264,23 @@ def _fetch_sitemap_urls_impl(sitemap_url: str, depth: int = 0) -> Tuple[List[str
         )
         if resp.status_code >= 400:
             logger.warning(f"Sitemap {sitemap_url} returned status {resp.status_code}")
-            return [], False
+            return [], False, False
         
         # Check for bot detection/CAPTCHA
         if is_bot_detected(resp.text) or is_captcha_page(resp.text):
             logger.warning(f"Sitemap {sitemap_url} appears to be protected (CAPTCHA/bot detection)")
-            return [], False
+            return [], False, True
         
         # Check if response is valid XML (not HTML/CAPTCHA)
         is_valid = _is_valid_xml(resp.text)
         if not is_valid:
             logger.warning(f"Sitemap {sitemap_url} returned invalid XML (might be HTML/CAPTCHA)")
-            return [], False
+            return [], False, False
         
         urls = _parse_sitemap_urls(resp.text)
         if not urls:
             logger.warning(f"Sitemap {sitemap_url} parsed successfully but returned no URLs")
-            return [], True  # Valid XML but empty
+            return [], True, False  # Valid XML but empty
         
         logger.debug(f"Sitemap {sitemap_url} parsed successfully: {len(urls)} URLs found")
         
@@ -288,27 +288,40 @@ def _fetch_sitemap_urls_impl(sitemap_url: str, depth: int = 0) -> Tuple[List[str
         if any(url.endswith(".xml") for url in urls):
             logger.debug(f"Sitemap {sitemap_url} is a sitemap index with {len(urls)} child sitemaps")
             all_urls = []
+            stopped_due_to_protection = False
             for child in sorted(urls):
-                child_urls, _ = _fetch_sitemap_urls(child, depth + 1)
+                child_urls, _child_valid, child_protected = _fetch_sitemap_urls(child, depth + 1)
+                if child_protected:
+                    # Fail-fast: avoid log spam on bot-protected sitemap indexes.
+                    logger.warning(
+                        f"Sitemap index {sitemap_url} child sitemap appears protected; stopping further sitemap fetches"
+                    )
+                    stopped_due_to_protection = True
+                    break
                 all_urls.extend(child_urls)
             logger.info(f"Sitemap index {sitemap_url} returned {len(all_urls)} total URLs from {len(urls)} children")
-            return all_urls, True
-        return urls, True
+            return all_urls, True, stopped_due_to_protection
+        return urls, True, False
     except Exception as e:
         logger.error(f"Exception fetching sitemap {sitemap_url}: {type(e).__name__}: {str(e)[:200]}")
-        return [], False
+        return [], False, False
 
 
-async def _fetch_sitemap_urls_async(sitemap_url: str, depth: int = 0) -> List[str]:
-    """Fetch sitemap URLs with fallback to crawl4ai if requests fails or gets CAPTCHA. Never fails completely."""
+async def _fetch_sitemap_urls_async_with_meta(sitemap_url: str, depth: int = 0) -> Tuple[List[str], bool]:
+    """
+    Fetch sitemap URLs with fallback to crawl4ai if requests fails.
+    Returns (urls, is_protected) so callers can stop early and avoid log spam on protected sites.
+    """
     if depth > _MAX_SITEMAP_DEPTH:
         logger.warning(f"Sitemap depth limit reached for {sitemap_url}")
-        return []
+        return [], False
     
     urls: List[str] = []
+    is_protected = False
     
     # Try requests first (fast)
-    urls, is_valid_xml = _fetch_sitemap_urls(sitemap_url, depth)
+    urls, is_valid_xml, protected_via_requests = _fetch_sitemap_urls(sitemap_url, depth)
+    is_protected = bool(protected_via_requests)
     
     # Log what we got
     if urls:
@@ -317,7 +330,7 @@ async def _fetch_sitemap_urls_async(sitemap_url: str, depth: int = 0) -> List[st
         logger.debug(f"Invalid XML from {sitemap_url}, trying crawl4ai fallback")
     
     # If requests failed, returned invalid content (HTML/CAPTCHA), or got empty result, try crawl4ai
-    if not urls or not is_valid_xml:
+    if (not urls or not is_valid_xml) and not is_protected:
         logger.debug(f"Trying crawl4ai fallback for {sitemap_url}")
         xml_content = await _fetch_sitemap_with_crawl4ai(sitemap_url)
         if xml_content:
@@ -338,19 +351,32 @@ async def _fetch_sitemap_urls_async(sitemap_url: str, depth: int = 0) -> List[st
     if any(url.endswith(".xml") for url in urls):
         logger.debug(f"{sitemap_url} is a sitemap index with {len(urls)} child sitemaps")
         all_urls = []
+        stopped_due_to_protection = False
         for child in sorted(urls):
-            child_urls = await safe_execute_async(
-                lambda: _fetch_sitemap_urls_async(child, depth + 1),
-                [],
+            child_urls, child_protected = await safe_execute_async(
+                lambda: _fetch_sitemap_urls_async_with_meta(child, depth + 1),
+                ([], False),
             )
+            if child_protected:
+                logger.warning(
+                    f"Sitemap index {sitemap_url} child sitemap appears protected; stopping further sitemap fetches"
+                )
+                stopped_due_to_protection = True
+                break
             if child_urls:
                 logger.debug(f"Child sitemap {child} returned {len(child_urls)} URLs")
                 all_urls.extend(child_urls)
             else:
-                logger.warning(f"Child sitemap {child} returned no URLs")
+                logger.debug(f"Child sitemap {child} returned no URLs")
         logger.info(f"Sitemap index {sitemap_url} returned {len(all_urls)} total URLs from {len(urls)} child sitemaps")
-        return all_urls
+        return all_urls, stopped_due_to_protection
     
+    return urls, is_protected
+
+
+async def _fetch_sitemap_urls_async(sitemap_url: str, depth: int = 0) -> List[str]:
+    """Fetch sitemap URLs (legacy wrapper)."""
+    urls, _protected = await _fetch_sitemap_urls_async_with_meta(sitemap_url, depth)
     return urls
 
 
@@ -358,9 +384,9 @@ def _dedupe_and_filter(
     urls: List[str],
     root_url: str,
     limit: int,
-    robots_parser: Optional[RobotFileParser] = None,  # Ignored - kept for API compatibility
+    robots_parser: Optional[RobotFileParser] = None,
 ) -> List[str]:
-    """Deduplicate and filter URLs by domain and path scope (only URLs under root path). No robots.txt filtering."""
+    """Deduplicate and filter URLs by domain/path scope and robots.txt (if parser provided)."""
     root_url = _ensure_url(root_url)
     seen: Set[str] = set()
     filtered = []
@@ -370,6 +396,12 @@ def _dedupe_and_filter(
             continue
         if not _is_url_under_root_path(norm, root_url):
             continue
+        if robots_parser is not None:
+            try:
+                if not robots_parser.can_fetch("*", norm):
+                    continue
+            except Exception:
+                pass
         seen.add(norm)
         filtered.append(norm)
         if len(filtered) >= limit:
@@ -400,15 +432,18 @@ async def discover_urls_from_sitemap(root_url: str) -> List[str]:
         # Process ALL sitemaps - don't stop early, collect all URLs
         for sitemap_url in sitemap_urls:
             logger.debug(f"Fetching sitemap: {sitemap_url}")
-            fetched_urls = await safe_execute_async(
-                lambda: _fetch_sitemap_urls_async(sitemap_url),
-                [],
+            fetched_urls, protected = await safe_execute_async(
+                lambda: _fetch_sitemap_urls_async_with_meta(sitemap_url),
+                ([], False),
             )
             if fetched_urls:
                 logger.info(f"Found {len(fetched_urls)} URLs from sitemap {sitemap_url}")
                 sitemap_candidates.extend(fetched_urls)
             else:
                 logger.warning(f"No URLs found from sitemap {sitemap_url} - it may be empty, protected, or invalid")
+            if protected:
+                logger.warning(f"Sitemap discovery appears protected for {root_url}; stopping further sitemap attempts")
+                break
             # Don't break early - process all sitemaps even if we hit the limit
             # We'll limit after combining all results
 
@@ -468,9 +503,14 @@ async def discover_urls(root_url: str) -> List[str]:
 
 
 def create_robots_filter(root_url: str) -> Callable[[str], bool]:
-    """Create a filter function that always allows URLs (robots.txt filtering disabled)."""
-    # Always return True - we don't care about robots.txt rules
+    """
+    Create a filter callable using robots.txt.
+
+    Note: if robots.txt is missing/unreadable, we allow all (current behavior).
+    """
+    rp = _get_robots_parser(root_url)
+
     def filter_url(url: str) -> bool:
-        return True
-    
+        return _is_url_allowed_by_robots(url, rp, user_agent="WebAIbot")
+
     return filter_url

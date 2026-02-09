@@ -25,6 +25,7 @@ from domain.repositories import (
 from infrastructure.celery_app import celery_app
 from infrastructure.tasks.crawl_tasks import crawl_job_task
 from infrastructure.tasks.single_page_crawl_tasks import single_page_crawl_job
+from infrastructure.tasks.pdf_source_tasks import pdf_source_ingest_job
 from infrastructure.services.indexing_service import (
     _bot_base_prefix,
     _display_name_from_url,
@@ -32,6 +33,7 @@ from infrastructure.services.indexing_service import (
     _parse_bucket_and_prefix,
     _validate_urls_for_bot,
 )
+from infrastructure.repositories.gcs_source_file_repository import GcsSourceFileRepository
 
 
 class IndexingService:
@@ -246,6 +248,89 @@ class IndexingService:
             raise RuntimeError(f"Failed to queue crawl task: {str(e)}")
 
         return {"status": "started", "job_id": job_id, "hostname": host, "task_id": task_id}
+
+    async def create_pdf_source_and_start_ingest(
+        self,
+        *,
+        bot_id: str,
+        filename: str,
+        pdf_bytes: bytes,
+        display_name: Optional[str] = None,
+    ) -> Tuple[BotSource, str]:
+        """
+        Create a PDF source and immediately enqueue a background ingestion job.
+        Returns (source, job_id).
+        """
+        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
+            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not bot_id:
+            raise ValueError("Missing bot_id")
+        if not pdf_bytes:
+            raise ValueError("Empty PDF")
+
+        corpus = self._rag_repo.ensure_corpus(bot_id)
+        bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+        base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        # Create source record first.
+        source = self.create_source(
+            bot_id,
+            "pdf",
+            {
+                "filename": (filename or "").strip() or "document.pdf",
+            },
+            display_name=display_name or (filename or "").strip() or None,
+        )
+
+        # Upload raw PDF to GCS and persist location on the source config.
+        file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix)
+        uploaded = file_repo.upload_pdf(bot_id=bot_id, source_id=source.source_id, filename=filename, data=pdf_bytes)
+        source.config = dict(source.config or {})
+        source.config.update(
+            {
+                "filename": uploaded.filename,
+                "gcs_pdf_uri": uploaded.gcs_uri,
+                "gcs_pdf_blob": uploaded.blob_name,
+                "bytes": uploaded.bytes,
+            }
+        )
+        source.updated_at = datetime.now(timezone.utc).isoformat()
+        self._source_repo.update_source(source)
+
+        # Create an index job linked to the source.
+        job_id = uuid.uuid4().hex
+        job_url = f"https://pdf.local/{bot_id}/{source.source_id}/{uploaded.filename}"
+        job = IndexJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            url=job_url,
+            hostname="pdf.local",
+            stage="queued",
+            pages_crawled=0,
+            docs_count=0,
+            last_crawled_url="",
+            last_depth=-1,
+            gcs_prefix="",
+            last_error="",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source.source_id,
+        )
+        self._job_repo.create_job(job)
+
+        try:
+            task = pdf_source_ingest_job.delay(job_id=job_id, bot_id=bot_id, source_id=source.source_id, bucket_name=bucket_name, base_prefix=base_prefix, corpus_resource=corpus)
+            task_id = task.id if task else None
+            if task_id:
+                job.celery_task_id = task_id
+                self._job_repo.update_job(job)
+        except Exception as e:
+            job.stage = "error"
+            job.last_error = f"Failed to queue PDF task: {str(e)[:200]}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue PDF ingestion task: {str(e)}")
+
+        return source, job_id
 
     async def start_indexing_batch_for_bot(
         self,

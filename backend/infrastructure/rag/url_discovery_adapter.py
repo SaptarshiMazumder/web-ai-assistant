@@ -13,6 +13,7 @@ from infrastructure.rag.crawl_service import _is_url_under_root_path, discover_i
 from infrastructure.rag.http_discovery import discover_internal_urls_http, discover_internal_urls_http_stream
 from infrastructure.rag.url_discovery_service import discover_urls_auto, discover_urls_from_sitemap
 from infrastructure.rag.urlfinder_discovery import discover_urls_urlfinder
+from infrastructure.rag.robots_policy import robots_policy
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,12 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
         method = (method or "auto").lower()
         root_url = _ensure_url(root_url or "")
         if method == "sitemap":
-            return await discover_urls_from_sitemap(root_url)
-        return await discover_internal_urls_http(
+            urls = await discover_urls_from_sitemap(root_url)
+        else:
+            urls = await discover_internal_urls_http(
             root_url, max_depth=10, max_concurrent=50, max_urls=2000
         )
+        return await robots_policy().filter_urls(urls)
 
     def discover_stream(
         self,
@@ -67,15 +70,20 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
     ) -> AsyncIterator[Dict[str, Any]]:
         method = (method or "auto").lower()
         root_url = _ensure_url(root_url or "")
+        rp = robots_policy()
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
             if not urls:
                 yield {"type": "error", "message": "No URLs found from sitemap."}
                 yield {"type": "done", "urls": [], "method_used": "sitemap"}
                 return
-            for i, u in enumerate(urls, start=1):
+            allowed: List[str] = []
+            for u in urls:
+                if await rp.is_allowed(u):
+                    allowed.append(u)
+            for i, u in enumerate(allowed, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
-            yield {"type": "done", "urls": urls, "method_used": "sitemap"}
+            yield {"type": "done", "urls": allowed, "method_used": "sitemap"}
             return
         async for evt in discover_internal_urls_http_stream(
             root_url,
@@ -84,6 +92,18 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
             max_urls=max_urls,
             max_duration_sec=max_duration_sec,
         ):
+            if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
+                u = evt["url"]
+                if await rp.is_allowed(u):
+                    yield evt
+                continue
+            if evt.get("type") == "done":
+                urls = list(evt.get("urls") or [])
+                allowed = await rp.filter_urls(urls)
+                evt = dict(evt)
+                evt["urls"] = allowed
+                yield evt
+                continue
             yield evt
 
 
@@ -93,8 +113,10 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
     async def discover(self, root_url: str, method: str = "auto") -> List[str]:
         method = (method or "auto").lower()
         if method == "sitemap":
-            return await discover_urls_from_sitemap(root_url)
-        return await discover_urls_auto(root_url)
+            urls = await discover_urls_from_sitemap(root_url)
+        else:
+            urls = await discover_urls_auto(root_url)
+        return await robots_policy().filter_urls(urls)
 
     def discover_stream(
         self,
@@ -127,15 +149,20 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         method = (method or "auto").lower()
+        rp = robots_policy()
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
             if not urls:
                 yield {"type": "error", "message": "No URLs found from sitemap."}
                 yield {"type": "done", "urls": [], "method_used": "sitemap"}
                 return
-            for i, u in enumerate(urls, start=1):
+            allowed: List[str] = []
+            for u in urls:
+                if await rp.is_allowed(u):
+                    allowed.append(u)
+            for i, u in enumerate(allowed, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
-            yield {"type": "done", "urls": urls, "method_used": "sitemap"}
+            yield {"type": "done", "urls": allowed, "method_used": "sitemap"}
             return
         async for evt in discover_internal_urls_stream(
             root_url,
@@ -144,6 +171,18 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
             max_urls=max_urls,
             max_duration_sec=max_duration_sec,
         ):
+            if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
+                u = evt["url"]
+                if await rp.is_allowed(u):
+                    yield evt
+                continue
+            if evt.get("type") == "done":
+                urls = list(evt.get("urls") or [])
+                allowed = await rp.filter_urls(urls)
+                evt = dict(evt)
+                evt["urls"] = allowed
+                yield evt
+                continue
             yield evt
 
 
@@ -157,7 +196,8 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         method = (method or "auto").lower()
         root_url = _ensure_url(root_url or "")
         if method == "sitemap":
-            return await discover_urls_from_sitemap(root_url)
+            urls = await discover_urls_from_sitemap(root_url)
+            return await robots_policy().filter_urls(urls)
         urls: List[str] = []
         async for evt in self._discover_stream_impl(
             root_url,
@@ -168,10 +208,11 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
             max_duration_sec=60,
         ):
             if evt.get("type") == "done":
-                return list(evt.get("urls") or [])
+                final = list(evt.get("urls") or [])
+                return await robots_policy().filter_urls(final)
             if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
                 urls.append(evt["url"])
-        return urls
+        return await robots_policy().filter_urls(urls)
 
     def discover_stream(
         self,
