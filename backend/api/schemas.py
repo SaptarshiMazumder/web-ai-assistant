@@ -586,3 +586,29 @@ class LineChannelResponse(BaseModel):
 class LineChannelDeleteResponse(BaseModel):
     ok: bool = True
     bot_id: str
+
+
+# ========== Instagram Integration ==========
+
+class InstagramChannelUpsertRequest(BaseModel):
+    ig_page_id: str
+    app_secret: Optional[str] = None  # blank = keep existing on update
+    page_access_token: Optional[str] = None  # blank = keep existing on update
+    is_active: bool = True
+
+
+class InstagramChannelResponse(BaseModel):
+    channel_id: str
+    bot_id: str
+    org_id: str
+    ig_page_id: str
+    verify_token: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+    # Secrets are NOT returned
+
+
+class InstagramChannelDeleteResponse(BaseModel):
+    ok: bool = True
+    bot_id: str

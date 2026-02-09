@@ -1762,7 +1762,7 @@ async def v1_org_update_escalation_status(
     if not updated:
         raise HTTPException(status_code=404, detail="Escalation not found")
 
-    # When resolving, de-escalate any LINE user session and notify user
+    # When resolving, de-escalate any LINE / Instagram user session and notify user
     if status == "resolved":
         try:
             from infrastructure.db.repositories import PostgresLineUserSessionRepository, PostgresLineChannelRepository
@@ -1790,6 +1790,29 @@ async def v1_org_update_escalation_status(
                                 mapping.line_user_id,
                                 ["Your conversation has been resolved. You're now back with our AI assistant. How can I help you?"],
                                 lc.line_channel_access_token,
+                            )
+                        )
+        except Exception:
+            pass  # Best-effort; don't block the status update
+
+        # De-escalate Instagram session too
+        try:
+            from infrastructure.db.repositories import PostgresInstagramUserSessionRepository, PostgresInstagramChannelRepository
+            from infrastructure.clients.instagram_client import send_message as ig_send
+
+            if session_id:
+                ig_session_repo = PostgresInstagramUserSessionRepository()
+                ig_mapping = ig_session_repo.de_escalate_by_session_id(session_id)
+                if ig_mapping:
+                    ig_channel_repo = PostgresInstagramChannelRepository()
+                    ig_ch = ig_channel_repo.get_by_bot_id(bot_id)
+                    if ig_ch and ig_ch.is_active:
+                        import asyncio
+                        asyncio.ensure_future(
+                            ig_send(
+                                ig_mapping.ig_user_id,
+                                "Your conversation has been resolved. You're now back with our AI assistant. How can I help you?",
+                                ig_ch.page_access_token,
                             )
                         )
         except Exception:

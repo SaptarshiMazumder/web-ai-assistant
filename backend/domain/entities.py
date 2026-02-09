@@ -237,3 +237,27 @@ class LineUserSession:
     is_escalated: bool
     created_at: str
     updated_at: str
+
+
+@dataclass
+class InstagramChannel:
+    channel_id: str
+    bot_id: str
+    org_id: str
+    ig_page_id: str
+    app_secret: str
+    page_access_token: str
+    verify_token: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+@dataclass
+class InstagramUserSession:
+    ig_user_id: str
+    bot_id: str
+    session_id: str
+    is_escalated: bool
+    created_at: str
+    updated_at: str
