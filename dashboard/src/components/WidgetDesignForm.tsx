@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { WidgetPreview } from '../pages/createBot/WidgetPreview'
+import { FlowIcon } from './FlowIcon'
 import { SuggestedMessagesEditor } from './SuggestedMessagesEditor'
 
 const FOOTER_MAX_LENGTH = 200
@@ -39,7 +40,7 @@ export type SuggestedMessageConfig = {
 
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   widgetPosition: 'bottom-right',
-  widgetPrimaryColor: '#6366f1',
+  widgetPrimaryColor: '#e4587a',
   businessType: '',
   widgetTitle: 'Chat',
   widgetSize: 'medium',
@@ -251,7 +252,7 @@ export function WidgetDesignForm({
                       type="text"
                       value={widgetPrimaryColor}
                       onChange={(e) => update('widgetPrimaryColor', e.target.value)}
-                      placeholder="#6366f1"
+                      placeholder="#e4587a"
                       className="design-form-input"
                       style={{ width: '180px' }}
                     />
@@ -385,7 +386,7 @@ export function WidgetDesignForm({
                           </button>
                           {launcherIconUrl && (
                             <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('launcherIconUrl', ''); }} aria-label="Remove launcher icon">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                              <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
                         </div>
@@ -406,7 +407,7 @@ export function WidgetDesignForm({
                           </button>
                           {headerIconUrl && (
                             <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('headerIconUrl', ''); }} aria-label="Remove header icon">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                              <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
                         </div>
@@ -421,7 +422,7 @@ export function WidgetDesignForm({
                           </button>
                           {shareIconUrl && (
                             <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('shareIconUrl', ''); }} aria-label="Remove share icon">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                              <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
                         </div>

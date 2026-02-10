@@ -51,8 +51,8 @@ export function TrainingProgressCircle({
           >
             <defs>
               <linearGradient id="training-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#818cf8" />
-                <stop offset="100%" stopColor="#a78bfa" />
+                <stop offset="0%" stopColor="#f6b46d" />
+                <stop offset="100%" stopColor="#e66397" />
               </linearGradient>
             </defs>
             <circle
@@ -75,7 +75,7 @@ export function TrainingProgressCircle({
               strokeDashoffset={offset}
               style={{
                 transition: 'stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-                filter: 'drop-shadow(0 0 8px rgba(129, 140, 248, 0.4))',
+                filter: 'drop-shadow(0 0 8px rgba(228, 88, 122, 0.4))',
               }}
             />
           </svg>
@@ -94,20 +94,20 @@ export function TrainingProgressCircle({
               style={{
                 fontSize: '26px',
                 fontWeight: 700,
-                color: '#e2e8f0',
+                color: '#ffffff',
                 lineHeight: 1,
               }}
             >
               {progress}%
             </span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               complete
             </span>
           </div>
         </div>
         <div style={{ textAlign: 'center', minHeight: '40px' }}>
-          <div style={{ fontWeight: 600, color: '#e2e8f0', marginBottom: '3px', fontSize: '0.85rem' }}>{label}</div>
-          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+          <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '3px', fontSize: '0.85rem' }}>{label}</div>
+          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
             {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages</span>}
             {trainingPagesCrawled > 0 && trainingDocsCount > 0 && <span style={{ margin: '0 4px' }}>&middot;</span>}
             {trainingDocsCount > 0 && <span>{trainingDocsCount} docs</span>}

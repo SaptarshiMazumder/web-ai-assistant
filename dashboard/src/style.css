@@ -2045,6 +2045,13 @@ a.primary {
 
 /* Google Sans is loaded via <link> in index.html from Google Fonts API */
 
+.flow-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
 /* --- Custom properties --------------------------------------------------- */
 .flow-shell {
   --flow-bg: #fffdfb;
@@ -2511,9 +2518,9 @@ a.primary {
   font-size: 0.9rem;
 }
 .flow-shell .alert.info {
-  background: var(--flow-accent-soft);
-  color: #3730a3;
-  border: 1px solid rgba(99, 102, 241, 0.15);
+  background: transparent;
+  color: var(--flow-muted, #7e5a70);
+  border: 1px solid var(--flow-border, #f2d8d2);
 }
 .flow-shell .alert.error {
   background: #fef2f2;
@@ -2615,15 +2622,126 @@ a.primary {
 
 /* --- Snippet ------------------------------------------------------------- */
 .flow-shell .snippet {
-  background: #0f0e1a;
-  color: #d4d0f0;
+  background: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #3a2236);
   padding: 1.25rem 1.5rem;
   border-radius: var(--flow-radius);
   font-size: 0.85rem;
   line-height: 1.6;
   overflow-x: auto;
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  box-shadow: 0 4px 24px rgba(15, 14, 26, 0.12);
+  border: 1px solid var(--flow-border, #f2d8d2);
+  box-shadow: 0 2px 12px rgba(228, 88, 122, 0.06);
+  font-family: 'Google Sans', monospace, sans-serif !important;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* --- Scrollbars (scoped to flow shell) ----------------------------------- */
+.flow-shell {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(228, 88, 122, 0.2) transparent;
+}
+.flow-shell ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.flow-shell ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.flow-shell ::-webkit-scrollbar-thumb {
+  background: rgba(228, 88, 122, 0.2);
+  border-radius: 4px;
+}
+.flow-shell ::-webkit-scrollbar-thumb:hover {
+  background: rgba(228, 88, 122, 0.35);
+}
+
+/* --- Custom styled dropdowns (flow shell + design form) ------------------ */
+.flow-shell select,
+.flow-shell .design-form select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237e5a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+  cursor: pointer;
+}
+.flow-shell select:focus,
+.flow-shell .design-form select:focus {
+  outline: none;
+  border-color: var(--flow-accent, #e4587a);
+  box-shadow: 0 0 0 3px var(--flow-accent-glow, rgba(228, 88, 122, 0.15));
+}
+
+/* --- Step transition animation ------------------------------------------- */
+@keyframes flow-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.flow-panel-animate {
+  animation: flow-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* --- StarBorder animation ------------------------------------------------ */
+@keyframes star-movement-top {
+  0%   { transform: translateX(0%);   opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+@keyframes star-movement-bottom {
+  0%   { transform: translateX(0%);    opacity: 1; }
+  100% { transform: translateX(-100%); opacity: 0; }
+}
+.star-border-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--flow-radius, 14px);
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+.star-border-gradient {
+  position: absolute;
+  width: 300%;
+  height: 50%;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.star-border-gradient--top {
+  top: -10%;
+  left: -50%;
+  animation: star-movement-top linear infinite alternate;
+}
+.star-border-gradient--bottom {
+  bottom: -10%;
+  right: -50%;
+  animation: star-movement-bottom linear infinite alternate;
+}
+.star-border-inner {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.65rem 1.25rem;
+  border-radius: calc(var(--flow-radius, 14px) - 2px);
+  background: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #3a2236);
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 /* --- Discovery loading (scoped) ------------------------------------------ */
@@ -2650,12 +2768,12 @@ a.primary {
   border-radius: var(--flow-radius);
   padding: 1.25rem;
   background: var(--flow-surface);
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.04);
+  box-shadow: 0 2px 12px rgba(228, 88, 122, 0.04);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .flow-instruction-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 8px 28px rgba(228, 88, 122, 0.08);
 }
 .flow-instruction-card-number {
   font-family: var(--flow-font-display);
@@ -2827,8 +2945,8 @@ a.primary {
 .design-form textarea:focus,
 .design-form select:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--flow-accent, #e4587a);
+  box-shadow: 0 0 0 3px var(--flow-accent-glow, rgba(228, 88, 122, 0.15));
 }
 
 .design-form input[type="color"] {
@@ -2871,7 +2989,7 @@ a.primary {
 }
 
 .design-form-advanced-trigger:hover {
-  color: #6366f1;
+  color: var(--flow-accent, #e4587a);
 }
 
 .design-form-advanced-trigger-icon {
@@ -2881,7 +2999,7 @@ a.primary {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--app-accent, #6366f1);
+  background: var(--flow-brand-gradient-dark, var(--flow-accent, #e4587a));
   color: #fff;
   flex-shrink: 0;
   transition: transform 0.2s;
@@ -2971,10 +3089,10 @@ a.primary {
 }
 
 .design-form-radio-card:has(input:checked) {
-  border-color: var(--app-accent, #6366f1);
+  border-color: var(--flow-accent, #e4587a);
   border-width: 1px;
-  background: #eef2ff;
-  box-shadow: 0 0 0 1px var(--app-accent, #6366f1);
+  background: var(--flow-accent-soft, #fff1ef);
+  box-shadow: 0 0 0 1px var(--flow-accent, #e4587a);
 }
 
 .design-form-radio-card input {
@@ -3035,7 +3153,7 @@ a.primary {
 }
 
 .design-form-text-btn:hover {
-  color: #6366f1;
+  color: var(--flow-accent, #e4587a);
 }
 
 .widget-preview-wrap {
@@ -3114,8 +3232,8 @@ a.primary {
   transition: all 0.2s ease;
 }
 .flow-shell .url-row:hover {
-  border-color: var(--flow-accent, #6366f1);
-  background: var(--flow-accent-soft, #ede9fe);
+  border-color: var(--flow-accent, #e4587a);
+  background: var(--flow-accent-soft, #fff1ef);
 }
 
 .flow-shell .url-row.selected {
@@ -3136,7 +3254,7 @@ a.primary {
   border-radius: var(--flow-radius, 14px);
   border: 1px solid var(--flow-border, #e8e5df);
   background: var(--flow-surface, #ffffff);
-  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.06);
+  box-shadow: 0 4px 24px rgba(228, 88, 122, 0.06);
 }
 
 .flow-shell .progress-label {
@@ -3155,7 +3273,7 @@ a.primary {
 
 .flow-shell .progress-fill {
   height: 100%;
-  background: linear-gradient(180deg, #a78bfa 0%, var(--flow-accent, #6366f1) 55%, #4c1dc4 100%);
+  background: var(--flow-brand-gradient-dark, linear-gradient(135deg, #dd8b3e 0%, #db5f54 48%, #c64184 100%));
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   border-radius: 999px;
   position: relative;

@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
 import { getCreateBotStepIndex, getCreateBotSteps } from './flowConfig'
@@ -31,11 +31,9 @@ function FlowStepsWithProgress() {
             <div key={step.id} className={`flow-step ${isCurrent ? 'active' : ''}`}>
               <div className="flow-step-number">
                 {isPast ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <FlowIcon name="check_circle" filled size="sm" />
                 ) : (
-                  index + 1
+                  <FlowIcon name={step.icon as import('../../components/FlowIcon').FlowIconName} filled size="sm" />
                 )}
               </div>
               <div>
@@ -64,6 +62,7 @@ function FlowStepsWithProgress() {
 
 export default function CreateBotLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { error, loading } = useDashboardData()
 
   return (
@@ -75,7 +74,7 @@ export default function CreateBotLayout() {
             <div className="flow-title">Create your AI agent</div>
           </div>
           <button type="button" className="flow-close" onClick={() => navigate('/bots')} aria-label="Close">
-            <X size={18} strokeWidth={2} aria-hidden />
+            <FlowIcon name="close" size="sm" />
           </button>
         </header>
 
@@ -84,7 +83,9 @@ export default function CreateBotLayout() {
           <section className="flow-panel">
             {error && <div className="alert error">{error}</div>}
             {loading && <div className="alert info">Working...</div>}
-            <Outlet />
+            <div key={location.pathname} className="flow-panel-animate">
+              <Outlet />
+            </div>
           </section>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { FlowIcon } from './FlowIcon'
 
 type Props = {
   label?: string
@@ -82,10 +83,11 @@ export function FileDropzone({
         onDragLeave={() => setIsDragging(false)}
         onDrop={onDrop}
         style={{
-          border: `2px dashed ${isDragging ? '#6366f1' : '#cbd5f5'}`,
+          border: `2px dashed ${isDragging ? 'var(--flow-accent, #e4587a)' : 'var(--flow-border, #f2d8d2)'}`,
           borderRadius: '14px',
           padding: '16px',
-          background: isDragging ? 'rgba(99,102,241,0.06)' : '#fff',
+          background: isDragging ? 'var(--flow-accent-soft, #fff1ef)' : 'var(--flow-surface, #fff)',
+          transition: 'border-color 0.2s, background 0.2s',
         }}
       >
         <div className="muted" style={{ marginBottom: '10px' }}>{subtitle}</div>
@@ -111,21 +113,27 @@ export function FileDropzone({
         />
 
         {files.length > 0 && (
-          <div style={{ marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+          <div style={{ marginTop: '12px', borderTop: '1px solid var(--flow-border, #e2e8f0)', paddingTop: '12px' }}>
             {files.map((f) => (
-              <div key={`${f.name}:${f.size}:${f.lastModified}`} className="row" style={{ justifyContent: 'space-between', gap: '0.75rem', padding: '6px 0' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {f.name}
+              <div key={`${f.name}:${f.size}:${f.lastModified}`} className="row" style={{ justifyContent: 'space-between', gap: '0.75rem', padding: '6px 0', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <FlowIcon name="check_circle" filled size="sm" style={{ color: 'var(--flow-accent, #e4587a)', flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, color: 'var(--flow-text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.name}
+                    </div>
+                    <div className="muted" style={{ fontSize: '0.85rem' }}>{formatBytes(f.size)}</div>
                   </div>
-                  <div className="muted" style={{ fontSize: '0.85rem' }}>{formatBytes(f.size)}</div>
                 </div>
                 <button
                   type="button"
                   className="ghost"
                   onClick={() => setFiles(files.filter((x) => x !== f))}
+                  aria-label="Delete"
+                  title="Delete"
+                  style={{ padding: '0.4rem', color: 'var(--flow-muted, #64748b)' }}
                 >
-                  Remove
+                  <FlowIcon name="delete" size="sm" />
                 </button>
               </div>
             ))}
@@ -135,4 +143,3 @@ export function FileDropzone({
     </div>
   )
 }
-

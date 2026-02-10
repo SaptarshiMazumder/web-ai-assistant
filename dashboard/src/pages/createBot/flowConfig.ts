@@ -10,6 +10,7 @@ export type CreateBotStep = {
   path: string
   label: string
   description: string
+  icon: string
 }
 
 const BASE_STEPS: readonly CreateBotStep[] = [
@@ -18,36 +19,42 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     path: '/create-bot',
     label: 'Name',
     description: 'Pick a name customers will see.',
+    icon: 'badge',
   },
   {
     id: 'hosting',
     path: '/create-bot/hosting',
     label: 'Website',
     description: 'Tell us where your pages live.',
+    icon: 'language',
   },
   {
     id: 'sources',
     path: '/create-bot/sources',
     label: 'Add sources',
     description: 'Add pages and PDFs about your business.',
+    icon: 'source',
   },
   {
     id: 'training',
     path: '/create-bot/progress',
     label: 'Getting ready',
-    description: 'We’ll start learning from what you added.',
+    description: 'We\u2019ll start learning from what you added.',
+    icon: 'model_training',
   },
   {
     id: 'widget',
     path: '/create-bot/widget',
     label: 'Design widget',
     description: 'Pick colors and greeting messages.',
+    icon: 'palette',
   },
   {
     id: 'embed',
     path: '/create-bot/embed',
     label: 'Add to website',
     description: 'Share the install code with your web person.',
+    icon: 'code',
   },
 ] as const
 
@@ -56,6 +63,7 @@ const SHARED_URL_STEP: CreateBotStep = {
   path: '/create-bot/urls',
   label: 'Add sources',
   description: 'Add links for prices, hours, booking, contact, etc.',
+  icon: 'link',
 } as const
 
 export const CREATE_BOT_STEPS: readonly CreateBotStep[] = BASE_STEPS

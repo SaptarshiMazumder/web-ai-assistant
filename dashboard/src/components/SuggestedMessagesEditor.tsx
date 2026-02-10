@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { X } from 'lucide-react'
+import { FlowIcon } from './FlowIcon'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
 
 type SuggestedMessagesEditorProps = {
@@ -60,16 +60,6 @@ export function SuggestedMessagesEditor({
     [suggestedMessages, onChange]
   )
 
-  const addCheckAvailabilityForm = useCallback(() => {
-    const newItem: SuggestedMessageConfig = {
-      id: `availability_${Date.now()}`,
-      label: 'Check availability',
-      type: 'availability',
-      message: '',
-    }
-    onChange([...suggestedMessages, newItem])
-  }, [suggestedMessages, onChange])
-
   return (
     <>
       <div className="design-form-field design-form-field-full">
@@ -84,15 +74,12 @@ export function SuggestedMessagesEditor({
             <button type="button" className="primary" onClick={() => openSuggestionModal()}>
               Add
             </button>
-            <button type="button" className="secondary" onClick={addCheckAvailabilityForm}>
-              Add Check availability form
-            </button>
           </div>
         </div>
         <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.75rem' }}>
           {suggestedMessages.length === 0 && <span className="muted">No suggested messages yet.</span>}
           {suggestedMessages.map((msg) => (
-            <div key={msg.id} className="list-row" style={{ background: '#fff' }}>
+            <div key={msg.id} className="list-row" style={{ background: 'var(--flow-surface, #fff)', border: '1px solid var(--flow-border, #f2d8d2)', borderRadius: 'var(--flow-radius, 10px)' }}>
               <div>
                 <div style={{ fontWeight: 600 }}>{msg.label}</div>
                 <div className="muted" style={{ fontSize: '0.85rem' }}>
@@ -109,8 +96,8 @@ export function SuggestedMessagesEditor({
                 <button type="button" className="secondary" onClick={() => openSuggestionModal(msg)}>
                   Edit
                 </button>
-                <button type="button" className="ghost" onClick={() => removeSuggestion(msg.id)}>
-                  Remove
+                <button type="button" className="ghost" onClick={() => removeSuggestion(msg.id)} aria-label="Delete" title="Delete" style={{ padding: '0.4rem', color: 'var(--flow-muted, #64748b)' }}>
+                  <FlowIcon name="delete" size="sm" />
                 </button>
               </div>
             </div>
@@ -129,7 +116,7 @@ export function SuggestedMessagesEditor({
                 <div className="modal-subtitle">Update the suggested message details.</div>
               </div>
               <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label="Close">
-                <X size={20} strokeWidth={2.5} stroke="currentColor" />
+                <FlowIcon name="close" />
               </button>
             </div>
             <div className="modal-body">

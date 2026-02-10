@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MousePointerClick, Printer, UploadCloud } from 'lucide-react'
+import { FlowIcon } from '../../components/FlowIcon'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon, StopIcon } from './DiscoveryIcons'
+import StarBorder from '../../components/StarBorder'
 import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategoryDisplayPath, getAllExpandablePaths, type UrlCategory } from './urlCategorizer'
 import { FileDropzone } from '../../components/FileDropzone'
 
@@ -102,14 +103,7 @@ export default function CreateBotUrlsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 8,
-                background: 'var(--flow-accent-soft)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--flow-accent)',
-              }}>
-                <MousePointerClick size={16} aria-hidden />
-              </div>
+              <FlowIcon name="ads_click" filled style={{ color: 'var(--flow-accent)', fontSize: '22px' }} />
               <div className="flow-instruction-card-number">1</div>
             </div>
             <div className="flow-instruction-card-heading">Open the page</div>
@@ -120,14 +114,7 @@ export default function CreateBotUrlsPage() {
 
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 8,
-                background: 'rgba(34, 197, 94, 0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#16a34a',
-              }}>
-                <Printer size={16} aria-hidden />
-              </div>
+              <FlowIcon name="print" filled style={{ color: 'var(--flow-accent)', fontSize: '22px' }} />
               <div className="flow-instruction-card-number">2</div>
             </div>
             <div className="flow-instruction-card-heading">Print as PDF</div>
@@ -138,14 +125,7 @@ export default function CreateBotUrlsPage() {
 
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 8,
-                background: 'rgba(14, 165, 233, 0.10)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#0284c7',
-              }}>
-                <UploadCloud size={16} aria-hidden />
-              </div>
+              <FlowIcon name="cloud_upload" filled style={{ color: 'var(--flow-accent)', fontSize: '22px' }} />
               <div className="flow-instruction-card-number">3</div>
             </div>
             <div className="flow-instruction-card-heading">Upload here</div>
@@ -461,17 +441,18 @@ export default function CreateBotUrlsPage() {
               Skip for now
             </button>
             {hasAnySources && (
-              <button
+              <StarBorder
+                as="button"
                 type="button"
-                className="primary"
                 onClick={handleStartTraining}
                 disabled={isStartingTraining}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                color="#e4587a"
+                speed="5s"
                 aria-disabled={isStartingTraining}
               >
                 <PlayIcon />
                 {isStartingTraining ? 'Starting...' : 'Start training'}
-              </button>
+              </StarBorder>
             )}
           </div>
         )}

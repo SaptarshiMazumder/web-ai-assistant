@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Copy, PartyPopper } from 'lucide-react'
+import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 
@@ -48,44 +48,32 @@ export default function CreateBotEmbedPage() {
         </div>
       </div>
 
-      {/* Snippet block */}
-      <div style={{ position: 'relative' }}>
-        <pre className="snippet" style={{ margin: 0 }}>
+      {/* Snippet block with external copy icon */}
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+        <pre className="snippet" style={{ margin: 0, flex: 1, minWidth: 0 }}>
           {snippet}
         </pre>
         <button
           type="button"
           onClick={() => void handleCopy()}
           disabled={!snippet}
+          title={copied ? 'Copied!' : 'Copy to clipboard'}
           style={{
-            position: 'absolute',
-            top: '0.75rem',
-            right: '0.75rem',
-            display: 'inline-flex',
+            display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem',
-            padding: '0.4rem 0.75rem',
-            borderRadius: '8px',
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: copied ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255,255,255,0.08)',
-            color: copied ? '#4ade80' : '#a5a3c0',
-            fontSize: '0.8rem',
-            fontWeight: 600,
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '10px',
+            border: '1px solid var(--flow-border, #f2d8d2)',
+            background: copied ? 'var(--flow-accent-soft, #fff1ef)' : 'var(--flow-surface, #ffffff)',
+            color: copied ? 'var(--flow-accent, #e4587a)' : 'var(--flow-muted, #7e5a70)',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
+            flexShrink: 0,
           }}
         >
-          {copied ? (
-            <>
-              <Check size={14} strokeWidth={2.5} />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy size={14} strokeWidth={2} />
-              Copy
-            </>
-          )}
+          <FlowIcon name={copied ? 'check' : 'content_copy'} size="sm" />
         </button>
       </div>
 
@@ -103,7 +91,7 @@ export default function CreateBotEmbedPage() {
           onClick={handleFinish}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <PartyPopper size={18} strokeWidth={2} aria-hidden />
+          <FlowIcon name="celebration" filled size="sm" />
           Finish setup
         </button>
       </div>

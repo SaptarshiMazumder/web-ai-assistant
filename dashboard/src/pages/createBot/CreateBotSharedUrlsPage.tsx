@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Plus } from 'lucide-react'
+import { FlowIcon } from '../../components/FlowIcon'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon } from './DiscoveryIcons'
+import StarBorder from '../../components/StarBorder'
 
 type SuggestedBubble = { key: string; label: string; description: string }
 
@@ -143,9 +144,9 @@ export default function CreateBotSharedUrlsPage() {
                 onClick={() => handleBubbleClick(b.label)}
                 title={b.description}
                 style={done ? {
-                  background: '#dcfce7',
-                  color: '#166534',
-                  borderColor: '#bbf7d0',
+                  background: 'var(--flow-accent-soft, #fff1ef)',
+                  color: 'var(--flow-accent, #e4587a)',
+                  borderColor: 'var(--flow-accent, #e4587a)',
                 } : undefined}
               >
                 <span>{b.label}</span>
@@ -219,9 +220,9 @@ export default function CreateBotSharedUrlsPage() {
               disabled={sharedUrlRows.length <= 1}
               aria-label="Remove row"
               title="Remove"
-              style={{ color: '#dc2626', padding: '0.6rem', marginTop: '1px' }}
+              style={{ color: 'var(--flow-muted, #64748b)', padding: '0.6rem', marginTop: '1px' }}
             >
-              <Trash2 size={16} aria-hidden />
+              <FlowIcon name="delete" size="sm" />
             </button>
           </div>
         ))}
@@ -233,7 +234,7 @@ export default function CreateBotSharedUrlsPage() {
             onClick={() => setSharedUrlRows([...sharedUrlRows, { url: '', label: '' }])}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--flow-accent)' }}
           >
-            <Plus size={16} strokeWidth={2} />
+            <FlowIcon name="add" size="xs" />
             Add another link
           </button>
         </div>
@@ -250,17 +251,18 @@ export default function CreateBotSharedUrlsPage() {
             Skip for now
           </button>
           {hasAnySources && (
-            <button
+            <StarBorder
+              as="button"
               type="button"
-              className="primary"
               onClick={handleStartTraining}
               disabled={isStartingTraining}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+              color="#e4587a"
+              speed="5s"
               aria-disabled={isStartingTraining}
             >
               <PlayIcon />
               {isStartingTraining ? 'Starting...' : 'Start training'}
-            </button>
+            </StarBorder>
           )}
         </div>
       </div>
