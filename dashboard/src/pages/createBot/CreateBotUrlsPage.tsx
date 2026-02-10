@@ -88,70 +88,82 @@ export default function CreateBotUrlsPage() {
     }
   }
 
+  /* ── Shared-hosting sub-view ───────────────────────────────────────────── */
   if (contentHosting === 'shared') {
     return (
       <div className="flow-panel-body">
         <div>
-          <div className="card-title">Add sources</div>
-          <div className="card-subtitle">Add your business information for the AI Agent to learn from.</div>
-        </div>
-
-        <div className="muted" style={{ marginTop: '8px' }}>
-          Do this for <b>every page</b> that has helpful business info (services, prices, hours, booking, contact, location, FAQs).
+          <div className="card-title">Add your business content</div>
+          <div className="card-subtitle">
+            Save each important page as a PDF, then upload it here. Follow these three steps:
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="icon-pill" style={{ background: 'rgba(99,102,241,0.10)', color: '#4f46e5' }}>
+          <div className="flow-instruction-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: 'var(--flow-accent-soft)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--flow-accent)',
+              }}>
                 <MousePointerClick size={16} aria-hidden />
               </div>
-              <div style={{ fontWeight: 700, color: '#0f172a' }}>1</div>
+              <div className="flow-instruction-card-number">1</div>
             </div>
-            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Open the page on your website</div>
-            <div className="muted" style={{ marginTop: '6px' }}>
+            <div className="flow-instruction-card-heading">Open the page</div>
+            <div className="flow-instruction-card-body">
               Go to one important page at a time (services, prices, hours, booking, contact).
             </div>
           </div>
 
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="icon-pill" style={{ background: 'rgba(34,197,94,0.12)', color: '#166534' }}>
+          <div className="flow-instruction-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: 'rgba(34, 197, 94, 0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#16a34a',
+              }}>
                 <Printer size={16} aria-hidden />
               </div>
-              <div style={{ fontWeight: 700, color: '#0f172a' }}>2</div>
+              <div className="flow-instruction-card-number">2</div>
             </div>
-            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Print → Save as PDF</div>
-            <div className="muted" style={{ marginTop: '6px' }}>
-              Right click the page → <b>Print</b> → choose <b>Save as PDF</b> (or “Microsoft Print to PDF”).
+            <div className="flow-instruction-card-heading">Print as PDF</div>
+            <div className="flow-instruction-card-body">
+              Right-click the page, choose <b>Print</b>, then <b>Save as PDF</b>.
             </div>
           </div>
 
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', background: '#fff', boxShadow: '0 10px 28px rgba(15,23,42,0.06)' }}>
-            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="icon-pill" style={{ background: 'rgba(14,165,233,0.12)', color: '#075985' }}>
+          <div className="flow-instruction-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: 'rgba(14, 165, 233, 0.10)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#0284c7',
+              }}>
                 <UploadCloud size={16} aria-hidden />
               </div>
-              <div style={{ fontWeight: 700, color: '#0f172a' }}>3</div>
+              <div className="flow-instruction-card-number">3</div>
             </div>
-            <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Upload the PDF here</div>
-            <div className="muted" style={{ marginTop: '6px' }}>
-              Drop the saved PDF below. Your agent will learn from what’s inside.
+            <div className="flow-instruction-card-heading">Upload here</div>
+            <div className="flow-instruction-card-body">
+              Drop the saved PDF below. Your agent will learn from it.
             </div>
           </div>
         </div>
 
-        <div style={{ marginTop: '10px' }}>
-          <FileDropzone
-            label="Upload PDFs"
-            helperText="Drag & drop PDFs here."
-            files={pdfFiles}
-            setFiles={setPdfFiles}
-            accept="application/pdf"
-            multiple
-            maxFiles={20}
-          />
-        </div>
+        <FileDropzone
+          label="Upload PDFs"
+          helperText="Drag & drop PDFs here."
+          files={pdfFiles}
+          setFiles={setPdfFiles}
+          accept="application/pdf"
+          multiple
+          maxFiles={20}
+        />
 
         {localError && <div className="alert error">{localError}</div>}
 
@@ -167,6 +179,7 @@ export default function CreateBotUrlsPage() {
     )
   }
 
+  /* ── Own-hosting URL tree view ─────────────────────────────────────────── */
   const toggleCategoryExpand = (path: string) => {
     setExpandedCategories(prev => {
       const next = new Set(prev)
@@ -205,7 +218,7 @@ export default function CreateBotUrlsPage() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '8px 0',
+            padding: '6px 0',
             cursor: 'pointer',
             userSelect: 'none',
           }}
@@ -218,15 +231,15 @@ export default function CreateBotUrlsPage() {
               }}
               style={{
                 marginRight: '8px',
-                width: '14px',
-                height: '14px',
+                width: '16px',
+                height: '16px',
                 transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
+                transition: 'transform 0.2s ease',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: '#64748b',
+                color: 'var(--flow-muted)',
               }}
               aria-hidden
             >
@@ -249,26 +262,32 @@ export default function CreateBotUrlsPage() {
                 input.indeterminate = isPartial
               }
             }}
-            style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+            style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
           />
           <span
             onClick={() => hasExpandableContent && toggleCategoryExpand(category.path)}
-            style={{ flex: 1, cursor: hasExpandableContent ? 'pointer' : 'default' }}
+            style={{
+              flex: 1,
+              cursor: hasExpandableContent ? 'pointer' : 'default',
+              fontWeight: 500,
+              color: 'var(--flow-text)',
+              fontSize: '0.9rem',
+            }}
           >
             {getCategoryDisplayPath(category)}
           </span>
           <span
             style={{
               marginLeft: '8px',
-              padding: '2px 8px',
+              padding: '2px 10px',
               borderRadius: '999px',
-              background: 'rgba(99, 102, 241, 0.15)',
-              color: '#4f46e5',
-              fontSize: '13px',
-              fontWeight: 500,
+              background: 'var(--flow-accent-soft)',
+              color: 'var(--flow-accent)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
             }}
           >
-            {urlCount} {urlCount === 1 ? 'page' : 'pages'}
+            {urlCount}
           </span>
         </div>
         {hasExpandableContent && isExpanded && (
@@ -297,9 +316,9 @@ export default function CreateBotUrlsPage() {
                       type="checkbox"
                       checked={selectedUrls.includes(url)}
                       onChange={() => toggleUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
                     />
-                    <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>
                 ))}
               </div>
@@ -318,7 +337,7 @@ export default function CreateBotUrlsPage() {
             {discoveryTimedOutMessage}
           </div>
         )}
-        <div className="card-title">Pick pages from your website</div>
+        <div className="card-title">Pick pages to learn from</div>
         <div className="card-subtitle">
           {isDiscovering ? (
             <span className="discovery-loading">
@@ -327,16 +346,17 @@ export default function CreateBotUrlsPage() {
                 <span />
                 <span />
               </span>
-              <span style={{ color: '#6366f1', fontWeight: 500 }}>
-                Looking for pages on your website… {discoveredUrls.length} found so far
+              <span style={{ color: 'var(--flow-accent)', fontWeight: 500 }}>
+                Scanning your website... {discoveredUrls.length} found so far
               </span>
             </span>
           ) : (
             <>
-              We found <span style={{ color: '#6366f1', fontWeight: 600 }}>{discoveredUrls.length}</span> pages on {normalizedWebsiteUrl}. Choose the ones your agent should learn from.
+              We found <span style={{ color: 'var(--flow-accent)', fontWeight: 600 }}>{discoveredUrls.length}</span> pages
+              on {normalizedWebsiteUrl}. Choose the ones your agent should learn from.
               {discoveryDurationLabel != null && (
-                <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
-                  This took {discoveryDurationLabel}.
+                <span style={{ marginLeft: '6px', color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
+                  ({discoveryDurationLabel})
                 </span>
               )}
             </>
@@ -344,17 +364,15 @@ export default function CreateBotUrlsPage() {
         </div>
       </div>
 
-      <div style={{ marginTop: '10px' }}>
-        <FileDropzone
-          label="PDF files (optional)"
-          helperText="Drag & drop PDFs here. Your agent can learn from these too."
-          files={pdfFiles}
-          setFiles={setPdfFiles}
-          accept="application/pdf"
-          multiple
-          maxFiles={20}
-        />
-      </div>
+      <FileDropzone
+        label="PDF files (optional)"
+        helperText="Drag & drop PDFs here. Your agent can learn from these too."
+        files={pdfFiles}
+        setFiles={setPdfFiles}
+        accept="application/pdf"
+        multiple
+        maxFiles={20}
+      />
 
       <div className="flow-toolbar">
         <button
@@ -369,13 +387,22 @@ export default function CreateBotUrlsPage() {
         >
           {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
         </button>
-        <div className="muted">{selectedUrls.length} selected</div>
+        <span className="muted" style={{ marginLeft: 'auto' }}>
+          {selectedUrls.length} of {discoveredUrls.length} selected
+        </span>
       </div>
 
-      <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
+      <div className="url-list" style={{
+        maxHeight: '460px',
+        overflowY: 'auto',
+        border: '1px solid var(--flow-border)',
+        borderRadius: 'var(--flow-radius)',
+        padding: '1rem 1.25rem',
+        background: 'var(--flow-surface)',
+      }}>
         {isDiscovering && (
-          <div style={{ marginBottom: '12px', color: '#666', fontSize: '14px' }}>
-            Looking for pages… ({discoveredUrls.length} found so far)
+          <div style={{ marginBottom: '12px', color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
+            Scanning... ({discoveredUrls.length} found so far)
           </div>
         )}
         {urlCategories ? (
@@ -404,16 +431,16 @@ export default function CreateBotUrlsPage() {
                       type="checkbox"
                       checked={selectedUrls.includes(url)}
                       onChange={() => toggleUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
                     />
-                    <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>
                 ))}
               </div>
             )}
           </div>
         ) : (
-          <div>{isDiscovering ? 'Discovering…' : 'Loading categories…'}</div>
+          <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'Loading categories...'}</div>
         )}
       </div>
 
@@ -429,7 +456,7 @@ export default function CreateBotUrlsPage() {
             Stop
           </button>
         ) : (
-          <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
             <button type="button" className="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
               Skip for now
             </button>
@@ -443,7 +470,7 @@ export default function CreateBotUrlsPage() {
                 aria-disabled={isStartingTraining}
               >
                 <PlayIcon />
-                {isStartingTraining ? 'Starting…' : 'Start training'}
+                {isStartingTraining ? 'Starting...' : 'Start training'}
               </button>
             )}
           </div>

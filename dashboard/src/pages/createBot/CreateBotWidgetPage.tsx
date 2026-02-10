@@ -87,7 +87,7 @@ export default function CreateBotWidgetPage() {
             <span />
             <span />
           </span>
-          <span>Your agent is getting ready. You can design the chat now.</span>
+          <span>Your agent is getting ready. Design the chat while you wait.</span>
         </div>
       )}
       {trainingStage === 'complete' && !trainingError && (
@@ -96,7 +96,7 @@ export default function CreateBotWidgetPage() {
           style={{ color: step4.widgetPrimaryColor, marginBottom: 0 }}
         >
           <Check size={20} strokeWidth={2.5} aria-hidden />
-          <span>Your agent has learned from what you added.</span>
+          <span>Your agent has learned from your content.</span>
         </div>
       )}
       {trainingError && (

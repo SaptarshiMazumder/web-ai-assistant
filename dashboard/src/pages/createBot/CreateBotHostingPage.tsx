@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Globe, Share2 } from 'lucide-react'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotHostingPage() {
@@ -43,55 +44,70 @@ export default function CreateBotHostingPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Do you have your own website?</div>
-        <div className="card-subtitle">Pick what best describes your business.</div>
+        <div className="card-title">Where does your content live?</div>
+        <div className="card-subtitle">This helps us find and learn from your business information.</div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '1rem' }}>
         <button
           type="button"
+          className={`flow-hosting-card ${contentHosting === 'own' ? 'selected' : ''}`}
           onClick={() => setContentHosting('own')}
-          style={{
-            textAlign: 'left',
-            padding: '1.25rem',
-            borderRadius: '16px',
-            border: `2px solid ${contentHosting === 'own' ? '#6366f1' : '#e2e8f0'}`,
-            background: contentHosting === 'own' ? 'rgba(99,102,241,0.06)' : '#fff',
-          }}
         >
-          <div style={{ fontWeight: 600, fontSize: '1.05rem', color: '#0f172a', marginBottom: '0.25rem' }}>
-            Yes — I have my own website
+          <div style={{ marginBottom: '0.75rem', position: 'relative', zIndex: 1 }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: contentHosting === 'own' ? 'var(--flow-accent)' : 'var(--flow-accent-soft)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s ease',
+            }}>
+              <Globe size={20} strokeWidth={1.8} color={contentHosting === 'own' ? '#fff' : 'var(--flow-accent)'} />
+            </div>
           </div>
+          <div className="flow-hosting-card-title">I have my own website</div>
+          <div className="flow-hosting-card-desc">We'll scan your site and find pages automatically.</div>
         </button>
 
         <button
           type="button"
+          className={`flow-hosting-card ${contentHosting === 'shared' ? 'selected' : ''}`}
           onClick={() => setContentHosting('shared')}
-          style={{
-            textAlign: 'left',
-            padding: '1.25rem',
-            borderRadius: '16px',
-            border: `2px solid ${contentHosting === 'shared' ? '#6366f1' : '#e2e8f0'}`,
-            background: contentHosting === 'shared' ? 'rgba(99,102,241,0.06)' : '#fff',
-          }}
         >
-          <div style={{ fontWeight: 600, fontSize: '1.05rem', color: '#0f172a', marginBottom: '0.25rem' }}>
-            Not really — I use a website service
+          <div style={{ marginBottom: '0.75rem', position: 'relative', zIndex: 1 }}>
+            <div style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: contentHosting === 'shared' ? 'var(--flow-accent)' : 'var(--flow-accent-soft)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s ease',
+            }}>
+              <Share2 size={20} strokeWidth={1.8} color={contentHosting === 'shared' ? '#fff' : 'var(--flow-accent)'} />
+            </div>
           </div>
+          <div className="flow-hosting-card-title">I use a website service</div>
+          <div className="flow-hosting-card-desc">You'll add links and upload files manually.</div>
         </button>
       </div>
 
       {contentHosting === 'own' && (
-        <div>
-          <div className="card-title">Your website link</div>
-          <div className="card-subtitle">Paste your main website address.</div>
-          <input
-            type="url"
-            value={websiteUrl}
-            onChange={(e) => setWebsiteUrl(e.target.value)}
-            placeholder="https://yourwebsite.com"
-            style={{ width: '100%' }}
-          />
+        <div className="flow-field">
+          <label className="flow-field-label">Website URL</label>
+          <div className="flow-field-input-wrap">
+            <input
+              type="url"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://yourwebsite.com"
+            />
+          </div>
+          <span className="flow-field-helper">We will discover pages from this domain.</span>
         </div>
       )}
 
@@ -111,11 +127,10 @@ export default function CreateBotHostingPage() {
           </button>
         ) : (
           <button type="button" className="primary" onClick={() => void handleContinue()} disabled={!canContinue}>
-            {continuing ? 'Continuing…' : 'Continue'}
+            {continuing ? 'Scanning...' : 'Continue'}
           </button>
         )}
       </div>
     </div>
   )
 }
-

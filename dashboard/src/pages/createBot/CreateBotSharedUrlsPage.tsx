@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Plus } from 'lucide-react'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon } from './DiscoveryIcons'
 
@@ -121,18 +121,18 @@ export default function CreateBotSharedUrlsPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Add sources</div>
+        <div className="card-title">Add your page links</div>
         <div className="card-subtitle">
-          Add links for business info. When someone asks a question, the agent will guide them to these pages.
+          Add links to important business pages. The agent will guide visitors to these when they ask questions.
         </div>
       </div>
 
-      <div className="url-list" style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
-        <div className="alert info" style={{ marginBottom: '12px' }}>
-          Tip: add links for your services page, price list, hours, booking page, and contact page.
+      {/* Suggested topic bubbles */}
+      <div>
+        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
+          Suggested topics
         </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {suggestedBubbles.map((b) => {
             const done = bubbleHasFilledUrl(b.label)
             return (
@@ -142,76 +142,99 @@ export default function CreateBotSharedUrlsPage() {
                 className="icon-pill icon-pill--with-label"
                 onClick={() => handleBubbleClick(b.label)}
                 title={b.description}
-                style={done ? { background: '#dcfce7', color: '#166534' } : undefined}
+                style={done ? {
+                  background: '#dcfce7',
+                  color: '#166534',
+                  borderColor: '#bbf7d0',
+                } : undefined}
               >
                 <span>{b.label}</span>
-                {done && <span aria-label="Added" style={{ fontWeight: 700 }}>✓</span>}
+                {done && <span aria-label="Added" style={{ fontWeight: 700, marginLeft: '2px' }}>&#10003;</span>}
               </button>
             )
           })}
         </div>
+      </div>
 
-        <div style={{ display: 'grid', gap: '10px' }}>
-          {sharedUrlRows.map((row, idx) => {
-            return (
-              <div key={`row-${idx}`} className="row" style={{ gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: 2, minWidth: 240 }}>
-                  <input
-                    type="url"
-                    className="design-form-input"
-                    ref={(el) => {
-                      urlInputRefs.current[idx] = el
-                    }}
-                    value={row.url}
-                    onChange={(e) => {
-                      const next = [...sharedUrlRows]
-                      next[idx] = { ...next[idx], url: e.target.value }
-                      setSharedUrlRows(next)
-                    }}
-                    placeholder="URL (e.g. https://example.com/pricing)"
-                    style={{ width: '100%' }}
-                  />
-                </div>
-
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <input
-                    type="text"
-                    className="design-form-input"
-                    value={row.label}
-                    onChange={(e) => {
-                      const next = [...sharedUrlRows]
-                      next[idx] = { ...next[idx], label: e.target.value }
-                      setSharedUrlRows(next)
-                    }}
-                    placeholder="Topic label (e.g. Pricing, Location, Booking)"
-                    style={{ width: '100%' }}
-                  />
-                </div>
-
-                <div style={{ alignSelf: 'end' }}>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => {
-                      const next = sharedUrlRows.filter((_, i) => i !== idx)
-                      setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
-                    }}
-                    disabled={sharedUrlRows.length <= 1}
-                    aria-label="Remove row"
-                    title="Remove"
-                    style={{ color: '#dc2626', background: 'transparent' }}
-                  >
-                    <Trash2 size={16} aria-hidden />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+      {/* URL rows */}
+      <div style={{
+        border: '1px solid var(--flow-border)',
+        borderRadius: 'var(--flow-radius)',
+        padding: '1.25rem',
+        background: 'var(--flow-surface)',
+        display: 'grid',
+        gap: '10px',
+      }}>
+        <div className="alert info" style={{ marginBottom: '4px' }}>
+          Add a link for each important page (services, pricing, hours, booking, contact, FAQs).
         </div>
 
-        <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap', marginTop: '10px' }}>
-          <button type="button" className="secondary" onClick={() => setSharedUrlRows([...sharedUrlRows, { url: '', label: '' }])}>
-            + Add URL
+        {sharedUrlRows.map((row, idx) => (
+          <div key={`row-${idx}`} style={{
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: 2, minWidth: 220 }}>
+              <div className="flow-field-input-wrap">
+                <input
+                  type="url"
+                  ref={(el) => {
+                    urlInputRefs.current[idx] = el
+                  }}
+                  value={row.url}
+                  onChange={(e) => {
+                    const next = [...sharedUrlRows]
+                    next[idx] = { ...next[idx], url: e.target.value }
+                    setSharedUrlRows(next)
+                  }}
+                  placeholder="https://example.com/pricing"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <div className="flow-field-input-wrap">
+                <input
+                  type="text"
+                  value={row.label}
+                  onChange={(e) => {
+                    const next = [...sharedUrlRows]
+                    next[idx] = { ...next[idx], label: e.target.value }
+                    setSharedUrlRows(next)
+                  }}
+                  placeholder="Topic (e.g. Pricing)"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                const next = sharedUrlRows.filter((_, i) => i !== idx)
+                setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
+              }}
+              disabled={sharedUrlRows.length <= 1}
+              aria-label="Remove row"
+              title="Remove"
+              style={{ color: '#dc2626', padding: '0.6rem', marginTop: '1px' }}
+            >
+              <Trash2 size={16} aria-hidden />
+            </button>
+          </div>
+        ))}
+
+        <div>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setSharedUrlRows([...sharedUrlRows, { url: '', label: '' }])}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--flow-accent)' }}
+          >
+            <Plus size={16} strokeWidth={2} />
+            Add another link
           </button>
         </div>
       </div>
@@ -222,7 +245,7 @@ export default function CreateBotSharedUrlsPage() {
         <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
         </button>
-        <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
           <button type="button" className="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
             Skip for now
           </button>
@@ -236,7 +259,7 @@ export default function CreateBotSharedUrlsPage() {
               aria-disabled={isStartingTraining}
             >
               <PlayIcon />
-              {isStartingTraining ? 'Starting…' : 'Start training'}
+              {isStartingTraining ? 'Starting...' : 'Start training'}
             </button>
           )}
         </div>
@@ -244,4 +267,3 @@ export default function CreateBotSharedUrlsPage() {
     </div>
   )
 }
-

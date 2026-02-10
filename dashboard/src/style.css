@@ -113,6 +113,34 @@ a.primary {
   color: #0f172a;
 }
 
+.url-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.progress-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.progress-label {
+  font-weight: 500;
+}
+.progress-track {
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  transition: width 0.4s ease;
+}
+
 .url-list-item {
   border-radius: 6px;
   padding: 4px 8px;
@@ -2009,38 +2037,117 @@ a.primary {
   color: #64748b;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   CREATE-BOT FLOW — "Studio" redesign
+   All styles scoped under .flow-shell so they cannot leak into
+   the rest of the dashboard.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Google Sans is loaded via <link> in index.html from Google Fonts API */
+
+/* --- Custom properties --------------------------------------------------- */
 .flow-shell {
-  /* Body is overflow:hidden globally, so the create-bot wizard must provide its own scroll area. */
+  --flow-bg: #fffdfb;
+  --flow-sidebar-bg: #2d1b2f;
+  --flow-sidebar-text: #ffffff;
+  --flow-sidebar-active: #ffffff;
+  --flow-text: #3a2236;
+  --flow-muted: #7e5a70;
+  --flow-border: #f2d8d2;
+  --flow-surface: #ffffff;
+  --flow-accent: #e4587a;
+  --flow-accent-hover: #cf4264;
+  --flow-accent-soft: #fff1ef;
+  --flow-accent-glow: rgba(228, 88, 122, 0.28);
+  --flow-accent-secondary: #f09557;
+  --flow-border-gradient: linear-gradient(135deg, rgba(248, 184, 120, 0.78) 0%, rgba(244, 130, 124, 0.78) 52%, rgba(232, 103, 146, 0.78) 100%);
+  --flow-brand-gradient: linear-gradient(135deg, #f6b46d 0%, #f0806b 48%, #e66397 100%);
+  --flow-brand-gradient-dark: linear-gradient(135deg, #dd8b3e 0%, #db5f54 48%, #c64184 100%);
+  --flow-surface-gradient: #ffffff;
+  --flow-font-display: 'Google Sans', sans-serif;
+  --flow-font-body: 'Google Sans', sans-serif;
+  --flow-radius: 14px;
+  --flow-radius-lg: 20px;
+  --flow-input-border: #e07f7a;
+}
+
+/* --- Keyframes ----------------------------------------------------------- */
+@keyframes flow-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes flow-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--flow-accent-glow); }
+  50%      { box-shadow: 0 0 20px 4px var(--flow-accent-glow); }
+}
+@keyframes flow-step-enter {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes flow-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* --- Shell --------------------------------------------------------------- */
+.flow-shell {
   min-height: 100vh;
   height: 100vh;
-  padding: 2.5rem;
-  background: #fafafa;
+  padding: 0;
+  background: var(--flow-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  font-family: var(--flow-font-body);
+  color: var(--flow-text);
+  /* subtle dot-grid texture on the background */
+  background-image:
+    linear-gradient(180deg, #ffffff 0%, #fffdfc 42%, #fff8f5 70%, #fff3ee 100%),
+    radial-gradient(circle at 86% 78%, rgba(246, 180, 109, 0.18) 0%, rgba(246, 180, 109, 0.08) 24%, transparent 48%),
+    radial-gradient(circle at 102% 102%, rgba(230, 99, 151, 0.2) 0%, rgba(230, 99, 151, 0.09) 28%, transparent 52%),
+    radial-gradient(circle at 10% 104%, rgba(240, 128, 107, 0.14) 0%, rgba(240, 128, 107, 0.06) 24%, transparent 48%),
+    radial-gradient(circle, rgba(228,88,122,0.028) 1px, transparent 1px);
+  background-size: auto, auto, auto, auto, 24px 24px;
 }
 
+.flow-shell,
+.flow-shell *:not(code):not(pre) {
+  font-family: 'Google Sans', sans-serif !important;
+}
+
+/* --- Header -------------------------------------------------------------- */
 .flow-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 1.5rem;
-  margin-bottom: 2rem;
+  padding: 1.5rem 2.5rem;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(228, 88, 122, 0.22);
+  background: var(--flow-surface);
+  backdrop-filter: blur(12px);
 }
 
 .flow-eyebrow {
   text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  color: #94a3b8;
-  margin-bottom: 0.35rem;
+  font-family: var(--flow-font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: #cf4264;
+  margin-bottom: 0.15rem;
 }
 
 .flow-title {
-  font-size: 2rem;
+  font-family: var(--flow-font-display);
+  font-style: normal;
+  font-optical-sizing: auto;
+  font-variation-settings: 'GRAD' 0;
+  font-size: 1.68rem;
   font-weight: 500;
-  color: #0f172a;
+  font-stretch: 112%;
+  color: var(--flow-text);
+  line-height: 1.15;
 }
 
 .flow-back {
@@ -2051,94 +2158,556 @@ a.primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid var(--flow-border);
+  background: var(--flow-surface);
+  color: var(--flow-muted);
+  transition: all 0.2s ease;
+  padding: 0;
+}
+.flow-close:hover {
+  background: var(--flow-accent-soft);
+  color: var(--flow-accent);
+  border-color: #f1b9b0;
 }
 
+/* --- Grid ---------------------------------------------------------------- */
 .flow-grid {
-  /* Allow children to be scroll containers inside a fixed-height wizard shell. */
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 2rem;
+  gap: 0;
   align-items: stretch;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
+/* --- Sidebar steps ------------------------------------------------------- */
 .flow-steps {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: var(--flow-sidebar-bg);
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2rem 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-height: 0;
   overflow: auto;
+  /* subtle noise texture */
+  background-image:
+    radial-gradient(circle at 12% 6%, rgba(255, 232, 196, 0.28) 0%, transparent 34%),
+    radial-gradient(circle at 86% 8%, rgba(255, 190, 176, 0.24) 0%, transparent 34%),
+    linear-gradient(140deg, #f6bd79 0%, #f59672 42%, #f06f8b 72%, #ea6a9b 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.14);
 }
 
 .flow-steps-list {
   display: grid;
-  gap: 1.25rem;
+  gap: 0.35rem;
 }
 
 .flow-steps-progress {
-  margin-top: 0.25rem;
+  margin-top: auto;
   padding-top: 1.25rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .flow-step {
   display: grid;
-  grid-template-columns: 26px 1fr;
+  grid-template-columns: 30px 1fr;
   gap: 0.75rem;
-  color: #94a3b8;
+  align-items: start;
+  color: var(--flow-sidebar-text);
+  padding: 0.6rem 0.65rem;
+  border-radius: 10px;
+  transition: background 0.2s ease, color 0.2s ease;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .flow-step.active {
-  color: #1e1b4b;
+  color: var(--flow-sidebar-active);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08));
 }
 
 .flow-step-number {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
-  border: 1px solid #cbd5f5;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 600;
-  background: #ffffff;
+  background: transparent;
+  color: #ffffff;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .flow-step.active .flow-step-number {
-  background: #6366f1;
+  background: linear-gradient(135deg, #f59a55, #ec5a7a);
   color: #ffffff;
-  border-color: #6366f1;
+  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 16px var(--flow-accent-glow);
+  animation: flow-step-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .flow-step-title {
+  font-family: 'Google Sans', sans-serif;
   font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  color: #ffffff;
 }
 
 .flow-step-desc {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  line-height: 1.35;
+  color: #ffffff;
 }
 
+.flow-step.active .flow-step-title {
+  font-family: 'Google Sans', sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings: 'GRAD' 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.flow-step.active .flow-step-desc {
+  font-size: 0.92rem;
+  opacity: 1;
+  color: #ffffff;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+.flow-step.active .flow-step-number {
+  font-size: 0.82rem;
+}
+
+/* --- Main panel ---------------------------------------------------------- */
 .flow-panel {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 2.5rem 3.5rem;
   min-height: 0;
   overflow: auto;
 }
 
 .flow-panel-body {
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
+  max-width: 680px;
+  animation: flow-fade-up 0.45s ease both;
+}
+
+/* Stagger children for a pleasant reveal */
+.flow-panel-body > *:nth-child(1) { animation: flow-fade-up 0.4s ease 0.04s both; }
+.flow-panel-body > *:nth-child(2) { animation: flow-fade-up 0.4s ease 0.10s both; }
+.flow-panel-body > *:nth-child(3) { animation: flow-fade-up 0.4s ease 0.16s both; }
+.flow-panel-body > *:nth-child(4) { animation: flow-fade-up 0.4s ease 0.22s both; }
+.flow-panel-body > *:nth-child(5) { animation: flow-fade-up 0.4s ease 0.28s both; }
+.flow-panel-body > *:nth-child(6) { animation: flow-fade-up 0.4s ease 0.34s both; }
+.flow-panel-body > *:nth-child(7) { animation: flow-fade-up 0.4s ease 0.40s both; }
+.flow-panel-body > *:nth-child(8) { animation: flow-fade-up 0.4s ease 0.46s both; }
+
+/* --- Flow typography (scoped) -------------------------------------------- */
+.flow-shell .card-title {
+  font-family: var(--flow-font-display);
+  font-style: normal;
+  font-optical-sizing: auto;
+  font-variation-settings: 'GRAD' 0;
+  font-size: 1.52rem;
+  font-weight: 500;
+  color: var(--flow-text);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.flow-shell .card-subtitle {
+  font-family: var(--flow-font-body);
+  color: var(--flow-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-top: 0.35rem;
+}
+
+/* --- Flow inputs (scoped) ------------------------------------------------ */
+.flow-shell input[type="text"],
+.flow-shell input[type="url"],
+.flow-shell input[type="email"],
+.flow-shell select,
+.flow-shell textarea {
+  font-family: var(--flow-font-body);
+  padding: 0.92rem 0.95rem;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    var(--flow-border-gradient) border-box;
+  color: var(--flow-text);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  outline: none;
+}
+.flow-shell input[type="text"]:focus,
+.flow-shell input[type="url"]:focus,
+.flow-shell input[type="email"]:focus,
+.flow-shell select:focus,
+.flow-shell textarea:focus {
+  border: 2px solid transparent;
+  background: #ffffff;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    var(--flow-brand-gradient-dark) border-box;
+  box-shadow: 0 0 0 3px rgba(219, 95, 84, 0.16);
+}
+.flow-shell input::placeholder,
+.flow-shell textarea::placeholder {
+  color: #b38d97;
+}
+
+.flow-shell .flow-field {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  max-width: 520px;
+  padding-top: 0.1rem;
+}
+.flow-shell .flow-field-label {
+  position: absolute;
+  top: -0.62rem;
+  left: 0.95rem;
+  z-index: 2;
+  padding: 0 0.34rem;
+  background: var(--flow-surface);
+  color: var(--flow-input-border);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.flow-shell .flow-field-input-wrap {
+  position: relative;
+}
+.flow-shell .flow-field-input-wrap input,
+.flow-shell .flow-field-input-wrap select,
+.flow-shell .flow-field-input-wrap textarea {
+  width: 100%;
+  padding: 0.92rem 0.95rem;
+}
+.flow-shell .flow-field-helper {
+  color: var(--flow-muted);
+  font-size: 0.84rem;
+  margin-top: 0.2rem;
+}
+.flow-shell .flow-field-suffix {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.84rem;
+  color: #6f62ab;
+  font-weight: 600;
+  pointer-events: none;
+}
+.flow-shell .flow-field-input-wrap.has-suffix input {
+  padding-right: 3rem;
+}
+
+/* --- Flow buttons (scoped) ----------------------------------------------- */
+.flow-shell button.primary {
+  font-family: var(--flow-font-body);
+  background: var(--flow-brand-gradient-dark);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(198, 65, 132, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.flow-shell button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #cf7a33 0%, #cc4f46 48%, #b93877 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(185, 56, 119, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.flow-shell button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.flow-shell button.secondary {
+  font-family: var(--flow-font-body);
+  background: var(--flow-surface);
+  color: var(--flow-text);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    var(--flow-border-gradient) border-box;
+  border-radius: 10px;
+  padding: 0.65rem 1.25rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.flow-shell button.secondary:hover:not(:disabled) {
+  color: var(--flow-accent);
+  background: var(--flow-accent-soft);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--flow-accent-soft), var(--flow-accent-soft)) padding-box,
+    var(--flow-brand-gradient) border-box;
+}
+
+.flow-shell button.ghost {
+  font-family: var(--flow-font-body);
+  background: transparent;
+  color: var(--flow-muted);
+  border: none;
+  padding: 0.65rem 1rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  border-radius: 10px;
+}
+.flow-shell button.ghost:hover:not(:disabled) {
+  color: var(--flow-accent);
+  background: #ffece8;
+}
+
+/* --- Flow cards (scoped) ------------------------------------------------- */
+.flow-shell .card {
+  border: 1.5px solid transparent;
+  border-radius: var(--flow-radius);
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    var(--flow-border-gradient) border-box;
+  box-shadow: 0 6px 24px rgba(109, 40, 255, 0.1);
+  padding: 1.5rem;
+}
+
+/* --- Flow alerts (scoped) ------------------------------------------------ */
+.flow-shell .alert {
+  font-family: var(--flow-font-body);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+.flow-shell .alert.info {
+  background: var(--flow-accent-soft);
+  color: #3730a3;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+.flow-shell .alert.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* --- Hosting choice cards ------------------------------------------------ */
+.flow-hosting-card {
+  text-align: left;
+  padding: 1.5rem;
+  border-radius: var(--flow-radius);
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    var(--flow-border-gradient) border-box;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.flow-hosting-card::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: calc(var(--flow-radius) - 2px);
+  background: linear-gradient(135deg, rgba(246, 180, 109, 0.12), rgba(240, 128, 107, 0.11), rgba(230, 99, 151, 0.11));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.flow-hosting-card:hover {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    linear-gradient(135deg, rgba(246, 180, 109, 0.42), rgba(240, 128, 107, 0.44), rgba(230, 99, 151, 0.44)) border-box;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(214, 95, 114, 0.14);
+}
+.flow-hosting-card:hover::before {
+  opacity: 0.9;
+}
+.flow-hosting-card.selected {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, #fff8f4, #fff5f9) padding-box,
+    linear-gradient(135deg, rgba(246, 180, 109, 0.5), rgba(240, 128, 107, 0.52), rgba(230, 99, 151, 0.52)) border-box;
+  box-shadow: 0 0 0 3px rgba(231, 99, 129, 0.16), 0 8px 20px rgba(231, 99, 129, 0.1);
+}
+.flow-hosting-card.selected::before {
+  opacity: 0.75;
+}
+.flow-hosting-card-title {
+  font-family: var(--flow-font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--flow-text);
+  position: relative;
+  z-index: 1;
+}
+.flow-hosting-card-desc {
+  font-family: var(--flow-font-body);
+  font-size: 0.85rem;
+  color: var(--flow-muted);
+  margin-top: 0.3rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- URL list item hover ------------------------------------------------- */
+.flow-shell .url-list-item {
+  border-radius: 8px;
+  padding: 5px 8px;
+  margin: 0 -8px;
+  transition: background 0.15s ease;
+}
+.flow-shell .url-list-item:hover {
+  background: var(--flow-accent-soft);
+}
+
+/* --- Suggested bubbles --------------------------------------------------- */
+.flow-shell .icon-pill,
+.flow-shell .icon-pill--with-label {
+  font-family: var(--flow-font-body);
+  border: 1.5px solid var(--flow-border);
+  border-radius: 999px;
+  background: var(--flow-surface);
+  color: var(--flow-text);
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.flow-shell .icon-pill:hover,
+.flow-shell .icon-pill--with-label:hover {
+  border-color: var(--flow-accent);
+  background: var(--flow-accent-soft);
+  color: var(--flow-accent);
+}
+
+/* --- Snippet ------------------------------------------------------------- */
+.flow-shell .snippet {
+  background: #0f0e1a;
+  color: #d4d0f0;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--flow-radius);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 24px rgba(15, 14, 26, 0.12);
+}
+
+/* --- Discovery loading (scoped) ------------------------------------------ */
+.flow-shell .discovery-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.flow-shell .discovery-loading-dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--flow-accent);
+  animation: dot-bounce 1.4s ease-in-out infinite both;
+}
+.flow-shell .discovery-loading-dots span:nth-child(1) { animation-delay: 0s; }
+.flow-shell .discovery-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.flow-shell .discovery-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* --- Instruction step cards (shared hosting) ----------------------------- */
+.flow-instruction-card {
+  border: 1px solid var(--flow-border);
+  border-radius: var(--flow-radius);
+  padding: 1.25rem;
+  background: var(--flow-surface);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.flow-instruction-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(99, 102, 241, 0.08);
+}
+.flow-instruction-card-number {
+  font-family: var(--flow-font-display);
+  font-size: 1.5rem;
+  color: var(--flow-accent);
+  line-height: 1;
+}
+.flow-instruction-card-heading {
+  font-weight: 700;
+  color: var(--flow-text);
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+}
+.flow-instruction-card-body {
+  color: var(--flow-muted);
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* --- Training status banners (scoped) ------------------------------------ */
+.flow-shell .design-form-training-in-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--flow-font-body);
+}
+.flow-shell .design-form-training-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--flow-font-body);
+}
+
+/* --- Flow muted text ----------------------------------------------------- */
+.flow-shell .muted {
+  color: var(--flow-muted);
+  font-size: 0.9rem;
+}
+
+/* --- Widget design form within flow -------------------------------------- */
+.flow-shell .flow-panel-body:has(.widget-design-grid) {
+  max-width: none;
+}
+.flow-shell .widget-design-grid {
+  gap: 2.5rem;
+}
+.flow-shell .design-form-label {
+  font-family: var(--flow-font-body);
+}
+.flow-shell .design-form-hint {
+  font-family: var(--flow-font-body);
 }
 
 /* Design widget page: form + preview, use more of full width (rem-based) */
@@ -2504,12 +3073,17 @@ a.primary {
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* --- Flow actions bar ---------------------------------------------------- */
 .flow-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--flow-border, #e8e5df);
+  margin-top: 0.5rem;
 }
 
+/* --- Flow toolbar -------------------------------------------------------- */
 .flow-toolbar {
   display: flex;
   align-items: center;
@@ -2517,56 +3091,81 @@ a.primary {
   flex-wrap: wrap;
 }
 
-.url-list {
+/* --- URL list ------------------------------------------------------------ */
+.flow-shell .url-list {
   display: grid;
   gap: 0.75rem;
+  border: 1px solid var(--flow-border, #e8e5df);
+  border-radius: var(--flow-radius, 14px);
+  padding: 1rem 1.25rem;
+  background: var(--flow-surface, #ffffff);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.04);
 }
 
-.url-row {
+.flow-shell .url-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid var(--flow-border, #e8e5df);
+  background: var(--flow-surface, #ffffff);
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+.flow-shell .url-row:hover {
+  border-color: var(--flow-accent, #6366f1);
+  background: var(--flow-accent-soft, #ede9fe);
 }
 
-.url-row.selected {
-  border-color: #c7d2fe;
-  background: #eef2ff;
+.flow-shell .url-row.selected {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: var(--flow-accent-soft, #ede9fe);
 }
 
-.url-row input {
+.flow-shell .url-row input {
   width: 18px;
   height: 18px;
 }
 
-.progress-card {
+/* --- Progress card ------------------------------------------------------- */
+.flow-shell .progress-card {
   display: grid;
-  gap: 0.75rem;
-  padding: 1.25rem;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  gap: 1rem;
+  padding: 1.75rem;
+  border-radius: var(--flow-radius, 14px);
+  border: 1px solid var(--flow-border, #e8e5df);
+  background: var(--flow-surface, #ffffff);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.06);
 }
 
-.progress-label {
-  font-weight: 500;
+.flow-shell .progress-label {
+  font-family: var(--flow-font-body, 'Google Sans', sans-serif);
+  font-weight: 600;
+  color: var(--flow-text, #1a1a2e);
 }
 
-.progress-track {
-  height: 10px;
-  background: #e2e8f0;
+.flow-shell .progress-track {
+  height: 8px;
+  background: var(--flow-border, #e8e5df);
   border-radius: 999px;
   overflow: hidden;
+  position: relative;
 }
 
-.progress-fill {
+.flow-shell .progress-fill {
   height: 100%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  transition: width 0.4s ease;
+  background: linear-gradient(180deg, #a78bfa 0%, var(--flow-accent, #6366f1) 55%, #4c1dc4 100%);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 999px;
+  position: relative;
+}
+.flow-shell .progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  animation: flow-pulse-glow 2s ease-in-out infinite;
 }
 
 .spacer-sm {
@@ -2609,16 +3208,23 @@ a.primary {
   }
 
   .flow-shell {
-    padding: 1.5rem;
+    padding: 0;
   }
 
   .flow-header {
-    flex-direction: column;
-    align-items: flex-start;
+    padding: 1.25rem 1.5rem;
   }
 
   .flow-grid {
     grid-template-columns: 1fr;
+  }
+
+  .flow-steps {
+    display: none;
+  }
+
+  .flow-panel {
+    padding: 1.5rem;
   }
 }
 

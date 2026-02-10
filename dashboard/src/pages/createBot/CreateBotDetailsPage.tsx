@@ -20,22 +20,36 @@ export default function CreateBotDetailsPage() {
     <div className="flow-panel-body">
       <div>
         <div className="card-title">Name your agent</div>
-        <div className="card-subtitle">This is the name customers will see.</div>
-        <input value={botName} onChange={(event) => setBotName(event.target.value)} placeholder="Web AI Assistant" />
+        <div className="card-subtitle">
+          Choose a name your customers will see when they open the chat.
+        </div>
       </div>
 
-      <div>
-        <div className="card-title">Business type (optional)</div>
-        <div className="card-subtitle">This helps us show a few helpful suggestions.</div>
-        <select
-          value={businessType}
-          onChange={(e) => setBusinessType((e.target.value || '') as '' | 'hotel' | 'other')}
-          style={{ width: '100%', maxWidth: '320px', padding: '0.5rem' }}
-        >
-          <option value="">—</option>
-          <option value="hotel">Hotel</option>
-          <option value="other">Other</option>
-        </select>
+      <div className="flow-field">
+        <label className="flow-field-label">Agent name</label>
+        <div className="flow-field-input-wrap">
+          <input
+            type="text"
+            value={botName}
+            onChange={(event) => setBotName(event.target.value)}
+            placeholder="e.g. Concierge, Support, Luna..."
+          />
+        </div>
+      </div>
+
+      <div className="flow-field">
+        <label className="flow-field-label">Business type (optional)</label>
+        <div className="flow-field-input-wrap">
+          <select
+            value={businessType}
+            onChange={(e) => setBusinessType((e.target.value || '') as '' | 'hotel' | 'other')}
+          >
+            <option value="">--</option>
+            <option value="hotel">Hotel</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <span className="flow-field-helper">Helps us tailor suggestions for your industry.</span>
       </div>
 
       {localError && (

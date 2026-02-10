@@ -50,50 +50,90 @@ export default function CreateBotProgressPage() {
 
   const currentStageLabel =
     !jobId && pdfJobs.length > 0
-      ? 'Preparing your PDF files…'
+      ? 'Preparing your PDF files...'
       : getTrainingStageLabel(jobId, trainingStage, trainingStageName)
+
+  const isComplete = trainingStage === 'complete'
 
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Getting your agent ready</div>
+        <div className="card-title">
+          {trainingStageName === 'skipped'
+            ? 'No sources added yet'
+            : isComplete
+            ? 'Your agent is ready'
+            : 'Training your agent'}
+        </div>
         <div className="card-subtitle">
           {trainingStageName === 'skipped'
-            ? 'You didn’t add anything yet. You can do this later from your bot settings.'
-            : trainingStage === 'complete'
-            ? 'All set!'
-            : 'We’re reading what you added and getting your agent ready.'}
+            ? 'You can add pages and PDFs later from your bot settings.'
+            : isComplete
+            ? 'All sources have been processed. Your agent is ready to chat.'
+            : 'We\'re reading your content and teaching your agent. This won\'t take long.'}
         </div>
       </div>
 
       {localError && <div className="alert error">{localError}</div>}
 
+      {/* Progress visualization */}
       <div className="progress-card">
-        <div className="progress-label">
-          {currentStageLabel}
-          {trainingPagesCrawled > 0 && ` • ${trainingPagesCrawled} pages read`}
-          {trainingDocsCount > 0 && ` • ${trainingDocsCount} documents`}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="progress-label">{currentStageLabel}</div>
+          <span style={{
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            color: 'var(--flow-accent)',
+          }}>
+            {trainingProgress}%
+          </span>
         </div>
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${trainingProgress}%` }} />
         </div>
-        <div className="muted">{trainingProgress}% complete</div>
+        {(trainingPagesCrawled > 0 || trainingDocsCount > 0) && (
+          <div className="muted" style={{ fontSize: '0.8rem', display: 'flex', gap: '1rem' }}>
+            {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages read</span>}
+            {trainingDocsCount > 0 && <span>{trainingDocsCount} documents</span>}
+          </div>
+        )}
       </div>
 
+      {/* PDF job statuses */}
       {pdfJobs.length > 0 && (
-        <div className="card" style={{ padding: '1rem' }}>
-          <div className="card-title" style={{ marginBottom: '0.25rem' }}>PDF files</div>
-          <div className="muted" style={{ marginBottom: '0.75rem' }}>We’re preparing each file you uploaded.</div>
+        <div style={{
+          border: '1px solid var(--flow-border)',
+          borderRadius: 'var(--flow-radius)',
+          padding: '1.25rem',
+          background: 'var(--flow-surface)',
+        }}>
+          <div style={{ fontWeight: 600, color: 'var(--flow-text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+            PDF files
+          </div>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             {pdfJobs.map((j) => (
-              <div key={j.job_id} className="row" style={{ justifyContent: 'space-between', gap: '0.75rem' }}>
-                <div className="muted" style={{ fontFamily: 'monospace' }}>{j.job_id}</div>
-                <div>
-                  <span className="pill" style={{ padding: '0.2rem 0.5rem', borderRadius: 999, background: '#e2e8f0', color: '#334155' }}>
+              <div key={j.job_id} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.5rem 0',
+                borderBottom: '1px solid var(--flow-border)',
+              }}>
+                <div className="muted" style={{ fontSize: '0.8rem' }}>{j.job_id}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: 999,
+                    background: 'var(--flow-accent-soft)',
+                    color: 'var(--flow-accent)',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                  }}>
                     {TRAINING_STAGE_LABELS[(j.stage || 'queued').toString()] || (j.stage || 'queued').toString()}
                   </span>
                   {typeof j.docs_count === 'number' && (
-                    <span className="muted" style={{ marginLeft: '8px' }}>{j.docs_count} docs</span>
+                    <span className="muted" style={{ fontSize: '0.8rem' }}>{j.docs_count} docs</span>
                   )}
                 </div>
               </div>
@@ -104,34 +144,33 @@ export default function CreateBotProgressPage() {
 
       {trainingStageName === 'skipped' && botId && (
         <div className="alert info">
-          You can add pages and PDFs later from <b>Bot → Knowledge</b>.
+          You can add pages and PDFs later from <b>Bot &rarr; Knowledge</b>.
         </div>
       )}
 
       <div className="flow-actions">
-        {trainingStage === 'complete' ? (
+        {isComplete ? (
           <>
-            {flow.nextPath ? (
+            {flow.nextPath && (
               <button type="button" className="primary" onClick={() => navigate(flow.nextPath!)}>
                 Continue
               </button>
-            ) : null}
+            )}
             {botId ? (
-              <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}>
+              <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}
+                style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
                 Go to bot overview
               </Link>
             ) : (
-              <Link className="secondary" to="/bots" onClick={handleFinish}>
+              <Link className="secondary" to="/bots" onClick={handleFinish}
+                style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
                 Go to bots
               </Link>
             )}
-            <Link className="ghost" to="/bots" onClick={handleFinish}>
-              Back to bots
-            </Link>
           </>
         ) : (
-          <div className="muted">
-            This runs in the background. In a few seconds we&apos;ll take you to the design step—you don&apos;t need to wait here.
+          <div className="muted" style={{ fontSize: '0.85rem' }}>
+            This runs in the background. We&apos;ll take you to the design step shortly.
           </div>
         )}
       </div>
