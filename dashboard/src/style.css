@@ -1279,6 +1279,12 @@ a.primary {
   margin-bottom: 1rem;
 }
 
+.stacked-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 /* Bot overview: 5 setup indicators + status */
 .overview-top {
   display: flex;
@@ -2081,7 +2087,7 @@ a.primary {
 /* --- Keyframes ----------------------------------------------------------- */
 @keyframes flow-fade-up {
   from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 @keyframes flow-pulse-glow {
   0%, 100% { box-shadow: 0 0 0 0 var(--flow-accent-glow); }
@@ -2334,6 +2340,13 @@ a.primary {
   max-width: 680px;
   animation: flow-fade-up 0.45s ease both;
 }
+.flow-shell .flow-panel-body > * {
+  position: relative;
+  z-index: 0;
+}
+.flow-shell .flow-panel-body > *:focus-within {
+  z-index: 5;
+}
 
 /* Stagger children for a pleasant reveal */
 .flow-panel-body > *:nth-child(1) { animation: flow-fade-up 0.4s ease 0.04s both; }
@@ -2406,12 +2419,16 @@ a.primary {
   gap: 0.45rem;
   max-width: 520px;
   padding-top: 0.1rem;
+  z-index: 0;
+}
+.flow-shell .flow-field:focus-within {
+  z-index: 10;
 }
 .flow-shell .flow-field-label {
   position: absolute;
   top: -0.62rem;
   left: 0.95rem;
-  z-index: 2;
+  z-index: 3;
   padding: 0 0.34rem;
   background: var(--flow-surface);
   color: var(--flow-input-border);
@@ -2676,6 +2693,10 @@ a.primary {
   -webkit-appearance: none;
   -moz-appearance: none;
   padding-right: 2.25rem;
+  border: 1px solid var(--flow-border, #f2d8d2);
+  border-radius: 12px;
+  background-color: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #3a2236);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237e5a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
@@ -2687,6 +2708,134 @@ a.primary {
   outline: none;
   border-color: var(--flow-accent, #e4587a);
   box-shadow: 0 0 0 3px var(--flow-accent-glow, rgba(228, 88, 122, 0.15));
+}
+
+/* Force flow dropdown styling (create-bot flow) */
+.flow-shell .flow-field-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding-right: 2.25rem;
+  border: 1px solid var(--flow-border, #f2d8d2);
+  border-radius: 12px;
+  background-color: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #3a2236);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237e5a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+}
+
+.flow-shell .flow-field-select:focus {
+  outline: none;
+  border-color: var(--flow-accent, #e4587a);
+  box-shadow: 0 0 0 3px var(--flow-accent-glow, rgba(228, 88, 122, 0.15));
+}
+
+/* Custom dropdown (FlowSelect) */
+.flow-select {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  z-index: 1;
+}
+
+.flow-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--flow-border, #e2e8f0);
+  background: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #0f172a);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-select-trigger.is-placeholder {
+  color: var(--flow-muted, #64748b);
+}
+
+.flow-select-trigger:focus {
+  outline: none;
+  border-color: var(--flow-accent, #e4587a);
+  box-shadow: 0 0 0 3px var(--flow-accent-glow, rgba(228, 88, 122, 0.15));
+}
+
+.flow-select-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--flow-muted, #64748b);
+}
+
+.flow-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 9999;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--flow-border, #e2e8f0);
+  background: var(--flow-surface, #ffffff);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+  max-height: 260px;
+  overflow: auto;
+}
+
+.flow-select-option {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--flow-text, #0f172a);
+  font: inherit;
+  cursor: pointer;
+}
+
+.flow-select-option:hover {
+  background: var(--flow-accent-soft, #fff1ef);
+  color: var(--flow-accent, #e4587a);
+}
+
+.flow-select-option.active {
+  background: var(--flow-brand-gradient-dark, #e4587a);
+  color: #ffffff;
+}
+
+.flow-select-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Default select styling for dashboard pages (non-flow) */
+select.design-form-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #0f172a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+select.design-form-input:focus {
+  outline: none;
+  border-color: var(--app-accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
 /* --- Step transition animation ------------------------------------------- */
@@ -2757,6 +2906,31 @@ a.primary {
   white-space: nowrap;
 }
 
+.flow-shell .star-border--primary .star-border-inner {
+  background: var(--flow-brand-gradient-dark) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 10px 22px rgba(228, 88, 122, 0.25) !important;
+}
+
+.star-border--primary .star-border-inner svg {
+  stroke: currentColor;
+}
+
+.star-border--primary .star-border-gradient {
+  display: none;
+}
+
+.star-border-container:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.flow-hint-text {
+  color: var(--flow-muted);
+  font-size: 0.9rem;
+}
+
 /* --- Discovery loading (scoped) ------------------------------------------ */
 .flow-shell .discovery-loading {
   display: inline-flex;
@@ -2795,7 +2969,11 @@ a.primary {
   line-height: 1;
 }
 .flow-instruction-icon {
-  color: var(--flow-accent);
+  color: var(--flow-text);
+}
+
+.flow-field-select {
+  width: 100%;
 }
 .flow-instruction-card-heading {
   font-weight: 700;
@@ -2902,6 +3080,13 @@ a.primary {
   flex-direction: column;
   gap: 1rem;
   min-width: 0;
+}
+.flow-shell .design-form-field {
+  position: relative;
+  z-index: 0;
+}
+.flow-shell .design-form-field:focus-within {
+  z-index: 10;
 }
 
 .design-form-field-full {
@@ -3077,6 +3262,62 @@ a.primary {
 .design-form-range-full {
   max-width: none;
   width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  min-height: 0;
+  cursor: pointer;
+}
+
+.design-form-range-full[type='range'] {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 6px;
+  min-height: 6px;
+  border-radius: 999px;
+  background: transparent;
+  outline: none;
+}
+.design-form-range-full[type='range']:focus,
+.design-form-range-full[type='range']:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.design-form-range-full[type='range']::-moz-focus-outer {
+  border: 0;
+}
+
+.design-form-range-full[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--flow-border, #e5e7eb);
+}
+
+.design-form-range-full[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--flow-brand-gradient-dark);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(228, 88, 122, 0.35);
+  margin-top: -5px;
+}
+
+.design-form-range-full[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--flow-brand-gradient-dark);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(228, 88, 122, 0.35);
+}
+
+.design-form-range-full[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--flow-border, #e5e7eb);
 }
 
 /* Radio option as card: whole card selected, hover, theme color */
@@ -3092,16 +3333,16 @@ a.primary {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--flow-border, #f2d8d2);
   border-radius: 12px;
-  background: #fff;
+  background: var(--flow-surface, #ffffff);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .design-form-radio-card:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--flow-accent-soft, #fff1ef);
+  border-color: var(--flow-accent, #e4587a);
 }
 
 .design-form-radio-card:has(input:checked) {
@@ -3116,11 +3357,12 @@ a.primary {
   flex-shrink: 0;
   width: 1.25rem;
   height: 1.25rem;
+  accent-color: var(--flow-accent, #e4587a);
 }
 
 .design-form-radio-card span {
   font-size: 1rem;
-  color: #334155;
+  color: var(--flow-text, #3a2236);
 }
 
 /* Icon selector: wrapper and on-image clear (X) */
@@ -3215,6 +3457,10 @@ a.primary {
   padding-top: 0.75rem;
   border-top: 1px solid var(--flow-border, #e8e5df);
   margin-top: 0.5rem;
+}
+.flow-shell .flow-actions {
+  border-top: none;
+  padding-top: 0;
 }
 
 /* --- Flow toolbar -------------------------------------------------------- */
@@ -3777,17 +4023,18 @@ a.primary {
 .tab-button {
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #475569;
+  border: 1px solid var(--flow-border, #f2d8d2);
+  background: var(--flow-surface, #ffffff);
+  color: var(--flow-text, #3a2236);
   font-size: 0.9rem;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .tab-button.active {
-  background: var(--app-accent);
+  background: var(--flow-brand-gradient-dark, #e4587a);
   color: #ffffff;
-  border-color: var(--app-accent);
+  border-color: transparent;
 }
 
 .toggle {

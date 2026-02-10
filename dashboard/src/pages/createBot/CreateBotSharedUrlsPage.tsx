@@ -159,14 +159,10 @@ export default function CreateBotSharedUrlsPage() {
 
       {/* URL rows */}
       <div style={{
-        border: '1px solid var(--flow-border)',
-        borderRadius: 'var(--flow-radius)',
-        padding: '1.25rem',
-        background: 'var(--flow-surface)',
         display: 'grid',
         gap: '10px',
       }}>
-        <div className="alert info" style={{ marginBottom: '4px' }}>
+        <div className="flow-hint-text" style={{ marginBottom: '4px' }}>
           Add a link for each important page (services, pricing, hours, booking, contact, FAQs).
         </div>
 
@@ -254,6 +250,7 @@ export default function CreateBotSharedUrlsPage() {
             <StarBorder
               as="button"
               type="button"
+              className="star-border--primary"
               onClick={handleStartTraining}
               disabled={isStartingTraining}
               color="#e4587a"

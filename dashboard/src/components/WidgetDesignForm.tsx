@@ -1,6 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { WidgetPreview } from '../pages/createBot/WidgetPreview'
+import { WIDGET_SIZE_DIMENSIONS } from '../constants/widgetSizes'
 import { FlowIcon } from './FlowIcon'
+import { FlowSelect } from './FlowSelect'
 import { SuggestedMessagesEditor } from './SuggestedMessagesEditor'
 
 const FOOTER_MAX_LENGTH = 200
@@ -53,7 +55,7 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   launcherText: 'Help',
   headerIconUrl: '',
   shareIconUrl: '',
-  maxHeight: 720,
+  maxHeight: 560,
   fontSize: 'medium',
   headerSize: 'small',
   autoPopupWelcome: 'off',
@@ -210,6 +212,14 @@ export function WidgetDesignForm({
     suggestedMessages,
   } = value
 
+  const maxHeightLimit = WIDGET_SIZE_DIMENSIONS[widgetSize]?.height ?? 560
+
+  useEffect(() => {
+    if (maxHeight > maxHeightLimit) {
+      update('maxHeight', maxHeightLimit)
+    }
+  }, [maxHeight, maxHeightLimit, update])
+
   return (
     <div className="flow-panel-body">
       <div>
@@ -229,15 +239,14 @@ export function WidgetDesignForm({
               <div className="design-form-row">
                 <div className="design-form-field">
                   <label className="design-form-label">Theme</label>
-                  <select
-                    className="design-form-input"
+                  <FlowSelect
                     value={theme}
-                    onChange={(e) => update('theme', e.target.value as 'light' | 'dark')}
-                    style={{ minWidth: '200px' }}
-                  >
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </select>
+                    onChange={(next) => update('theme', next as 'light' | 'dark')}
+                    options={[
+                      { value: 'light', label: 'Light' },
+                      { value: 'dark', label: 'Dark' },
+                    ]}
+                  />
                 </div>
                 <div className="design-form-field">
                   <label className="design-form-label">Accent color</label>
@@ -254,7 +263,7 @@ export function WidgetDesignForm({
                       onChange={(e) => update('widgetPrimaryColor', e.target.value)}
                       placeholder="#e4587a"
                       className="design-form-input"
-                      style={{ width: '180px' }}
+                      style={{ width: '120px', minWidth: 0 }}
                     />
                   </div>
                 </div>
@@ -273,23 +282,22 @@ export function WidgetDesignForm({
                       onChange={(e) => update('textColor', e.target.value)}
                       placeholder="#ffffff"
                       className="design-form-input"
-                      style={{ width: '140px' }}
+                      style={{ width: '120px', minWidth: 0 }}
                     />
                   </div>
                 </div>
                 <div className="design-form-field">
                   <label className="design-form-label">Business type</label>
                   <span className="design-form-hint">Hotel bots can use booking and availability features.</span>
-                  <select
-                    className="design-form-input"
+                  <FlowSelect
                     value={businessType}
-                    onChange={(e) => update('businessType', (e.target.value || '') as '' | 'hotel' | 'other')}
-                    style={{ minWidth: '200px' }}
-                  >
-                    <option value="">—</option>
-                    <option value="hotel">Hotel</option>
-                    <option value="other">Other</option>
-                  </select>
+                    onChange={(next) => update('businessType', (next || '') as '' | 'hotel' | 'other')}
+                    options={[
+                      { value: '', label: '--' },
+                      { value: 'hotel', label: 'Hotel' },
+                      { value: 'other', label: 'Other' },
+                    ]}
+                  />
                 </div>
               </div>
               <div className="design-form-field design-form-field-full">
@@ -437,7 +445,7 @@ export function WidgetDesignForm({
                     <div className="design-form-field">
                       <label className="design-form-label">Max height</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <input type="range" min={400} max={800} step={20} value={maxHeight} onChange={(e) => update('maxHeight', Number(e.target.value))} className="design-form-input design-form-range-full" style={{ flex: 1, minWidth: 0 }} />
+                        <input type="range" min={400} max={maxHeightLimit} step={20} value={maxHeight} onChange={(e) => update('maxHeight', Number(e.target.value))} className="design-form-range-full" style={{ flex: 1, minWidth: 0 }} />
                         <span style={{ fontSize: '1rem', minWidth: '3rem' }}>{maxHeight}px</span>
                       </div>
                     </div>
@@ -478,35 +486,64 @@ export function WidgetDesignForm({
                     <div className="design-form-row">
                       <div className="design-form-field">
                         <label className="design-form-label">Font size</label>
-                        <select className="design-form-input" value={fontSize} onChange={(e) => update('fontSize', e.target.value as 'small' | 'medium' | 'large')} style={{ minWidth: '120px' }}>
-                          <option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option>
-                        </select>
+                        <FlowSelect
+                          value={fontSize}
+                          onChange={(next) => update('fontSize', next as 'small' | 'medium' | 'large')}
+                          options={[
+                            { value: 'small', label: 'Small' },
+                            { value: 'medium', label: 'Medium' },
+                            { value: 'large', label: 'Large' },
+                          ]}
+                        />
                       </div>
                       <div className="design-form-field">
                         <label className="design-form-label">Header size</label>
-                        <select className="design-form-input" value={headerSize} onChange={(e) => update('headerSize', e.target.value as 'small' | 'medium' | 'large')} style={{ minWidth: '200px' }}>
-                          <option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option>
-                        </select>
+                        <FlowSelect
+                          value={headerSize}
+                          onChange={(next) => update('headerSize', next as 'small' | 'medium' | 'large')}
+                          options={[
+                            { value: 'small', label: 'Small' },
+                            { value: 'medium', label: 'Medium' },
+                            { value: 'large', label: 'Large' },
+                          ]}
+                        />
                       </div>
                     </div>
                     <div className="design-form-row">
                       <div className="design-form-field">
                         <label className="design-form-label">Auto popup welcome</label>
-                        <select className="design-form-input" value={autoPopupWelcome} onChange={(e) => update('autoPopupWelcome', e.target.value as 'off' | '1s' | '2s' | '3s')} style={{ minWidth: '160px' }}>
-                          <option value="off">Off</option><option value="1s">1s</option><option value="2s">2s</option><option value="3s">3s</option>
-                        </select>
+                        <FlowSelect
+                          value={autoPopupWelcome}
+                          onChange={(next) => update('autoPopupWelcome', next as 'off' | '1s' | '2s' | '3s')}
+                          options={[
+                            { value: 'off', label: 'Off' },
+                            { value: '1s', label: '1s' },
+                            { value: '2s', label: '2s' },
+                            { value: '3s', label: '3s' },
+                          ]}
+                        />
                       </div>
                       <div className="design-form-field">
                         <label className="design-form-label">Auto scroll</label>
-                        <select className="design-form-input" value={autoScrollNewMessages ? 'yes' : 'no'} onChange={(e) => update('autoScrollNewMessages', e.target.value === 'yes')} style={{ minWidth: '160px' }}>
-                          <option value="yes">Yes</option><option value="no">No</option>
-                        </select>
+                        <FlowSelect
+                          value={autoScrollNewMessages ? 'yes' : 'no'}
+                          onChange={(next) => update('autoScrollNewMessages', next === 'yes')}
+                          options={[
+                            { value: 'yes', label: 'Yes' },
+                            { value: 'no', label: 'No' },
+                          ]}
+                        />
                       </div>
                       <div className="design-form-field">
                         <label className="design-form-label">Display sources</label>
-                        <select className="design-form-input" value={displaySourcesInMessages ? 'yes' : 'no'} onChange={(e) => update('displaySourcesInMessages', e.target.value === 'yes')} style={{ minWidth: '160px' }}>
-                          <option value="no">No</option><option value="yes">Yes</option>
-                        </select>
+                        <FlowSelect
+                          value={displaySourcesInMessages ? 'yes' : 'no'}
+                          onChange={(next) => update('displaySourcesInMessages', next === 'yes')}
+                          options={[
+                            { value: 'no', label: 'No' },
+                            { value: 'yes', label: 'Yes' },
+                          ]}
+                        />
                       </div>
                     </div>
                     {displaySourcesInMessages && (

@@ -103,7 +103,7 @@ export default function CreateBotUrlsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FlowIcon name="ads_click" filled className="flow-instruction-icon" style={{ fontSize: '24px' }} />
+              <FlowIcon name="ads_click" className="flow-instruction-icon" style={{ fontSize: '24px' }} />
               <div className="flow-instruction-card-number">1</div>
             </div>
             <div className="flow-instruction-card-heading">Open the page</div>
@@ -114,7 +114,7 @@ export default function CreateBotUrlsPage() {
 
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FlowIcon name="print" filled className="flow-instruction-icon" style={{ fontSize: '24px' }} />
+              <FlowIcon name="print" className="flow-instruction-icon" style={{ fontSize: '24px' }} />
               <div className="flow-instruction-card-number">2</div>
             </div>
             <div className="flow-instruction-card-heading">Print as PDF</div>
@@ -125,7 +125,7 @@ export default function CreateBotUrlsPage() {
 
           <div className="flow-instruction-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <FlowIcon name="cloud_upload" filled className="flow-instruction-icon" style={{ fontSize: '24px' }} />
+              <FlowIcon name="cloud_upload" className="flow-instruction-icon" style={{ fontSize: '24px' }} />
               <div className="flow-instruction-card-number">3</div>
             </div>
             <div className="flow-instruction-card-heading">Upload here</div>
@@ -444,6 +444,7 @@ export default function CreateBotUrlsPage() {
               <StarBorder
                 as="button"
                 type="button"
+                className="star-border--primary"
                 onClick={handleStartTraining}
                 disabled={isStartingTraining}
                 color="#e4587a"

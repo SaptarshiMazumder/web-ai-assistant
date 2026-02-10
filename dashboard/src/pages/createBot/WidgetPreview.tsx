@@ -43,7 +43,7 @@ export function WidgetPreview({
   headerIconUrl = '',
   launcherIconUrl = '',
   launcherText = 'Help',
-  maxHeight = 720,
+  maxHeight = 560,
   fontSize = 'medium',
   headerSize = 'small',
   suggestedMessages = [],

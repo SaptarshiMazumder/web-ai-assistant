@@ -117,7 +117,7 @@ export function FileDropzone({
             {files.map((f) => (
               <div key={`${f.name}:${f.size}:${f.lastModified}`} className="row" style={{ justifyContent: 'space-between', gap: '0.75rem', padding: '6px 0', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                  <FlowIcon name="check_circle" filled size="sm" style={{ color: 'var(--flow-accent, #e4587a)', flexShrink: 0 }} />
+                  <FlowIcon name="check_circle" size="sm" style={{ color: 'var(--flow-accent, #e4587a)', flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 500, color: 'var(--flow-text, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {f.name}

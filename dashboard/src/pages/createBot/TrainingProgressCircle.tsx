@@ -37,8 +37,8 @@ export function TrainingProgressCircle({
       style={{
         padding: '20px',
         borderRadius: '14px',
-        background: 'rgba(255, 255, 255, 0.04)',
-        border: '1px solid rgba(255, 255, 255, 0.06)',
+        background: 'rgba(255, 255, 255, 0.12)',
+        border: '1px solid rgba(255, 255, 255, 0.22)',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
@@ -51,8 +51,8 @@ export function TrainingProgressCircle({
           >
             <defs>
               <linearGradient id="training-progress-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#f6b46d" />
-                <stop offset="100%" stopColor="#e66397" />
+                <stop offset="0%" stopColor="#ffffff" />
+                <stop offset="100%" stopColor="#f6b46d" />
               </linearGradient>
             </defs>
             <circle
@@ -60,7 +60,7 @@ export function TrainingProgressCircle({
               cy={CENTER}
               r={RADIUS}
               fill="none"
-              stroke="rgba(255, 255, 255, 0.08)"
+              stroke="rgba(255, 255, 255, 0.3)"
               strokeWidth={STROKE}
             />
             <circle
@@ -75,7 +75,7 @@ export function TrainingProgressCircle({
               strokeDashoffset={offset}
               style={{
                 transition: 'stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-                filter: 'drop-shadow(0 0 8px rgba(228, 88, 122, 0.4))',
+                filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.35))',
               }}
             />
           </svg>

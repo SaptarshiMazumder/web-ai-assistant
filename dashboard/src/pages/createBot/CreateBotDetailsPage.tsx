@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { FlowSelect } from '../../components/FlowSelect'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotDetailsPage() {
@@ -40,14 +41,15 @@ export default function CreateBotDetailsPage() {
       <div className="flow-field">
         <label className="flow-field-label">Business type (optional)</label>
         <div className="flow-field-input-wrap">
-          <select
+          <FlowSelect
             value={businessType}
-            onChange={(e) => setBusinessType((e.target.value || '') as '' | 'hotel' | 'other')}
-          >
-            <option value="">--</option>
-            <option value="hotel">Hotel</option>
-            <option value="other">Other</option>
-          </select>
+            onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'other')}
+            options={[
+              { value: '', label: '--' },
+              { value: 'hotel', label: 'Hotel' },
+              { value: 'other', label: 'Other' },
+            ]}
+          />
         </div>
         <span className="flow-field-helper">Helps us tailor suggestions for your industry.</span>
       </div>

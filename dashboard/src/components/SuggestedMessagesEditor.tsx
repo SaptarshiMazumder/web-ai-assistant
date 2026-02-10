@@ -65,7 +65,7 @@ export function SuggestedMessagesEditor({
       <div className="design-form-field design-form-field-full">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: title || subtitle ? 'space-between' : 'flex-end', gap: '0.75rem' }}>
           {(title || subtitle) && (
-            <div>
+            <div className="stacked-title">
               <label className="design-form-label">{title}</label>
               <span className="design-form-hint">{subtitle}</span>
             </div>
