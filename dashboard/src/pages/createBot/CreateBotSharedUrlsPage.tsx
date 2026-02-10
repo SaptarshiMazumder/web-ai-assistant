@@ -66,27 +66,45 @@ export default function CreateBotSharedUrlsPage() {
       focusRowUrl(existingIdx)
       return
     }
+    const blankIdx = sharedUrlRows.findIndex((r) => !r.url.trim() && !r.label.trim())
+    if (blankIdx >= 0) {
+      const next = [...sharedUrlRows]
+      next[blankIdx] = { ...next[blankIdx], label: bubbleLabel }
+      setSharedUrlRows(next)
+      focusRowUrl(blankIdx)
+      return
+    }
     const next = [...sharedUrlRows, { url: '', label: bubbleLabel }]
     setSharedUrlRows(next)
     focusRowUrl(next.length - 1)
   }
 
-  // Guard route + keep one empty row at end.
+  // Guard route + ensure at least one row exists.
   useEffect(() => {
     if (contentHosting !== 'shared') {
       navigate('/create-bot/sources', { replace: true })
       return
     }
-    const rows = sharedUrlRows.length ? sharedUrlRows : [{ url: '', label: '' }]
-    const last = rows[rows.length - 1]
     if (sharedUrlRows.length === 0) {
       setSharedUrlRows([{ url: '', label: '' }])
       return
     }
-    if (last && (last.url.trim() || last.label.trim())) {
-      setSharedUrlRows([...rows, { url: '', label: '' }])
-    }
   }, [contentHosting, navigate, sharedUrlRows, setSharedUrlRows])
+
+  // Prefill first row label so the first open field matches the first bubble.
+  useEffect(() => {
+    if (contentHosting !== 'shared') return
+    const firstBubble = suggestedBubbles[0]?.label || ''
+    if (!firstBubble) return
+    if (sharedUrlRows.length === 0) return
+    const first = sharedUrlRows[0]
+    if (!first) return
+    if (!first.url.trim() && !first.label.trim()) {
+      const next = [...sharedUrlRows]
+      next[0] = { ...next[0], label: firstBubble }
+      setSharedUrlRows(next)
+    }
+  }, [contentHosting, suggestedBubbles, sharedUrlRows, setSharedUrlRows])
 
   const hasAnySources = sharedUrls.length > 0 || pdfFiles.length > 0
 
@@ -135,7 +153,6 @@ export default function CreateBotSharedUrlsPage() {
 
         <div style={{ display: 'grid', gap: '10px' }}>
           {sharedUrlRows.map((row, idx) => {
-            const showLabelInput = !!row.url.trim() || !!row.label.trim()
             return (
               <div key={`row-${idx}`} className="row" style={{ gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div style={{ flex: 2, minWidth: 240 }}>
@@ -156,22 +173,20 @@ export default function CreateBotSharedUrlsPage() {
                   />
                 </div>
 
-                {showLabelInput && (
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <input
-                      type="text"
-                      className="design-form-input"
-                      value={row.label}
-                      onChange={(e) => {
-                        const next = [...sharedUrlRows]
-                        next[idx] = { ...next[idx], label: e.target.value }
-                        setSharedUrlRows(next)
-                      }}
-                      placeholder="Topic label (e.g. Pricing, Location, Booking)"
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                )}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <input
+                    type="text"
+                    className="design-form-input"
+                    value={row.label}
+                    onChange={(e) => {
+                      const next = [...sharedUrlRows]
+                      next[idx] = { ...next[idx], label: e.target.value }
+                      setSharedUrlRows(next)
+                    }}
+                    placeholder="Topic label (e.g. Pricing, Location, Booking)"
+                    style={{ width: '100%' }}
+                  />
+                </div>
 
                 <div style={{ alignSelf: 'end' }}>
                   <button

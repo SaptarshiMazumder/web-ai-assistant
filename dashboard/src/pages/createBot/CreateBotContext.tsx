@@ -412,9 +412,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
               const url = normalize(row.url)
               if (!url) continue
               const rawLabel = (row.label || '').trim()
-              const label = rawLabel || 'Link'
+              const label = rawLabel || 'Other'
               const prev = m.get(url)
-              if (!prev || (prev.label === 'Link' && rawLabel)) {
+              if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
                 m.set(url, { url, label })
               }
             }
@@ -466,9 +466,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const url = normalizeOneUrl(row.url)
       if (!url) continue
       const rawLabel = (row.label || '').trim()
-      const label = rawLabel || 'Link'
+      const label = rawLabel || 'Other'
       const prev = m.get(url)
-      if (!prev || (prev.label === 'Link' && rawLabel)) {
+      if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
         m.set(url, { url, label })
       }
     }

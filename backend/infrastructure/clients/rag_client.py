@@ -85,6 +85,60 @@ def sanitize_answer_citations(text: str) -> str:
     """
     if not text:
         return text
+    # Rewrite bad markdown link text like [source](URL) -> [this page](URL)
+    # so users never see "source source" artifacts.
+    def _preferred_link_text_from_url(url: str) -> str:
+        try:
+            p = urlparse((url or "").strip())
+            if (p.scheme or "").lower() not in ("http", "https"):
+                return "this page"
+            path = (p.path or "").strip()
+            if not path or path == "/":
+                return "the website"
+            seg = path.rstrip("/").split("/")[-1].strip().lower()
+            seg = re.sub(r"[\-_]+", " ", seg)
+            seg = re.sub(r"\s+", " ", seg).strip()
+            if not seg or seg in ("index", "home", "top"):
+                return "this page"
+            common = {
+                "about": "about page",
+                "contact": "contact page",
+                "faq": "faq page",
+                "faqs": "faq page",
+                "hours": "hours page",
+                "pricing": "pricing page",
+                "prices": "pricing page",
+                "price": "pricing page",
+                "menu": "menu page",
+                "services": "services page",
+                "service": "services page",
+                "booking": "booking page",
+                "reserve": "booking page",
+                "reservation": "booking page",
+                "reservations": "booking page",
+                "location": "location page",
+                "access": "location page",
+            }
+            if seg in common:
+                return common[seg]
+            if 1 <= len(seg) <= 28:
+                return f"{seg} page"
+        except Exception:
+            pass
+        return "this page"
+
+    def _rewrite_source_link_text(m: re.Match) -> str:
+        url = (m.group(2) or "").strip()
+        label = _preferred_link_text_from_url(url)
+        return f"[{label}]({url})"
+
+    # Only rewrite explicit markdown links where the link text is "source"/"sources".
+    text = re.sub(r"\[\s*(source|sources)\s*\]\((https?://[^)\s]+)\)", _rewrite_source_link_text, text, flags=re.IGNORECASE)
+    # Strip ugly PDF/page bracket citations like:
+    # [Some_File.pdf page 5], [foo.pdf p.12], [Document page 1]
+    # (but do NOT clobber markdown links like [text](url)).
+    text = re.sub(r"\[[^\]]*\.pdf[^\]]*\](?!\()", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[[^\]]*\bpage\s*\d+[^\]]*\](?!\()", "", text, flags=re.IGNORECASE)
     # Strip numbered bracket references like [1], [1, 2], [1, 11, 35, 75]
     # Negative lookbehind avoids clobbering markdown links like [text](url)
     text = re.sub(r"(?<!\])\s*\[[\d,\s]+\]", "", text)
@@ -308,7 +362,8 @@ def one_shot_answer(client: genai.Client, question: str, *, rag_corpus: str):
         tools=tools,
         system_instruction=(
             "Answer using the RAG tool. Retrieve before answering. Be concise.\n"
-            "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+            "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [the website](URL), [this page](URL), or [pricing page](URL).\n"
+            "NEVER use 'source' or 'sources' as the markdown link text.\n"
             "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. NEVER list URLs as bullets or append them at the end.\n"
             "NEVER show raw URLs or domains in the text."
         ),
@@ -354,7 +409,8 @@ def resynthesize_grounded(client: genai.Client, question: str, evidence: List[Di
     SYSTEM = (
         "Write a concise, well-structured answer using ONLY the provided evidence snippets. "
         "Avoid claims not present.\n"
-        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [the website](URL), [this page](URL), or [pricing page](URL).\n"
+        "NEVER use 'source' or 'sources' as the markdown link text.\n"
         "Link text must be a short descriptive phrase like 'here', 'this page', 'the website', 'about page'. "
         "NEVER put a URL, hostname, or domain as the link text.\n"
         "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. "
@@ -389,7 +445,8 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
         "Use the provided evidence snippets as primary sources. "
         "Compare, aggregate, deduplicate; compute counts/sums/ratios when useful; check consistency. "
         "Write a concise, well-structured final answer.\n"
-        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [here](URL) or [pricing page](URL).\n"
+        "CITATION RULES: Cite sources ONLY as inline markdown hyperlinks woven into sentences, e.g. [the website](URL), [this page](URL), or [pricing page](URL).\n"
+        "NEVER use 'source' or 'sources' as the markdown link text.\n"
         "Link text must be a short descriptive phrase like 'here', 'this page', 'the website', 'about page'. "
         "NEVER put a URL, hostname, or domain as the link text.\n"
         "NEVER use numbered references like [1], [1, 2], [1, 11, 35]. "
@@ -429,6 +486,9 @@ DEFAULT_SYSTEM = (
     "Keep it concise.\n\n"
     "CITATION LINK RULES (follow exactly):\n"
     "- Cite sources ONLY as inline markdown hyperlinks woven naturally into sentences: [link text](URL).\n"
+    "- NEVER use 'source' or 'sources' as the markdown link text.\n"
+    "- NEVER include bracket citations like [Some_File.pdf page 1] or [Document page 5].\n"
+    "- NEVER mention PDF filenames or page numbers in the answer.\n"
     "- NEVER put URL, hostname, or domain inside the brackets. WRONG: [chocozap.jp](URL), [example.com/about](URL).\n"
     "- For root URL (ends with / or has no path): use exactly 'the website'. Example: [the website](https://example.com/).\n"
     "- For other pages: use one of 'here', 'this page', or a phrase from the path (e.g. /about -> 'about page', /products -> 'product page', /parking -> 'parking page').\n"
@@ -443,6 +503,8 @@ DEFAULT_SYSTEM = (
 GROUNDING_SUFFIX = (
     "\n\nYou must answer using ONLY the provided evidence snippets and cite sources via inline markdown hyperlinks woven into sentences. "
     "CITATION RULES: Link text must be 'the website' for root URLs; for other pages use 'here', 'this page', or path-based phrases like 'about page', 'product page'. "
+    "NEVER use 'source' or 'sources' as the markdown link text. "
+    "NEVER include bracket citations like [Some_File.pdf page 1]. NEVER mention PDF filenames or page numbers. "
     "NEVER use URL or domain as link text. "
     "ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35]. Never refer to sources by number. "
     "ABSOLUTELY FORBIDDEN: appending bullet-point URL lists at the end. "

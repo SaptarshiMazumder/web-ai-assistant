@@ -278,11 +278,25 @@
     return "";
   }
 
+  function getHostname(url) {
+    try {
+      var m = String(url || "").trim().match(/^https?:\/\/([^\/?#]+)/i);
+      if (!m) return "";
+      return (m[1] || "").toLowerCase().split(":")[0];
+    } catch (e) {}
+    return "";
+  }
+
+  function isPdfLocalUrl(url) {
+    return getHostname(url) === "pdf.local";
+  }
+
   function formatCitationHtml(c) {
     const url = (c && c.url) || "";
     if (!url) return "";
     var u = url.trim().toLowerCase();
     if (u.startsWith("gs://")) return "";
+    if (isPdfLocalUrl(url)) return "";
     if (!u.startsWith("http://") && !u.startsWith("https://")) return "";
     const safe = url.replace(/"/g, "&quot;");
     var label = friendlyLabelFromUrl(url);
@@ -663,6 +677,10 @@
     if (!text) return text;
     // Remove bracket-number references not followed by ( (which would be markdown links)
     text = text.replace(/\[[\d,\s]+\](?!\()/g, "");
+    // Remove ugly PDF/page bracket citations like: [Some_File.pdf page 1], [Document page 5]
+    // (but do NOT clobber markdown links like [text](url)).
+    text = text.replace(/\[[^\]]*\.pdf[^\]]*\](?!\()/gi, "");
+    text = text.replace(/\[[^\]]*\bpage\s*\d+[^\]]*\](?!\()/gi, "");
     // Remove trailing bullet URL lists
     text = text.replace(/(?:^|\n)[\s]*[-*•]\s*https?:\/\/\S+.*/g, "");
     text = text.replace(/(?:^|\n)[\s]*\d+\.\s*https?:\/\/\S+.*/g, "");
@@ -682,7 +700,19 @@
       var url = (m[2] || "").trim();
       if (url && (url.toLowerCase().startsWith("http://") || url.toLowerCase().startsWith("https://"))) {
         if (m.index > last) parts.push({ type: "text", content: text.slice(last, m.index) });
-        parts.push({ type: "link", text: (m[1] || "").trim() || "here", url: url });
+        var rawText = (m[1] || "").trim();
+        // Hide PDF synthetic links from users.
+        if (isPdfLocalUrl(url)) {
+          // Drop the link entirely (no clickable link, no visible text).
+        } else {
+          var linkText = rawText || "here";
+          // If the model uses bad link text like "source", replace it.
+          if (/^\s*sources?\s*$/i.test(linkText)) {
+            // Prefer a descriptive label derived from the URL.
+            linkText = friendlyLabelFromUrl(url) || "this page";
+          }
+          parts.push({ type: "link", text: linkText, url: url });
+        }
         last = m.index + m[0].length;
       }
     }
@@ -700,7 +730,9 @@
         if (um.index > uLast) final.push({ type: "text", content: content.slice(uLast, um.index) });
         var bareUrl = um[0].replace(/[.,;:!?)]+$/, "");
         var trailingPunct = um[0].slice(bareUrl.length);
-        final.push({ type: "link", text: friendlyLabelFromUrl(bareUrl) || "here", url: bareUrl });
+        if (!isPdfLocalUrl(bareUrl)) {
+          final.push({ type: "link", text: friendlyLabelFromUrl(bareUrl) || "here", url: bareUrl });
+        }
         uLast = um.index + bareUrl.length;
         if (trailingPunct) final.push({ type: "text", content: trailingPunct });
       }
