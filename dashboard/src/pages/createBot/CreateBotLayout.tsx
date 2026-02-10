@@ -26,14 +26,18 @@ function FlowStepsWithProgress() {
       <div className="flow-steps-list">
         {steps.map((step, index) => {
           const isCurrent = index === activeStep
-          const isPast = index < activeStep
           return (
             <div key={step.id} className={`flow-step ${isCurrent ? 'active' : ''}`}>
               <div className="flow-step-number">
-                {isPast ? (
-                  <FlowIcon name="check_circle" filled size="sm" />
+                {step.iconUrl ? (
+                  <img className="flow-step-icon" src={step.iconUrl} alt="" aria-hidden="true" />
                 ) : (
-                  <FlowIcon name={step.icon as import('../../components/FlowIcon').FlowIconName} filled size="sm" />
+                  <FlowIcon
+                    name={step.icon as import('../../components/FlowIcon').FlowIconName}
+                    filled
+                    size="md"
+                    style={{ fontSize: 28 }}
+                  />
                 )}
               </div>
               <div>
@@ -71,7 +75,7 @@ export default function CreateBotLayout() {
         <header className="flow-header">
           <div>
             <div className="flow-eyebrow">Set up</div>
-            <div className="flow-title">Create your AI agent</div>
+            <div className="flow-title">Create AI Agent</div>
           </div>
           <button type="button" className="flow-close" onClick={() => navigate('/bots')} aria-label="Close">
             <FlowIcon name="close" size="sm" />

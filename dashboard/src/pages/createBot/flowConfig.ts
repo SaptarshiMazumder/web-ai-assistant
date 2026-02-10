@@ -3,6 +3,14 @@
  * Add/remove/reorder steps here; routes and navigation are derived from this.
  */
 
+import autographIcon from '../../assets/icons8/autograph.png'
+import internetBrowserIcon from '../../assets/icons8/internet-browser.png'
+import googleDocsIcon from '../../assets/icons8/google-docs.png'
+import chainIcon from '../../assets/icons8/chain.png'
+import learningIcon from '../../assets/icons8/learning.png'
+import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
+import googleCodeIcon from '../../assets/icons8/google-code.png'
+
 export type CreateBotStepId = 'details' | 'hosting' | 'sources' | 'urls' | 'training' | 'widget' | 'embed'
 
 export type CreateBotStep = {
@@ -11,6 +19,7 @@ export type CreateBotStep = {
   label: string
   description: string
   icon: string
+  iconUrl?: string
 }
 
 const BASE_STEPS: readonly CreateBotStep[] = [
@@ -20,6 +29,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Name',
     description: 'Pick a name customers will see.',
     icon: 'badge',
+    iconUrl: autographIcon,
   },
   {
     id: 'hosting',
@@ -27,6 +37,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Website',
     description: 'Tell us where your pages live.',
     icon: 'language',
+    iconUrl: internetBrowserIcon,
   },
   {
     id: 'sources',
@@ -34,6 +45,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Add sources',
     description: 'Add pages and PDFs about your business.',
     icon: 'source',
+    iconUrl: googleDocsIcon,
   },
   {
     id: 'training',
@@ -41,6 +53,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Getting ready',
     description: 'We\u2019ll start learning from what you added.',
     icon: 'model_training',
+    iconUrl: learningIcon,
   },
   {
     id: 'widget',
@@ -48,6 +61,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Design widget',
     description: 'Pick colors and greeting messages.',
     icon: 'palette',
+    iconUrl: paintPaletteIcon,
   },
   {
     id: 'embed',
@@ -55,6 +69,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     label: 'Add to website',
     description: 'Share the install code with your web person.',
     icon: 'code',
+    iconUrl: googleCodeIcon,
   },
 ] as const
 
@@ -64,6 +79,7 @@ const SHARED_URL_STEP: CreateBotStep = {
   label: 'Add sources',
   description: 'Add links for prices, hours, booking, contact, etc.',
   icon: 'link',
+  iconUrl: chainIcon,
 } as const
 
 export const CREATE_BOT_STEPS: readonly CreateBotStep[] = BASE_STEPS
