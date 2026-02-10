@@ -92,12 +92,12 @@ export default function CreateBotUrlsPage() {
     return (
       <div className="flow-panel-body">
         <div>
-          <div className="card-title">Add info for your helper</div>
-          <div className="card-subtitle">Save your important website pages as PDFs, then upload them here.</div>
+          <div className="card-title">Add sources</div>
+          <div className="card-subtitle">Add your business information for the AI Agent to learn from.</div>
         </div>
 
         <div className="muted" style={{ marginTop: '8px' }}>
-          Do this for <b>every page</b> on your website that has helpful info about your business (services, prices, hours, booking, contact, location, FAQs).
+          Do this for <b>every page</b> that has helpful business info (services, prices, hours, booking, contact, location, FAQs).
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
@@ -136,7 +136,7 @@ export default function CreateBotUrlsPage() {
             </div>
             <div style={{ marginTop: '10px', fontWeight: 700, color: '#0f172a' }}>Upload the PDF here</div>
             <div className="muted" style={{ marginTop: '6px' }}>
-              Drop the saved PDF below. Your helper will learn from what’s inside.
+              Drop the saved PDF below. Your agent will learn from what’s inside.
             </div>
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function CreateBotUrlsPage() {
             </span>
           ) : (
             <>
-              We found <span style={{ color: '#6366f1', fontWeight: 600 }}>{discoveredUrls.length}</span> pages on {normalizedWebsiteUrl}. Choose the ones your helper should learn from.
+              We found <span style={{ color: '#6366f1', fontWeight: 600 }}>{discoveredUrls.length}</span> pages on {normalizedWebsiteUrl}. Choose the ones your agent should learn from.
               {discoveryDurationLabel != null && (
                 <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
                   This took {discoveryDurationLabel}.
@@ -347,7 +347,7 @@ export default function CreateBotUrlsPage() {
       <div style={{ marginTop: '10px' }}>
         <FileDropzone
           label="PDF files (optional)"
-          helperText="Drag & drop PDFs here. Your helper can learn from these too."
+          helperText="Drag & drop PDFs here. Your agent can learn from these too."
           files={pdfFiles}
           setFiles={setPdfFiles}
           accept="application/pdf"

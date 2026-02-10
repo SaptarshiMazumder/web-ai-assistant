@@ -376,9 +376,13 @@ class EscalationStatusUpdateRequest(BaseModel):
 class WidgetConfigUpdate(BaseModel):
     """Widget design config stored per bot (widget API shape). All fields optional."""
     businessType: Optional[str] = None
+    # Where the business content lives. Used to drive UX (own website vs website service).
+    contentHosting: Optional[str] = None
     allowRealtimeAvailability: Optional[bool] = None
     bookingTestUrl: Optional[str] = None
     bookingUrlPattern: Optional[Dict[str, Any]] = None  # written by availability job
+    # Labeled links the agent can share in answers (not crawled/trained sources).
+    urlBank: Optional[List[Dict[str, Any]]] = None
     position: Optional[str] = None
     color: Optional[str] = None
     title: Optional[str] = None

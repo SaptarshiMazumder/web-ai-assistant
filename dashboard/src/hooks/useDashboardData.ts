@@ -576,7 +576,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       method: 'PUT',
       body: JSON.stringify(config),
     })
-    setSelectedBotWidgetConfig(config)
+    setSelectedBotWidgetConfig((prev) => ({ ...(prev || {}), ...(config || {}) }))
   }
 
   async function fetchAuthedJson<T>(path: string, init?: RequestInit): Promise<T> {

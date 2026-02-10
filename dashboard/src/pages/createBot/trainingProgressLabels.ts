@@ -8,7 +8,7 @@ export const TRAINING_STAGE_LABELS: Record<string, string> = {
   queued: 'Starting',
   crawling: 'Reading your pages',
   uploading: 'Saving what we found',
-  importing: 'Getting your helper ready',
+  importing: 'Getting your agent ready',
   import_submitted: 'Almost done',
   skipped: 'Skipped (nothing added)',
   done: 'Done',

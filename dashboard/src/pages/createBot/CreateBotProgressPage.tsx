@@ -56,13 +56,13 @@ export default function CreateBotProgressPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Getting your helper ready</div>
+        <div className="card-title">Getting your agent ready</div>
         <div className="card-subtitle">
           {trainingStageName === 'skipped'
             ? 'You didn’t add anything yet. You can do this later from your bot settings.'
             : trainingStage === 'complete'
             ? 'All set!'
-            : 'We’re reading what you added and getting your helper ready.'}
+            : 'We’re reading what you added and getting your agent ready.'}
         </div>
       </div>
 

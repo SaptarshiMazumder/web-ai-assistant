@@ -32,8 +32,9 @@ def _make_doc_url(bot_id: str, source_id: str, filename: str, page: int) -> str:
 @celery_app.task(
     name="infrastructure.tasks.pdf_source_tasks.pdf_source_ingest_job",
     bind=True,
-    max_retries=1,
-    default_retry_delay=30,
+    # Vertex RAG corpus imports can be temporarily busy; allow retries.
+    max_retries=6,
+    default_retry_delay=20,
 )
 def pdf_source_ingest_job(
     self,

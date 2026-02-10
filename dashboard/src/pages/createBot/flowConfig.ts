@@ -28,8 +28,8 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'sources',
     path: '/create-bot/sources',
-    label: 'Add info',
-    description: 'Add pages and PDFs to teach your helper.',
+    label: 'Add sources',
+    description: 'Add pages and PDFs about your business.',
   },
   {
     id: 'training',
@@ -54,8 +54,8 @@ const BASE_STEPS: readonly CreateBotStep[] = [
 const SHARED_URL_STEP: CreateBotStep = {
   id: 'urls',
   path: '/create-bot/urls',
-  label: 'Add links',
-  description: 'Add links for pricing, hours, booking, contact, etc.',
+  label: 'Add sources',
+  description: 'Add links for prices, hours, booking, contact, etc.',
 } as const
 
 export const CREATE_BOT_STEPS: readonly CreateBotStep[] = BASE_STEPS

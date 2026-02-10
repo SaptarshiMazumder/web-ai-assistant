@@ -166,6 +166,11 @@ export default function BotKnowledgeTab() {
     (selectedBotWidgetConfig as Record<string, unknown>).contentHosting === 'shared'
   )
 
+  type UrlBankRow = { label: string; url: string }
+  const [urlBankRows, setUrlBankRows] = useState<UrlBankRow[]>([{ label: '', url: '' }])
+  const [savingUrlBank, setSavingUrlBank] = useState(false)
+  const [urlBankSaved, setUrlBankSaved] = useState(false)
+
   const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null)
   const [sourcesSelected, setSourcesSelected] = useState<Set<string>>(new Set())
   const [deletingSelectedSources, setDeletingSelectedSources] = useState(false)
@@ -226,6 +231,63 @@ export default function BotKnowledgeTab() {
   const [availabilityTestError, setAvailabilityTestError] = useState<string | null>(null)
   const [availabilityTestRunning, setAvailabilityTestRunning] = useState(false)
   const availabilityTestPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function normalizeUrlBankUrl(entry: string): string {
+    const raw = (entry || '').trim()
+    if (!raw) return ''
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+      return u.toString()
+    } catch {
+      return ''
+    }
+  }
+
+  useEffect(() => {
+    const cfg = selectedBotWidgetConfig
+    const raw = cfg && typeof cfg === 'object' ? (cfg as Record<string, unknown>).urlBank : null
+    if (!Array.isArray(raw)) {
+      setUrlBankRows([{ label: '', url: '' }])
+      return
+    }
+    const cleaned: UrlBankRow[] = []
+    for (const item of raw) {
+      if (!item || typeof item !== 'object') continue
+      const label = String((item as any).label || '').trim()
+      const url = String((item as any).url || '').trim()
+      if (label || url) cleaned.push({ label, url })
+    }
+    setUrlBankRows(cleaned.length ? cleaned : [{ label: '', url: '' }])
+  }, [selectedBotWidgetConfig, selectedBot?.bot_id])
+
+  const handleSaveUrlBank = useCallback(async () => {
+    if (!selectedBot) return
+    setSavingUrlBank(true)
+    setUrlBankSaved(false)
+    try {
+      const base =
+        selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object'
+          ? (selectedBotWidgetConfig as Record<string, unknown>)
+          : {}
+      const m = new Map<string, UrlBankRow>()
+      for (const row of urlBankRows) {
+        const url = normalizeUrlBankUrl(row.url)
+        if (!url) continue
+        const rawLabel = (row.label || '').trim()
+        const label = rawLabel || 'Link'
+        const prev = m.get(url)
+        if (!prev || (prev.label === 'Link' && rawLabel)) {
+          m.set(url, { url, label })
+        }
+      }
+      await saveWidgetConfig(selectedBot.bot_id, { ...base, urlBank: Array.from(m.values()) })
+      setUrlBankSaved(true)
+      window.setTimeout(() => setUrlBankSaved(false), 2200)
+    } finally {
+      setSavingUrlBank(false)
+    }
+  }, [normalizeUrlBankUrl, saveWidgetConfig, selectedBot, selectedBotWidgetConfig, urlBankRows])
 
   const discoverSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const DISCOVER_TERMINAL_STAGES = new Set(['done', 'error', 'cancelled', 'import_submitted'])
@@ -1281,6 +1343,79 @@ export default function BotKnowledgeTab() {
 
   return (
     <div className="card-grid">
+      {/* Answer links (URL bank): links the agent can share in answers (not part of Sources). */}
+      <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div>
+            <div className="card-title">Answer links</div>
+            <p className="card-subtitle" style={{ marginTop: '0.25rem' }}>
+              Add links you want your AI agent to share when customers ask about common topics (prices, hours, booking, contact, location).
+            </p>
+          </div>
+          <button type="button" className="primary" onClick={() => void handleSaveUrlBank()} disabled={savingUrlBank || !selectedBot}>
+            {savingUrlBank ? 'Saving…' : 'Save links'}
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: '10px', marginTop: '12px' }}>
+          {urlBankRows.map((row, idx) => (
+            <div key={`urlbank-${idx}`} className="row" style={{ gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <input
+                  type="text"
+                  className="design-form-input"
+                  value={row.label}
+                  onChange={(e) => {
+                    const next = [...urlBankRows]
+                    next[idx] = { ...next[idx], label: e.target.value }
+                    setUrlBankRows(next)
+                  }}
+                  placeholder="Topic (e.g. Pricing)"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ flex: 2, minWidth: 260 }}>
+                <input
+                  type="url"
+                  className="design-form-input"
+                  value={row.url}
+                  onChange={(e) => {
+                    const next = [...urlBankRows]
+                    next[idx] = { ...next[idx], url: e.target.value }
+                    setUrlBankRows(next)
+                  }}
+                  placeholder="Link (e.g. https://example.com/pricing)"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ alignSelf: 'end' }}>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => {
+                    const next = urlBankRows.filter((_, i) => i !== idx)
+                    setUrlBankRows(next.length ? next : [{ label: '', url: '' }])
+                  }}
+                  disabled={urlBankRows.length <= 1}
+                  aria-label="Remove link"
+                  title="Remove"
+                  style={{ color: '#dc2626', background: 'transparent' }}
+                >
+                  <Trash2 size={16} aria-hidden />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap', marginTop: '10px' }}>
+          <button type="button" className="secondary" onClick={() => setUrlBankRows([...urlBankRows, { label: '', url: '' }])}>
+            + Add link
+          </button>
+          {urlBankSaved && <span className="muted">Saved.</span>}
+        </div>
+      </section>
+
       {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
       <section className="card" style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Sources ({sources.length})</div>

@@ -60,7 +60,7 @@ export default function CreateBotLayout() {
         <header className="flow-header">
           <div>
             <div className="flow-eyebrow">Set up</div>
-            <div className="flow-title">Create your AI helper</div>
+            <div className="flow-title">Create your AI agent</div>
           </div>
           <button type="button" className="ghost flow-back flow-close" onClick={() => navigate('/bots')} aria-label="Close">
             <X size={20} strokeWidth={2} aria-hidden />

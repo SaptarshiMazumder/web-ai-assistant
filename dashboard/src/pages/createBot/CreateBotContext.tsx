@@ -392,9 +392,40 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
+
+    const urlBankForSave =
+      contentHosting === 'shared'
+        ? (() => {
+            const normalize = (entry: string): string => {
+              const raw = (entry || '').trim()
+              if (!raw) return ''
+              try {
+                const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+                if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+                return u.toString()
+              } catch {
+                return ''
+              }
+            }
+            const m = new Map<string, { label: string; url: string }>()
+            for (const row of sharedUrlRows) {
+              const url = normalize(row.url)
+              if (!url) continue
+              const rawLabel = (row.label || '').trim()
+              const label = rawLabel || 'Link'
+              const prev = m.get(url)
+              if (!prev || (prev.label === 'Link' && rawLabel)) {
+                m.set(url, { url, label })
+              }
+            }
+            return Array.from(m.values())
+          })()
+        : null
+
     void saveWidgetConfig(created.bot_id, {
       contentHosting: contentHosting || undefined,
       businessType: businessType || undefined,
+      ...(contentHosting === 'shared' ? { urlBank: urlBankForSave } : null),
     }).catch(() => {})
     setTrainingStage('complete')
     setTrainingProgress(100)
@@ -404,7 +435,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, sharedUrlRows])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -426,6 +457,23 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     return out
   }, [sharedUrlRows, normalizeOneUrl])
+
+  type UrlBankEntry = { label: string; url: string }
+  const urlBank: UrlBankEntry[] = useMemo(() => {
+    if (contentHosting !== 'shared') return []
+    const m = new Map<string, UrlBankEntry>()
+    for (const row of sharedUrlRows) {
+      const url = normalizeOneUrl(row.url)
+      if (!url) continue
+      const rawLabel = (row.label || '').trim()
+      const label = rawLabel || 'Link'
+      const prev = m.get(url)
+      if (!prev || (prev.label === 'Link' && rawLabel)) {
+        m.set(url, { url, label })
+      }
+    }
+    return Array.from(m.values())
+  }, [contentHosting, sharedUrlRows, normalizeOneUrl])
 
   const toggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
@@ -480,7 +528,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError('Choose where your content is hosted to continue.')
       return null
     }
-    const finalUrls = contentHosting === 'shared' ? sharedUrls : selectedUrls
+    const finalUrls = contentHosting === 'shared' ? [] : selectedUrls
     const hasPdfs = pdfFiles.length > 0
     setIsStartingTraining(true)
     const orgOverride =
@@ -496,6 +544,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     void saveWidgetConfig(created.bot_id, {
       contentHosting: contentHosting || undefined,
       businessType: businessType || undefined,
+      ...(contentHosting === 'shared' ? { urlBank } : null),
     }).catch(() => {})
     if (!finalUrls.length && !hasPdfs) {
       setTrainingStage('complete')
@@ -557,7 +606,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, sharedUrls])
+  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -601,7 +650,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
       setTrainingStageName(stageName)
 
-      const totalUrls = contentHosting === 'shared' ? sharedUrls.length : selectedUrls.length
+      const totalUrls = contentHosting === 'shared' ? 0 : selectedUrls.length
       const urlProgress =
         jobId && urlStatus
           ? totalUrls > 0 && urlStatus.pages_crawled

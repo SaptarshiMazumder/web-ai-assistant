@@ -19,7 +19,7 @@ export default function CreateBotDetailsPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Name your helper</div>
+        <div className="card-title">Name your agent</div>
         <div className="card-subtitle">This is the name customers will see.</div>
         <input value={botName} onChange={(event) => setBotName(event.target.value)} placeholder="Web AI Assistant" />
       </div>

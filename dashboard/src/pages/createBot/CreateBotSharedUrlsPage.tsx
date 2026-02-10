@@ -103,9 +103,9 @@ export default function CreateBotSharedUrlsPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Add website links</div>
+        <div className="card-title">Add sources</div>
         <div className="card-subtitle">
-          When someone asks about prices, hours, booking, or contact info, your helper will use these pages.
+          Add links for business info. When someone asks a question, the agent will guide them to these pages.
         </div>
       </div>
 

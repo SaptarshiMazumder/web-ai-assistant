@@ -115,6 +115,34 @@ def _get_booking_url_for_chat(widget_config: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) -> List[Dict[str, str]]:
+    """
+    Return URL bank entries as {label, url} for injection into chat.
+    These are not crawled sources; they're links the assistant can share when relevant.
+    """
+    raw = widget_config.get("urlBank")
+    if not isinstance(raw, list):
+        return []
+    out: List[Dict[str, str]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if not url:
+            continue
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        if url in seen:
+            continue
+        seen.add(url)
+        label = str(item.get("label") or "").strip() or "Link"
+        out.append({"label": label, "url": url})
+        if len(out) >= limit:
+            break
+    return out
+
+
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
@@ -645,6 +673,26 @@ async def v1_widget_chat(
     if booking_url:
         extra_evidence.append({"url": booking_url, "snippet": f"To book or check availability, visit: {booking_url}"})
 
+    url_bank = _get_url_bank_for_chat(widget_config)
+    if url_bank:
+        for it in url_bank:
+            label = it["label"]
+            url = it["url"]
+            extra_evidence.append(
+                {
+                    "url": url,
+                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                }
+            )
+        bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank])
+        bank_instruction = (
+            "Answer links (use only when they match the customer’s question):\n"
+            f"{bank_lines}\n\n"
+            "If the question matches one of these topics, include the matching link in your response.\n"
+            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+        )
+        system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
+
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -672,7 +720,7 @@ async def v1_widget_chat(
                 "host_label": host_label,
             }
         )
-        answer = f"I can’t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl."
+        answer = f"I can’t find that in the information I’ve learned for {host_label} yet. Try asking about something else, or add more sources in the dashboard."
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -829,6 +877,26 @@ async def v1_widget_chat_stream(
     booking_url_stream = _get_booking_url_for_chat(widget_config_stream)
     if booking_url_stream:
         extra_evidence_stream.append({"url": booking_url_stream, "snippet": f"To book or check availability, visit: {booking_url_stream}"})
+
+    url_bank_stream = _get_url_bank_for_chat(widget_config_stream)
+    if url_bank_stream:
+        for it in url_bank_stream:
+            label = it["label"]
+            url = it["url"]
+            extra_evidence_stream.append(
+                {
+                    "url": url,
+                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                }
+            )
+        bank_lines_stream = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_stream])
+        bank_instruction_stream = (
+            "Answer links (use only when they match the customer’s question):\n"
+            f"{bank_lines_stream}\n\n"
+            "If the question matches one of these topics, include the matching link in your response.\n"
+            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+        )
+        system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
 
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
@@ -1144,8 +1212,21 @@ async def v1_org_update_bot_widget_config(
     bot = bot_service().get_bot_record(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
-    config_dict = payload.model_dump(exclude_none=True)
-    config_json = json.dumps(config_dict)
+    incoming = payload.model_dump(exclude_none=True)
+
+    # Merge with existing widget_config so partial updates don't wipe unrelated keys
+    # (e.g., urlBank/answer links).
+    existing: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            existing = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            existing = {}
+    if not isinstance(existing, dict):
+        existing = {}
+
+    merged = {**existing, **incoming}
+    config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
     return {"status": "ok", "bot_id": bot_id}
 
