@@ -7,8 +7,8 @@ import { TrainingProgressCircle } from './TrainingProgressCircle'
 
 function FlowStepsWithProgress() {
   const location = useLocation()
-  const { step2, step3 } = useCreateBotFlow()
-  const steps = getCreateBotSteps(step2.contentHosting)
+  const { step3 } = useCreateBotFlow()
+  const steps = getCreateBotSteps()
   const activeStep = getCreateBotStepIndex(location.pathname, steps)
   const activeId = steps[activeStep]?.id
   const showProgress = activeId === 'widget' || activeId === 'embed'
@@ -67,7 +67,7 @@ function FlowStepsWithProgress() {
 export default function CreateBotLayout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { error, loading } = useDashboardData()
+  const { error } = useDashboardData()
 
   return (
     <CreateBotProvider>
@@ -86,7 +86,6 @@ export default function CreateBotLayout() {
           <FlowStepsWithProgress />
           <section className="flow-panel">
             {error && <div className="alert error">{error}</div>}
-            {loading && <div className="alert info">Working...</div>}
             <div key={location.pathname} className="flow-panel-animate">
               <Outlet />
             </div>

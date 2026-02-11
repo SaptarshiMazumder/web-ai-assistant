@@ -27,7 +27,7 @@ export default function CreateBotProgressPage() {
     }
   }, [trainingStage, navigate, flow.firstPath])
 
-  // Auto-advance to step 4 (Design widget) ~5s after learning starts so user can design while setup runs in background
+  // Auto-advance to next step ~5s after learning starts so user can continue setup while training runs in background
   useEffect(() => {
     if ((!jobId && pdfJobIds.length === 0) || trainingStage !== 'training' || !flow.nextPath) return
     const t = window.setTimeout(() => {

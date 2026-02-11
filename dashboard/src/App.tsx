@@ -15,7 +15,7 @@ import CreateBotEmbedPage from './pages/createBot/CreateBotEmbedPage'
 import CreateBotHostingPage from './pages/createBot/CreateBotHostingPage'
 import CreateBotLayout from './pages/createBot/CreateBotLayout'
 import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
-import CreateBotSharedUrlsPage from './pages/createBot/CreateBotSharedUrlsPage'
+import CreateBotTopicsPage from './pages/createBot/CreateBotTopicsPage'
 import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
 import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
 import BotDesignTab from './pages/bot/BotDesignTab'
@@ -84,8 +84,9 @@ export default function App() {
             <Route index element={<CreateBotDetailsPage />} />
             <Route path="hosting" element={<CreateBotHostingPage />} />
             <Route path="sources" element={<CreateBotUrlsPage />} />
-            <Route path="urls" element={<CreateBotSharedUrlsPage />} />
+            <Route path="urls" element={<Navigate to="/create-bot/sources" replace />} />
             <Route path="progress" element={<CreateBotProgressPage />} />
+            <Route path="topics" element={<CreateBotTopicsPage />} />
             <Route path="widget" element={<CreateBotWidgetPage />} />
             <Route path="embed" element={<CreateBotEmbedPage />} />
             <Route path="*" element={<Navigate to="/create-bot" replace />} />

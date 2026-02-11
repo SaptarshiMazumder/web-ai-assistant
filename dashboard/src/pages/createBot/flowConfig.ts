@@ -11,7 +11,7 @@ import learningIcon from '../../assets/icons8/learning.png'
 import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
 import googleCodeIcon from '../../assets/icons8/google-code.png'
 
-export type CreateBotStepId = 'details' | 'hosting' | 'sources' | 'urls' | 'training' | 'widget' | 'embed'
+export type CreateBotStepId = 'details' | 'hosting' | 'sources' | 'urls' | 'training' | 'topics' | 'widget' | 'embed'
 
 export type CreateBotStep = {
   id: CreateBotStepId
@@ -42,8 +42,8 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'sources',
     path: '/create-bot/sources',
-    label: 'Add sources',
-    description: 'Add pages and PDFs about your business.',
+    label: 'Pages and files',
+    description: 'Pick website pages and upload PDFs to teach your assistant.',
     icon: 'source',
     iconUrl: googleDocsIcon,
   },
@@ -54,6 +54,14 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     description: 'We\u2019ll start learning from what you added.',
     icon: 'model_training',
     iconUrl: learningIcon,
+  },
+  {
+    id: 'topics',
+    path: '/create-bot/topics',
+    label: 'Helpful links',
+    description: 'Optional: add important links for common customer questions.',
+    icon: 'link',
+    iconUrl: chainIcon,
   },
   {
     id: 'widget',
@@ -73,21 +81,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   },
 ] as const
 
-const SHARED_URL_STEP: CreateBotStep = {
-  id: 'urls',
-  path: '/create-bot/urls',
-  label: 'Add sources',
-  description: 'Add links for prices, hours, booking, contact, etc.',
-  icon: 'link',
-  iconUrl: chainIcon,
-} as const
-
 export const CREATE_BOT_STEPS: readonly CreateBotStep[] = BASE_STEPS
 
-export function getCreateBotSteps(contentHosting?: 'own' | 'shared' | null): readonly CreateBotStep[] {
-  if (contentHosting === 'shared') {
-    return [...BASE_STEPS.slice(0, 3), SHARED_URL_STEP, ...BASE_STEPS.slice(3)]
-  }
+export function getCreateBotSteps(): readonly CreateBotStep[] {
   return BASE_STEPS
 }
 

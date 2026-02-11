@@ -50,7 +50,7 @@ export type CreateBotStep2Slice = {
   toggleCategory: (categoryPath: string, categoryUrls: string[]) => void
   selectAll: () => void
   deselectAll: () => void
-  startTraining: () => Promise<string | null>
+  startTraining: (selectedDiscoveredUrls?: string[]) => Promise<string | null>
   stopDiscovery: () => void
 }
 
@@ -120,6 +120,8 @@ export type CreateBotStep4Slice = {
   setDisplaySourcesInMessages: (value: boolean) => void
   sourcesLabel: string
   setSourcesLabel: (value: string) => void
+  selectedSuggestedTopics: string[]
+  setSelectedSuggestedTopics: (value: string[]) => void
   suggestedMessages: SuggestedMessageConfig[]
   setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
 }
@@ -152,7 +154,7 @@ function normalizeUrl(value: string) {
   if (!trimmed) return ''
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   const parsed = new URL(withProtocol)
-  return parsed.origin
+  return parsed.href
 }
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
@@ -172,7 +174,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
-  const [contentHosting, setContentHosting] = useState<ContentHosting | null>(null)
+  const [contentHosting, setContentHosting] = useState<ContentHosting | null>('shared')
   const [businessType, setBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
@@ -220,13 +222,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [autoScrollNewMessages, setAutoScrollNewMessages] = useState(true)
   const [displaySourcesInMessages, setDisplaySourcesInMessages] = useState(false)
   const [sourcesLabel, setSourcesLabel] = useState('Sources')
+  const [selectedSuggestedTopics, setSelectedSuggestedTopics] = useState<string[]>([])
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
     DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages
   )
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
-    setContentHosting(null)
+    setContentHosting('shared')
     setBusinessType('')
     setDiscoveryMethod('auto')
     setNormalizedWebsiteUrl('')
@@ -269,6 +272,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setAutoScrollNewMessages(true)
     setDisplaySourcesInMessages(false)
     setSourcesLabel('Sources')
+    setSelectedSuggestedTopics([])
     setSuggestedMessages(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
   }, [])
 
@@ -393,39 +397,36 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
 
-    const urlBankForSave =
-      contentHosting === 'shared'
-        ? (() => {
-            const normalize = (entry: string): string => {
-              const raw = (entry || '').trim()
-              if (!raw) return ''
-              try {
-                const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
-                if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
-                return u.toString()
-              } catch {
-                return ''
-              }
-            }
-            const m = new Map<string, { label: string; url: string }>()
-            for (const row of sharedUrlRows) {
-              const url = normalize(row.url)
-              if (!url) continue
-              const rawLabel = (row.label || '').trim()
-              const label = rawLabel || 'Other'
-              const prev = m.get(url)
-              if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
-                m.set(url, { url, label })
-              }
-            }
-            return Array.from(m.values())
-          })()
-        : null
+    const urlBankForSave = (() => {
+      const normalize = (entry: string): string => {
+        const raw = (entry || '').trim()
+        if (!raw) return ''
+        try {
+          const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+          return u.toString()
+        } catch {
+          return ''
+        }
+      }
+      const m = new Map<string, { label: string; url: string }>()
+      for (const row of sharedUrlRows) {
+        const url = normalize(row.url)
+        if (!url) continue
+        const rawLabel = (row.label || '').trim()
+        const label = rawLabel || 'Other'
+        const prev = m.get(url)
+        if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
+          m.set(url, { url, label })
+        }
+      }
+      return Array.from(m.values())
+    })()
 
     void saveWidgetConfig(created.bot_id, {
-      contentHosting: contentHosting || undefined,
+      contentHosting: 'shared',
       businessType: businessType || undefined,
-      ...(contentHosting === 'shared' ? { urlBank: urlBankForSave } : null),
+      urlBank: urlBankForSave,
     }).catch(() => {})
     setTrainingStage('complete')
     setTrainingProgress(100)
@@ -460,7 +461,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
   type UrlBankEntry = { label: string; url: string }
   const urlBank: UrlBankEntry[] = useMemo(() => {
-    if (contentHosting !== 'shared') return []
     const m = new Map<string, UrlBankEntry>()
     for (const row of sharedUrlRows) {
       const url = normalizeOneUrl(row.url)
@@ -473,7 +473,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return Array.from(m.values())
-  }, [contentHosting, sharedUrlRows, normalizeOneUrl])
+  }, [sharedUrlRows, normalizeOneUrl])
 
   const toggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
@@ -518,17 +518,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     discoveryAbortRef.current?.abort()
   }, [])
 
-  const startTraining = useCallback(async () => {
+  const startTraining = useCallback(async (selectedDiscoveredUrls?: string[]) => {
     setLocalError(null)
     if (!botName.trim()) {
       setLocalError('Enter a bot name to continue.')
       return null
     }
-    if (!contentHosting) {
-      setLocalError('Choose where your content is hosted to continue.')
-      return null
-    }
-    const finalUrls = contentHosting === 'shared' ? sharedUrls : selectedUrls
+    const overrideUrls = (selectedDiscoveredUrls || [])
+      .map((u) => normalizeOneUrl(u))
+      .filter(Boolean)
+    const finalUrls = overrideUrls.length > 0 ? overrideUrls : sharedUrls
     const hasPdfs = pdfFiles.length > 0
     setIsStartingTraining(true)
     const orgOverride =
@@ -542,9 +541,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
     void saveWidgetConfig(created.bot_id, {
-      contentHosting: contentHosting || undefined,
+      contentHosting: 'shared',
       businessType: businessType || undefined,
-      ...(contentHosting === 'shared' ? { urlBank } : null),
+      urlBank,
     }).catch(() => {})
     if (!finalUrls.length && !hasPdfs) {
       setTrainingStage('complete')
@@ -602,11 +601,20 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
     }
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
-    if (contentHosting === 'own') {
-      void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
+    const backgroundTarget = (() => {
+      const raw = websiteUrl.trim()
+      if (!raw) return normalizedWebsiteUrl
+      try {
+        return normalizeUrl(raw)
+      } catch {
+        return normalizedWebsiteUrl
+      }
+    })()
+    if (backgroundTarget) {
+      void startBackgroundDiscovery(created.bot_id, backgroundTarget, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, sharedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank])
+  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, sharedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank, normalizeOneUrl])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -650,7 +658,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
       setTrainingStageName(stageName)
 
-      const totalUrls = contentHosting === 'shared' ? sharedUrls.length : selectedUrls.length
+      const totalUrls = sharedUrls.length
       const urlProgress =
         jobId && urlStatus
           ? totalUrls > 0 && urlStatus.pages_crawled
@@ -676,9 +684,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, selectedUrls.length, contentHosting, sharedUrls.length])
+  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, sharedUrls.length])
 
-  const steps = getCreateBotSteps(contentHosting)
+  const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)
   const prevPath = getCreateBotPrevPath(location.pathname, steps)
 
@@ -779,6 +787,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setDisplaySourcesInMessages,
       sourcesLabel,
       setSourcesLabel,
+      selectedSuggestedTopics,
+      setSelectedSuggestedTopics,
       suggestedMessages,
       setSuggestedMessages,
     },
@@ -864,6 +874,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setDisplaySourcesInMessages,
       sourcesLabel,
       setSourcesLabel,
+      selectedSuggestedTopics,
+      setSelectedSuggestedTopics,
       suggestedMessages,
       setSuggestedMessages,
       continueWithoutSources,

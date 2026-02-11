@@ -1440,7 +1440,7 @@ export default function BotKnowledgeTab() {
               <span className="discovery-loading-dots" aria-hidden>
                 <span /><span /><span />
               </span>
-              <span style={{ color: '#6366f1', fontWeight: 600 }}>
+              <span style={{ color: 'var(--ui-flow-accent)', fontWeight: 600 }}>
                 {trainingProgressLabel(sourcesTrainingStatus.stage)} {pct}%
               </span>
               {sourcesTrainingStatus.pages_crawled != null && sourcesTrainingStatus.pages_crawled > 0 && (
@@ -1459,13 +1459,12 @@ export default function BotKnowledgeTab() {
                 {stoppingTraining ? 'Stopping…' : 'Stop training'}
               </button>
             </div>
-            <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: '#e2e8f0' }}>
+            <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
               <div
                 className="progress-fill"
                 style={{
                   height: '100%',
                   width: `${pct}%`,
-                  background: '#6366f1',
                   borderRadius: '4px',
                   transition: 'width 0.3s ease',
                 }}
