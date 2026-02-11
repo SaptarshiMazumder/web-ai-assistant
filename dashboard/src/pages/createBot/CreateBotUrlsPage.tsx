@@ -344,16 +344,6 @@ export default function CreateBotUrlsPage() {
         </div>
       </div>
 
-      <FileDropzone
-        label="PDF files (optional)"
-        helperText="Drag & drop PDFs here. Your agent can learn from these too."
-        files={pdfFiles}
-        setFiles={setPdfFiles}
-        accept="application/pdf"
-        multiple
-        maxFiles={20}
-      />
-
       <div className="flow-toolbar">
         <button
           className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
@@ -423,6 +413,16 @@ export default function CreateBotUrlsPage() {
           <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'Loading categories...'}</div>
         )}
       </div>
+
+      <FileDropzone
+        label="PDF files (optional)"
+        helperText="Drag & drop PDFs here. Your agent can learn from these too."
+        files={pdfFiles}
+        setFiles={setPdfFiles}
+        accept="application/pdf"
+        multiple
+        maxFiles={20}
+      />
 
       {localError && <div className="alert error">{localError}</div>}
 

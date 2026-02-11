@@ -85,8 +85,8 @@ def sanitize_answer_citations(text: str) -> str:
     """
     if not text:
         return text
-    # Rewrite bad markdown link text like [source](URL) -> [this page](URL)
-    # so users never see "source source" artifacts.
+    # Rewrite low-quality markdown link text like [source](URL) or [link](URL)
+    # to a more descriptive label derived from the URL.
     def _preferred_link_text_from_url(url: str) -> str:
         try:
             p = urlparse((url or "").strip())
@@ -127,13 +127,36 @@ def sanitize_answer_citations(text: str) -> str:
             pass
         return "this page"
 
-    def _rewrite_source_link_text(m: re.Match) -> str:
-        url = (m.group(2) or "").strip()
-        label = _preferred_link_text_from_url(url)
-        return f"[{label}]({url})"
+    def _is_generic_link_text(label: str) -> bool:
+        if not label:
+            return True
+        s = re.sub(r"\s+", " ", label).strip().lower()
+        if not s:
+            return True
+        generic = {
+            "source", "sources", "link", "links", "here", "this", "page", "this page", "the page",
+            "website", "the website", "site", "this site", "more", "details", "info", "information",
+            "click here", "learn more", "read more",
+        }
+        if s in generic:
+            return True
+        if "http://" in s or "https://" in s:
+            return True
+        if s.startswith("/") and " " not in s:
+            return True
+        if re.fullmatch(r"[a-z0-9.-]+\.[a-z]{2,}(/.*)?", s) and " " not in s:
+            return True
+        return False
 
-    # Only rewrite explicit markdown links where the link text is "source"/"sources".
-    text = re.sub(r"\[\s*(source|sources)\s*\]\((https?://[^)\s]+)\)", _rewrite_source_link_text, text, flags=re.IGNORECASE)
+    def _rewrite_generic_link_text(m: re.Match) -> str:
+        label = (m.group(1) or "").strip()
+        url = (m.group(2) or "").strip()
+        if _is_generic_link_text(label):
+            return f"[{_preferred_link_text_from_url(url)}]({url})"
+        return m.group(0)
+
+    # Rewrite generic markdown link labels to descriptive ones.
+    text = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", _rewrite_generic_link_text, text, flags=re.IGNORECASE)
     # Strip ugly PDF/page bracket citations like:
     # [Some_File.pdf page 5], [foo.pdf p.12], [Document page 1]
     # (but do NOT clobber markdown links like [text](url)).

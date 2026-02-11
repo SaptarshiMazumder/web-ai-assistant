@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import google.auth
 from google.cloud import storage
+from google.api_core import exceptions as gcs_exceptions
 import vertexai
 
 from infrastructure.celery_app import celery_app
@@ -90,7 +91,21 @@ def pdf_source_ingest_job(
 
     # Download raw PDF
     file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix, storage_client=storage_client)
-    pdf_bytes = file_repo.download(blob_name=gcs_blob)
+    try:
+        pdf_bytes = file_repo.download(blob_name=gcs_blob)
+    except gcs_exceptions.NotFound:
+        job.stage = "error"
+        display_name = filename or "PDF"
+        job.last_error = f"{display_name} is missing from storage (GCS 404). Re-upload the PDF or recreate the bucket."
+        job.updated_at = _utc_now()
+        job_repo.update_job(job)
+        return {"status": "error", "error": job.last_error}
+    except Exception as exc:
+        job.stage = "error"
+        job.last_error = f"Failed to download PDF: {str(exc)[:200]}"
+        job.updated_at = _utc_now()
+        job_repo.update_job(job)
+        return {"status": "error", "error": job.last_error}
     if not pdf_bytes:
         job.stage = "error"
         job.last_error = "Failed to download PDF from storage"

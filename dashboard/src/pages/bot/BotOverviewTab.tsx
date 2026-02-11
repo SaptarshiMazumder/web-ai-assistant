@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, Clock } from 'lucide-react'
+import { Check, Clock, Copy } from 'lucide-react'
 import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
 import DashboardAnalytics from '../../components/DashboardAnalytics'
 
@@ -167,7 +167,13 @@ export default function BotOverviewTab() {
           <div className="card-title">Embed script</div>
           <p className="muted">Add this snippet to your client website.</p>
           <pre className="snippet">{embedSnippet}</pre>
-          <button className="secondary" onClick={() => void copySnippet()} disabled={!embedSnippet}>
+          <button
+            className="secondary"
+            onClick={() => void copySnippet()}
+            disabled={!embedSnippet}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Copy size={16} />
             Copy snippet
           </button>
         </section>
