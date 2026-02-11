@@ -528,7 +528,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setLocalError('Choose where your content is hosted to continue.')
       return null
     }
-    const finalUrls = contentHosting === 'shared' ? [] : selectedUrls
+    const finalUrls = contentHosting === 'shared' ? sharedUrls : selectedUrls
     const hasPdfs = pdfFiles.length > 0
     setIsStartingTraining(true)
     const orgOverride =
@@ -606,7 +606,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       void startBackgroundDiscovery(created.bot_id, normalizedWebsiteUrl, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank])
+  }, [botName, contentHosting, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, selectedUrls, sharedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -650,7 +650,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
       setTrainingStageName(stageName)
 
-      const totalUrls = contentHosting === 'shared' ? 0 : selectedUrls.length
+      const totalUrls = contentHosting === 'shared' ? sharedUrls.length : selectedUrls.length
       const urlProgress =
         jobId && urlStatus
           ? totalUrls > 0 && urlStatus.pages_crawled

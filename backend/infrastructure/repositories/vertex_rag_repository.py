@@ -5,6 +5,7 @@ from typing import Optional
 
 import vertexai
 from vertexai import rag as vx_rag
+from google.cloud import storage
 
 from common.config import config
 from domain.repositories import RAGRepository
@@ -56,7 +57,21 @@ class VertexRAGRepository(RAGRepository):
         from infrastructure.db.connection import get_connection
 
         bucket_name, _ = _parse_bucket_and_prefix()
-        gcs_uri = f"gs://{bucket_name}/{storage_prefix}/"
+        if not bucket_name:
+            raise RuntimeError("GCS bucket is not configured.")
+
+        # Import only markdown source documents.
+        # Avoid importing helper artifacts (e.g. url_map.json) which degrade retrieval quality.
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob_paths = [
+            blob.name
+            for blob in bucket.list_blobs(prefix=storage_prefix)
+            if blob.name.endswith(".md")
+        ]
+        if not blob_paths:
+            raise RuntimeError(f"No markdown files found under prefix: gs://{bucket_name}/{storage_prefix}/")
+        gcs_uris = [f"gs://{bucket_name}/{name}" for name in blob_paths]
         # Vertex RAG corpora reject concurrent import operations (FailedPrecondition).
         # We serialize imports per corpus across workers using a Postgres advisory lock,
         # and add a small retry loop for any lingering in-flight operations.
@@ -75,7 +90,7 @@ class VertexRAGRepository(RAGRepository):
                 try:
                     vx_rag.import_files(
                         corpus_resource,
-                        [gcs_uri],
+                        gcs_uris,
                         transformation_config=vx_rag.TransformationConfig(
                             chunking_config=vx_rag.ChunkingConfig(
                                 chunk_size=CHUNK_SIZE,
@@ -94,7 +109,7 @@ class VertexRAGRepository(RAGRepository):
                         backoff_s = min(backoff_s * 1.8, 30.0)
                         continue
                     raise RuntimeError(
-                        f"RAG import failed for corpus {corpus_resource}, GCS URI {gcs_uri}: {e}"
+                        f"RAG import failed for corpus {corpus_resource}, prefix gs://{bucket_name}/{storage_prefix}/: {e}"
                     ) from e
         finally:
             try:

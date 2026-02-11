@@ -190,6 +190,51 @@ def dedupe_evidence(evidence: List[Dict[str, str]]) -> List[Dict[str, str]]:
     return out
 
 
+_NOISE_URL_SUBSTRINGS = (
+    "url_map.json",
+)
+
+_NOISE_TEXT_PATTERNS = (
+    "bookmarkstylewebapi",
+    "bookmarkcouponwebapi",
+    "bookmarksalonwebapi",
+    "mystylewebapi",
+    "mycouponwebapi",
+    "mysalonwebapi",
+    "doset/",
+    "dodelete/",
+    "/csp/my/",
+    "ブックマーク_",
+)
+
+
+def _is_noise_evidence(url: str, text: str) -> bool:
+    """Drop low-signal snippets that pollute retrieval quality."""
+    u = (url or "").strip().lower()
+    t = (text or "").strip()
+    tl = t.lower()
+
+    if not t:
+        return True
+    if any(token in u for token in _NOISE_URL_SUBSTRINGS):
+        return True
+    if u.startswith("gs://") and (u.endswith(".json") or "url_map.json" in u):
+        return True
+    if any(token in tl for token in _NOISE_TEXT_PATTERNS):
+        return True
+
+    # Heuristic: snippets that are mostly link endpoints are rarely answer-bearing.
+    link_like = tl.count("http://") + tl.count("https://")
+    if link_like >= 3 and len(t) < 700:
+        return True
+
+    # Very short boilerplate fragments usually hurt reranking.
+    if len(t) < 40:
+        return True
+
+    return False
+
+
 def _normalize_host(host: str) -> str:
     h = (host or "").strip().lower()
     if not h:
@@ -349,7 +394,7 @@ def retrieve_for_subquery(corpus_name: str, subquery: str, top_k: int) -> List[D
     for c in ctx_list:
         text = _ctx_text(c).strip()
         url  = _ctx_uri(c)
-        if text:
+        if text and not _is_noise_evidence(url, text):
             out.append({"snippet": text, "url": url})
     # De-dupe and cap per URL to avoid repeated full-page chunks.
     out = dedupe_evidence(out)

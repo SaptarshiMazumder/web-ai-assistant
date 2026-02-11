@@ -48,8 +48,10 @@ CRAWL_MAX_CONCURRENCY = 25
 HEADLESS = True
 
 # RAG import (chunking) config
-CHUNK_SIZE = 256
-CHUNK_OVERLAP = 64
+# Larger chunks preserve answer-bearing context (e.g., prices/policies) and reduce
+# retrieval of tiny navigation fragments.
+CHUNK_SIZE = 1024
+CHUNK_OVERLAP = 128
 
 # Wait for body to have some visible text (fast on server-rendered pages, ~1–3s on JS-heavy).
 # No fixed per-page delay; capture as soon as content appears or page_timeout.
@@ -464,12 +466,19 @@ def get_or_create_corpus(project_id: str, location: str, corpus_hint: str = RAG_
     return corpus.name
 
 def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix: str) -> None:
-    """Import all files under gs://bucket/prefix/ into the given RAG corpus."""
-    gcs_uri = f"gs://{bucket_name}/{prefix}/"
+    """Import markdown content files under gs://bucket/prefix/ into the given RAG corpus."""
+    if not bucket_name:
+        raise ValueError("bucket_name is required")
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob_paths = [b.name for b in bucket.list_blobs(prefix=prefix) if b.name.endswith(".md")]
+    if not blob_paths:
+        raise ValueError(f"No markdown files found under gs://{bucket_name}/{prefix}/")
+    gcs_uris = [f"gs://{bucket_name}/{name}" for name in blob_paths]
     try:
         vx_rag.import_files(
             corpus_resource,
-            [gcs_uri],
+            gcs_uris,
             transformation_config=vx_rag.TransformationConfig(
                 chunking_config=vx_rag.ChunkingConfig(
                     chunk_size=CHUNK_SIZE,
@@ -479,12 +488,12 @@ def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix
             ),
             max_embedding_requests_per_min=1000,
         )
-        print(f"[RAG] Imported: {gcs_uri}")
+        print(f"[RAG] Imported {len(gcs_uris)} markdown file(s) from gs://{bucket_name}/{prefix}/")
     except Exception as e:
         # Provide actionable diagnostics
         print("[RAG] Import failed.")
         print(f"  Corpus:   {corpus_resource}")
-        print(f"  GCS URI:  {gcs_uri}")
+        print(f"  GCS URI:  gs://{bucket_name}/{prefix}/")
         print(f"  Project:  {PROJECT_ID}")
         print(f"  Location: {VERTEX_LOCATION}")
         print(f"  Error:    {e}")
@@ -492,7 +501,7 @@ def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix
               "  1) Grant the Vertex AI service agent Storage Object Viewer on your bucket:\n"
               "     gsutil iam ch serviceAccount:service-PROJECT_NUMBER@gcp-sa-aiplatform.iam.gserviceaccount.com:roles/storage.objectViewer gs://" + bucket_name + "\n"
               "  2) Ensure the corpus exists in the same Vertex location (" + VERTEX_LOCATION + ") and you initialized vertexai with that location.\n"
-              "  3) Verify the prefix exists and contains files: gsutil ls " + gcs_uri + "\n"
+              "  3) Verify the prefix exists and contains files: gsutil ls gs://" + bucket_name + "/" + prefix + "/\n"
               "  4) Check that your account has Vertex AI permissions in project " + PROJECT_ID + ".")
         raise
 
