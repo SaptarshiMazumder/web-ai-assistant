@@ -11,6 +11,32 @@
   --app-accent: #6366f1;
   --accent-color: var(--app-accent);
   accent-color: var(--app-accent);
+  /* Reusable warm design tokens (extracted from Create Bot flow) */
+  --ui-flow-bg: #fffdfb;
+  --ui-flow-sidebar-bg: #2d1b2f;
+  --ui-flow-sidebar-text: #ffffff;
+  --ui-flow-sidebar-active: #ffffff;
+  --ui-flow-text: #3a2236;
+  --ui-flow-muted: #7e5a70;
+  --ui-flow-border: #f2d8d2;
+  --ui-flow-surface: #ffffff;
+  --ui-flow-accent: #e4587a;
+  --ui-flow-accent-hover: #cf4264;
+  --ui-flow-accent-soft: #fff1ef;
+  --ui-flow-accent-glow: rgba(228, 88, 122, 0.28);
+  --ui-flow-accent-secondary: #f09557;
+  --ui-flow-border-gradient: linear-gradient(135deg, rgba(248, 184, 120, 0.78) 0%, rgba(244, 130, 124, 0.78) 52%, rgba(232, 103, 146, 0.78) 100%);
+  --ui-flow-brand-gradient: linear-gradient(135deg, #f6b46d 0%, #f0806b 48%, #e66397 100%);
+  --ui-flow-brand-gradient-dark: linear-gradient(135deg, #dd8b3e 0%, #db5f54 48%, #c64184 100%);
+  --ui-flow-radius-sm: 10px;
+  --ui-flow-radius-md: 14px;
+  --ui-flow-radius-lg: 20px;
+  --ui-flow-shadow-sm: 0 4px 14px rgba(198, 65, 132, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --ui-flow-shadow-card: 0 6px 24px rgba(109, 40, 255, 0.1);
+  --ui-flow-focus-ring: 0 0 0 3px rgba(219, 95, 84, 0.16);
+  --ui-flow-input-border: #e07f7a;
+  --ui-flow-font-display: 'Google Sans', sans-serif;
+  --ui-flow-font-body: 'Google Sans', sans-serif;
 }
 
 * {
@@ -2060,28 +2086,28 @@ a.primary {
 
 /* --- Custom properties --------------------------------------------------- */
 .flow-shell {
-  --flow-bg: #fffdfb;
-  --flow-sidebar-bg: #2d1b2f;
-  --flow-sidebar-text: #ffffff;
-  --flow-sidebar-active: #ffffff;
-  --flow-text: #3a2236;
-  --flow-muted: #7e5a70;
-  --flow-border: #f2d8d2;
-  --flow-surface: #ffffff;
-  --flow-accent: #e4587a;
-  --flow-accent-hover: #cf4264;
-  --flow-accent-soft: #fff1ef;
-  --flow-accent-glow: rgba(228, 88, 122, 0.28);
-  --flow-accent-secondary: #f09557;
-  --flow-border-gradient: linear-gradient(135deg, rgba(248, 184, 120, 0.78) 0%, rgba(244, 130, 124, 0.78) 52%, rgba(232, 103, 146, 0.78) 100%);
-  --flow-brand-gradient: linear-gradient(135deg, #f6b46d 0%, #f0806b 48%, #e66397 100%);
-  --flow-brand-gradient-dark: linear-gradient(135deg, #dd8b3e 0%, #db5f54 48%, #c64184 100%);
+  --flow-bg: var(--ui-flow-bg);
+  --flow-sidebar-bg: var(--ui-flow-sidebar-bg);
+  --flow-sidebar-text: var(--ui-flow-sidebar-text);
+  --flow-sidebar-active: var(--ui-flow-sidebar-active);
+  --flow-text: var(--ui-flow-text);
+  --flow-muted: var(--ui-flow-muted);
+  --flow-border: var(--ui-flow-border);
+  --flow-surface: var(--ui-flow-surface);
+  --flow-accent: var(--ui-flow-accent);
+  --flow-accent-hover: var(--ui-flow-accent-hover);
+  --flow-accent-soft: var(--ui-flow-accent-soft);
+  --flow-accent-glow: var(--ui-flow-accent-glow);
+  --flow-accent-secondary: var(--ui-flow-accent-secondary);
+  --flow-border-gradient: var(--ui-flow-border-gradient);
+  --flow-brand-gradient: var(--ui-flow-brand-gradient);
+  --flow-brand-gradient-dark: var(--ui-flow-brand-gradient-dark);
   --flow-surface-gradient: #ffffff;
-  --flow-font-display: 'Google Sans', sans-serif;
-  --flow-font-body: 'Google Sans', sans-serif;
-  --flow-radius: 14px;
-  --flow-radius-lg: 20px;
-  --flow-input-border: #e07f7a;
+  --flow-font-display: var(--ui-flow-font-display);
+  --flow-font-body: var(--ui-flow-font-body);
+  --flow-radius: var(--ui-flow-radius-md);
+  --flow-radius-lg: var(--ui-flow-radius-lg);
+  --flow-input-border: var(--ui-flow-input-border);
 }
 
 /* --- Keyframes ----------------------------------------------------------- */
@@ -2465,6 +2491,125 @@ a.primary {
 }
 
 /* --- Flow buttons (scoped) ----------------------------------------------- */
+.ui-flow-btn {
+  font-family: var(--ui-flow-font-body);
+  border-radius: var(--ui-flow-radius-sm);
+  font-size: 0.9rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ui-flow-btn--primary {
+  background: var(--ui-flow-brand-gradient-dark);
+  color: #ffffff;
+  border: none;
+  padding: 0.65rem 1.5rem;
+  font-weight: 600;
+  box-shadow: var(--ui-flow-shadow-sm);
+}
+
+.ui-flow-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #cf7a33 0%, #cc4f46 48%, #b93877 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(185, 56, 119, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.ui-flow-btn--secondary {
+  background: var(--ui-flow-surface);
+  color: var(--ui-flow-text);
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--ui-flow-surface), var(--ui-flow-surface)) padding-box,
+    var(--ui-flow-border-gradient) border-box;
+  padding: 0.65rem 1.25rem;
+  font-weight: 500;
+}
+
+.ui-flow-btn--secondary:hover:not(:disabled) {
+  color: var(--ui-flow-accent);
+  background:
+    linear-gradient(var(--ui-flow-accent-soft), var(--ui-flow-accent-soft)) padding-box,
+    var(--ui-flow-brand-gradient) border-box;
+}
+
+.ui-flow-btn--ghost {
+  background: transparent;
+  color: var(--ui-flow-muted);
+  border: none;
+  padding: 0.65rem 1rem;
+  font-weight: 500;
+}
+
+.ui-flow-btn--ghost:hover:not(:disabled) {
+  color: var(--ui-flow-accent);
+  background: #ffece8;
+}
+
+.ui-flow-card {
+  border: 1.5px solid transparent;
+  border-radius: var(--ui-flow-radius-md);
+  background:
+    linear-gradient(var(--ui-flow-surface), var(--ui-flow-surface)) padding-box,
+    var(--ui-flow-border-gradient) border-box;
+  box-shadow: var(--ui-flow-shadow-card);
+  padding: 1.5rem;
+}
+
+.ui-flow-alert {
+  font-family: var(--ui-flow-font-body);
+  border-radius: var(--ui-flow-radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.ui-flow-alert--info {
+  background: transparent;
+  color: var(--ui-flow-muted);
+  border: 1px solid var(--ui-flow-border);
+}
+
+.ui-flow-alert--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.ui-flow-field-input {
+  font-family: var(--ui-flow-font-body);
+  width: 100%;
+  padding: 0.92rem 0.95rem;
+  border: 2px solid transparent;
+  border-radius: var(--ui-flow-radius-sm);
+  background:
+    linear-gradient(var(--ui-flow-surface), var(--ui-flow-surface)) padding-box,
+    var(--ui-flow-border-gradient) border-box;
+  color: var(--ui-flow-text);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  outline: none;
+}
+
+.ui-flow-field-input:focus {
+  background:
+    linear-gradient(var(--ui-flow-surface), var(--ui-flow-surface)) padding-box,
+    var(--ui-flow-brand-gradient-dark) border-box;
+  box-shadow: var(--ui-flow-focus-ring);
+}
+
+.ui-flow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--ui-flow-border);
+  background: var(--ui-flow-surface);
+  color: var(--ui-flow-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 .flow-shell button.primary {
   font-family: var(--flow-font-body);
   background: var(--flow-brand-gradient-dark);

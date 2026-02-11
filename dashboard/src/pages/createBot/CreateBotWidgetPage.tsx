@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '../../components/WidgetDesignForm'
@@ -109,12 +110,12 @@ export default function CreateBotWidgetPage() {
 
   const actions = (
     <>
-      <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+      <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
         Back
-      </button>
-      <button type="button" className="primary" onClick={() => void handleContinue()} disabled={saving}>
+      </UiButton>
+      <UiButton variant="primary" onClick={() => void handleContinue()} disabled={saving}>
         {saving ? 'Saving...' : 'Continue'}
-      </button>
+      </UiButton>
     </>
   )
 

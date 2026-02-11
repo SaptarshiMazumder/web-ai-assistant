@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowIcon } from '../../components/FlowIcon'
+import { UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 
@@ -82,18 +83,17 @@ export default function CreateBotEmbedPage() {
       </div>
 
       <div className="flow-actions">
-        <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+        <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
-        </button>
-        <button
-          type="button"
-          className="primary"
+        </UiButton>
+        <UiButton
+          variant="primary"
           onClick={handleFinish}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <FlowIcon name="celebration" filled size="sm" />
           Finish setup
-        </button>
+        </UiButton>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowIcon } from '../../components/FlowIcon'
+import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon, StopIcon } from './DiscoveryIcons'
 import StarBorder from '../../components/StarBorder'
@@ -345,18 +346,18 @@ export default function CreateBotUrlsPage() {
       </div>
 
       <div className="flow-toolbar">
-        <button
-          className={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+        <UiButton
+          variant={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
           onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
         >
           {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
-        </button>
-        <button
-          className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+        </UiButton>
+        <UiButton
+          variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
           onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
         >
           {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-        </button>
+        </UiButton>
         <span className="muted" style={{ marginLeft: 'auto' }}>
           {selectedUrls.length} of {discoveredUrls.length} selected
         </span>
@@ -427,19 +428,19 @@ export default function CreateBotUrlsPage() {
       {localError && <div className="alert error">{localError}</div>}
 
       <div className="flow-actions">
-        <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+        <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
-        </button>
+        </UiButton>
         {isDiscovering ? (
-          <button type="button" className="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <StopIcon />
             Stop
-          </button>
+          </UiButton>
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <button type="button" className="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
+            <UiButton variant="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
               Skip for now
-            </button>
+            </UiButton>
             {hasAnySources && (
               <StarBorder
                 as="button"

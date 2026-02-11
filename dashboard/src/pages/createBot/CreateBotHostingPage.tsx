@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Globe, Share2 } from 'lucide-react'
+import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotHostingPage() {
@@ -118,17 +119,17 @@ export default function CreateBotHostingPage() {
       )}
 
       <div className="flow-actions">
-        <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+        <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
-        </button>
+        </UiButton>
         {isDiscovering ? (
-          <button type="button" className="primary" onClick={stopDiscovery}>
+          <UiButton variant="primary" onClick={stopDiscovery}>
             Stop
-          </button>
+          </UiButton>
         ) : (
-          <button type="button" className="primary" onClick={() => void handleContinue()} disabled={!canContinue}>
+          <UiButton variant="primary" onClick={() => void handleContinue()} disabled={!canContinue}>
             {continuing ? 'Scanning...' : 'Continue'}
-          </button>
+          </UiButton>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { FlowSelect } from '../../components/FlowSelect'
+import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotDetailsPage() {
@@ -61,14 +62,13 @@ export default function CreateBotDetailsPage() {
       )}
 
       <div className="flow-actions">
-        <button
-          type="button"
-          className="primary"
+        <UiButton
+          variant="primary"
           onClick={() => void handleContinue()}
           disabled={!botName.trim()}
         >
           Continue
-        </button>
+        </UiButton>
       </div>
     </div>
   )

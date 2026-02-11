@@ -4,6 +4,7 @@
  */
 
 import { getTrainingStageLabel } from './trainingProgressLabels'
+import { UiCard } from '../../components/ui'
 
 const SIZE = 130
 const STROKE = 8
@@ -32,13 +33,14 @@ export function TrainingProgressCircle({
   const offset = CIRCUMFERENCE * (1 - progress / 100)
 
   return (
-    <div
+    <UiCard
       className="training-progress-circle"
       style={{
         padding: '20px',
         borderRadius: '14px',
         background: 'rgba(255, 255, 255, 0.12)',
         border: '1px solid rgba(255, 255, 255, 0.22)',
+        boxShadow: 'none',
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
@@ -117,6 +119,6 @@ export function TrainingProgressCircle({
           </div>
         </div>
       </div>
-    </div>
+    </UiCard>
   )
 }

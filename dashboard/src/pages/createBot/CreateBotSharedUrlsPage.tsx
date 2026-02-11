@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FlowIcon } from '../../components/FlowIcon'
+import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { PlayIcon } from './DiscoveryIcons'
 import StarBorder from '../../components/StarBorder'
@@ -206,9 +207,8 @@ export default function CreateBotSharedUrlsPage() {
                 />
               </div>
             </div>
-            <button
-              type="button"
-              className="ghost"
+            <UiButton
+              variant="ghost"
               onClick={() => {
                 const next = sharedUrlRows.filter((_, i) => i !== idx)
                 setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
@@ -219,33 +219,32 @@ export default function CreateBotSharedUrlsPage() {
               style={{ color: 'var(--flow-muted, #64748b)', padding: '0.6rem', marginTop: '1px' }}
             >
               <FlowIcon name="delete" size="sm" />
-            </button>
+            </UiButton>
           </div>
         ))}
 
         <div>
-          <button
-            type="button"
-            className="ghost"
+          <UiButton
+            variant="ghost"
             onClick={() => setSharedUrlRows([...sharedUrlRows, { url: '', label: '' }])}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--flow-accent)' }}
           >
             <FlowIcon name="add" size="xs" />
             Add another link
-          </button>
+          </UiButton>
         </div>
       </div>
 
       {localError && <div className="alert error">{localError}</div>}
 
       <div className="flow-actions">
-        <button type="button" className="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+        <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           Back
-        </button>
+        </UiButton>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-          <button type="button" className="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
+          <UiButton variant="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
             Skip for now
-          </button>
+          </UiButton>
           {hasAnySources && (
             <StarBorder
               as="button"

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { UiButton, UiCard } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { getTrainingStageLabel, TRAINING_STAGE_LABELS } from './trainingProgressLabels'
 
@@ -101,12 +102,7 @@ export default function CreateBotProgressPage() {
 
       {/* PDF job statuses */}
       {pdfJobs.length > 0 && (
-        <div style={{
-          border: '1px solid var(--flow-border)',
-          borderRadius: 'var(--flow-radius)',
-          padding: '1.25rem',
-          background: 'var(--flow-surface)',
-        }}>
+        <UiCard style={{ padding: '1.25rem', boxShadow: 'none' }}>
           <div style={{ fontWeight: 600, color: 'var(--flow-text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
             PDF files
           </div>
@@ -139,7 +135,7 @@ export default function CreateBotProgressPage() {
               </div>
             ))}
           </div>
-        </div>
+        </UiCard>
       )}
 
       {trainingStageName === 'skipped' && botId && (
@@ -152,9 +148,9 @@ export default function CreateBotProgressPage() {
         {isComplete ? (
           <>
             {flow.nextPath && (
-              <button type="button" className="primary" onClick={() => navigate(flow.nextPath!)}>
+              <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
                 Continue
-              </button>
+              </UiButton>
             )}
             {botId ? (
               <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}
