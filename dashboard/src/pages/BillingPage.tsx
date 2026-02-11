@@ -1,15 +1,19 @@
 import PageHeader from '../components/PageHeader'
+import { AnimatedPage, EmptyState, GlassCard, UiButton } from '../components/ui'
 
 export default function BillingPage() {
   return (
-    <div className="page">
+    <AnimatedPage className="page">
       <PageHeader title="Billing and subscriptions" />
       <div className="page-body page-body-narrow">
-        <section className="card">
-          <div className="card-title">Billing</div>
-          <p className="muted">Billing and subscription management will be available here.</p>
-        </section>
+        <GlassCard>
+          <EmptyState
+            title="Billing cockpit is coming"
+            description="Advanced plans, invoices, and usage controls will launch here with the same warm dashboard styling."
+            action={<UiButton variant="secondary">Notify me when live</UiButton>}
+          />
+        </GlassCard>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

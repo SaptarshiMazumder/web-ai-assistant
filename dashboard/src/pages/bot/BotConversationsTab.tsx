@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bot, User } from 'lucide-react'
+import { Bot, User, Search, Download, ArrowLeft, XCircle, MessageCircle, MessagesSquare } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import type {
   ConversationMessageRecord,
   ConversationSessionRecord,
   EscalationRecord,
 } from '../../hooks/useDashboardData'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 export default function BotConversationsTab() {
   const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession } =
@@ -144,10 +145,18 @@ export default function BotConversationsTab() {
   }
 
   return (
-    <div className="conversations-page">
+    <AnimatedPage className="conversations-page">
+      <SectionHeader
+        eyebrow="Conversations"
+        title="Live inbox and replay"
+        subtitle="Track active chats, escalations, and message timelines in one place."
+      />
       <div className="card-grid conversation-grid">
-      <section className="card conversation-panel conversation-panel--list">
-        <div className="card-title">Conversation sessions</div>
+      <GlassCard className="conversation-panel conversation-panel--list">
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessagesSquare size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+          Conversation sessions
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
           <input
             value={query}
@@ -155,17 +164,19 @@ export default function BotConversationsTab() {
             placeholder="Search messages…"
             style={{ flex: 1 }}
           />
-          <button type="button" className="secondary" onClick={() => void loadSessions()} disabled={loading}>
+          <UiButton variant="secondary" onClick={() => void loadSessions()} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Search size={14} />
             Search
-          </button>
-          <button
-            type="button"
-            className="ghost"
+          </UiButton>
+          <UiButton
+            variant="ghost"
             onClick={() => void exportConversationsCsv(selectedBot.bot_id, { q: query.trim() || null })}
             disabled={loading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
           >
+            <Download size={14} />
             Export CSV
-          </button>
+          </UiButton>
         </div>
         {loading && <div className="muted">Loading...</div>}
         {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
@@ -205,10 +216,11 @@ export default function BotConversationsTab() {
             </button>
           ))}
         </div>
-      </section>
+      </GlassCard>
 
-      <section className="card conversation-panel conversation-panel--detail">
-        <div className="card-title">
+      <GlassCard className="conversation-panel conversation-panel--detail">
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessageCircle size={16} style={{ color: 'var(--ui-flow-accent)' }} />
           Conversation details{messages.length ? ` (${messages.length} messages)` : ''}
         </div>
         {!selectedSession && <div className="muted">Select a session to view messages.</div>}
@@ -235,12 +247,14 @@ export default function BotConversationsTab() {
               </>
             )}
             <div className="conversation-actions">
-              <button type="button" className="secondary" onClick={() => setSelectedSession(null)}>
+              <UiButton variant="secondary" onClick={() => setSelectedSession(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ArrowLeft size={14} />
                 Back to list
-              </button>
-              <button type="button" className="ghost" onClick={() => void handleEndSession()}>
+              </UiButton>
+              <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <XCircle size={14} />
                 End session
-              </button>
+              </UiButton>
             </div>
             <div className="conversation-messages">
               {(() => {
@@ -308,8 +322,8 @@ export default function BotConversationsTab() {
             </div>
           </>
         )}
-      </section>
+      </GlassCard>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, Clock, Copy } from 'lucide-react'
+import { Check, Clock, Copy, Key, Code2, CalendarDays, Mail, ExternalLink, BarChart3 } from 'lucide-react'
 import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
 import DashboardAnalytics from '../../components/DashboardAnalytics'
+import { GlassCard, UiButton } from '../../components/ui'
 
 type SetupIndicator = {
   id: string
@@ -68,7 +69,6 @@ export default function BotOverviewTab() {
 
   return (
     <>
-      {/* Summary: setup pills + metrics; all inside Summary block */}
       <DashboardAnalytics
         botId={selectedBot.bot_id}
         setupPills={
@@ -82,11 +82,11 @@ export default function BotOverviewTab() {
               >
                 {ind.done ? (
                   <span className="summary-pill-icon summary-pill-icon--check" aria-hidden>
-                    <Check size={12} strokeWidth={3} />
+                    <Check size={13} strokeWidth={2.5} />
                   </span>
                 ) : (
                   <span className="summary-pill-icon summary-pill-icon--setup" aria-hidden title="Pending">
-                    <Clock size={14} strokeWidth={2} />
+                    <Clock size={13} strokeWidth={2.5} />
                   </span>
                 )}
                 <span className="summary-pill-label">{ind.label}</span>
@@ -96,26 +96,28 @@ export default function BotOverviewTab() {
         }
       />
 
-      {/* Leads section: people who entered their email (from escalations) */}
-      <section className="card leads-section" style={{ marginTop: 24 }}>
+      <GlassCard className="leads-section">
         <div className="leads-section-header">
-          <div className="card-title">Leads</div>
-          <Link to={`/bots/${botId}/escalations?tab=escalations`} className="secondary" style={{ fontSize: '0.9rem', padding: '0.4rem 0.75rem' }}>
-            View all
-          </Link>
+          <div>
+            <div className="card-title" style={{ marginBottom: '0.2rem' }}>Leads</div>
+            <p className="card-subtitle" style={{ margin: 0 }}>Captured when visitors request human follow-up in chat.</p>
+          </div>
+          <UiButton variant="secondary" onClick={() => {}} style={{ fontSize: '0.88rem', padding: '0.4rem 0.85rem' }}>
+            <Link to={`/bots/${botId}/escalations?tab=escalations`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'inherit' }}>
+              <BarChart3 size={14} />
+              View all
+            </Link>
+          </UiButton>
         </div>
-        <p className="muted" style={{ marginTop: -8, marginBottom: 12 }}>
-          Leads are captured when someone enters their email in the chat (e.g. when requesting to be contacted).
-        </p>
         {leads.length === 0 ? (
-          <div className="muted">No leads yet.</div>
+          <div className="muted" style={{ padding: '0.5rem 0' }}>No leads yet. Escalations will appear here once visitors request follow-up.</div>
         ) : (
           <div className="leads-table-wrap">
             <table className="leads-table">
               <thead>
                 <tr>
-                  <th>Email</th>
-                  <th>Date</th>
+                  <th><Mail size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Email</th>
+                  <th><CalendarDays size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Date</th>
                   <th>Status</th>
                   <th></th>
                 </tr>
@@ -129,8 +131,9 @@ export default function BotOverviewTab() {
                       <span className={`leads-status leads-status--${lead.status}`}>{lead.status}</span>
                     </td>
                     <td>
-                      <Link to={`/bots/${botId}/conversations?session=${lead.session_id}`} className="ghost" style={{ fontSize: '0.85rem' }}>
-                        View conversation
+                      <Link to={`/bots/${botId}/conversations?session=${lead.session_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--ui-flow-accent)', fontSize: '0.85rem', fontWeight: 500 }}>
+                        <ExternalLink size={13} />
+                        View
                       </Link>
                     </td>
                   </tr>
@@ -139,12 +142,14 @@ export default function BotOverviewTab() {
             </table>
           </div>
         )}
-      </section>
+      </GlassCard>
 
-      {/* Bot details + Embed script */}
-      <div className="card-grid" style={{ marginTop: 24 }}>
-        <section className="card">
-          <div className="card-title">Bot details</div>
+      <div className="card-grid" style={{ marginTop: 16 }}>
+        <GlassCard>
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Key size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+            Bot details
+          </div>
           <div className="detail-row">
             <span>Bot ID</span>
             <code>{selectedBot.bot_id}</code>
@@ -161,22 +166,25 @@ export default function BotOverviewTab() {
             <span>Created</span>
             <span>{new Date(selectedBot.created_at).toLocaleString()}</span>
           </div>
-        </section>
+        </GlassCard>
 
-        <section className="card">
-          <div className="card-title">Embed script</div>
-          <p className="muted">Add this snippet to your client website.</p>
+        <GlassCard>
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Code2 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+            Embed script
+          </div>
+          <p className="muted" style={{ marginBottom: '0.75rem' }}>Add this snippet to your client website.</p>
           <pre className="snippet">{embedSnippet}</pre>
-          <button
-            className="secondary"
+          <UiButton
+            variant="secondary"
             onClick={() => void copySnippet()}
             disabled={!embedSnippet}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}
           >
             <Copy size={16} />
             Copy snippet
-          </button>
-        </section>
+          </UiButton>
+        </GlassCard>
       </div>
     </>
   )

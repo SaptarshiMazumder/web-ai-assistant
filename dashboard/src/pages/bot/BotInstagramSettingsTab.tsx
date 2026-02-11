@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2, Trash2 } from 'lucide-react'
+import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 
 type InstagramChannelConfig = {
   channel_id: string
@@ -72,7 +73,7 @@ const inputStyle: React.CSSProperties = {
   borderRadius: '6px',
   border: '1px solid var(--border-color)',
   fontSize: '14px',
-  fontFamily: 'monospace',
+  fontFamily: 'Google Sans, sans-serif',
   background: 'var(--bg-secondary)',
 }
 
@@ -278,7 +279,8 @@ export default function BotInstagramSettingsTab() {
   /* ─── Already connected view ─────────────────────────────────── */
   if (existing) {
     return (
-      <div className="page-body">
+      <AnimatedPage className="page-body">
+        <SectionHeader eyebrow="Integrations" title="Instagram channel" subtitle="Manage DM automation, webhook settings, and credentials." />
         <div style={connectedBanner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <CheckCircle size={20} />
@@ -365,9 +367,9 @@ export default function BotInstagramSettingsTab() {
               <label htmlFor="ig-active-edit" style={{ fontSize: '14px' }}>Active</label>
             </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <button className="primary" onClick={handleSave} disabled={saving} style={{ fontSize: '13px' }}>
+              <UiButton variant="primary" onClick={handleSave} disabled={saving} style={{ fontSize: '13px' }}>
                 {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              </UiButton>
               <button onClick={handleDelete} disabled={deleting}
                 style={{ fontSize: '13px', color: 'var(--error-text, #dc3545)', background: 'transparent', border: '1px solid var(--error-text, #dc3545)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Trash2 size={14} /> {deleting ? 'Removing...' : 'Disconnect Instagram'}
@@ -385,13 +387,14 @@ export default function BotInstagramSettingsTab() {
             Customer says <strong>&quot;back to bot&quot;</strong> to return to AI.
           </p>
         </div>
-      </div>
+      </AnimatedPage>
     )
   }
 
   /* ─── Setup wizard (not yet connected) ─────────────────────── */
   return (
-    <div className="page-body">
+    <AnimatedPage className="page-body">
+      <SectionHeader eyebrow="Integrations" title="Connect Instagram" subtitle="Follow guided setup and switch to live support workflows instantly." />
       <div style={{ marginBottom: '24px' }}>
         <h2 style={{ margin: '0 0 6px 0', fontSize: '20px' }}>Connect Instagram to your bot</h2>
         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -507,12 +510,12 @@ export default function BotInstagramSettingsTab() {
           <p style={{ margin: '0 0 14px 0' }}>
             Once you&apos;ve completed steps 1-2, click the button below to connect. You&apos;ll then get a Verify Token for step 3.
           </p>
-          <button className="primary" onClick={handleSave} disabled={saving}
+          <UiButton variant="primary" onClick={handleSave} disabled={saving}
             style={{ fontSize: '15px', padding: '10px 28px' }}>
             {saving ? 'Connecting...' : 'Connect Instagram Channel'}
-          </button>
+          </UiButton>
         </div>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

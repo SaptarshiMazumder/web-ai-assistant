@@ -1,5 +1,7 @@
+import { Users, UserPlus, Mail } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../components/ui'
 
 export default function OrgMembersPage() {
   const {
@@ -18,25 +20,41 @@ export default function OrgMembersPage() {
   }
 
   return (
-    <div className="page">
+    <AnimatedPage className="page">
       <PageHeader title="Users" subtitle="Manage organization members and access." />
 
-      <section className="card">
-        <div className="card-title">Add member</div>
+      <SectionHeader
+        eyebrow="Team"
+        title="Manage members"
+        subtitle="Invite new team members and view your current roster."
+      />
+
+      <GlassCard>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <UserPlus size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+          Add member
+        </div>
         <div className="stack">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Mail size={14} style={{ color: 'var(--ui-flow-muted)' }} />
+            <span className="muted" style={{ fontSize: '0.85rem' }}>Email address</span>
+          </div>
           <input value={newMemberEmail} onChange={(event) => setNewMemberEmail(event.target.value)} placeholder="user@company.com" />
           <select value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value)}>
-            <option value="org_admin">org_admin</option>
-            <option value="org_member">org_member</option>
+            <option value="org_admin">Admin</option>
+            <option value="org_member">Member</option>
           </select>
-          <button className="secondary" onClick={addOrgMember} disabled={loading || !newMemberEmail.trim()}>
+          <UiButton variant="primary" onClick={addOrgMember} disabled={loading || !newMemberEmail.trim()} style={{ alignSelf: 'flex-start' }}>
             Add member
-          </button>
+          </UiButton>
         </div>
-      </section>
+      </GlassCard>
 
-      <section className="card">
-        <div className="card-title">Members</div>
+      <GlassCard>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Users size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+          Members ({orgMembers.length})
+        </div>
         <div className="list">
           {orgMembers.map((member) => (
             <div key={member.user_id} className="list-row">
@@ -46,9 +64,9 @@ export default function OrgMembersPage() {
               </div>
             </div>
           ))}
-          {!orgMembers.length && <div className="empty">No members yet.</div>}
+          {!orgMembers.length && <div className="muted" style={{ padding: '0.75rem 0' }}>No members yet.</div>}
         </div>
-      </section>
-    </div>
+      </GlassCard>
+    </AnimatedPage>
   )
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { Check, MessageSquarePlus } from 'lucide-react'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
   widgetConfigToState,
@@ -9,6 +9,7 @@ import {
 } from '../../components/WidgetDesignForm'
 import { SuggestedMessagesEditor } from '../../components/SuggestedMessagesEditor'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 const SAVED_FEEDBACK_MS = 2000
 
@@ -62,46 +63,48 @@ export default function BotSuggestedMessagesTab() {
   }
 
   return (
-    <div className="flow-panel-body">
-      <div className="widget-design-grid">
-        <div className="design-form">
-          <section className="card">
-            <div className="card-title">Suggested messages</div>
-            <p className="card-subtitle" style={{ marginTop: '0.25rem', marginBottom: 0 }}>
-              These appear above the input when the widget opens.
-            </p>
-            <div className="design-form-section">
-              <SuggestedMessagesEditor
-                suggestedMessages={state.suggestedMessages}
-                onChange={(next) => update('suggestedMessages', next)}
-                title=""
-                subtitle=""
-              />
-            </div>
-          </section>
+    <AnimatedPage>
+      <SectionHeader
+        eyebrow="Engagement"
+        title="Suggested message prompts"
+        subtitle="Shape the first-click experience with compelling user starters."
+      />
 
-          <div className="flow-actions">
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void handleSave()}
-              disabled={saving || savedJustNow}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              {saving ? (
-                'Saving...'
-              ) : savedJustNow ? (
-                <>
-                  <Check size={18} strokeWidth={2.5} aria-hidden />
-                  <span>Saved</span>
-                </>
-              ) : (
-                'Save'
-              )}
-            </button>
-          </div>
+      <GlassCard>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <MessageSquarePlus size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+          Suggested messages
         </div>
+        <p className="card-subtitle">
+          These appear above the input when the widget opens. Add engaging prompts that guide visitors.
+        </p>
+        <SuggestedMessagesEditor
+          suggestedMessages={state.suggestedMessages}
+          onChange={(next) => update('suggestedMessages', next)}
+          title=""
+          subtitle=""
+        />
+      </GlassCard>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <UiButton
+          variant="primary"
+          onClick={() => void handleSave()}
+          disabled={saving || savedJustNow}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          {saving ? (
+            'Saving...'
+          ) : savedJustNow ? (
+            <>
+              <Check size={18} strokeWidth={2.5} aria-hidden />
+              <span>Saved</span>
+            </>
+          ) : (
+            'Save messages'
+          )}
+        </UiButton>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

@@ -1,18 +1,19 @@
 import PageHeader from '../components/PageHeader'
+import { AnimatedPage, EmptyState, GlassCard, UiButton } from '../components/ui'
 
 export default function SettingsPage() {
   return (
-    <div className="page">
+    <AnimatedPage className="page">
       <PageHeader title="Settings" />
       <div className="page-body page-body-narrow">
-        <section className="card">
-          <div className="card-title">Settings</div>
-          <p className="muted">Manage your account preferences, notifications, and application settings here.</p>
-          <p className="muted" style={{ marginTop: '0.5rem' }}>
-            Additional settings controls will be added in future updates.
-          </p>
-        </section>
+        <GlassCard>
+          <EmptyState
+            title="Personal settings hub"
+            description="Notification tuning, workspace defaults, and automation preferences are being redesigned."
+            action={<UiButton variant="ghost">Preview future controls</UiButton>}
+          />
+        </GlassCard>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

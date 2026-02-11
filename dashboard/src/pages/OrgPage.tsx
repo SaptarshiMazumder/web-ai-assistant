@@ -1,5 +1,7 @@
+import { Building2, Users, UserPlus, Edit3, Plus, Shield, Power } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../components/ui'
 
 export default function OrgPage() {
   const {
@@ -64,7 +66,7 @@ export default function OrgPage() {
 
   const avatarUrlForMember = (name: string, email: string) => {
     const label = name || email || 'User'
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(label)}&background=0f172a&color=fff&size=128`
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(label)}&background=e4587a&color=fff&size=128`
   }
 
   if (!activeOrgId && !isSuperAdmin) {
@@ -72,12 +74,20 @@ export default function OrgPage() {
   }
 
   return (
-    <div className="page narrow">
+    <AnimatedPage className="page narrow">
       <PageHeader title="Organization" />
       <div className="page-body page-body-narrow">
+        <SectionHeader
+          eyebrow="Workspace"
+          title="Organization control panel"
+          subtitle="Manage teams, members, and roles from one central hub."
+        />
         <div className="org-grid">
-          <section className="card">
-            <div className="card-title">Current Team</div>
+          <GlassCard>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Building2 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+              Current Team
+            </div>
             <div className="card-subtitle">Switch between different team dashboards that you have access to.</div>
             <div className="org-select-row">
               <div className="org-select">
@@ -88,9 +98,7 @@ export default function OrgPage() {
                       value={activeOrgId || ''}
                       onChange={(event) => setActiveOrgId(event.target.value)}
                     >
-                      <option value="" disabled>
-                        Select org
-                      </option>
+                      <option value="" disabled>Select org</option>
                       <option value="__all__">All orgs</option>
                       {orgs.map((org) => (
                         <option key={org.org_id} value={org.org_id}>
@@ -112,19 +120,25 @@ export default function OrgPage() {
 
             {isSuperAdmin && (
               <div className="org-admin-block">
-                <div className="card-title">Create org</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', color: 'var(--ui-flow-text)' }}>
+                  <Plus size={15} style={{ color: 'var(--ui-flow-accent)' }} />
+                  Create org
+                </div>
                 <div className="stack">
                   <input value={newOrgName} onChange={(event) => setNewOrgName(event.target.value)} placeholder="Org name" />
-                  <button className="primary" onClick={createOrg} disabled={loading || !newOrgName.trim()}>
+                  <UiButton variant="primary" onClick={createOrg} disabled={loading || !newOrgName.trim()}>
                     Create org
-                  </button>
+                  </UiButton>
                 </div>
               </div>
             )}
-          </section>
+          </GlassCard>
 
-          <section className="card">
-            <div className="card-title">Rename Team</div>
+          <GlassCard>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Edit3 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+              Rename Team
+            </div>
             <div className="card-subtitle">
               {isAllOrgsSelected ? 'Select a single org to rename it.' : `Enter a new team name for ${currentOrgName}.`}
             </div>
@@ -135,19 +149,22 @@ export default function OrgPage() {
                 placeholder="Organization name"
                 disabled={isAllOrgsSelected}
               />
-              <button className="secondary" onClick={saveOrgName} disabled={isAllOrgsSelected || loading || !orgDisplayNameInput.trim()}>
+              <UiButton variant="secondary" onClick={saveOrgName} disabled={isAllOrgsSelected || loading || !orgDisplayNameInput.trim()}>
                 Update
-              </button>
+              </UiButton>
             </div>
-          </section>
+          </GlassCard>
         </div>
 
         {activeOrgId && (
           <>
-            <section className="card">
+            <GlassCard>
               <div className="members-header">
                 <div>
-                  <div className="card-title">Members</div>
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Users size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+                    Members
+                  </div>
                   <div className="card-subtitle">
                     {isAllOrgsSelected ? 'View members across all orgs.' : 'View and manage the members of this team.'}
                   </div>
@@ -203,17 +220,20 @@ export default function OrgPage() {
                 })}
                 {!orgMembers.length && <div className="empty">No members yet.</div>}
               </div>
-            </section>
+            </GlassCard>
 
-            <section className="card">
+            <GlassCard>
               <div className="members-header">
                 <div>
-                  <div className="card-title">Add member</div>
+                  <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <UserPlus size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+                    Add member
+                  </div>
                   <div className="card-subtitle">Invite a new member to collaborate with this team.</div>
                 </div>
-                <button className="secondary" onClick={addOrgMember} disabled={isAllOrgsSelected || loading || !newMemberEmail.trim()}>
+                <UiButton variant="secondary" onClick={addOrgMember} disabled={isAllOrgsSelected || loading || !newMemberEmail.trim()}>
                   Add member
-                </button>
+                </UiButton>
               </div>
               <div className="members-form">
                 <input
@@ -227,13 +247,16 @@ export default function OrgPage() {
                   <option value="org_member">Member</option>
                 </select>
               </div>
-            </section>
+            </GlassCard>
           </>
         )}
 
         {isSuperAdmin && (
-          <section className="card">
-            <div className="card-title">Organizations</div>
+          <GlassCard>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Shield size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+              Organizations
+            </div>
             <div className="list">
               {orgs.map((org) => (
                 <div key={org.org_id} className="list-row">
@@ -242,17 +265,18 @@ export default function OrgPage() {
                     <div className="muted">{org.org_id}</div>
                   </div>
                   <div className="row">
-                    <button className="ghost" onClick={() => setOrgStatus(org.org_id, org.status === 'active' ? 'disabled' : 'active')} disabled={loading}>
+                    <UiButton variant="ghost" onClick={() => setOrgStatus(org.org_id, org.status === 'active' ? 'disabled' : 'active')} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Power size={14} />
                       {org.status === 'active' ? 'Disable' : 'Enable'}
-                    </button>
+                    </UiButton>
                   </div>
                 </div>
               ))}
               {!orgs.length && <div className="empty">No orgs yet</div>}
             </div>
-          </section>
+          </GlassCard>
         )}
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

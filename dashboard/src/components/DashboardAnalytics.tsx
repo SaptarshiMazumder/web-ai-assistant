@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useDashboardData, type AnalyticsSummary, type AnalyticsTimeseries, type TopSources, type Topics } from '../hooks/useDashboardData'
+import { MetricCard, SectionHeader } from './ui'
+import { AlertTriangle, MessageCircle, MessagesSquare, RotateCw, Smile, UserPlus } from 'lucide-react'
 
 function toDayString(d: Date) {
   const yyyy = d.getFullYear()
@@ -334,10 +336,24 @@ function CSATPie({ positive, negative }: { positive: number; negative: number })
 
 type Props = { botId: string | null; setupPills?: React.ReactNode }
 
+type DashboardAnalyticsCacheEntry = {
+  updatedAt: number
+  summary: AnalyticsSummary | null
+  unresolvedEscalations: number | null
+  convSeries: AnalyticsTimeseries | null
+  escSeries: AnalyticsTimeseries | null
+  sources: TopSources | null
+  topics: Topics | null
+}
+
+const ANALYTICS_STALE_MS = 45_000
+const DASHBOARD_ANALYTICS_CACHE = new Map<string, DashboardAnalyticsCacheEntry>()
+
 export default function DashboardAnalytics({ botId, setupPills }: Props) {
-  const { getAnalyticsSummary, getAnalyticsTimeseries, getAnalyticsTopSources, getAnalyticsTopics, getEscalationCounts } =
+  const { getAnalyticsSummary, getAnalyticsTimeseries, getAnalyticsTopSources, getAnalyticsTopics, getEscalationCounts, recomputeAnalytics } =
     useDashboardData()
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [unresolvedEscalations, setUnresolvedEscalations] = useState<number | null>(null)
   const [convSeries, setConvSeries] = useState<AnalyticsTimeseries | null>(null)
@@ -363,32 +379,68 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [botId, convPreset, convCustom.fromDay, convCustom.toDay, escPreset, escCustom.fromDay, escCustom.toDay])
 
-  useEffect(() => {
+  async function load(options?: { recompute?: boolean; forceNetwork?: boolean }) {
     if (!botId) return
-    getEscalationCounts(botId).then((counts) => {
-      setUnresolvedEscalations(counts?.open ?? 0)
-    })
-  }, [botId, getEscalationCounts])
+    const convWindow = resolvePreset(convPreset, convCustom)
+    const escWindow = resolvePreset(escPreset, escCustom)
+    const cacheKey = [
+      botId,
+      convPreset,
+      convWindow.from_day,
+      convWindow.to_day,
+      escPreset,
+      escWindow.from_day,
+      escWindow.to_day,
+    ].join('|')
 
-  async function load() {
-    if (!botId) return
-    setLoading(true)
+    const cached = DASHBOARD_ANALYTICS_CACHE.get(cacheKey)
+    if (cached) {
+      setSummary(cached.summary)
+      setConvSeries(cached.convSeries)
+      setEscSeries(cached.escSeries)
+      setSources(cached.sources)
+      setTopics(cached.topics)
+      setUnresolvedEscalations(cached.unresolvedEscalations)
+
+      const isFresh = Date.now() - cached.updatedAt < ANALYTICS_STALE_MS
+      if (!options?.recompute && !options?.forceNetwork && isFresh) {
+        return
+      }
+    }
+
+    setLoading(options?.recompute === true || !cached)
     try {
-      const convWindow = resolvePreset(convPreset, convCustom)
-      const escWindow = resolvePreset(escPreset, escCustom)
-      const [s, ts, src, t] = await Promise.all([
+      if (options?.recompute) {
+        const recomputeStart = convWindow.from_day <= escWindow.from_day ? convWindow.from_day : escWindow.from_day
+        const recomputeEnd = convWindow.to_day >= escWindow.to_day ? convWindow.to_day : escWindow.to_day
+        await recomputeAnalytics(botId, { from_day: recomputeStart, to_day: recomputeEnd })
+      }
+
+      const [s, ts, src, t, counts] = await Promise.all([
         getAnalyticsSummary(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day }),
         getAnalyticsTimeseries(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day }),
         getAnalyticsTopSources(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day, limit: 10 }),
         getAnalyticsTopics(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day, limit: 20 }),
+        getEscalationCounts(botId),
       ])
       setSummary(s)
       setConvSeries(ts)
       setSources(src)
       setTopics(t)
+      setUnresolvedEscalations(counts?.open ?? 0)
 
       const escTs = await getAnalyticsTimeseries(botId, { from_day: escWindow.from_day, to_day: escWindow.to_day })
       setEscSeries(escTs)
+
+      DASHBOARD_ANALYTICS_CACHE.set(cacheKey, {
+        updatedAt: Date.now(),
+        summary: s,
+        unresolvedEscalations: counts?.open ?? 0,
+        convSeries: ts,
+        escSeries: escTs,
+        sources: src,
+        topics: t,
+      })
     } finally {
       setLoading(false)
     }
@@ -398,6 +450,16 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
   const convValues = useMemo(() => (convSeries?.points || []).map((p) => p.conversations || 0), [convSeries])
   const escDays = useMemo(() => (escSeries?.points || []).map((p) => p.day), [escSeries])
   const escValues = useMemo(() => (escSeries?.points || []).map((p) => p.escalations || 0), [escSeries])
+
+  async function handleRefreshSummary() {
+    if (!botId || refreshing || loading) return
+    setRefreshing(true)
+    try {
+      await load({ recompute: true, forceNetwork: true })
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   if (!botId) {
     return <div className="empty-panel">Create or select a bot to view analytics.</div>
@@ -413,7 +475,23 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
 
       <section className="card summary-card" style={{ marginTop: 0 }}>
         <div className="summary-card-header">
-          <div className="card-title">Summary</div>
+          <SectionHeader
+            eyebrow="Performance"
+            title="Summary"
+            subtitle="Live metrics and setup completion for your bot."
+            titleAccessory={
+              <button
+                type="button"
+                onClick={() => void handleRefreshSummary()}
+                disabled={refreshing || loading}
+                aria-label="Refresh summary stats"
+                title="Recompute and refresh summary stats"
+                className={`summary-refresh-icon-btn${refreshing || loading ? ' is-spinning' : ''}`}
+              >
+                <RotateCw size={14} strokeWidth={2.25} />
+              </button>
+            }
+          />
         </div>
         {setupPills != null && (
           <div className="summary-pills">
@@ -421,32 +499,17 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
           </div>
         )}
         <div className="summary-metrics">
-          <div className="summary-metric-card">
-            <span className="summary-metric-label">Total conversations</span>
-            <span className="summary-metric-value">{summary?.conversations ?? 0}</span>
-          </div>
-          <div className="summary-metric-card">
-            <span className="summary-metric-label">Messages sent</span>
-            <span className="summary-metric-value">
-              {(summary?.messages_user ?? 0) + (summary?.messages_bot ?? 0)}
-            </span>
-          </div>
-          <div className="summary-metric-card">
-            <span className="summary-metric-label">Leads captured</span>
-            <span className="summary-metric-value">{summary?.escalations ?? 0}</span>
-          </div>
-          <div className="summary-metric-card">
-            <span className="summary-metric-label">Messages / Conv</span>
-            <span className="summary-metric-value">{(summary?.messages_per_conversation ?? 0).toFixed(1)}</span>
-          </div>
-          <div className="summary-metric-card">
-            <span className="summary-metric-label">Unresolved escalations</span>
-            <span className="summary-metric-value">{unresolvedEscalations ?? 0}</span>
-          </div>
-          <div className="summary-metric-card summary-metric-card--feedback">
-            <span className="summary-metric-label">CSAT</span>
+          <MetricCard label="Total conversations" value={summary?.conversations ?? 0} icon={<MessagesSquare size={15} />} />
+          <MetricCard label="Leads captured" value={summary?.escalations ?? 0} icon={<UserPlus size={15} />} />
+          <MetricCard label="Messages / Conv" value={Number((summary?.messages_per_conversation ?? 0).toFixed(1))} icon={<MessageCircle size={15} />} />
+          <MetricCard label="Unresolved escalations" value={unresolvedEscalations ?? 0} icon={<AlertTriangle size={15} />} />
+          <div className="ui-metric-card summary-metric-card--feedback">
+            <div className="ui-metric-card-head">
+              <span className="ui-metric-card-label">CSAT</span>
+              <span className="ui-metric-card-icon"><Smile size={15} /></span>
+            </div>
             {((summary?.positive_feedback ?? 0) + (summary?.negative_feedback ?? 0)) === 0 ? (
-              <span className="summary-metric-value">0</span>
+              <span className="ui-metric-card-value">0</span>
             ) : (
               <CSATPie
                 positive={summary?.positive_feedback ?? 0}
@@ -469,7 +532,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
               <LineChartWithAxes
                 labels={convDays}
                 values={convValues}
-                stroke="var(--primary, #2563eb)"
+                stroke="#e66397"
               />
             )}
           </div>
@@ -485,7 +548,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
               <LineChartWithAxes
                 labels={escDays}
                 values={escValues}
-                stroke="#f59e0b"
+                stroke="#f0806b"
               />
             )}
           </div>
@@ -493,33 +556,37 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       </div>
 
       <div className="card-grid" style={{ marginTop: 12 }}>
-        <section className="card">
+        <section className="card analytics-list-card">
           <div className="card-title">Top sources</div>
-          {!sources?.items?.length && <div className="muted">No data yet.</div>}
-          {!!sources?.items?.length && (
-            <div>
-              {sources.items.map((s) => (
-                <div key={s.source_url} className="detail-row">
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source_url}</span>
-                  <span>{s.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="analytics-list-scroll">
+            {!sources?.items?.length && <div className="muted">No data yet.</div>}
+            {!!sources?.items?.length && (
+              <div>
+                {sources.items.map((s) => (
+                  <div key={s.source_url} className="detail-row">
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source_url}</span>
+                    <span>{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
-        <section className="card">
+        <section className="card analytics-list-card">
           <div className="card-title">Question topic report</div>
-          {!topics?.items?.length && <div className="muted">No data yet.</div>}
-          {!!topics?.items?.length && (
-            <div>
-              {topics.items.slice(0, 12).map((t) => (
-                <div key={t.topic} className="detail-row">
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.topic}</span>
-                  <span>{t.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="analytics-list-scroll">
+            {!topics?.items?.length && <div className="muted">No data yet.</div>}
+            {!!topics?.items?.length && (
+              <div>
+                {topics.items.slice(0, 12).map((t) => (
+                  <div key={t.topic} className="detail-row">
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.topic}</span>
+                    <span>{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { Check, Paintbrush } from 'lucide-react'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
   WidgetDesignForm,
@@ -9,6 +9,7 @@ import {
   type WidgetDesignState,
 } from '../../components/WidgetDesignForm'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 
 const SAVED_FEEDBACK_MS = 2000
 
@@ -59,24 +60,39 @@ export default function BotDesignTab() {
   }
 
   return (
-    <WidgetDesignForm
-      value={state}
-      onChange={update}
-      showSuggestedMessages={false}
-      actions={
-        <button type="button" className="primary" onClick={() => void handleSave()} disabled={saving || savedJustNow} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-          {saving ? (
-            'Saving...'
-          ) : savedJustNow ? (
-            <>
-              <Check size={18} strokeWidth={2.5} aria-hidden />
-              <span>Saved</span>
-            </>
-          ) : (
-            'Save'
-          )}
-        </button>
-      }
-    />
+    <AnimatedPage>
+      <SectionHeader
+        eyebrow="Widget"
+        title="Visual design system"
+        subtitle="Tune surfaces, spacing, color accents, and micro-interactions for your bot widget."
+      />
+      <WidgetDesignForm
+        value={state}
+        onChange={update}
+        showSuggestedMessages={false}
+        actions={
+          <UiButton
+            variant="primary"
+            onClick={() => void handleSave()}
+            disabled={saving || savedJustNow}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {saving ? (
+              'Saving...'
+            ) : savedJustNow ? (
+              <>
+                <Check size={18} strokeWidth={2.5} aria-hidden />
+                <span>Saved</span>
+              </>
+            ) : (
+              <>
+                <Paintbrush size={16} />
+                Save design
+              </>
+            )}
+          </UiButton>
+        }
+      />
+    </AnimatedPage>
   )
 }

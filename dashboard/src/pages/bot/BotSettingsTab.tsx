@@ -1,6 +1,7 @@
-import { Trash2 } from 'lucide-react'
+import { Trash2, AlertTriangle, ShieldAlert } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 export default function BotSettingsTab() {
   const { selectedBot, deleteBot, loading, error } = useDashboardData()
@@ -22,37 +23,48 @@ export default function BotSettingsTab() {
   }
 
   return (
-    <div className="page-body">
-      <div className="card">
-        <div className="card-header">
-          <h3>Danger Zone</h3>
+    <AnimatedPage>
+      <SectionHeader
+        eyebrow="Configuration"
+        title="Bot settings"
+        subtitle="Manage your bot configuration and take destructive actions when needed."
+      />
+
+      <GlassCard>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444' }}>
+          <ShieldAlert size={18} />
+          Danger zone
         </div>
-        <div className="card-body">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <p style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)' }}>
-                Permanently delete this bot. This will remove all associated data including:
-              </p>
-              <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px', color: 'var(--text-secondary)' }}>
-                <li>Bot configuration</li>
-                <li>All domains and verifications</li>
-                <li>Knowledge base and crawled content</li>
-                <li>All crawl jobs and history</li>
-              </ul>
-            </div>
-            <button
-              className="danger"
-              onClick={handleDelete}
-              disabled={loading || !selectedBot}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              <Trash2 size={16} style={{ marginRight: '8px' }} />
-              Delete Bot
-            </button>
-            {error && <div className="error-message">{error}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <p style={{ margin: '0 0 8px 0', color: 'var(--ui-flow-muted)' }}>
+              Permanently delete this bot. This will remove all associated data including:
+            </p>
+            <ul style={{ margin: '0 0 16px 0', paddingLeft: '20px', color: 'var(--ui-flow-muted)', lineHeight: 1.8 }}>
+              <li>Bot configuration</li>
+              <li>All domains and verifications</li>
+              <li>Knowledge base and crawled content</li>
+              <li>All crawl jobs and history</li>
+            </ul>
           </div>
+          <UiButton
+            variant="primary"
+            className="danger"
+            onClick={handleDelete}
+            disabled={loading || !selectedBot}
+            style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <Trash2 size={16} />
+            Delete Bot
+          </UiButton>
+          {error && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ef4444', fontSize: '0.9rem' }}>
+              <AlertTriangle size={15} />
+              {error}
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      </GlassCard>
+    </AnimatedPage>
   )
 }

@@ -10,6 +10,7 @@ import {
   getCategoryUrlCount,
   type UrlCategory,
 } from '../createBot/urlCategorizer'
+import { AnimatedPage, GlassCard, SectionHeader } from '../../components/ui'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
@@ -1342,9 +1343,15 @@ export default function BotKnowledgeTab() {
   }
 
   return (
-    <div className="card-grid">
+    <AnimatedPage className="card-grid knowledge-redesign">
+      <SectionHeader
+        eyebrow="Knowledge"
+        title="Train and expand your source graph"
+        subtitle="Discover pages, upload docs, and monitor extraction jobs with warm visual feedback."
+        className="knowledge-header"
+      />
       {/* Answer links (URL bank): links the agent can share in answers (not part of Sources). */}
-      <section className="card" style={{ gridColumn: '1 / -1' }}>
+      <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div>
             <div className="card-title">Answer links</div>
@@ -1414,10 +1421,10 @@ export default function BotKnowledgeTab() {
           </button>
           {urlBankSaved && <span className="muted">Saved.</span>}
         </div>
-      </section>
+      </GlassCard>
 
       {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
-      <section className="card" style={{ gridColumn: '1 / -1' }}>
+      <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Sources ({sources.length})</div>
         {sourcesTrainingJobId && sourcesTrainingStatus ? (
           (() => {
@@ -1614,11 +1621,11 @@ export default function BotKnowledgeTab() {
             No sources yet. Add a URL or PDF to train this bot.
           </div>
         )}
-      </section>
+      </GlassCard>
 
       {/* Booking links - hotel bots only */}
       {selectedBotWidgetConfig?.businessType === 'hotel' && (
-      <section className="card" style={{ gridColumn: '1 / -1' }}>
+      <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Booking links</div>
         {bookingLinkJob ? (
           (() => {
@@ -1686,12 +1693,12 @@ export default function BotKnowledgeTab() {
             Booking links are extracted from your trained knowledge after import completes.
           </p>
         )}
-      </section>
+      </GlassCard>
       )}
 
       {/* Realtime availability (hotel bots only) */}
       {selectedBotWidgetConfig?.businessType === 'hotel' && (
-        <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <GlassCard style={{ gridColumn: '1 / -1' }}>
           <div className="card-title">Realtime availability</div>
           <p className="card-subtitle" style={{ marginTop: 0 }}>
             Optional: allow the agent to check real-time room availability/pricing using a booking URL pattern.
@@ -1796,11 +1803,11 @@ export default function BotKnowledgeTab() {
               </div>
             )}
           </div>
-        </section>
+        </GlassCard>
       )}
 
       {/* Topic extraction progress */}
-      <section className="card" style={{ gridColumn: '1 / -1' }}>
+      <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">Topics extraction</div>
         {topicJobStatus ? (
           (() => {
@@ -1855,7 +1862,7 @@ export default function BotKnowledgeTab() {
             No topic extraction jobs yet. Topics run in parallel during training.
           </p>
         )}
-      </section>
+      </GlassCard>
 
       {allowKnowledgeDiscovery && bgDiscoveryZeroNotice && (
         <div className="alert info" style={{ gridColumn: '1 / -1' }}>
@@ -1865,7 +1872,7 @@ export default function BotKnowledgeTab() {
 
       {/* Background discovery — show only for own-website bots */}
       {allowKnowledgeDiscovery && bgDiscoveryJobForCard && (
-        <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <GlassCard style={{ gridColumn: '1 / -1' }}>
           <div className="card-title">Background discovery</div>
           {(bgDiscoveryJobForCard.status !== 'running' && bgDiscoveryJobForCard.status !== 'queued') && (
             <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
@@ -1970,12 +1977,12 @@ export default function BotKnowledgeTab() {
               )}
             </>
           ) : null}
-        </section>
+        </GlassCard>
       )}
 
       {/* Add more pages — own-website bots only */}
       {allowKnowledgeDiscovery && (
-        <section className="card" style={{ gridColumn: '1 / -1' }}>
+        <GlassCard style={{ gridColumn: '1 / -1' }}>
           <div className="card-title">Add more pages</div>
           <p className="card-subtitle" style={{ marginTop: 0 }}>
             {isDiscovering ? (
@@ -2125,9 +2132,9 @@ export default function BotKnowledgeTab() {
               </div>
             </>
           )}
-        </section>
+        </GlassCard>
       )}
 
-    </div>
+    </AnimatedPage>
   )
 }

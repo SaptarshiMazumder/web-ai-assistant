@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { RefreshCw, Trash2, X, Check, Plus, FolderPlus } from 'lucide-react'
 import { useDashboardData, type ExtractedTopic } from '../../hooks/useDashboardData'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 const CATEGORY_COLOR_STORAGE_PREFIX = 'webai.topicCategoryColors.'
 
@@ -234,44 +235,50 @@ export default function BotTopicsTab() {
   const inactiveCount = topics.filter((t) => !t.is_active).length
 
   return (
-    <div className="flow-panel-body">
-      <section className="card">
+    <AnimatedPage className="flow-panel-body">
+      <SectionHeader
+        eyebrow="Taxonomy"
+        title="Topic clusters"
+        subtitle="Curate grouped intent themes and keep your bot routing precise."
+      />
+      <GlassCard>
         <div className="topics-header">
           <div>
-            <div className="card-title">Manage Topics</div>
+            <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FolderPlus size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+              Manage Topics
+            </div>
             <p className="card-subtitle" style={{ marginTop: '0.25rem' }}>
               Topics are grouped by category. Add categories, and add topics inside each category box.
             </p>
           </div>
           <div className="topics-actions">
-            <button
-              type="button"
-              className="secondary"
+            <UiButton
+              variant="secondary"
               onClick={handleAddBox}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <FolderPlus size={16} />
               Add Category
-            </button>
-            <button
-              type="button"
-              className="secondary"
+            </UiButton>
+            <UiButton
+              variant="secondary"
               onClick={() => void handleExtract(false)}
               disabled={extracting}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <RefreshCw size={16} className={extracting ? 'spin' : ''} />
               {extracting ? 'Extracting...' : 'Re-extract Topics'}
-            </button>
+            </UiButton>
           </div>
         </div>
 
         {error && (
           <div className="topics-error">
             {error}
-            <button type="button" className="ghost" onClick={() => setError(null)}>
+            <UiButton variant="ghost" onClick={() => setError(null)} style={{ padding: '0.3rem' }}>
               <X size={14} />
-            </button>
+            </UiButton>
           </div>
         )}
 
@@ -380,7 +387,7 @@ export default function BotTopicsTab() {
             })}
           </div>
         )}
-      </section>
-    </div>
+      </GlassCard>
+    </AnimatedPage>
   )
 }

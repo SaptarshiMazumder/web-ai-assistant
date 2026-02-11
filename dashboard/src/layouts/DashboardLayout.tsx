@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useDashboardData } from '../hooks/useDashboardData'
 import {
   primaryNavConfig,
@@ -36,7 +37,6 @@ export default function DashboardLayout() {
 
   return (
     <div className={`app-shell ${showSecondaryPanel ? 'app-shell--secondary-visible' : ''}`}>
-      {/* Primary sidebar: icons only */}
       <aside className="sidebar-primary" aria-label="Main navigation">
         <div className="sidebar-primary-brand" aria-hidden="true">
           <div className="logo-dot" />
@@ -61,37 +61,44 @@ export default function DashboardLayout() {
         </nav>
       </aside>
 
-      {/* Secondary sidebar: back link + nav items (only when a bot is selected) */}
-      {showSecondaryPanel && (
-      <aside className="sidebar">
-        <Link to="/bots" className="sidebar-back-link">
-          <span className="sidebar-back-arrow" aria-hidden="true">←</span>
-          All bots
-        </Link>
+      <AnimatePresence>
+        {showSecondaryPanel && (
+          <motion.aside
+            className="sidebar"
+            initial={{ opacity: 0, x: -14 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -14 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
+            <Link to="/bots" className="sidebar-back-link">
+              <span className="sidebar-back-arrow" aria-hidden="true">←</span>
+              All bots
+            </Link>
 
-        <nav className="sidebar-nav">
-          {secondaryItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <div key={item.id} className="nav-group">
-                <div className="nav-row">
-                  <NavLink
-                    className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-                    to={item.to}
-                    end={item.to === '/' || item.id === 'overview'}
-                  >
-                    <span className="nav-link-content">
-                      <Icon className="nav-icon" aria-hidden="true" />
-                      {item.label}
-                    </span>
-                  </NavLink>
-                </div>
-              </div>
-            )
-          })}
-        </nav>
-      </aside>
-      )}
+            <nav className="sidebar-nav">
+              {secondaryItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <div key={item.id} className="nav-group">
+                    <div className="nav-row">
+                      <NavLink
+                        className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                        to={item.to}
+                        end={item.to === '/' || item.id === 'overview'}
+                      >
+                        <span className="nav-link-content">
+                          <Icon className="nav-icon" aria-hidden="true" />
+                          {item.label}
+                        </span>
+                      </NavLink>
+                    </div>
+                  </div>
+                )
+              })}
+            </nav>
+          </motion.aside>
+        )}
+      </AnimatePresence>
 
       <main className="content">
         <div className="content-shell">

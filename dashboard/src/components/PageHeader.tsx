@@ -41,7 +41,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
 
   const profilePicture =
     (user as { picture?: string | null } | undefined)?.picture?.trim() ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(profileName)}&background=6366f1&color=fff&size=128`
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(profileName)}&background=e4587a&color=fff&size=128`
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -58,6 +58,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
     <>
       <div className="page-header">
         <div>
+          <span className="page-eyebrow">Dashboard workspace</span>
           <div className="page-title">
             <span className="page-title-row">
               <span className="page-title-text">{title}</span>

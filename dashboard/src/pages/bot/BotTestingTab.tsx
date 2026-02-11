@@ -3,6 +3,7 @@ import { useCallback, useMemo, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
 import { useDashboardData, type SourceRecord, type DomainRecord, type AvailabilityJobRecord } from '../../hooks/useDashboardData'
+import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 
@@ -320,7 +321,12 @@ export default function BotTestingTab() {
   }
 
   return (
-    <div className="testing-page">
+    <AnimatedPage className="testing-page">
+      <SectionHeader
+        eyebrow="Testing Lab"
+        title="Configure and test your AI runtime"
+        subtitle="Tune model behavior and validate hotel availability flows in one polished workspace."
+      />
       <div className="testing-left">
         <div className="testing-config-card">
           <h3 className="testing-config-title">Agent configuration</h3>
@@ -378,17 +384,10 @@ export default function BotTestingTab() {
           </div>
 
           <div className="testing-actions">
-            <button type="button" className="ghost" onClick={handleReset} disabled={configLoading}>
-              Reset
-            </button>
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void handleSave()}
-              disabled={configLoading}
-            >
+            <UiButton variant="ghost" onClick={handleReset} disabled={configLoading}>Reset</UiButton>
+            <UiButton variant="primary" onClick={() => void handleSave()} disabled={configLoading}>
               {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
-            </button>
+            </UiButton>
           </div>
         </div>
 
@@ -479,14 +478,9 @@ export default function BotTestingTab() {
             />
           </div>
           <div className="testing-actions">
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void handleRunAvailability()}
-              disabled={!availabilityUrl.trim()}
-            >
-              Run availability check
-            </button>
+                <UiButton variant="primary" onClick={() => void handleRunAvailability()} disabled={!availabilityUrl.trim()}>
+                  Run availability check
+                </UiButton>
           </div>
           {availabilityError && <div className="alert error">{availabilityError}</div>}
           {availabilityJob && (
@@ -500,30 +494,27 @@ export default function BotTestingTab() {
                 </div>
               )}
               <div className="testing-actions" style={{ justifyContent: 'flex-start', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  className="ghost"
+                <UiButton
+                  variant="ghost"
                   onClick={() => void handleLoadRawAvailability('text')}
                   disabled={rawAvailabilityLoading}
                 >
                   {rawAvailabilityLoading && rawAvailabilityFormat === 'text' ? 'Loading...' : 'Load raw text'}
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
+                </UiButton>
+                <UiButton
+                  variant="ghost"
                   onClick={() => void handleLoadRawAvailability('html')}
                   disabled={rawAvailabilityLoading}
                 >
                   {rawAvailabilityLoading && rawAvailabilityFormat === 'html' ? 'Loading...' : 'Load raw HTML'}
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
+                </UiButton>
+                <UiButton
+                  variant="ghost"
                   onClick={() => void handleLoadRawAvailability('debug')}
                   disabled={rawAvailabilityLoading}
                 >
                   {rawAvailabilityLoading && rawAvailabilityFormat === 'debug' ? 'Loading...' : 'Load debug log'}
-                </button>
+                </UiButton>
               </div>
               {availabilityJob.summary && (
                 <div className="alert info" style={{ whiteSpace: 'pre-wrap' }}>
@@ -592,6 +583,6 @@ export default function BotTestingTab() {
         </div>
         {saveError && <div className="testing-chat-error">{saveError}</div>}
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

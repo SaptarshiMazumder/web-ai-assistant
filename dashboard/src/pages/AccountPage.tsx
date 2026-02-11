@@ -1,26 +1,44 @@
+import { LogOut, Mail, User } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../components/ui'
 
 export default function AccountPage() {
   const { user, logout } = useDashboardData()
 
   return (
-    <div className="page narrow">
+    <AnimatedPage className="page narrow">
       <PageHeader title="Account" />
       <div className="page-body page-body-narrow">
-        <section className="card">
-          <div className="card-title">Profile</div>
+        <SectionHeader
+          eyebrow="Profile"
+          title="Your account"
+          subtitle="Manage identity, access, and workspace presence."
+        />
+        <GlassCard>
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <User size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+            Account details
+          </div>
           <div className="detail-row">
-            <span>Email</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Mail size={14} style={{ color: 'var(--ui-flow-muted)' }} />
+              Email
+            </span>
             <span>{user?.email || 'Not available'}</span>
           </div>
-          <div className="row">
-            <button className="ghost" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+          <div style={{ marginTop: '1rem' }}>
+            <UiButton
+              variant="ghost"
+              onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <LogOut size={15} />
               Sign out
-            </button>
+            </UiButton>
           </div>
-        </section>
+        </GlassCard>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }

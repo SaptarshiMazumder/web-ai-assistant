@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, MousePointerClick, Printer, UploadCloud } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { FileDropzone } from '../../components/FileDropzone'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 export default function AddSourcePage() {
   const { botId } = useParams()
@@ -107,11 +108,17 @@ export default function AddSourcePage() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: '560px', marginTop: '1rem' }}>
+    <AnimatedPage>
+      <SectionHeader
+        eyebrow="Knowledge"
+        title="Add source"
+        subtitle="Bring in URLs and PDFs with a clean, guided onboarding flow."
+      />
+      <GlassCard style={{ maxWidth: '560px', marginTop: '1rem' }}>
       <div className="row" style={{ alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <button type="button" className="ghost" onClick={handleBack} aria-label="Back to Knowledge">
+        <UiButton variant="ghost" onClick={handleBack} style={{ padding: '0.4rem' }}>
           <ArrowLeft size={20} strokeWidth={2} />
-        </button>
+        </UiButton>
         <div>
           <h2 className="card-title" style={{ margin: 0 }}>Add sources</h2>
           <p className="card-subtitle" style={{ margin: '0.25rem 0 0' }}>
@@ -295,9 +302,9 @@ export default function AddSourcePage() {
         )}
 
         <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
+          <UiButton
             type="submit"
-            className="primary"
+            variant="primary"
             disabled={
               loading ||
               submitting ||
@@ -307,12 +314,11 @@ export default function AddSourcePage() {
             }
           >
             {submitting ? 'Adding…' : 'Add sources'}
-          </button>
-          <button type="button" className="ghost" onClick={handleBack}>
-            Cancel
-          </button>
+          </UiButton>
+          <UiButton type="button" variant="ghost" onClick={handleBack}>Cancel</UiButton>
         </div>
       </form>
-    </div>
+      </GlassCard>
+    </AnimatedPage>
   )
 }

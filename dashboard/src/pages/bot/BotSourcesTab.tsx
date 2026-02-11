@@ -1,5 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
+import { Database, Plus } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 function sourceTypeLabel(type: string): string {
   const t = (type || '').toLowerCase()
@@ -26,29 +28,40 @@ export default function BotSourcesTab() {
   }
 
   return (
-    <section className="card">
-      <div className="card-title">Sources</div>
-      <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
-        Every source (URL, Drive, Docs, etc.) this bot learns from.
-      </p>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to={botId ? `/bots/${botId}/sources/new` : '#'} className="primary">
-          + Add source
-        </Link>
-      </div>
-      <div className="list">
-        {sources.map((s) => (
-          <div key={s.source_id} className="list-row">
-            <div>
-              <span className="source-type-badge" data-type={s.type.toLowerCase()} style={{ marginRight: '0.5rem' }}>
-                {sourceTypeLabel(s.type)}
-              </span>
-              <div className="list-title" style={{ wordBreak: 'break-all' }}>{sourceSummary(s)}</div>
+    <AnimatedPage>
+      <SectionHeader
+        eyebrow="Data"
+        title="Training sources"
+        subtitle="Every source (URL, Drive, Docs, etc.) this bot learns from."
+        action={
+          <Link to={botId ? `/bots/${botId}/sources/new` : '#'}>
+            <UiButton variant="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Plus size={16} />
+              Add source
+            </UiButton>
+          </Link>
+        }
+      />
+
+      <GlassCard>
+        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Database size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+          Sources ({sources.length})
+        </div>
+        <div className="list">
+          {sources.map((s) => (
+            <div key={s.source_id} className="list-row">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <span className="source-type-badge" data-type={s.type.toLowerCase()}>
+                  {sourceTypeLabel(s.type)}
+                </span>
+                <div className="list-title" style={{ wordBreak: 'break-all' }}>{sourceSummary(s)}</div>
+              </div>
             </div>
-          </div>
-        ))}
-        {!sources.length && <div className="empty">No sources yet. Add sources from the Knowledge tab.</div>}
-      </div>
-    </section>
+          ))}
+          {!sources.length && <div className="muted" style={{ padding: '1rem 0' }}>No sources yet. Add sources from the Knowledge tab or use the button above.</div>}
+        </div>
+      </GlassCard>
+    </AnimatedPage>
   )
 }
