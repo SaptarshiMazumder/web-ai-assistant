@@ -161,71 +161,81 @@ export default function CreateBotSharedUrlsPage() {
       </div>
 
       {/* URL rows */}
-      <div style={{
-        display: 'grid',
-        gap: '10px',
-      }}>
+      <div
+        style={{
+          border: '1px solid var(--flow-border)',
+          borderRadius: 'var(--flow-radius)',
+          background: 'var(--flow-surface)',
+          padding: '0.9rem',
+          height: '460px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}
+      >
         <div className="flow-hint-text" style={{ marginBottom: '4px' }}>
           Add links for the pages customers ask about most (menu/services, pricing, hours, booking, contact, FAQ).
         </div>
-
-        {sharedUrlRows.map((row, idx) => (
-          <div key={`row-${idx}`} style={{
-            display: 'flex',
-            gap: '10px',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-          }}>
-            <div style={{ flex: 2, minWidth: 220 }}>
-              <div className="flow-field-input-wrap">
-                <input
-                  type="url"
-                  ref={(el) => {
-                    urlInputRefs.current[idx] = el
-                  }}
-                  value={row.url}
-                  onChange={(e) => {
-                    const next = [...sharedUrlRows]
-                    next[idx] = { ...next[idx], url: e.target.value }
-                    setSharedUrlRows(next)
-                  }}
-                  placeholder="https://example.com/pricing"
-                  style={{ width: '100%' }}
-                />
+        <div style={{ overflowY: 'auto', minHeight: 0, paddingRight: '0.2rem' }}>
+          {sharedUrlRows.map((row, idx) => (
+            <div key={`row-${idx}`} style={{
+              display: 'flex',
+              gap: '10px',
+              alignItems: 'flex-start',
+              flexWrap: 'wrap',
+              marginBottom: '10px',
+            }}>
+              <div style={{ flex: 2, minWidth: 220 }}>
+                <div className="flow-field-input-wrap">
+                  <input
+                    type="url"
+                    ref={(el) => {
+                      urlInputRefs.current[idx] = el
+                    }}
+                    value={row.url}
+                    onChange={(e) => {
+                      const next = [...sharedUrlRows]
+                      next[idx] = { ...next[idx], url: e.target.value }
+                      setSharedUrlRows(next)
+                    }}
+                    placeholder="https://example.com/pricing"
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <div className="flow-field-input-wrap">
-                <input
-                  type="text"
-                  value={row.label}
-                  onChange={(e) => {
-                    const next = [...sharedUrlRows]
-                    next[idx] = { ...next[idx], label: e.target.value }
-                    setSharedUrlRows(next)
-                  }}
-                  placeholder="What is this page about? (e.g. Pricing)"
-                  style={{ width: '100%' }}
-                />
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div className="flow-field-input-wrap">
+                  <input
+                    type="text"
+                    value={row.label}
+                    onChange={(e) => {
+                      const next = [...sharedUrlRows]
+                      next[idx] = { ...next[idx], label: e.target.value }
+                      setSharedUrlRows(next)
+                    }}
+                    placeholder="What is this page about? (e.g. Pricing)"
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
+              <UiButton
+                variant="ghost"
+                onClick={() => {
+                  const next = sharedUrlRows.filter((_, i) => i !== idx)
+                  setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
+                }}
+                disabled={sharedUrlRows.length <= 1}
+                aria-label="Remove row"
+                title="Remove"
+                style={{ color: 'var(--flow-muted, #64748b)', padding: '0.6rem', marginTop: '1px' }}
+              >
+                <FlowIcon name="delete" size="sm" />
+              </UiButton>
             </div>
-            <UiButton
-              variant="ghost"
-              onClick={() => {
-                const next = sharedUrlRows.filter((_, i) => i !== idx)
-                setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
-              }}
-              disabled={sharedUrlRows.length <= 1}
-              aria-label="Remove row"
-              title="Remove"
-              style={{ color: 'var(--flow-muted, #64748b)', padding: '0.6rem', marginTop: '1px' }}
-            >
-              <FlowIcon name="delete" size="sm" />
-            </UiButton>
-          </div>
-        ))}
+          ))}
+        </div>
 
-        <div>
+        <div style={{ marginTop: 'auto', paddingTop: '0.25rem' }}>
           <UiButton
             variant="ghost"
             onClick={() => setSharedUrlRows([...sharedUrlRows, { url: '', label: '' }])}

@@ -233,7 +233,7 @@ export function WidgetDesignForm({
 
       <div className="widget-design-grid">
         <div className="design-form">
-          <section className="card">
+          <section className="ui-glass-card">
             <div className="card-title">Basics</div>
             <div className="design-form-section">
               <div className="design-form-row">
@@ -331,7 +331,7 @@ export function WidgetDesignForm({
             </button>
             {advancedOpen && (
               <div className="design-form-advanced-content">
-                <section className="card">
+                <section className="ui-glass-card">
                   <div className="card-title">Messages</div>
                   <div className="design-form-section">
                     <div className="design-form-field design-form-field-full">
@@ -371,7 +371,7 @@ export function WidgetDesignForm({
                   </div>
                 </section>
 
-                <section className="card design-form-card-icons">
+                <section className="ui-glass-card design-form-card-icons">
                   <div className="card-title">Icons</div>
                   <div className="design-form-section">
                     <div className="design-form-row">
@@ -439,7 +439,7 @@ export function WidgetDesignForm({
                   </div>
                 </section>
 
-                <section className="card">
+                <section className="ui-glass-card">
                   <div className="card-title">Layout & size</div>
                   <div className="design-form-section">
                     <div className="design-form-field">
@@ -480,7 +480,7 @@ export function WidgetDesignForm({
                   </div>
                 </section>
 
-                <section className="card">
+                <section className="ui-glass-card">
                   <div className="card-title">Behaviour</div>
                   <div className="design-form-section">
                     <div className="design-form-row">

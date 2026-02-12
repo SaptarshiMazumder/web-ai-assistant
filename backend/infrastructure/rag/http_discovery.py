@@ -4,6 +4,7 @@ Fast, deterministic, same event shapes as browser-based discovery for drop-in re
 """
 import asyncio
 import logging
+import time
 from typing import Any, AsyncIterator, Dict, List, Optional, Set
 from urllib.parse import urljoin, urlparse, urldefrag
 
@@ -152,7 +153,7 @@ async def discover_internal_urls_http_stream(
 ) -> AsyncIterator[Dict[str, Any]]:
     """
     Same as discover_internal_urls_http but yields events for UI (same shapes as crawl4ai stream).
-    Time limit is enforced by the client (abort after 60s); this param is unused here.
+    Enforces max_duration_sec timeout on the backend to prevent infinite discovery processes.
     """
     root_url = (root_url or "").strip()
     if not root_url or not root_url.startswith(("http://", "https://")):
@@ -178,14 +179,26 @@ async def discover_internal_urls_http_stream(
     current_level: Set[str] = {_normalize_url(root_url)}
     sem = asyncio.Semaphore(max_concurrent)
     yielded: Set[str] = set()
+    timed_out = False
+    start_time = time.monotonic()
 
-    try:
+    async def _discovery_logic() -> None:
+        nonlocal discovered_set, visited, current_level, yielded, timed_out
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=_DEFAULT_TIMEOUT,
             headers={"User-Agent": "Mozilla/5.0 (compatible; WebAIBot/1.0)"},
         ) as client:
             for depth in range(max_depth):
+                # Check timeout at start of each depth level
+                if max_duration_sec is not None and (time.monotonic() - start_time) >= max_duration_sec:
+                    logger.warning(
+                        "HTTP discovery TIMEOUT for %s after %.1fs (depth=%d, discovered=%d). Returning partial results.",
+                        root_url, time.monotonic() - start_time, depth, len(discovered_set)
+                    )
+                    timed_out = True
+                    break
+                    
                 if not current_level or len(discovered_set) >= max_urls:
                     break
                 to_fetch = sorted(
@@ -220,15 +233,62 @@ async def discover_internal_urls_http_stream(
                     yield {"type": "discovered", "url": u, "count": len(discovered_set), "depth": depth}
                 current_level = discovered_set - visited
 
+    try:
+        if max_duration_sec is not None:
+            # CRITICAL: Hard timeout enforced on backend to prevent runaway discovery
+            try:
+                async for item in _discovery_logic():
+                    yield item
+            except asyncio.CancelledError:
+                logger.warning(
+                    "HTTP discovery CANCELLED for %s after %.1fs (discovered=%d). Task was externally cancelled.",
+                    root_url, time.monotonic() - start_time, len(discovered_set)
+                )
+                timed_out = True
+                raise
+        else:
+            # No timeout specified, run to completion
+            async for item in _discovery_logic():
+                yield item
+
         if not discovered_set:
             root_norm = _normalize_url(root_url)
             if root_norm:
                 discovered_set.add(root_norm)
                 if root_norm not in yielded:
                     yield {"type": "discovered", "url": root_norm, "count": 1, "depth": 0}
+        
+        elapsed = time.monotonic() - start_time
         discovered_sorted = sorted(discovered_set)
-        yield {"type": "done", "urls": discovered_sorted, "timed_out": False}
+        
+        if timed_out:
+            logger.info(
+                "HTTP discovery COMPLETED with timeout for %s: discovered=%d URLs in %.1fs",
+                root_url, len(discovered_sorted), elapsed
+            )
+        else:
+            logger.info(
+                "HTTP discovery COMPLETED successfully for %s: discovered=%d URLs in %.1fs",
+                root_url, len(discovered_sorted), elapsed
+            )
+        
+        yield {"type": "done", "urls": discovered_sorted, "timed_out": timed_out}
+        
+    except asyncio.CancelledError:
+        # Task was cancelled (user reload, server shutdown, etc)
+        elapsed = time.monotonic() - start_time
+        logger.error(
+            "HTTP discovery CANCELLED/ABANDONED for %s after %.1fs (discovered=%d URLs). Frontend may have disconnected.",
+            root_url, elapsed, len(discovered_set)
+        )
+        discovered_sorted = sorted(discovered_set) if discovered_set else []
+        yield {"type": "done", "urls": discovered_sorted, "timed_out": True, "cancelled": True}
+        raise
     except Exception as e:
-        logger.exception("HTTP discovery stream error")
+        elapsed = time.monotonic() - start_time
+        logger.exception(
+            "HTTP discovery FAILED for %s after %.1fs (discovered=%d URLs): %s",
+            root_url, elapsed, len(discovered_set), e
+        )
         yield {"type": "error", "message": f"{type(e).__name__}: {str(e)}"}
         yield {"type": "done", "urls": sorted(discovered_set) if discovered_set else [], "timed_out": False}

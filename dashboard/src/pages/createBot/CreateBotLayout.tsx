@@ -11,7 +11,6 @@ function FlowStepsWithProgress() {
   const steps = getCreateBotSteps()
   const activeStep = getCreateBotStepIndex(location.pathname, steps)
   const activeId = steps[activeStep]?.id
-  const showProgress = activeId === 'widget' || activeId === 'embed'
   const {
     trainingStage,
     trainingProgress,
@@ -19,7 +18,10 @@ function FlowStepsWithProgress() {
     trainingDocsCount,
     trainingStageName,
     jobId,
+    pdfJobIds,
   } = step3
+  const hasBackgroundTraining = trainingStage === 'training' || !!jobId || pdfJobIds.length > 0
+  const showProgress = (activeId === 'topics' || activeId === 'widget' || activeId === 'embed') && hasBackgroundTraining
 
   return (
     <aside className="flow-steps">
@@ -49,7 +51,7 @@ function FlowStepsWithProgress() {
         })}
       </div>
       {showProgress && (
-        <div className="flow-steps-progress">
+        <div className="flow-steps-progress flow-steps-progress--enter">
           <TrainingProgressCircle
             progress={trainingProgress}
             jobId={jobId}

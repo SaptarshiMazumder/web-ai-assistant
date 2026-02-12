@@ -184,6 +184,8 @@ export default function BotKnowledgeTab() {
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedDiscovered, setSelectedDiscovered] = useState<Set<string>>(new Set())
   const [trainingDiscovered, setTrainingDiscovered] = useState(false)
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null)
+  const [discoveryErrorType, setDiscoveryErrorType] = useState<'error' | 'warning' | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [discoverTrainingJobId, setDiscoverTrainingJobId] = useState<string | null>(null)
   const [discoverTrainingStatus, setDiscoverTrainingStatus] = useState<{
@@ -949,20 +951,60 @@ export default function BotKnowledgeTab() {
     setIsDiscovering(true)
     setDiscoveredUrls([])
     setSelectedDiscovered(new Set())
+    setDiscoveryError(null)
+    setDiscoveryErrorType(null)
     try {
       const result = await discoverUrls(discoverInputUrl.trim(), discoveryMethod, (evt) => {
         if (evt.type === 'discovered' && typeof evt.url === 'string') {
           const url = evt.url
           setDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+          // Clear stale "no results yet" warning once URLs start arriving.
+          setDiscoveryError(null)
+          setDiscoveryErrorType(null)
         }
-      }, undefined, { max_duration_sec: 60 })
+        if (evt.type === 'error' && typeof evt.message === 'string') {
+          const reason = (evt as { failure_reason?: string }).failure_reason
+          if (reason === 'robots_blocked') {
+            setDiscoveryError('🚫 This site blocks crawlers via robots.txt. Try adding specific URLs manually.')
+            setDiscoveryErrorType('error')
+          } else if (reason === 'sitemap_empty') {
+            setDiscoveryError("No sitemap found. Discovery uses automatic method.")
+            setDiscoveryErrorType('warning')
+          } else {
+            setDiscoveryError(evt.message)
+            setDiscoveryErrorType('error')
+          }
+        }
+        if (evt.type === 'warning' && typeof evt.message === 'string') {
+          setDiscoveryError(evt.message)
+          setDiscoveryErrorType('warning')
+        }
+      }, undefined, { max_duration_sec: 90 })
       setDiscoveredUrls(result.urls || [])
+      if (result.failureReason === 'no_results') {
+        setDiscoveryError('⚠️ We could not discover real pages from this site. Try PDF upload for key pages.')
+        setDiscoveryErrorType('warning')
+      } else if (result.urls?.length === 0) {
+        const reason = result.failureReason
+        if (reason === 'robots_blocked') {
+          setDiscoveryError('🚫 All discovered URLs are blocked by robots.txt')
+          setDiscoveryErrorType('error')
+        } else if (reason === 'no_results') {
+          setDiscoveryError('⚠️ No pages found. Site may be blocking crawlers or have no discoverable links.')
+          setDiscoveryErrorType('warning')
+        } else if (!discoveryError) {
+          setDiscoveryError('No URLs found for this site.')
+          setDiscoveryErrorType('warning')
+        }
+      }
     } catch {
       setDiscoveredUrls([])
+      setDiscoveryError('Discovery failed')
+      setDiscoveryErrorType('error')
     } finally {
       setIsDiscovering(false)
     }
-  }, [allowKnowledgeDiscovery, discoverInputUrl, discoveryMethod, isDiscovering, discoverUrls])
+  }, [allowKnowledgeDiscovery, discoverInputUrl, discoveryMethod, isDiscovering, discoverUrls, discoveryError])
 
   const toggleDiscovered = useCallback((url: string) => {
     setSelectedDiscovered((prev) => {
@@ -2026,6 +2068,11 @@ export default function BotKnowledgeTab() {
                 {isDiscovering ? 'Discovering…' : 'Discover'}
               </button>
             </div>
+            {discoveryError && (
+              <div className={`alert ${discoveryErrorType || 'error'}`} style={{ marginTop: '0.75rem', fontSize: '0.875rem' }}>
+                {discoveryError}
+              </div>
+            )}
           </div>
 
           {(discoverTrainingJobId || discoverTrainingSuccess) && (

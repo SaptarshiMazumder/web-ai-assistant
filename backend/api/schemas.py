@@ -12,6 +12,10 @@ class BotCreateRequest(BaseModel):
     org_id: Optional[str] = None
 
 
+class BotRenameRequest(BaseModel):
+    display_name: str
+
+
 class BotCreateResponse(BaseModel):
     bot_id: str
     display_name: str

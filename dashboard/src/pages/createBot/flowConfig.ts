@@ -4,14 +4,13 @@
  */
 
 import autographIcon from '../../assets/icons8/autograph.png'
-import internetBrowserIcon from '../../assets/icons8/internet-browser.png'
 import googleDocsIcon from '../../assets/icons8/google-docs.png'
 import chainIcon from '../../assets/icons8/chain.png'
 import learningIcon from '../../assets/icons8/learning.png'
 import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
 import googleCodeIcon from '../../assets/icons8/google-code.png'
 
-export type CreateBotStepId = 'details' | 'hosting' | 'sources' | 'urls' | 'training' | 'topics' | 'widget' | 'embed'
+export type CreateBotStepId = 'details' | 'sources' | 'urls' | 'additional-sources' | 'training' | 'topics' | 'widget' | 'embed'
 
 export type CreateBotStep = {
   id: CreateBotStepId
@@ -32,26 +31,26 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     iconUrl: autographIcon,
   },
   {
-    id: 'hosting',
-    path: '/create-bot/hosting',
-    label: 'Website',
-    description: 'Tell us where your pages live.',
-    icon: 'language',
-    iconUrl: internetBrowserIcon,
-  },
-  {
     id: 'sources',
     path: '/create-bot/sources',
-    label: 'Pages and files',
-    description: 'Pick website pages and upload PDFs to teach your assistant.',
+    label: 'Website',
+    description: 'Add sources from your website.',
     icon: 'source',
+    iconUrl: googleDocsIcon,
+  },
+  {
+    id: 'additional-sources',
+    path: '/create-bot/additional-sources',
+    label: 'More sources',
+    description: 'Add PDFs, text docs, or custom content.',
+    icon: 'library_add',
     iconUrl: googleDocsIcon,
   },
   {
     id: 'training',
     path: '/create-bot/progress',
-    label: 'Getting ready',
-    description: 'We\u2019ll start learning from what you added.',
+    label: 'Agent Training',
+    description: "We'll start learning from what you added.",
     icon: 'model_training',
     iconUrl: learningIcon,
   },
@@ -59,7 +58,7 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     id: 'topics',
     path: '/create-bot/topics',
     label: 'Helpful links',
-    description: 'Optional: add important links for common customer questions.',
+    description: 'Add important links for common customer questions.',
     icon: 'link',
     iconUrl: chainIcon,
   },
@@ -67,15 +66,15 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     id: 'widget',
     path: '/create-bot/widget',
     label: 'Design widget',
-    description: 'Pick colors and greeting messages.',
+    description: 'Customize agent\'s appearance.',
     icon: 'palette',
     iconUrl: paintPaletteIcon,
   },
   {
     id: 'embed',
     path: '/create-bot/embed',
-    label: 'Add to website',
-    description: 'Share the install code with your web person.',
+    label: 'Install Agent',
+    description: 'Make your agent available to your customers.',
     icon: 'code',
     iconUrl: googleCodeIcon,
   },

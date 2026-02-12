@@ -24,6 +24,9 @@ class BotService:
     def get_bot_record(self, bot_id: str) -> Optional[BotRecord]:
         return self._bot_repo.get_bot_record(bot_id)
 
+    def update_display_name(self, bot_id: str, display_name: str) -> None:
+        self._bot_repo.update_display_name(bot_id, display_name)
+
     def update_widget_config(self, bot_id: str, config_json: str) -> None:
         self._bot_repo.update_widget_config(bot_id, config_json)
 

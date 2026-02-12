@@ -3,11 +3,12 @@ import json
 import logging
 import os
 import secrets
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from celery import Task
-from celery.exceptions import Retry
+from celery.exceptions import Retry, SoftTimeLimitExceeded
 
 from infrastructure.celery_app import celery_app
 from infrastructure.rag.crawl_service import CRAWL_MAX_CONCURRENCY
@@ -31,6 +32,8 @@ from domain.entities import BookingLinkJob, Document, TopicJob
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 
 logger = logging.getLogger(__name__)
+
+_MAX_CRAWL_DURATION_SEC = 600  # HARD 10-MINUTE LIMIT for training/crawl to GCS/RAG
 
 
 def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
@@ -422,8 +425,16 @@ async def _execute_crawl(
     base_prefix: str,
     corpus_resource: str,
     headless: Optional[bool] = None,
+    start_time: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Execute the crawl job (async function)."""
+    """
+    Execute the crawl job (async function) with timeout enforcement.
+    
+    CRITICAL: This function must complete within 10 minutes (enforced by Celery soft_time_limit).
+    """
+    if start_time is None:
+        start_time = time.monotonic()
+        
     job_repo = PostgresIndexJobRepository()
     job = job_repo.get_job(bot_id, job_id)
     if not job:
@@ -636,6 +647,8 @@ async def _execute_crawl(
     retry_backoff=True,
     retry_backoff_max=600,
     retry_jitter=True,
+    time_limit=_MAX_CRAWL_DURATION_SEC + 20,  # Hard kill after 10min + 20s
+    soft_time_limit=_MAX_CRAWL_DURATION_SEC,  # Soft timeout at 10min
 )
 def crawl_job_task(
     self: Task,
@@ -649,7 +662,10 @@ def crawl_job_task(
     headless: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """
-    Celery task to execute crawling job.
+    Celery task to execute crawling job with HARD 10-MINUTE LIMIT.
+    
+    CRITICAL: This task has a hard timeout of 10 minutes for the entire flow:
+    crawling -> GCS upload -> Vertex RAG import. Under NO circumstances should it run longer.
     
     Args:
         self: Celery task instance (for retries)
@@ -664,6 +680,8 @@ def crawl_job_task(
     Returns:
         Dict with status and results
     """
+    start_time = time.monotonic()
+    
     # Store celery_task_id in job
     job_repo = PostgresIndexJobRepository()
     job = job_repo.get_job(bot_id, job_id)
@@ -679,12 +697,39 @@ def crawl_job_task(
     try:
         # Run async function - create new event loop for Celery worker
         result = asyncio.run(
-            _execute_crawl(job_id, bot_id, url, urls, bucket_name, base_prefix, corpus_resource, headless)
+            _execute_crawl(job_id, bot_id, url, urls, bucket_name, base_prefix, corpus_resource, headless, start_time)
+        )
+        
+        elapsed = time.monotonic() - start_time
+        logger.info(
+            "Crawl job %s COMPLETED successfully in %.1fs (bot=%s, docs=%d)",
+            job_id, elapsed, bot_id, result.get("docs_count", 0)
         )
         return result
+    except SoftTimeLimitExceeded:
+        elapsed = time.monotonic() - start_time
+        logger.error(
+            "Crawl job %s TIMEOUT after %.1fs (bot=%s). 10-minute limit exceeded!",
+            job_id, elapsed, bot_id
+        )
+        if job:
+            job.stage = "error"
+            job.last_error = f"Training timeout: exceeded 10-minute limit (ran {int(elapsed)}s)"
+            job_repo.update_job(job)
+        raise
     except (ConnectionError, TimeoutError, OSError) as exc:
+        elapsed = time.monotonic() - start_time
+        logger.warning(
+            "Crawl job %s transient error after %.1fs (bot=%s): %s. Retrying...",
+            job_id, elapsed, bot_id, type(exc).__name__
+        )
         # Retry transient errors
         raise self.retry(exc=exc)
     except Exception as exc:
+        elapsed = time.monotonic() - start_time
+        logger.exception(
+            "Crawl job %s FAILED after %.1fs (bot=%s): %s",
+            job_id, elapsed, bot_id, exc
+        )
         # Don't retry other errors (permanent failures)
         raise

@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch } from 'lucide-react'
+import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
-import { PlayIcon, StopIcon } from './DiscoveryIcons'
-import StarBorder from '../../components/StarBorder'
+import { StopIcon } from './DiscoveryIcons'
 import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategoryDisplayPath, getAllExpandablePaths, type UrlCategory } from './urlCategorizer'
 import { FileDropzone } from '../../components/FileDropzone'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -19,25 +18,21 @@ export default function CreateBotUrlsPage() {
     normalizedWebsiteUrl,
     contentHosting,
     websiteUrl,
-    sharedUrls,
+    setTrainingUrls,
     pdfFiles,
     setPdfFiles,
     isDiscovering,
-    isStartingTraining,
     discoveryMethod,
     discoveryDurationMs,
     discoveryTimedOutMessage,
-    continueWithoutSources,
     toggleUrl,
     toggleCategory,
     selectAll,
     deselectAll,
     stopDiscovery,
     localError,
-    startTraining,
+    localErrorType,
   } = step2
-
-  const hasAnySources = selectedUrls.length > 0 || pdfFiles.length > 0
 
   const discoveryDurationLabel =
     discoveryDurationMs != null && !isDiscovering
@@ -57,8 +52,10 @@ export default function CreateBotUrlsPage() {
   const [sharedSelectedDiscoveredUrls, setSharedSelectedDiscoveredUrls] = useState<Set<string>>(new Set())
   const [isSharedDiscovering, setIsSharedDiscovering] = useState(false)
   const [sharedDiscoveryError, setSharedDiscoveryError] = useState<string | null>(null)
+  const [sharedDiscoveryErrorType, setSharedDiscoveryErrorType] = useState<'error' | 'warning' | null>(null)
   const [sharedDiscoveryDurationMs, setSharedDiscoveryDurationMs] = useState<number | null>(null)
   const [sharedDiscoveryTimedOutMessage, setSharedDiscoveryTimedOutMessage] = useState<string | null>(null)
+  const [showPdfFallback, setShowPdfFallback] = useState(false)
   const sharedDiscoveryAbortRef = useRef<AbortController | null>(null)
   const sharedDiscoveryStartTimeRef = useRef<number | null>(null)
   const sharedDiscovery60sTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -117,30 +114,34 @@ export default function CreateBotUrlsPage() {
   }
   const collapseAll = () => setExpandedCategories(new Set())
 
-  const handleStartTraining = async () => {
-    console.log('[Create Bot] Start Training clicked')
-    const botId =
-      contentHosting !== 'own'
-        ? await startTraining(Array.from(sharedSelectedDiscoveredUrls))
-        : await startTraining()
-    if (botId && flow.nextPath) {
-      navigate(flow.nextPath)
+  const persistSharedSelectionToRows = useCallback(() => {
+    if (contentHosting === 'own') {
+      setTrainingUrls([])
+      return
     }
+    const selected = Array.from(sharedSelectedDiscoveredUrls)
+    setTrainingUrls(selected)
+  }, [contentHosting, setTrainingUrls, sharedSelectedDiscoveredUrls])
+
+  const handleContinue = () => {
+    persistSharedSelectionToRows()
+    if (flow.nextPath) navigate(flow.nextPath)
   }
 
-  const handleSkip = async () => {
-    const botId = await continueWithoutSources()
-    if (botId && flow.nextPath) {
-      navigate(flow.nextPath)
-    }
+  const handleSkip = () => {
+    persistSharedSelectionToRows()
+    if (flow.nextPath) navigate(flow.nextPath)
   }
 
   const handleSharedDiscoverUrls = useCallback(async () => {
     setSharedDiscoveryError(null)
+    setSharedDiscoveryErrorType(null)
+    setShowPdfFallback(false)
     const trimmedUrl = sharedDiscoveryUrl.trim()
 
     if (!trimmedUrl) {
       setSharedDiscoveryError('Enter a URL to discover pages')
+      setSharedDiscoveryErrorType('error')
       return
     }
 
@@ -151,6 +152,7 @@ export default function CreateBotUrlsPage() {
       normalizedUrl = parsed.href
     } catch {
       setSharedDiscoveryError('Enter a valid URL')
+      setSharedDiscoveryErrorType('error')
       return
     }
 
@@ -170,7 +172,11 @@ export default function CreateBotUrlsPage() {
       sharedDiscovery60sTimerRef.current = null
       sharedDiscoveryTimedOutByTimerRef.current = true
       controller.abort()
-    }, 60_000)
+    }, 90_000)
+
+    // Track discovered count locally to avoid stale state in finally block
+    let localDiscoveredCount = 0
+    let hasShownError = false
 
     try {
       const final = await discoverUrlsFromHook(
@@ -179,13 +185,35 @@ export default function CreateBotUrlsPage() {
         (evt) => {
           if (evt.type === 'discovered' && typeof evt.url === 'string') {
             const url = evt.url
+            localDiscoveredCount++
             setSharedDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
             if (!sharedSelectionTouchedRef.current) {
               setSharedSelectedDiscoveredUrls((prev) => new Set([...prev, url]))
             }
+            // Clear stale warning once we actually get URLs.
+            setSharedDiscoveryError(null)
+            setSharedDiscoveryErrorType(null)
+            setShowPdfFallback(false)
           }
           if (evt.type === 'error' && typeof evt.message === 'string') {
+            hasShownError = true
+            const reason = evt.failure_reason as string | undefined
+            if (reason === 'robots_blocked') {
+              setSharedDiscoveryError('This website blocks automatic scanning.')
+              setSharedDiscoveryErrorType('error')
+              setShowPdfFallback(true)
+            } else if (reason === 'sitemap_empty') {
+              setSharedDiscoveryError("No sitemap found. Switch to 'Automatic' discovery (recommended).")
+              setSharedDiscoveryErrorType('warning')
+            } else {
+              setSharedDiscoveryError(evt.message)
+              setSharedDiscoveryErrorType('error')
+            }
+          }
+          if (evt.type === 'warning' && typeof evt.message === 'string') {
+            hasShownError = true
             setSharedDiscoveryError(evt.message)
+            setSharedDiscoveryErrorType('warning')
           }
           if (evt.type === 'done') {
             if (sharedDiscovery60sTimerRef.current) {
@@ -198,19 +226,55 @@ export default function CreateBotUrlsPage() {
             if ((evt as { timed_out?: boolean }).timed_out === true) {
               setSharedDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
             }
-            if (Array.isArray((evt as { urls?: unknown }).urls) && ((evt as { urls?: unknown[] }).urls || []).length === 0) {
-              setSharedDiscoveryError(
-                discoveryMethod === 'sitemap'
-                  ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
-                  : 'No URLs found for this site.'
-              )
+            const urls = (evt as { urls?: unknown[] }).urls || []
+            const reason = (evt as { failure_reason?: string }).failure_reason
+            if (reason === 'no_results') {
+              hasShownError = true
+              setSharedDiscoveryError('Could not discover pages. It\'s likely that the site is blocking our crawling agent.')
+              setSharedDiscoveryErrorType('warning')
+              setShowPdfFallback(true)
+            } else if (Array.isArray(urls) && urls.length === 0) {
+              hasShownError = true
+              if (reason === 'robots_blocked') {
+                setSharedDiscoveryError('This website blocks automatic scanning.')
+                setSharedDiscoveryErrorType('error')
+                setShowPdfFallback(true)
+              } else if (reason === 'sitemap_empty') {
+                setSharedDiscoveryError("No sitemap found. Switch to 'Automatic' discovery.")
+                setSharedDiscoveryErrorType('warning')
+              } else if (reason === 'no_results') {
+                setSharedDiscoveryError('We couldn\'t find any pages on this website.')
+                setSharedDiscoveryErrorType('warning')
+                setShowPdfFallback(true)
+              } else {
+                setSharedDiscoveryError(
+                  discoveryMethod === 'sitemap'
+                    ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
+                    : 'No pages found for this site.'
+                )
+                setSharedDiscoveryErrorType('warning')
+                setShowPdfFallback(true)
+              }
             }
           }
         },
         controller.signal,
-        { max_duration_sec: 60 }
+        { max_duration_sec: 90 }
       )
-      if (final && !final.urls?.length && final.error) setSharedDiscoveryError(final.error)
+      // Final check: if we got ≤1 URL, treat as discovery failure.
+      const urlCount = final?.urls?.length ?? 0
+      localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
+      if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
+        hasShownError = true
+        setSharedDiscoveryError('Could not discover pages. It\'s likely that the site is blocking our crawling agent.')
+        setSharedDiscoveryErrorType('warning')
+        setShowPdfFallback(true)
+      } else if (final && !final.urls?.length && final.error) {
+        hasShownError = true
+        setSharedDiscoveryError(final.error)
+        setSharedDiscoveryErrorType('error')
+        setShowPdfFallback(true)
+      }
       const start = sharedDiscoveryStartTimeRef.current
       if (start != null) setSharedDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
     } catch (err) {
@@ -222,7 +286,10 @@ export default function CreateBotUrlsPage() {
           setSharedDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
         }
       } else {
+        hasShownError = true
         setSharedDiscoveryError(e.message || 'Discovery failed')
+        setSharedDiscoveryErrorType('error')
+        setShowPdfFallback(true)
       }
     } finally {
       if (sharedDiscovery60sTimerRef.current) {
@@ -231,6 +298,14 @@ export default function CreateBotUrlsPage() {
       }
       setIsSharedDiscovering(false)
       sharedDiscoveryAbortRef.current = null
+      
+      // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show PDF fallback.
+      // Use local count to avoid stale React state in closure.
+      if (localDiscoveredCount <= 1 && !hasShownError) {
+        setSharedDiscoveryError('Discovery completed but found no usable pages. Please use the PDF upload method below.')
+        setSharedDiscoveryErrorType('warning')
+        setShowPdfFallback(true)
+      }
     }
   }, [sharedDiscoveryUrl, discoverUrlsFromHook, discoveryMethod])
 
@@ -431,8 +506,6 @@ export default function CreateBotUrlsPage() {
 
   /* ── Shared-hosting sub-view ───────────────────────────────────────────── */
   if (contentHosting !== 'own') {
-    const hasAnySourcesShared =
-      pdfFiles.length > 0 || sharedUrls.length > 0 || sharedSelectedDiscoveredUrls.size > 0
     return (
       <div className="flow-panel-body">
         <div>
@@ -516,8 +589,172 @@ export default function CreateBotUrlsPage() {
           </div>
 
           {sharedDiscoveryError && (
-            <div className="alert error" style={{ marginBottom: '0.75rem' }}>
+            <div className={`alert ${sharedDiscoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
               {sharedDiscoveryError}
+            </div>
+          )}
+
+          {showPdfFallback && !isSharedDiscovering && (
+            <div style={{ 
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', 
+              border: '2px solid #0ea5e9', 
+              borderRadius: '16px', 
+              padding: '2rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  borderRadius: '12px', 
+                  background: '#0ea5e9', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <AlertCircle size={28} color="white" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
+                    No problem! We have an easy solution
+                  </h3>
+                  <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>
+                    Follow these 3 simple steps to add your website pages
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '1rem', 
+                marginBottom: '1.5rem' 
+              }}>
+                <div style={{ 
+                  background: 'white', 
+                  borderRadius: '12px', 
+                  padding: '1.25rem', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '10px', 
+                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <MousePointerClick size={22} color="white" strokeWidth={2.5} />
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 800, 
+                    color: '#cbd5e1', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    STEP 1
+                  </div>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Open your webpage
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
+                    Go to the important pages on your website (like Services, Prices, or Contact).
+                  </p>
+                </div>
+
+                <div style={{ 
+                  background: 'white', 
+                  borderRadius: '12px', 
+                  padding: '1.25rem', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '10px', 
+                    background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <Printer size={22} color="white" strokeWidth={2.5} />
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 800, 
+                    color: '#cbd5e1', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    STEP 2
+                  </div>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Save as PDF
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
+                    Right-click the page → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.
+                  </p>
+                </div>
+
+                <div style={{ 
+                  background: 'white', 
+                  borderRadius: '12px', 
+                  padding: '1.25rem', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ 
+                    width: '40px', 
+                    height: '40px', 
+                    borderRadius: '10px', 
+                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <UploadCloud size={22} color="white" strokeWidth={2.5} />
+                  </div>
+                  <div style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: 800, 
+                    color: '#cbd5e1', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    STEP 3
+                  </div>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    Upload here
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
+                    Drop your PDF in the box below. Your AI will learn from it!
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ 
+                background: 'rgba(14, 165, 233, 0.1)', 
+                borderRadius: '12px', 
+                padding: '1rem 1.25rem',
+                border: '1px solid rgba(14, 165, 233, 0.3)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>
+                      💡 Tip: Do this for every important page
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>
+                      Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them all below.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -624,71 +861,186 @@ export default function CreateBotUrlsPage() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
-          <div className="flow-instruction-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="flow-instruction-card-number">1</span>
-            </div>
-            <div className="flow-instruction-card-heading">Open the page</div>
-            <div className="flow-instruction-card-body">
-              Open important pages (services, prices, hours, booking, contact).
-            </div>
-          </div>
-          <div className="flow-instruction-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="flow-instruction-card-number">2</span>
-            </div>
-            <div className="flow-instruction-card-heading">Save as PDF</div>
-            <div className="flow-instruction-card-body">
-              Print the page and save it as a PDF from your browser.
-            </div>
-          </div>
-          <div className="flow-instruction-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="flow-instruction-card-number">3</span>
-            </div>
-            <div className="flow-instruction-card-heading">Upload</div>
-            <div className="flow-instruction-card-body">
-              Upload those PDFs here to train your agent.
-            </div>
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            margin: '0.75rem 0 1rem',
+          }}
+        >
+          <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
+          <span
+            style={{
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: 'var(--flow-muted)',
+            }}
+          >
+            OR
+          </span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
         </div>
 
-        <FileDropzone
-          label="Upload PDFs"
-          helperText="Drag & drop PDFs here."
-          files={pdfFiles}
-          setFiles={setPdfFiles}
-          accept="application/pdf"
-          multiple
-          maxFiles={20}
-        />
+        <div
+          style={{
+            padding: '1.5rem',
+            background: 'var(--flow-surface)',
+            border: '1px solid var(--flow-border)',
+            borderRadius: 'var(--flow-radius)',
+            marginBottom: '1.5rem',
+          }}
+        >
+          {pdfFiles.length > 0 && (
+            <div style={{ 
+              background: 'var(--flow-bg)',
+              borderRadius: '12px',
+              padding: '1rem 1.25rem',
+              marginBottom: '1.25rem',
+              border: '1px solid var(--flow-border)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}>
+              <CheckCircle2 size={24} color="var(--flow-accent)" strokeWidth={2.5} />
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: 'var(--flow-heading)', fontSize: '1rem' }}>
+                  Perfect! {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
+                </p>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--flow-muted)' }}>
+                  Click "Start training" below to teach your AI
+                </p>
+              </div>
+            </div>
+          )}
 
-        {localError && <div className="alert error">{localError}</div>}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '10px', 
+                background: 'var(--flow-accent)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center'
+              }}>
+                <FileText size={22} color="white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>
+                  Add Website Pages as PDFs
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>
+                  Follow these 3 easy steps
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '1rem' }}>
+            <div className="flow-instruction-card" style={{
+              background: 'white',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center'
+                }}>
+                  <MousePointerClick size={18} color="white" strokeWidth={2.5} />
+                </div>
+                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
+                  STEP 1
+                </span>
+              </div>
+              <div className="flow-instruction-card-heading">Open the page</div>
+              <div className="flow-instruction-card-body">
+                Open important pages (services, prices, hours, booking, contact).
+              </div>
+            </div>
+            <div className="flow-instruction-card" style={{
+              background: 'white',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center'
+                }}>
+                  <Printer size={18} color="white" strokeWidth={2.5} />
+                </div>
+                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
+                  STEP 2
+                </span>
+              </div>
+              <div className="flow-instruction-card-heading">Save as PDF</div>
+              <div className="flow-instruction-card-body">
+                Right-click → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.
+              </div>
+            </div>
+            <div className="flow-instruction-card" style={{
+              background: 'white',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center'
+                }}>
+                  <UploadCloud size={18} color="white" strokeWidth={2.5} />
+                </div>
+                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
+                  STEP 3
+                </span>
+              </div>
+              <div className="flow-instruction-card-heading">Upload here</div>
+              <div className="flow-instruction-card-body">
+                Drop your PDFs in the box below. Your AI will learn from them!
+              </div>
+            </div>
+          </div>
+
+          <FileDropzone
+            label="📄 Drop your PDFs here"
+            helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
+            files={pdfFiles}
+            setFiles={setPdfFiles}
+            accept="application/pdf"
+            multiple
+            maxFiles={20}
+          />
+        </div>
+
+        {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 
         <div className="flow-actions">
           <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
             Back
           </UiButton>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <UiButton variant="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
+            <UiButton variant="ghost" onClick={() => void handleSkip()}>
               Skip for now
             </UiButton>
-            {hasAnySourcesShared && (
-              <StarBorder
-                as="button"
-                type="button"
-                className="star-border--primary"
-                onClick={handleStartTraining}
-                disabled={isStartingTraining}
-                color="#e4587a"
-                speed="5s"
-                aria-disabled={isStartingTraining}
-              >
-                <PlayIcon />
-                {isStartingTraining ? 'Starting...' : 'Start training'}
-              </StarBorder>
-            )}
+            <UiButton variant="primary" onClick={handleContinue} disabled={isSharedDiscovering}>
+              Continue
+            </UiButton>
           </div>
         </div>
       </div>
@@ -960,7 +1312,7 @@ export default function CreateBotUrlsPage() {
         maxFiles={20}
       />
 
-      {localError && <div className="alert error">{localError}</div>}
+      {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
@@ -973,24 +1325,12 @@ export default function CreateBotUrlsPage() {
           </UiButton>
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <UiButton variant="ghost" onClick={() => void handleSkip()} disabled={isStartingTraining}>
+            <UiButton variant="ghost" onClick={() => void handleSkip()}>
               Skip for now
             </UiButton>
-            {hasAnySources && (
-              <StarBorder
-                as="button"
-                type="button"
-                className="star-border--primary"
-                onClick={handleStartTraining}
-                disabled={isStartingTraining}
-                color="#e4587a"
-                speed="5s"
-                aria-disabled={isStartingTraining}
-              >
-                <PlayIcon />
-                {isStartingTraining ? 'Starting...' : 'Start training'}
-              </StarBorder>
-            )}
+            <UiButton variant="primary" onClick={handleContinue}>
+              Continue
+            </UiButton>
           </div>
         )}
       </div>

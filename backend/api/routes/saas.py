@@ -18,6 +18,7 @@ from api.schemas import (
     AgentConfigResponse,
     BotCreateRequest,
     BotCreateResponse,
+    BotRenameRequest,
     BotDetailResponse,
     BotDomainAddRequest,
     BotDomainAddResponse,
@@ -1197,6 +1198,38 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             updated_at=bot.updated_at,
         ),
         widget_config=widget_config,
+    )
+
+
+@router.patch("/v1/org/bots/{bot_id}", response_model=BotSummary)
+async def v1_org_rename_bot(
+    bot_id: str,
+    payload: BotRenameRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    new_name = (payload.display_name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="display_name is required")
+    if len(new_name) > 120:
+        raise HTTPException(status_code=400, detail="display_name is too long")
+    bot_service().update_display_name(bot_id, new_name)
+    updated = bot_service().get_bot_record(bot_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    return BotSummary(
+        bot_id=updated.bot_id,
+        org_id=updated.org_id,
+        display_name=updated.display_name,
+        publishable_key=updated.publishable_key,
+        secret_key=updated.secret_key,
+        created_at=updated.created_at,
+        updated_at=updated.updated_at,
     )
 
 

@@ -369,7 +369,7 @@ type DashboardData = {
     onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
     signal?: AbortSignal,
     options?: { max_duration_sec?: number }
-  ) => Promise<{ urls: string[]; error?: string; methodUsed?: string }>
+  ) => Promise<{ urls: string[]; error?: string; methodUsed?: string; failureReason?: string }>
   startBackgroundDiscovery: (botId: string, url: string, method: string) => Promise<void>
   cancelDiscoveryJob: (botId: string, jobId: string) => Promise<{ status: string } | null>
   listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
@@ -400,6 +400,7 @@ type DashboardData = {
     maxChars?: number
   ) => Promise<{ format: string; content: string } | null>
     deleteBot: (botId: string) => Promise<boolean>
+    renameBot: (botId: string, displayName: string) => Promise<boolean>
     listConversations: (
       botId: string,
       limit?: number,
@@ -1681,7 +1682,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
     signal?: AbortSignal,
     options?: { max_duration_sec?: number }
-  ): Promise<{ urls: string[]; error?: string; methodUsed?: string }> {
+  ): Promise<{ urls: string[]; error?: string; methodUsed?: string; failureReason?: string }> {
     if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
     setError(null)
@@ -1722,6 +1723,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       let buffer = ''
       let finalError: string | undefined
       let finalMethod: string | undefined
+      let finalFailureReason: string | undefined
 
       const pushUnique = (u: string) => {
         if (!u) return
@@ -1762,13 +1764,15 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
               }
             }
             if (typeof evt.method_used === 'string') finalMethod = evt.method_used
+            if (typeof evt.failure_reason === 'string') finalFailureReason = evt.failure_reason
           }
 
           if (typeof evt.method_used === 'string') finalMethod = evt.method_used
+          if (typeof evt.failure_reason === 'string') finalFailureReason = evt.failure_reason
         }
       }
 
-      return { urls: collected, error: finalError, methodUsed: finalMethod }
+      return { urls: collected, error: finalError, methodUsed: finalMethod, failureReason: finalFailureReason }
     } catch (err) {
       const e = err as Error & { name?: string }
       if (e.name === 'AbortError') {
@@ -1797,6 +1801,31 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         setSelectedBotId(null)
       }
       await loadBots()
+      return true
+    } catch (err) {
+      setError((err as Error).message)
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function renameBot(botId: string, displayName: string): Promise<boolean> {
+    if (isSuperAdmin && !activeOrgId) return false
+    const name = (displayName || '').trim()
+    if (!name) return false
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}`, orgOverride), {
+        method: 'PATCH',
+        body: JSON.stringify({ display_name: name }),
+      })
+      await loadBots()
+      if (selectedBotId === botId) {
+        await loadBotDetail(botId)
+      }
       return true
     } catch (err) {
       setError((err as Error).message)
@@ -2069,6 +2098,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getAvailabilityJob,
     getAvailabilityRaw,
     deleteBot,
+    renameBot,
     listConversations,
     searchConversations,
     exportConversationsCsv,

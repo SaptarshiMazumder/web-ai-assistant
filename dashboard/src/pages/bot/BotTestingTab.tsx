@@ -328,7 +328,7 @@ export default function BotTestingTab() {
         subtitle="Tune model behavior and validate hotel availability flows in one polished workspace."
       />
       <div className="testing-left">
-        <div className="testing-config-card">
+        <div className="testing-config-card ui-glass-card">
           <h3 className="testing-config-title">Agent configuration</h3>
 
           <div className="testing-field">
@@ -392,7 +392,7 @@ export default function BotTestingTab() {
         </div>
 
         {selectedBotWidgetConfig?.businessType === 'hotel' && (
-        <div className="testing-config-card" style={{ marginTop: '1.5rem' }}>
+        <div className="testing-config-card ui-glass-card" style={{ marginTop: '1.5rem' }}>
           <h3 className="testing-config-title">Availability agent test</h3>
           <div className="testing-field">
             <label className="testing-label">Hotel URL</label>

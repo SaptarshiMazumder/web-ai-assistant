@@ -74,13 +74,20 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
             if not urls:
-                yield {"type": "error", "message": "No URLs found from sitemap."}
-                yield {"type": "done", "urls": [], "method_used": "sitemap"}
+                yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
             allowed: List[str] = []
+            blocked_count = 0
             for u in urls:
                 if await rp.is_allowed(u):
                     allowed.append(u)
+                else:
+                    blocked_count += 1
+            if not allowed and blocked_count > 0:
+                yield {"type": "error", "message": f"All {blocked_count} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "robots_blocked"}
+                return
             for i, u in enumerate(allowed, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
             yield {"type": "done", "urls": allowed, "method_used": "sitemap"}
@@ -102,6 +109,9 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
                 allowed = await rp.filter_urls(urls)
                 evt = dict(evt)
                 evt["urls"] = allowed
+                if not allowed and urls:
+                    evt["failure_reason"] = "robots_blocked"
+                    yield {"type": "error", "message": f"All {len(urls)} discovered URLs are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield evt
                 continue
             yield evt
@@ -153,13 +163,20 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
             if not urls:
-                yield {"type": "error", "message": "No URLs found from sitemap."}
-                yield {"type": "done", "urls": [], "method_used": "sitemap"}
+                yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
             allowed: List[str] = []
+            blocked_count = 0
             for u in urls:
                 if await rp.is_allowed(u):
                     allowed.append(u)
+                else:
+                    blocked_count += 1
+            if not allowed and blocked_count > 0:
+                yield {"type": "error", "message": f"All {blocked_count} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "robots_blocked"}
+                return
             for i, u in enumerate(allowed, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
             yield {"type": "done", "urls": allowed, "method_used": "sitemap"}
@@ -181,6 +198,9 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
                 allowed = await rp.filter_urls(urls)
                 evt = dict(evt)
                 evt["urls"] = allowed
+                if not allowed and urls:
+                    evt["failure_reason"] = "robots_blocked"
+                    yield {"type": "error", "message": f"All {len(urls)} discovered URLs are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield evt
                 continue
             yield evt
@@ -248,8 +268,8 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
             if not urls:
-                yield {"type": "error", "message": "No URLs found from sitemap."}
-                yield {"type": "done", "urls": [], "method_used": "sitemap"}
+                yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
             for i, u in enumerate(urls, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
@@ -274,8 +294,8 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_duration_sec: Optional[int],
     ) -> AsyncIterator[Dict[str, Any]]:
         if not root_url:
-            yield {"type": "error", "message": "Invalid root URL"}
-            yield {"type": "done", "urls": [], "method_used": "auto"}
+            yield {"type": "error", "message": "Invalid root URL", "failure_reason": "invalid_url"}
+            yield {"type": "done", "urls": [], "method_used": "auto", "failure_reason": "invalid_url"}
             return
 
         start = time.monotonic()
@@ -285,6 +305,8 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         seen: set = set()
         collected: List[str] = []
         sources_with_hits: set = set()
+        no_results_warning_sent = False
+        NO_RESULTS_WARNING_THRESHOLD = 45.0  # Warn after 45 seconds with 0 results
 
         async def emit_list(source: str, urls: List[str]) -> None:
             for u in urls:
@@ -353,18 +375,33 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         timed_out = False
         try:
             while len(done_sources) < len(tasks):
+                # Check if we should send "no results" warning
+                elapsed = time.monotonic() - start
+                if not no_results_warning_sent and elapsed >= NO_RESULTS_WARNING_THRESHOLD and not collected:
+                    no_results_warning_sent = True
+                    yield {
+                        "type": "warning",
+                        "message": f"Still finding URLs... No results after {int(NO_RESULTS_WARNING_THRESHOLD)}s. Site may be blocking crawlers or have no discoverable links.",
+                        "failure_reason": "slow_no_results"
+                    }
+
                 if deadline is not None:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         timed_out = True
                         break
                     try:
-                        source, evt = await asyncio.wait_for(queue.get(), timeout=remaining)
+                        source, evt = await asyncio.wait_for(queue.get(), timeout=min(remaining, 2.0))
                     except asyncio.TimeoutError:
-                        timed_out = True
-                        break
+                        if remaining <= 0:
+                            timed_out = True
+                            break
+                        continue  # Check warning threshold and try again
                 else:
-                    source, evt = await queue.get()
+                    try:
+                        source, evt = await asyncio.wait_for(queue.get(), timeout=2.0)
+                    except asyncio.TimeoutError:
+                        continue  # Check warning threshold and try again
 
                 if evt is done_marker:
                     done_sources.add(source)
@@ -396,15 +433,22 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
                     task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
+        fallback_only = False
         if not collected and root_url:
             if root_url not in seen:
                 collected.append(root_url)
+                fallback_only = True
                 yield {"type": "discovered", "url": root_url, "count": len(collected), "source": "fallback"}
 
-        yield {
+        done_evt = {
             "type": "done",
             "urls": collected,
             "method_used": "auto",
             "timed_out": timed_out,
             "sources": sorted(sources_with_hits),
         }
+        # Report no_results if we only have fallback URL, or if nothing found after warning threshold.
+        if fallback_only or (not collected and elapsed >= NO_RESULTS_WARNING_THRESHOLD):
+            done_evt["failure_reason"] = "no_results"
+            done_evt["fallback_only"] = fallback_only
+        yield done_evt

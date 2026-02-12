@@ -262,6 +262,14 @@ a.primary:hover {
   box-shadow: 0 0 0 4px rgba(228, 88, 122, 0.18);
 }
 
+.sidebar-primary-brand .sidebar-brand-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 12px rgba(228, 88, 122, 0.3));
+}
+
 .sidebar-primary-nav {
   display: flex;
   flex-direction: column;
@@ -1344,17 +1352,6 @@ a.primary:hover {
   gap: 1.5rem;
 }
 
-.card {
-  border: 1.5px solid transparent;
-  border-radius: 18px;
-  padding: 1.5rem;
-  background:
-    linear-gradient(#fff, #fff) padding-box,
-    var(--ui-flow-border-gradient) border-box;
-  box-shadow: 0 10px 28px rgba(171, 83, 123, 0.1);
-  backdrop-filter: blur(10px);
-}
-
 .card-title {
   font-weight: 600;
   font-size: 1.15rem;
@@ -2167,6 +2164,11 @@ a.primary:hover {
   color: #991b1b;
 }
 
+.alert.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 .alert.info {
   background: #dbeafe;
   color: #1e40af;
@@ -2381,6 +2383,28 @@ a.primary:hover {
   margin-top: auto;
   padding-top: 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.flow-steps-progress--enter {
+  animation: flow-steps-progress-enter 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom center;
+}
+
+@keyframes flow-steps-progress-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-steps-progress--enter {
+    animation: none;
+  }
 }
 
 .flow-step {
@@ -2802,13 +2826,18 @@ a.primary:hover {
 }
 
 /* --- Flow cards (scoped) ------------------------------------------------- */
-.flow-shell .card {
-  border: 1.5px solid transparent;
+.flow-shell .ui-glass-card {
+  border: 1px solid transparent;
   border-radius: var(--flow-radius);
   background:
     linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
-    var(--flow-border-gradient) border-box;
-  box-shadow: 0 6px 24px rgba(109, 40, 255, 0.1);
+    linear-gradient(
+      135deg,
+      rgba(246, 180, 109, 0.36) 0%,
+      rgba(240, 128, 107, 0.32) 48%,
+      rgba(230, 99, 151, 0.32) 100%
+    ) border-box;
+  box-shadow: none;
   padding: 1.5rem;
 }
 
@@ -3517,7 +3546,7 @@ select.design-form-input:focus {
   flex-shrink: 0;
 }
 
-.design-form .card .design-form-section {
+.design-form .ui-glass-card .design-form-section {
   gap: 2rem;
 }
 
@@ -3526,7 +3555,7 @@ select.design-form-input:focus {
   grid-template-columns: repeat(2, 1fr);
 }
 
-.design-form .card .design-form-field {
+.design-form .ui-glass-card .design-form-field {
   min-width: 0;
   width: 100%;
 }
@@ -5180,6 +5209,14 @@ body {
   box-shadow: 0 8px 20px rgba(228, 88, 122, 0.35);
 }
 
+.sidebar-primary-brand .sidebar-brand-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(228, 88, 122, 0.35));
+}
+
 .sidebar-primary-link {
   color: var(--app-muted);
   border-radius: 14px;
@@ -5302,7 +5339,16 @@ body {
   gap: 1.1rem;
 }
 
-.card,
+.ui-glass-card {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    var(--ui-flow-border-gradient) border-box;
+  border-radius: 18px;
+  box-shadow: 0 5px 18px rgba(184, 88, 130, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
 .ui-flow-card {
   border: 1px solid transparent;
   background:
@@ -5313,9 +5359,13 @@ body {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.card:hover,
+.ui-glass-card:hover {
+  transform: none;
+  box-shadow: 0 10px 22px rgba(184, 88, 130, 0.12);
+}
+
 .ui-flow-card:hover {
-  transform: translateY(-3px);
+  transform: none;
   box-shadow: 0 18px 36px rgba(184, 88, 130, 0.16);
 }
 
@@ -5323,7 +5373,7 @@ button.primary,
 a.primary,
 .ui-flow-btn--primary {
   color: #fff;
-  border: 1px solid transparent;
+  border: none;
   background: var(--app-gradient);
   box-shadow: 0 10px 24px rgba(228, 88, 122, 0.28);
 }
@@ -5396,7 +5446,7 @@ pre {
 }
 
 .ui-glass-card {
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   border-radius: 18px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.93), rgba(255, 255, 255, 0.93)) padding-box,
@@ -5406,8 +5456,7 @@ pre {
       rgba(240, 128, 107, 0.2) 48%,
       rgba(230, 99, 151, 0.2) 100%
     ) border-box;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 32px rgba(171, 83, 123, 0.14);
+  box-shadow: 0 4px 16px rgba(109, 40, 255, 0.08);
 }
 
 .ui-bento-grid {
@@ -5593,6 +5642,85 @@ pre {
   margin-top: 0.45rem;
   font-size: 0.83rem;
   word-break: break-all;
+}
+
+.bot-card-menu-trigger {
+  border: 1px solid var(--flow-border);
+  background: var(--flow-surface);
+  color: var(--flow-text);
+  cursor: pointer;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bot-card-menu-trigger:hover {
+  border-color: var(--flow-accent);
+  color: var(--flow-accent);
+}
+
+.bot-card-actions-menu {
+  position: absolute;
+  top: 38px;
+  right: 12px;
+  z-index: 60;
+  min-width: 140px;
+  background: var(--flow-bg);
+  border: 1px solid var(--flow-border);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+  padding: 6px;
+}
+
+/* Reusable segmented tabs (pill style) */
+.ui-segmented-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.24rem;
+  border: 1px solid var(--flow-border);
+  border-radius: 999px;
+  background: var(--flow-surface);
+}
+
+.ui-segmented-tab {
+  border: 0;
+  background: transparent;
+  color: var(--flow-text);
+  border-radius: 999px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 160ms ease;
+}
+
+.ui-segmented-tab:hover {
+  background: rgba(228, 88, 122, 0.08);
+}
+
+.ui-segmented-tab.is-active {
+  color: #fff;
+  background: var(--flow-accent);
+  box-shadow: 0 2px 8px rgba(228, 88, 122, 0.35);
+}
+
+.ui-segmented-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-segmented-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cta-create-bot {
@@ -5881,10 +6009,8 @@ select:hover {
 }
 
 /* ===== Unify main dashboard cards to glass style ===== */
-.content-shell .card,
-.content-shell .ui-flow-card,
-.content-shell .ui-glass-card {
-  border: 1px solid transparent;
+.content-shell .ui-flow-card {
+  border: 1.5px solid transparent;
   border-radius: 18px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.94)) padding-box,
@@ -5894,15 +6020,50 @@ select:hover {
       rgba(240, 128, 107, 0.18) 48%,
       rgba(230, 99, 151, 0.18) 100%
     ) border-box;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 32px rgba(171, 83, 123, 0.14);
+  box-shadow: 0 6px 24px rgba(109, 40, 255, 0.1);
 }
 
-.content-shell .card:hover,
-.content-shell .ui-flow-card:hover,
-.content-shell .ui-glass-card:hover {
-  transform: translateY(-3px);
+.content-shell .ui-glass-card {
+  border: 1px solid transparent;
+  border-radius: 18px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.94)) padding-box,
+    linear-gradient(
+      135deg,
+      rgba(246, 180, 109, 0.36) 0%,
+      rgba(240, 128, 107, 0.32) 48%,
+      rgba(230, 99, 151, 0.32) 100%
+    ) border-box;
+  box-shadow: none;
+}
+
+.content-shell .ui-flow-card:hover {
+  transform: none;
   box-shadow: 0 18px 36px rgba(184, 88, 130, 0.16);
+}
+
+.content-shell .ui-glass-card:hover {
+  transform: none;
+  box-shadow: 0 10px 22px rgba(184, 88, 130, 0.12);
+}
+
+/* Keep create-agent flow cards thinner+darker and flat, even inside content-shell */
+.content-shell .flow-shell .ui-glass-card {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--flow-surface), var(--flow-surface)) padding-box,
+    linear-gradient(
+      135deg,
+      rgba(246, 180, 109, 0.36) 0%,
+      rgba(240, 128, 107, 0.32) 48%,
+      rgba(230, 99, 151, 0.32) 100%
+    ) border-box;
+  box-shadow: none;
+}
+
+.content-shell .flow-shell .ui-glass-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 @media (max-width: 1080px) {

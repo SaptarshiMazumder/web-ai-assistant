@@ -220,6 +220,24 @@ class PostgresBotRepository:
         finally:
             con.close()
 
+    def update_display_name(self, bot_id: str, display_name: str) -> None:
+        bid = (bot_id or "").strip()
+        name = (display_name or "").strip()
+        if not bid:
+            raise ValueError("bot_id is required")
+        if not name:
+            raise ValueError("display_name is required")
+        con = _connect()
+        try:
+            now = _utc_now()
+            con.execute(
+                "UPDATE bots SET display_name = %s, updated_at = %s WHERE bot_id = %s",
+                (name, now, bid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
     def update_widget_config(self, bot_id: str, config_json: str) -> None:
         bid = (bot_id or "").strip()
         if not bid:

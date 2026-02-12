@@ -473,7 +473,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
         </div>
       )}
 
-      <section className="card summary-card" style={{ marginTop: 0 }}>
+      <section className="ui-glass-card summary-card" style={{ marginTop: 0 }}>
         <div className="summary-card-header">
           <SectionHeader
             eyebrow="Performance"
@@ -521,7 +521,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       </section>
 
       <div className="card-grid" style={{ marginTop: 12 }}>
-        <section className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <section className="ui-glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div className="card-title" style={{ margin: 0 }}>Daily conversations</div>
             <RangeControls preset={convPreset} setPreset={setConvPreset} custom={convCustom} setCustom={setConvCustom} />
@@ -537,7 +537,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
             )}
           </div>
         </section>
-        <section className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+        <section className="ui-glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div className="card-title" style={{ margin: 0 }}>Daily escalations</div>
             <RangeControls preset={escPreset} setPreset={setEscPreset} custom={escCustom} setCustom={setEscCustom} />
@@ -556,7 +556,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       </div>
 
       <div className="card-grid" style={{ marginTop: 12 }}>
-        <section className="card analytics-list-card">
+        <section className="ui-glass-card analytics-list-card">
           <div className="card-title">Top sources</div>
           <div className="analytics-list-scroll">
             {!sources?.items?.length && <div className="muted">No data yet.</div>}
@@ -572,7 +572,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
             )}
           </div>
         </section>
-        <section className="card analytics-list-card">
+        <section className="ui-glass-card analytics-list-card">
           <div className="card-title">Question topic report</div>
           <div className="analytics-list-scroll">
             {!topics?.items?.length && <div className="muted">No data yet.</div>}

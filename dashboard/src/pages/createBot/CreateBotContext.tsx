@@ -22,6 +22,12 @@ export type SharedUrlRow = {
   label: string
 }
 
+export type CustomTextEntry = {
+  id: string
+  title: string
+  content: string
+}
+
 /** Step 2: Hosting + sources (Step 2 + Step 3 pages consume different parts of this slice). */
 export type CreateBotStep2Slice = {
   contentHosting: ContentHosting | null
@@ -35,15 +41,22 @@ export type CreateBotStep2Slice = {
   normalizedWebsiteUrl: string
   sharedUrlRows: SharedUrlRow[]
   setSharedUrlRows: (rows: SharedUrlRow[]) => void
+  trainingUrls: string[]
+  setTrainingUrls: (urls: string[]) => void
   sharedUrls: string[]
   pdfFiles: File[]
   setPdfFiles: (files: File[]) => void
+  textDocFiles: File[]
+  setTextDocFiles: (files: File[]) => void
+  customTextEntries: CustomTextEntry[]
+  setCustomTextEntries: (entries: CustomTextEntry[]) => void
   discoveryDurationMs: number | null
   discoveryTimedOutMessage: string | null
   isDiscovering: boolean
   isStartingTraining: boolean
   localError: string | null
-  setLocalError: (value: string | null) => void
+  localErrorType: 'error' | 'warning' | null
+  setLocalError: (value: string | null, type?: 'error' | 'warning' | null) => void
   continueWithoutSources: () => Promise<string | null>
   discoverUrls: () => Promise<boolean>
   toggleUrl: (url: string) => void
@@ -181,7 +194,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
   const [selectedUrls, setSelectedUrls] = useState<string[]>([])
   const [sharedUrlRows, setSharedUrlRows] = useState<SharedUrlRow[]>([{ url: '', label: '' }])
+  const [trainingUrls, setTrainingUrls] = useState<string[]>([])
   const [pdfFiles, setPdfFiles] = useState<File[]>([])
+  const [textDocFiles, setTextDocFiles] = useState<File[]>([])
+  const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
@@ -201,6 +217,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [pdfJobIds, setPdfJobIds] = useState<string[]>([])
   const [pdfJobStatusById, setPdfJobStatusById] = useState<Record<string, any>>({})
   const [localError, setLocalError] = useState<string | null>(null)
+  const [localErrorType, setLocalErrorType] = useState<'error' | 'warning' | null>(null)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#e4587a')
   const [widgetBusinessType, setWidgetBusinessType] = useState<'' | 'hotel' | 'other'>('')
@@ -236,7 +253,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setSharedUrlRows([{ url: '', label: '' }])
+    setTrainingUrls([])
     setPdfFiles([])
+    setTextDocFiles([])
+    setCustomTextEntries([{ id: '1', title: '', content: '' }])
     setIsDiscovering(false)
     setIsStartingTraining(false)
     setDiscoveryDurationMs(null)
@@ -308,18 +328,23 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     discoveryAbortRef.current = controller
     discoveryTimedOutByTimerRef.current = false
 
-    // Client-side 60s cap: when user presses Discover, we stop reading the stream after 60s and use what we have.
+    // Client-side 90s cap: when user presses Discover, we stop reading the stream after 90s and use what we have.
     discovery60sTimerRef.current = setTimeout(() => {
       discovery60sTimerRef.current = null
       discoveryTimedOutByTimerRef.current = true
       controller.abort()
-    }, 60_000)
+    }, 90_000)
+
+    // Track discovered count locally to avoid stale state in finally block
+    let localDiscoveredCount = 0
+    let hasShownError = false
 
     // Fire-and-forget stream so UI can navigate immediately and update progressively.
     void (async () => {
       await discoverUrlsFromHook(normalized, discoveryMethod, (evt) => {
         if (evt.type === 'discovered' && typeof evt.url === 'string') {
           const url = evt.url
+          localDiscoveredCount++
           setDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
 
           if (!selectionTouchedRef.current) {
@@ -328,7 +353,24 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (evt.type === 'error' && typeof evt.message === 'string') {
+          hasShownError = true
+          const reason = (evt as { failure_reason?: string }).failure_reason
+          if (reason === 'robots_blocked') {
+            setLocalError('🚫 This site blocks crawlers via robots.txt. Try adding specific URLs manually.')
+            setLocalErrorType('error')
+          } else if (reason === 'sitemap_empty') {
+            setLocalError("No sitemap found. Switch to 'Automatic' discovery (recommended).")
+            setLocalErrorType('warning')
+          } else {
+            setLocalError(evt.message)
+            setLocalErrorType('error')
+          }
+        }
+
+        if (evt.type === 'warning' && typeof evt.message === 'string') {
+          hasShownError = true
           setLocalError(evt.message)
+          setLocalErrorType('warning')
         }
 
         if (evt.type === 'done') {
@@ -342,17 +384,47 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           if ((evt as { timed_out?: boolean }).timed_out === true) {
             setDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
           }
-          if (Array.isArray((evt as { urls?: unknown }).urls) && ((evt as { urls?: unknown[] }).urls || []).length === 0) {
-            setLocalError(
-              discoveryMethod === 'sitemap'
-                ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
-                : 'No URLs found for this site.'
-            )
+          const urls = (evt as { urls?: unknown[] }).urls || []
+          const reason = (evt as { failure_reason?: string }).failure_reason
+          if (reason === 'no_results') {
+            hasShownError = true
+            setLocalError('⚠️ We could not discover real pages from this site. Please use the PDF upload steps below.')
+            setLocalErrorType('warning')
+          } else if (Array.isArray(urls) && urls.length === 0) {
+            hasShownError = true
+            if (reason === 'robots_blocked') {
+              setLocalError('🚫 All discovered URLs are blocked by robots.txt')
+              setLocalErrorType('error')
+            } else if (reason === 'sitemap_empty') {
+              setLocalError("No sitemap found. Switch to 'Automatic' discovery.")
+              setLocalErrorType('warning')
+            } else if (reason === 'no_results') {
+              setLocalError('⚠️ No pages found. Site may be blocking crawlers or have no discoverable links.')
+              setLocalErrorType('warning')
+            } else {
+              setLocalError(
+                discoveryMethod === 'sitemap'
+                  ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
+                  : 'No URLs found for this site.'
+              )
+              setLocalErrorType('warning')
+            }
           }
         }
-      }, controller.signal, { max_duration_sec: 60 })
+      }, controller.signal, { max_duration_sec: 90 })
         .then((final) => {
-          if (final && !final.urls?.length && final.error) setLocalError(final.error)
+          // If we got ≤1 URL, treat as failure
+          const urlCount = final?.urls?.length ?? 0
+          localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
+          if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
+            hasShownError = true
+            setLocalError('⚠️ We could not discover real pages from this site. Please use the PDF upload steps below.')
+            setLocalErrorType('warning')
+          } else if (final && !final.urls?.length && final.error) {
+            hasShownError = true
+            setLocalError(final.error)
+            setLocalErrorType('error')
+          }
           const start = discoveryStartTimeRef.current
           if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
         })
@@ -372,6 +444,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           }
           setIsDiscovering(false)
           discoveryAbortRef.current = null
+          
+          // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show error.
+          // Use local count to avoid stale React state in closure.
+          if (localDiscoveredCount <= 1 && !hasShownError) {
+            setLocalError('⚠️ Discovery completed but found no usable pages. Please use PDF upload instead.')
+            setLocalErrorType('warning')
+          }
         })
     })()
 
@@ -527,7 +606,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     const overrideUrls = (selectedDiscoveredUrls || [])
       .map((u) => normalizeOneUrl(u))
       .filter(Boolean)
-    const finalUrls = overrideUrls.length > 0 ? overrideUrls : sharedUrls
+    const finalUrls = overrideUrls.length > 0
+      ? overrideUrls
+      : (contentHosting === 'own' ? selectedUrls : trainingUrls)
     const hasPdfs = pdfFiles.length > 0
     setIsStartingTraining(true)
     const orgOverride =
@@ -614,7 +695,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       void startBackgroundDiscovery(created.bot_id, backgroundTarget, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, sharedUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank, normalizeOneUrl])
+  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank, normalizeOneUrl])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -658,7 +739,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
       setTrainingStageName(stageName)
 
-      const totalUrls = sharedUrls.length
+      const totalUrls = contentHosting === 'own' ? selectedUrls.length : trainingUrls.length
       const urlProgress =
         jobId && urlStatus
           ? totalUrls > 0 && urlStatus.pages_crawled
@@ -684,7 +765,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, sharedUrls.length])
+  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length])
 
   const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)
@@ -698,7 +779,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         businessType,
         setBusinessType,
         localError,
-        setLocalError,
+        localErrorType,
+        setLocalError: (value: string | null, type: 'error' | 'warning' | null = 'error') => {
+          setLocalError(value)
+          setLocalErrorType(type)
+        },
       },
       step2: {
         contentHosting,
@@ -712,15 +797,25 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         normalizedWebsiteUrl,
         sharedUrlRows,
         setSharedUrlRows,
+        trainingUrls,
+        setTrainingUrls,
         sharedUrls,
         pdfFiles,
         setPdfFiles,
+        textDocFiles,
+        setTextDocFiles,
+        customTextEntries,
+        setCustomTextEntries,
         discoveryDurationMs,
         discoveryTimedOutMessage,
         isDiscovering,
         isStartingTraining,
         localError,
-        setLocalError,
+        localErrorType,
+        setLocalError: (value: string | null, type: 'error' | 'warning' | null = 'error') => {
+          setLocalError(value)
+          setLocalErrorType(type)
+        },
         continueWithoutSources,
         discoverUrls,
         toggleUrl,
@@ -815,9 +910,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       selectedUrls,
       sharedUrlRows,
       setSharedUrlRows,
+      trainingUrls,
+      setTrainingUrls,
       sharedUrls,
       pdfFiles,
       setPdfFiles,
+      textDocFiles,
+      setTextDocFiles,
+      customTextEntries,
+      setCustomTextEntries,
       isDiscovering,
       isStartingTraining,
       discoveryDurationMs,

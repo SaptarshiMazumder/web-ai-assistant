@@ -6,7 +6,7 @@ import { getTrainingStageLabel, TRAINING_STAGE_LABELS } from './trainingProgress
 
 export default function CreateBotProgressPage() {
   const navigate = useNavigate()
-  const { step3, flow } = useCreateBotFlow()
+  const { step2, step3, flow } = useCreateBotFlow()
   const {
     trainingStage,
     trainingProgress,
@@ -20,12 +20,10 @@ export default function CreateBotProgressPage() {
     localError,
     resetFlow,
   } = step3
-
-  useEffect(() => {
-    if (trainingStage === 'idle') {
-      navigate(flow.firstPath)
-    }
-  }, [trainingStage, navigate, flow.firstPath])
+  const { contentHosting, selectedUrls, trainingUrls, pdfFiles, textDocFiles, customTextEntries, startTraining, continueWithoutSources, isStartingTraining } = step2
+  const sourceUrls = contentHosting === 'own' ? selectedUrls : trainingUrls
+  const usedCustomEntries = customTextEntries.filter((entry) => entry.title.trim() || entry.content.trim())
+  const hasAnySources = sourceUrls.length > 0 || pdfFiles.length > 0 || textDocFiles.length > 0 || usedCustomEntries.length > 0
 
   // Auto-advance to next step ~5s after learning starts so user can continue setup while training runs in background
   useEffect(() => {
@@ -55,6 +53,15 @@ export default function CreateBotProgressPage() {
       : getTrainingStageLabel(jobId, trainingStage, trainingStageName)
 
   const isComplete = trainingStage === 'complete'
+  const isIdle = trainingStage === 'idle'
+
+  const handleStartTraining = async () => {
+    await startTraining()
+  }
+
+  const handleSkipTraining = async () => {
+    await continueWithoutSources()
+  }
 
   return (
     <div className="flow-panel-body">
@@ -77,6 +84,83 @@ export default function CreateBotProgressPage() {
 
       {localError && <div className="alert error">{localError}</div>}
 
+      {isIdle ? (
+        <>
+          <UiCard style={{ padding: '1.25rem', boxShadow: 'none' }}>
+            <div style={{ fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.75rem' }}>
+              Sources ready for training
+            </div>
+            {hasAnySources ? (
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                {sourceUrls.length > 0 && (
+                  <div className="muted" style={{ fontSize: '0.9rem' }}>
+                    Website pages: <b>{sourceUrls.length}</b>
+                  </div>
+                )}
+                {pdfFiles.length > 0 && (
+                  <div className="muted" style={{ fontSize: '0.9rem' }}>
+                    PDF files: <b>{pdfFiles.length}</b>
+                  </div>
+                )}
+                {textDocFiles.length > 0 && (
+                  <div className="muted" style={{ fontSize: '0.9rem' }}>
+                    Text docs: <b>{textDocFiles.length}</b>
+                  </div>
+                )}
+                {usedCustomEntries.length > 0 && (
+                  <div className="muted" style={{ fontSize: '0.9rem' }}>
+                    Custom text entries: <b>{usedCustomEntries.length}</b>
+                  </div>
+                )}
+                <div style={{ marginTop: '0.35rem', maxHeight: 180, overflow: 'auto' }}>
+                  {sourceUrls.slice(0, 8).map((url) => (
+                    <div key={url} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.25rem' }}>
+                      {url}
+                    </div>
+                  ))}
+                  {pdfFiles.slice(0, 8).map((file) => (
+                    <div key={file.name} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.25rem' }}>
+                      {file.name}
+                    </div>
+                  ))}
+                  {textDocFiles.slice(0, 8).map((file) => (
+                    <div key={file.name} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.25rem' }}>
+                      {file.name}
+                    </div>
+                  ))}
+                  {usedCustomEntries.slice(0, 8).map((entry) => (
+                    <div key={entry.id} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.25rem' }}>
+                      {entry.title || `Custom entry ${entry.id}`}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="muted" style={{ fontSize: '0.9rem' }}>
+                No sources added yet.
+              </div>
+            )}
+          </UiCard>
+
+          <div className="flow-actions">
+            <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)} disabled={isStartingTraining}>
+              Back
+            </UiButton>
+            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
+              {hasAnySources ? (
+                <UiButton variant="primary" onClick={() => void handleStartTraining()} disabled={isStartingTraining}>
+                  {isStartingTraining ? 'Starting...' : 'Start training'}
+                </UiButton>
+              ) : (
+                <UiButton variant="ghost" onClick={() => void handleSkipTraining()} disabled={isStartingTraining}>
+                  {isStartingTraining ? 'Skipping...' : 'Skip training for now'}
+                </UiButton>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
       {/* Progress visualization */}
       <div className="progress-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -170,6 +254,8 @@ export default function CreateBotProgressPage() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   )
 }

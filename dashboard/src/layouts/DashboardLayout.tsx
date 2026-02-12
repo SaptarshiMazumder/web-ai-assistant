@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDashboardData } from '../hooks/useDashboardData'
+import ironManIcon from '../assets/icons8/iron-man.png'
 import {
   primaryNavConfig,
   botsSecondaryItemsBase,
@@ -39,7 +40,7 @@ export default function DashboardLayout() {
     <div className={`app-shell ${showSecondaryPanel ? 'app-shell--secondary-visible' : ''}`}>
       <aside className="sidebar-primary" aria-label="Main navigation">
         <div className="sidebar-primary-brand" aria-hidden="true">
-          <div className="logo-dot" />
+          <img src={ironManIcon} alt="" className="sidebar-brand-icon" />
         </div>
         <nav className="sidebar-primary-nav">
           {primaryNavConfig.map((item) => {
