@@ -68,8 +68,14 @@ def format_evidence_block(evidence: List[Dict[str, str]], limit: int = 60) -> st
     lines = []
     for e in evidence[:limit]:
         snip = (e.get("snippet") or "").replace("\n", " ").strip()
-        if len(snip) > 600:
-            snip = snip[:600] + " ..."
+        # Strip markdown image syntax — images eat character budget and are invisible to the LLM.
+        snip = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", snip)  # ![alt](url)
+        snip = re.sub(r"!\[[^\]]*\]", "", snip)           # ![alt] with no href
+        # Keep link labels, drop the URL: [Omakase Course](https://...) → Omakase Course
+        snip = re.sub(r"\[([^\]]*)\]\(https?://[^)]*\)", r"\1", snip)
+        snip = re.sub(r"  +", " ", snip).strip()
+        if len(snip) > 1500:
+            snip = snip[:1500] + " ..."
         url = e.get("url") or ""
         lines.append(f"--- snippet from {url} ---\n{snip}")
     return "\n\n".join(lines)
@@ -224,6 +230,8 @@ def _is_noise_evidence(url: str, text: str) -> bool:
         return True
 
     # Heuristic: snippets that are mostly link endpoints are rarely answer-bearing.
+    # Only filter if the chunk is short AND full of links — long chunks with many links
+    # are often legitimate content (menus with reservation links, galleries, etc.).
     link_like = tl.count("http://") + tl.count("https://")
     if link_like >= 3 and len(t) < 700:
         return True
@@ -396,18 +404,79 @@ def retrieve_for_subquery(corpus_name: str, subquery: str, top_k: int) -> List[D
         url  = _ctx_uri(c)
         if text and not _is_noise_evidence(url, text):
             out.append({"snippet": text, "url": url})
-    # De-dupe and cap per URL to avoid repeated full-page chunks.
+    # De-dupe and cap per URL — raised to 6 so content-rich pages (menus, coupon lists)
+    # don't get cut off after the 3rd chunk.
     out = dedupe_evidence(out)
     per_url: Dict[str, int] = {}
     capped: List[Dict[str, str]] = []
     for e in out:
         u = e.get("url", "") or ""
         count = per_url.get(u, 0)
-        if count >= 3:
+        if count >= 6:
             continue
         per_url[u] = count + 1
         capped.append(e)
     return capped
+
+# =========================
+# LLM Reranking
+# =========================
+def rerank_evidence(
+    client: genai.Client,
+    question: str,
+    evidence: List[Dict[str, str]],
+    top_n: int = 15,
+) -> List[Dict[str, str]]:
+    """
+    Use a fast Gemini Flash call to score each evidence chunk by relevance to the
+    question, then return the top_n most relevant chunks in ranked order.
+
+    This replaces brittle heuristic noise filtering with actual semantic relevance
+    judgment. Works for any language and content type.
+    """
+    if len(evidence) <= top_n:
+        return evidence
+
+    # Build compact snippet representations for scoring (200 chars each is enough
+    # for the reranker to judge relevance without inflating the prompt).
+    items = []
+    for i, e in enumerate(evidence):
+        snip = (e.get("snippet") or "")[:200].replace("\n", " ").strip()
+        items.append(f"{i}: {snip}")
+
+    prompt = (
+        f"Question: {question}\n\n"
+        "Rate each numbered snippet 0-10 for how useful it is for answering the question.\n"
+        "0=irrelevant noise, 10=directly answers the question.\n"
+        "Return ONLY valid JSON, no commentary:\n"
+        '{"scores": [{"i": 0, "s": 8}, {"i": 1, "s": 2}, ...]}\n\n'
+        + "\n".join(items)
+    )
+
+    try:
+        resp = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                max_output_tokens=1024,
+                # No thinking budget — pure scoring, speed matters here.
+            ),
+        )
+        parsed = _extract_json_object((resp.text or "").strip())
+        if isinstance(parsed, dict) and "scores" in parsed:
+            score_map = {
+                int(item["i"]): int(item["s"])
+                for item in parsed["scores"]
+                if isinstance(item, dict) and "i" in item and "s" in item
+            }
+            ranked = sorted(range(len(evidence)), key=lambda i: -score_map.get(i, 5))
+            return [evidence[i] for i in ranked[:top_n]]
+    except Exception:
+        pass  # fallback: return original order truncated
+
+    return evidence[:top_n]
+
 
 # =========================
 # One-shot mode (fast path)
@@ -550,7 +619,8 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 # =========================
 DEFAULT_SYSTEM = (
     "Answer the user's question using ONLY the provided evidence snippets.\n"
-    "If the evidence is insufficient, say so and ask a clarifying question.\n"
+    "Base your answer on whatever relevant content the snippets contain. "
+    "Only say you cannot find the information if NONE of the snippets mention the topic at all.\n"
     "Keep it concise.\n\n"
     "CITATION LINK RULES (follow exactly):\n"
     "- Cite sources ONLY as inline markdown hyperlinks woven naturally into sentences: [link text](URL).\n"
@@ -578,7 +648,7 @@ GROUNDING_SUFFIX = (
     "ABSOLUTELY FORBIDDEN: appending bullet-point URL lists at the end. "
     "ABSOLUTELY FORBIDDEN: showing raw URLs as plain text. "
     "Every source reference must be an inline [descriptive text](URL) link. "
-    "If the evidence is insufficient, say so. Keep responses concise."
+    "Base your answer on whatever relevant content the snippets contain; only say you don't know if the snippets contain no relevant information at all. Keep responses concise."
 )
 
 
@@ -743,19 +813,36 @@ def run_vertex_rag(
 
     sources: List[Dict[str, str]] = []
 
-    # Simple, deterministic flow:
-    # 1) Retrieve from THIS corpus (high top_k)
-    # 2) Optionally filter to the allowed host
-    # 3) Synthesize answer ONLY from snippets
-    top_k = max(ONESHOT_TOP_K, 80)
-    _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
-    evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
-    evidence = dedupe_evidence(evidence)
+    # Retrieval pipeline:
+    # 1) Expand query into multiple sub-queries (better recall for exact terms + semantic)
+    # 2) Retrieve from corpus for each sub-query and merge
+    # 3) Optionally filter to the allowed host
+    # 4) Rerank by relevance using Gemini Flash
+    # 5) Synthesize answer ONLY from top-ranked snippets
+
+    # Step 1: query expansion
+    subqueries = plan_subqueries(client, question)
+    if not subqueries:
+        subqueries = [question]
+    elif question not in subqueries:
+        subqueries = [question] + subqueries[:2]  # original + max 2 variants
+    else:
+        subqueries = subqueries[:3]
+    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries})
+
+    # Step 2: multi-query retrieval
+    all_evidence: List[Dict[str, str]] = []
+    for sq in subqueries:
+        _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
+        all_evidence.extend(retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K))
+    evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
     _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
     for i, e in enumerate(evidence, 1):
         _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+
+    # Step 3: host filtering
     if allowed_host:
         evidence = [e for e in evidence if _evidence_matches_host(e, allowed_host)]
         _dbg({"type": "host_filter_done", "allowed_host": allowed_host, "evidence_count": len(evidence)})
@@ -776,7 +863,12 @@ def run_vertex_rag(
             "visited_urls": [],
         }
 
-    # Build a grounded answer from snippets.
+    # Step 4: LLM reranking — score chunks by relevance, keep best 15
+    if len(evidence) > 4:
+        evidence = rerank_evidence(client, question, evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(evidence)})
+
+    # Step 5: Synthesize grounded answer from top-ranked snippets.
     # Actual system + user prompts sent to Gemini are logged via gemini_prompt in synthesize_with_evidence.
     answer = synthesize_with_evidence(
         client,
@@ -846,15 +938,29 @@ def run_vertex_rag_stream(
 
     sources: List[Dict[str, str]] = []
 
-    top_k = max(ONESHOT_TOP_K, 80)
-    _dbg({"type": "retrieval_start", "query": question, "top_k": top_k, "rag_corpus": rag_corpus})
-    evidence: List[Dict[str, str]] = retrieve_for_subquery(rag_corpus, question, top_k=top_k)
-    evidence = dedupe_evidence(evidence)
+    # Step 1: query expansion
+    subqueries = plan_subqueries(client, question)
+    if not subqueries:
+        subqueries = [question]
+    elif question not in subqueries:
+        subqueries = [question] + subqueries[:2]
+    else:
+        subqueries = subqueries[:3]
+    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries})
+
+    # Step 2: multi-query retrieval
+    all_evidence: List[Dict[str, str]] = []
+    for sq in subqueries:
+        _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
+        all_evidence.extend(retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K))
+    evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
     _dbg({"type": "retrieval_done", "evidence_count": len(evidence)})
     for i, e in enumerate(evidence, 1):
         _dbg({"type": "retrieved_chunk", "idx": i, "url": e.get("url", ""), "snippet": e.get("snippet", "")})
+
+    # Step 3: host filtering
     if allowed_host:
         evidence = [e for e in evidence if _evidence_matches_host(e, allowed_host)]
         _dbg({"type": "host_filter_done", "allowed_host": allowed_host, "evidence_count": len(evidence)})
@@ -876,6 +982,11 @@ def run_vertex_rag_stream(
             "visited_urls": [],
         }
         return
+
+    # Step 4: LLM reranking
+    if len(evidence) > 4:
+        evidence = rerank_evidence(client, question, evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(evidence)})
 
     answer_parts: List[str] = []
     for delta in synthesize_with_evidence_stream(

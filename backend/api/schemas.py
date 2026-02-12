@@ -174,6 +174,37 @@ class PdfSourceUploadResponse(BaseModel):
     items: List[PdfSourceUploadItem] = []
 
 
+class TextSourceEntry(BaseModel):
+    title: Optional[str] = None
+    content: str
+
+
+class TextSourceUploadRequest(BaseModel):
+    entries: List[TextSourceEntry]
+
+
+class TextSourceUploadItem(BaseModel):
+    source_id: str
+    job_id: str
+    status: str = "queued"
+
+
+class TextSourceUploadResponse(BaseModel):
+    bot_id: str
+    items: List[TextSourceUploadItem] = []
+
+
+class DocsSourceUploadItem(BaseModel):
+    source_id: str
+    job_id: str
+    status: str = "queued"
+
+
+class DocsSourceUploadResponse(BaseModel):
+    bot_id: str
+    items: List[DocsSourceUploadItem] = []
+
+
 class WidgetChatRequest(BaseModel):
     message: str
     site_url: Optional[str] = None

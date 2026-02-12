@@ -210,6 +210,7 @@ export default function BotKnowledgeTab() {
   const bgDiscoveryPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bgDiscoveryZeroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const bgDiscoveryPrevStatusRef = useRef<{ jobId: string | null; status: string | null }>({ jobId: null, status: null })
+  const allowBgDiscovery = true
 
   const [sourcesTrainingJobId, setSourcesTrainingJobId] = useState<string | null>(null)
   const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<{
@@ -377,16 +378,6 @@ export default function BotKnowledgeTab() {
 
   // Background discovery: load list when bot is set; poll latest job if running/queued
   useEffect(() => {
-    if (!allowKnowledgeDiscovery) {
-      setBgDiscoveryJob(null)
-      setBgDiscoveryCardDismissed(false)
-      setBgDiscoveryTrainingPhase('idle')
-      if (bgDiscoveryPollRef.current) {
-        clearInterval(bgDiscoveryPollRef.current)
-        bgDiscoveryPollRef.current = null
-      }
-      return
-    }
     if (!botId || !selectedBot) {
       setBgDiscoveryJob(null)
       setBgDiscoveryCardDismissed(false)
@@ -401,8 +392,17 @@ export default function BotKnowledgeTab() {
     const load = async () => {
       const list = await listDiscoveryJobs(botId)
       if (cancelled) return
-      const latest = list[0] ?? null
-      setBgDiscoveryJob(latest)
+      const latest =
+        list
+          .slice()
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null
+      setBgDiscoveryJob((prev) => {
+        if (prev?.job_id !== latest?.job_id) {
+          setBgDiscoveryCardDismissed(false)
+          setBgDiscoveryTrainingPhase('idle')
+        }
+        return latest
+      })
       if (latest && (latest.status === 'running' || latest.status === 'queued')) {
         if (!bgDiscoveryPollRef.current) {
           bgDiscoveryPollRef.current = setInterval(async () => {
@@ -431,7 +431,7 @@ export default function BotKnowledgeTab() {
         bgDiscoveryPollRef.current = null
       }
     }
-  }, [allowKnowledgeDiscovery, botId, selectedBot, listDiscoveryJobs, getDiscoveryJob])
+  }, [botId, selectedBot, listDiscoveryJobs, getDiscoveryJob])
 
   // Sources section: detect in-progress index job and poll so we can show training progress bar (ignore stale jobs)
   const activeSourcesJob = useMemo(() => {
@@ -583,7 +583,7 @@ export default function BotKnowledgeTab() {
 
   // When background-discovery "Add to training" job finishes: show "Training complete" then dismiss card
   useEffect(() => {
-    if (!allowKnowledgeDiscovery) return
+    if (!allowBgDiscovery) return
     if (bgDiscoveryTrainingPhase !== 'training_started') return
     if (activeSourcesJob) {
       hadActiveSourcesJobRef.current = true
@@ -598,7 +598,7 @@ export default function BotKnowledgeTab() {
       setBgDiscoveryTrainingPhase('idle')
       bgDiscoveryDismissTimerRef.current = null
     }, 3500)
-  }, [allowKnowledgeDiscovery, bgDiscoveryTrainingPhase, activeSourcesJob])
+  }, [allowBgDiscovery, bgDiscoveryTrainingPhase, activeSourcesJob])
 
   useEffect(() => {
     return () => {
@@ -654,7 +654,7 @@ export default function BotKnowledgeTab() {
   }, [bgDiscoveryJob, existingSourceUrls, normalizeUrlForCompare])
 
   useEffect(() => {
-    if (!allowKnowledgeDiscovery) return
+    if (!allowBgDiscovery) return
     if (!bgDiscoveryJob) {
       bgDiscoveryPrevStatusRef.current = { jobId: null, status: null }
       return
@@ -680,7 +680,7 @@ export default function BotKnowledgeTab() {
       setBgDiscoveryZeroNotice(false)
       bgDiscoveryZeroTimerRef.current = null
     }, 4000)
-  }, [allowKnowledgeDiscovery, bgDiscoveryJob, bgDiscoveryNewUrls.length])
+  }, [allowBgDiscovery, bgDiscoveryJob, bgDiscoveryNewUrls.length])
 
   const bgDiscoveryUrlCategories = useMemo(() => {
     if (!bgDiscoveryNewUrls.length || !bgDiscoveryJob?.root_url) return null
@@ -689,13 +689,13 @@ export default function BotKnowledgeTab() {
 
   const bgDiscoveryHasExpandedDefault = useRef(false)
   useEffect(() => {
-    if (!allowKnowledgeDiscovery) return
+    if (!allowBgDiscovery) return
     if (bgDiscoveryUrlCategories && !bgDiscoveryHasExpandedDefault.current) {
       setBgDiscoveryExpanded(new Set(getAllExpandablePaths(bgDiscoveryUrlCategories)))
       bgDiscoveryHasExpandedDefault.current = true
     }
     if (!bgDiscoveryUrlCategories) bgDiscoveryHasExpandedDefault.current = false
-  }, [allowKnowledgeDiscovery, bgDiscoveryUrlCategories])
+  }, [allowBgDiscovery, bgDiscoveryUrlCategories])
 
   const bgDiscoverySelectAll = useCallback(() => {
     if (bgDiscoveryNewUrls.length > 0 && bgDiscoverySelected.size === bgDiscoveryNewUrls.length) {
@@ -757,7 +757,7 @@ export default function BotKnowledgeTab() {
   }, [])
 
   const handleBgDiscoveryAddToTraining = useCallback(async () => {
-    if (!allowKnowledgeDiscovery) return
+    if (!allowBgDiscovery) return
     if (!selectedBot || bgDiscoverySelected.size === 0 || bgDiscoveryAdding) return
     const urls = Array.from(bgDiscoverySelected)
     setBgDiscoveryTrainingPhase('training_started')
@@ -770,10 +770,10 @@ export default function BotKnowledgeTab() {
     } finally {
       setBgDiscoveryAdding(false)
     }
-  }, [allowKnowledgeDiscovery, selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
+  }, [allowBgDiscovery, selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
 
   const handleStopBgDiscovery = useCallback(async () => {
-    if (!allowKnowledgeDiscovery) return
+    if (!allowBgDiscovery) return
     if (!selectedBot || !bgDiscoveryJob || bgDiscoveryStopping) return
     if (bgDiscoveryJob.status !== 'running' && bgDiscoveryJob.status !== 'queued') return
     setBgDiscoveryStopping(true)
@@ -788,7 +788,7 @@ export default function BotKnowledgeTab() {
     } finally {
       setBgDiscoveryStopping(false)
     }
-  }, [allowKnowledgeDiscovery, selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
+  }, [allowBgDiscovery, selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
 
   const renderBgDiscoveryCategory = useCallback(
     (category: UrlCategory): React.ReactNode => {
@@ -1248,13 +1248,15 @@ export default function BotKnowledgeTab() {
   ])
 
   const showBgDiscoveryCard = Boolean(
-    allowKnowledgeDiscovery &&
+    allowBgDiscovery &&
       selectedBot &&
       bgDiscoveryJob &&
       !bgDiscoveryCardDismissed &&
       (
         bgDiscoveryJob.status === 'running' ||
         bgDiscoveryJob.status === 'queued' ||
+        bgDiscoveryJob.status === 'failed' ||
+        bgDiscoveryJob.status === 'error' ||
         (bgDiscoveryJob.status === 'done' && (bgDiscoveryNewUrls.length > 0 || bgDiscoveryTrainingPhase !== 'idle'))
       )
   )
@@ -1905,14 +1907,14 @@ export default function BotKnowledgeTab() {
         )}
       </GlassCard>
 
-      {allowKnowledgeDiscovery && bgDiscoveryZeroNotice && (
+      {allowBgDiscovery && bgDiscoveryZeroNotice && (
         <div className="alert info" style={{ gridColumn: '1 / -1' }}>
           Background discovery completed. No new URLs were found.
         </div>
       )}
 
       {/* Background discovery — show only for own-website bots */}
-      {allowKnowledgeDiscovery && bgDiscoveryJobForCard && (
+      {allowBgDiscovery && bgDiscoveryJobForCard && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
           <div className="card-title">Background discovery</div>
           {(bgDiscoveryJobForCard.status !== 'running' && bgDiscoveryJobForCard.status !== 'queued') && (
@@ -1937,7 +1939,7 @@ export default function BotKnowledgeTab() {
                 {bgDiscoveryStopping ? 'Stopping…' : 'Stop discovery'}
               </button>
             </div>
-          ) : bgDiscoveryJobForCard.status === 'failed' ? (
+          ) : (bgDiscoveryJobForCard.status === 'failed' || bgDiscoveryJobForCard.status === 'error') ? (
             <div className="alert error">{bgDiscoveryJobForCard.error ?? 'Discovery failed'}</div>
           ) : bgDiscoveryJobForCard.status === 'done' && (bgDiscoveryTrainingPhase === 'training_started' || bgDiscoveryTrainingPhase === 'training_complete') ? (
             <div className="alert info" style={{ marginBottom: 0, color: '#6366f1', fontWeight: 500 }}>

@@ -48,6 +48,8 @@ export type CreateBotStep2Slice = {
   setPdfFiles: (files: File[]) => void
   textDocFiles: File[]
   setTextDocFiles: (files: File[]) => void
+  plainTextContent: string
+  setPlainTextContent: (value: string) => void
   customTextEntries: CustomTextEntry[]
   setCustomTextEntries: (entries: CustomTextEntry[]) => void
   discoveryDurationMs: number | null
@@ -78,6 +80,14 @@ export type CreateBotStep3Slice = {
   jobId: string | null
   pdfJobIds: string[]
   pdfJobs: Array<{
+    job_id: string
+    stage: string
+    pages_crawled?: number
+    docs_count?: number
+    last_error?: string
+  }>
+  extraJobIds: string[]
+  extraJobs: Array<{
     job_id: string
     stage: string
     pages_crawled?: number
@@ -180,6 +190,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     saveWidgetConfig,
     getJobStatus,
     uploadPdfSources,
+    uploadTextSources,
+    uploadDocsSources,
     setSelectedBotId,
     orgs,
     activeOrgId,
@@ -197,6 +209,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [trainingUrls, setTrainingUrls] = useState<string[]>([])
   const [pdfFiles, setPdfFiles] = useState<File[]>([])
   const [textDocFiles, setTextDocFiles] = useState<File[]>([])
+  const [plainTextContent, setPlainTextContent] = useState('')
   const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
@@ -216,6 +229,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [jobId, setJobId] = useState<string | null>(null)
   const [pdfJobIds, setPdfJobIds] = useState<string[]>([])
   const [pdfJobStatusById, setPdfJobStatusById] = useState<Record<string, any>>({})
+  const [extraJobIds, setExtraJobIds] = useState<string[]>([])
+  const [extraJobStatusById, setExtraJobStatusById] = useState<Record<string, any>>({})
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorType, setLocalErrorType] = useState<'error' | 'warning' | null>(null)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
@@ -256,6 +271,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setTrainingUrls([])
     setPdfFiles([])
     setTextDocFiles([])
+    setPlainTextContent('')
     setCustomTextEntries([{ id: '1', title: '', content: '' }])
     setIsDiscovering(false)
     setIsStartingTraining(false)
@@ -270,6 +286,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setPdfJobIds([])
     setPdfJobStatusById({})
+    setExtraJobIds([])
+    setExtraJobStatusById({})
     setLocalError(null)
     setWidgetPosition('bottom-right')
     setWidgetPrimaryColor('#e4587a')
@@ -610,6 +628,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       ? overrideUrls
       : (contentHosting === 'own' ? selectedUrls : trainingUrls)
     const hasPdfs = pdfFiles.length > 0
+    const hasDocs = textDocFiles.length > 0
+    const hasPlainText = plainTextContent.trim().length > 0
+    const hasCustom = customTextEntries.some((e) => e.content.trim())
     setIsStartingTraining(true)
     const orgOverride =
       isSuperAdmin && (!activeOrgId || activeOrgId === '__all__') && orgs.length > 0 ? orgs[0].org_id : undefined
@@ -626,7 +647,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       businessType: businessType || undefined,
       urlBank,
     }).catch(() => {})
-    if (!finalUrls.length && !hasPdfs) {
+    if (!finalUrls.length && !hasPdfs && !hasDocs && !hasPlainText && !hasCustom) {
       setTrainingStage('complete')
       setTrainingProgress(100)
       setTrainingPagesCrawled(0)
@@ -635,6 +656,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setJobId(null)
       setPdfJobIds([])
       setPdfJobStatusById({})
+      setExtraJobIds([])
+      setExtraJobStatusById({})
       setIsStartingTraining(false)
       return created.bot_id
     }
@@ -647,6 +670,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setPdfJobIds([])
     setPdfJobStatusById({})
+    setExtraJobIds([])
+    setExtraJobStatusById({})
 
     const starters: Promise<unknown>[] = []
     if (finalUrls.length > 0) {
@@ -681,6 +706,45 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         starters.push(startPdfUpload)
       }
     }
+    // Docs (.txt/.md/.docx/.doc) upload
+    if (hasDocs) {
+      starters.push(
+        uploadDocsSources(created.bot_id, textDocFiles)
+          .then((resp) => {
+            const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
+            setExtraJobIds((prev) => [...prev, ...ids])
+          })
+          .catch(() => {})
+      )
+    }
+
+    // Plain text upload
+    if (hasPlainText) {
+      starters.push(
+        uploadTextSources(created.bot_id, [{ content: plainTextContent }])
+          .then((resp) => {
+            const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
+            setExtraJobIds((prev) => [...prev, ...ids])
+          })
+          .catch(() => {})
+      )
+    }
+
+    // Custom text entries upload
+    if (hasCustom) {
+      const entries = customTextEntries
+        .filter((e) => e.content.trim())
+        .map((e) => ({ title: e.title.trim() || undefined, content: e.content.trim() }))
+      starters.push(
+        uploadTextSources(created.bot_id, entries)
+          .then((resp) => {
+            const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
+            setExtraJobIds((prev) => [...prev, ...ids])
+          })
+          .catch(() => {})
+      )
+    }
+
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     const backgroundTarget = (() => {
       const raw = websiteUrl.trim()
@@ -691,15 +755,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         return normalizedWebsiteUrl
       }
     })()
-    if (backgroundTarget) {
+    // Only run background discovery for the user's own website, never for 3rd-party shared URLs
+    if (backgroundTarget && contentHosting === 'own') {
       void startBackgroundDiscovery(created.bot_id, backgroundTarget, discoveryMethod)
     }
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, urlBank, normalizeOneUrl])
+  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
-    if (!jobId && pdfJobIds.length === 0) return
+    if (!jobId && pdfJobIds.length === 0 && extraJobIds.length === 0) return
 
     function stagePercent(stage: string): number {
       const st = (stage || '').toLowerCase()
@@ -725,18 +790,29 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
       setPdfJobStatusById(pdfStatuses)
 
+      const extraStatuses: Record<string, any> = {}
+      for (const id of extraJobIds) {
+        const st = await getJobStatus(botId, id)
+        if (st) extraStatuses[id] = st
+      }
+      setExtraJobStatusById(extraStatuses)
+
       const urlStage = (urlStatus?.stage || '').toLowerCase()
       const urlTerminal = urlStage === 'done' || urlStage === 'import_submitted' || urlStage === 'error' || urlStage === 'cancelled'
 
       const pdfStages = Object.values(pdfStatuses).map((s: any) => (s?.stage || '').toLowerCase())
       const pdfTerminal = pdfStages.length > 0 ? pdfStages.every((st) => ['done', 'import_submitted', 'error', 'cancelled'].includes(st)) : true
 
-      const pages = (urlStatus?.pages_crawled || 0) + Object.values(pdfStatuses).reduce((sum: number, s: any) => sum + (s?.pages_crawled || 0), 0)
-      const docs = (urlStatus?.docs_count || 0) + Object.values(pdfStatuses).reduce((sum: number, s: any) => sum + (s?.docs_count || 0), 0)
+      const extraStages = Object.values(extraStatuses).map((s: any) => (s?.stage || '').toLowerCase())
+      const extraTerminal = extraStages.length > 0 ? extraStages.every((st) => ['done', 'import_submitted', 'error', 'cancelled'].includes(st)) : true
+
+      const allStatuses = [...Object.values(pdfStatuses), ...Object.values(extraStatuses)]
+      const pages = (urlStatus?.pages_crawled || 0) + allStatuses.reduce((sum: number, s: any) => sum + (s?.pages_crawled || 0), 0)
+      const docs = (urlStatus?.docs_count || 0) + allStatuses.reduce((sum: number, s: any) => sum + (s?.docs_count || 0), 0)
       setTrainingPagesCrawled(pages)
       setTrainingDocsCount(docs)
 
-      const stageName = urlStatus?.stage || pdfStages[0] || 'crawling'
+      const stageName = urlStatus?.stage || pdfStages[0] || extraStages[0] || 'crawling'
       setTrainingStageName(stageName)
 
       const totalUrls = contentHosting === 'own' ? selectedUrls.length : trainingUrls.length
@@ -747,25 +823,27 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             : stagePercent(urlStatus.stage || 'queued')
           : null
 
-      const pdfProgresses = Object.values(pdfStatuses).map((s: any) => stagePercent(s?.stage || 'queued'))
+      const allJobProgresses = allStatuses.map((s: any) => stagePercent(s?.stage || 'queued'))
       const parts: number[] = []
       if (typeof urlProgress === 'number') parts.push(urlProgress)
-      parts.push(...pdfProgresses)
+      parts.push(...allJobProgresses)
       const combined = parts.length ? Math.min(Math.round(parts.reduce((a, b) => a + b, 0) / parts.length), 100) : 0
       setTrainingProgress(combined)
 
-      if ((urlTerminal || !jobId) && pdfTerminal) {
+      if ((urlTerminal || !jobId) && pdfTerminal && extraTerminal) {
         setTrainingStage('complete')
         setTrainingProgress(100)
         if (urlStage === 'error') setLocalError(urlStatus?.last_error || 'Training failed')
         const pdfError = Object.values(pdfStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
         if (pdfError) setLocalError((pdfError as any).last_error || 'PDF processing failed')
+        const extraError = Object.values(extraStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
+        if (extraError) setLocalError((extraError as any).last_error || 'Source processing failed')
       }
     }
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length])
+  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length])
 
   const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)
@@ -804,6 +882,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setPdfFiles,
         textDocFiles,
         setTextDocFiles,
+        plainTextContent,
+        setPlainTextContent,
         customTextEntries,
         setCustomTextEntries,
         discoveryDurationMs,
@@ -835,6 +915,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         jobId,
         pdfJobIds,
         pdfJobs: pdfJobIds.map((id) => ({ job_id: id, ...(pdfJobStatusById[id] || {}) })),
+        extraJobIds,
+        extraJobs: extraJobIds.map((id) => ({ job_id: id, ...(extraJobStatusById[id] || {}) })),
         localError,
         setLocalError,
         resetFlow,

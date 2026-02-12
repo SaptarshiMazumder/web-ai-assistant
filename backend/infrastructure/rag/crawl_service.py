@@ -414,6 +414,50 @@ def _normalize_text_encoding(text: str) -> str:
         pass
     return fixed
 
+def _clean_markdown_for_rag(text: str) -> str:
+    """
+    Clean up crawled markdown so Vertex RAG produces better semantic embeddings.
+
+    The main problems this fixes:
+    - Markdown tables: HTML tables become `| col | col | col |` rows which are dense
+      noise for embeddings. We flatten each row to plain space-separated text.
+    - javascript: pseudo-links: `[text](javascript:void(0);)` contributes nothing.
+      Keep only the label.
+    - Repeated blank lines: compress to at most two newlines.
+    """
+    if not text:
+        return text
+
+    lines_out: List[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+
+        # Table separator rows (| --- | --- |) → drop entirely
+        if re.match(r"^\|[\s|:-]+\|?\s*$", stripped):
+            continue
+
+        # Table data rows (| cell | cell |) → extract cell text, join with space
+        if stripped.startswith("|"):
+            # Split on | and take non-empty, non-whitespace cells
+            cells = [c.strip() for c in stripped.split("|")]
+            cells = [c for c in cells if c]
+            if cells:
+                lines_out.append("  ".join(cells))
+            continue
+
+        lines_out.append(line)
+
+    cleaned = "\n".join(lines_out)
+
+    # Strip javascript: pseudo-links → keep label text only
+    cleaned = re.sub(r"\[([^\]]*)\]\(javascript:[^)]*\)", r"\1", cleaned)
+
+    # Collapse 3+ consecutive blank lines down to 2
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+
+    return cleaned.strip()
+
+
 def _slugify(text: str) -> str:
     text = text.strip().lower()
     text = re.sub(r"[^a-z0-9]+", "-", text)
@@ -656,6 +700,7 @@ async def crawl_site_bfs(
                     if result.success:
                         content, src = _best_text(result)
                         if content:
+                            content = _clean_markdown_for_rag(content)
                             # Prefix the content with its source URL so retrieval can match vague queries
                             # without the user having to type the site/service name.
                             all_results.append({"url": result.url, "markdown": f"Source URL: {result.url}\n\n{content}"})
@@ -1121,6 +1166,7 @@ async def crawl_urls(
         if result.success:
             content, src = _best_text(result)
             if content:
+                content = _clean_markdown_for_rag(content)
                 docs.append({"url": result.url, "markdown": f"Source URL: {result.url}\n\n{content}"})
             if progress_cb:
                 try:

@@ -66,6 +66,33 @@ export type PdfSourceUploadResponse = {
   items: PdfSourceUploadItem[]
 }
 
+export type TextSourceEntry = {
+  title?: string
+  content: string
+}
+
+export type TextSourceUploadItem = {
+  source_id: string
+  job_id: string
+  status: string
+}
+
+export type TextSourceUploadResponse = {
+  bot_id: string
+  items: TextSourceUploadItem[]
+}
+
+export type DocsSourceUploadItem = {
+  source_id: string
+  job_id: string
+  status: string
+}
+
+export type DocsSourceUploadResponse = {
+  bot_id: string
+  items: DocsSourceUploadItem[]
+}
+
 /** Optional widget config for embed snippet (create-bot flow or custom embed). */
 export type EmbedSnippetConfig = {
   position?: string
@@ -339,6 +366,8 @@ type DashboardData = {
   loadSources: (botId: string) => Promise<void>
   createSource: (botId: string, type: string, config: Record<string, unknown>, displayName?: string | null) => Promise<SourceRecord | null>
   uploadPdfSources: (botId: string, files: File[], displayName?: string | null) => Promise<PdfSourceUploadResponse | null>
+  uploadTextSources: (botId: string, entries: TextSourceEntry[]) => Promise<TextSourceUploadResponse | null>
+  uploadDocsSources: (botId: string, files: File[]) => Promise<DocsSourceUploadResponse | null>
   deleteSource: (botId: string, sourceId: string) => Promise<void>
   createBot: (displayName?: string, orgIdOverride?: string | null) => Promise<BotCreateResponse | null>
   loadOrgs: () => Promise<void>
@@ -736,6 +765,54 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       }
       const data = await fetchAuthedJson<PdfSourceUploadResponse>(
         withOrgParam(`/v1/org/bots/${botId}/sources/pdf`, orgOverride),
+        { method: 'POST', body: form }
+      )
+      await loadSources(botId)
+      await loadJobs(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function uploadTextSources(
+    botId: string,
+    entries: TextSourceEntry[]
+  ): Promise<TextSourceUploadResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    const valid = (entries || []).filter((e) => (e.content || '').trim())
+    if (!valid.length) return null
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<TextSourceUploadResponse>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/text`, orgOverride),
+        { method: 'POST', body: JSON.stringify({ entries: valid }), headers: { 'Content-Type': 'application/json' } }
+      )
+      await loadSources(botId)
+      await loadJobs(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function uploadDocsSources(
+    botId: string,
+    files: File[]
+  ): Promise<DocsSourceUploadResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    const valid = (files || []).filter(Boolean)
+    if (!valid.length) return null
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const form = new FormData()
+      for (const f of valid) {
+        form.append('files', f, f.name)
+      }
+      const data = await fetchAuthedJson<DocsSourceUploadResponse>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/docs`, orgOverride),
         { method: 'POST', body: form }
       )
       await loadSources(botId)
@@ -2060,6 +2137,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     loadSources,
     createSource,
     uploadPdfSources,
+    uploadTextSources,
+    uploadDocsSources,
     deleteSource,
     createBot,
     loadOrgs,

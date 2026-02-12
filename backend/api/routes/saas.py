@@ -35,6 +35,11 @@ from api.schemas import (
     BotSourceResponse,
     PdfSourceUploadResponse,
     PdfSourceUploadItem,
+    TextSourceUploadRequest,
+    TextSourceUploadResponse,
+    TextSourceUploadItem,
+    DocsSourceUploadResponse,
+    DocsSourceUploadItem,
     BotSummary,
     Citation,
     ConversationDetailResponse,
@@ -2320,6 +2325,103 @@ async def v1_org_upload_pdf_sources(
                 )
             )
         return PdfSourceUploadResponse(bot_id=bot_id, items=items)
+    except HTTPException:
+        raise
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/v1/org/bots/{bot_id}/sources/text", response_model=TextSourceUploadResponse)
+async def v1_org_upload_text_sources(
+    bot_id: str,
+    body: TextSourceUploadRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Create one or more text/custom sources and start background ingestion.
+    Each entry in body.entries creates a BotSource(type='text') and a corresponding IndexJob.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    if not body.entries:
+        raise HTTPException(status_code=400, detail="Missing entries")
+
+    try:
+        items: List[TextSourceUploadItem] = []
+        for entry in body.entries:
+            content = (entry.content or "").strip()
+            if not content:
+                continue
+            source, job_id = await indexing_service().create_text_source_and_start_ingest(
+                bot_id=bot_id,
+                content=content,
+                title=entry.title,
+            )
+            items.append(TextSourceUploadItem(source_id=source.source_id, job_id=job_id, status="queued"))
+        if not items:
+            raise HTTPException(status_code=400, detail="No non-empty entries provided")
+        return TextSourceUploadResponse(bot_id=bot_id, items=items)
+    except HTTPException:
+        raise
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+_ALLOWED_DOC_EXTENSIONS = {".txt", ".md", ".docx", ".doc"}
+_ALLOWED_DOC_CONTENT_TYPES = {
+    "text/plain",
+    "text/markdown",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/octet-stream",
+}
+
+
+@router.post("/v1/org/bots/{bot_id}/sources/docs", response_model=DocsSourceUploadResponse)
+async def v1_org_upload_docs_sources(
+    bot_id: str,
+    files: List[UploadFile] = File(...),
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Upload one or more text document files (.txt, .md, .docx, .doc) and start background ingestion.
+    Each file creates a BotSource(type='docs') and a corresponding IndexJob.
+    """
+    import os as _os
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    if not files:
+        raise HTTPException(status_code=400, detail="Missing files")
+
+    try:
+        items: List[DocsSourceUploadItem] = []
+        for f in files:
+            filename = (getattr(f, "filename", None) or "").strip() or "document.txt"
+            ext = _os.path.splitext(filename.lower())[1]
+            if ext not in _ALLOWED_DOC_EXTENSIONS:
+                raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: .txt .md .docx .doc")
+            content_type = (getattr(f, "content_type", None) or "application/octet-stream").strip().lower()
+            data = await f.read()
+            if not data:
+                raise HTTPException(status_code=400, detail=f"Empty file: {filename}")
+            source, job_id = await indexing_service().create_docs_source_and_start_ingest(
+                bot_id=bot_id,
+                file_bytes=data,
+                filename=filename,
+                content_type=content_type,
+            )
+            items.append(DocsSourceUploadItem(source_id=source.source_id, job_id=job_id, status="queued"))
+        return DocsSourceUploadResponse(bot_id=bot_id, items=items)
     except HTTPException:
         raise
     except PermissionError as e:

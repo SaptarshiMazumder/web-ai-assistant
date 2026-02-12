@@ -22,6 +22,15 @@ def _safe_name(name: str) -> str:
     return n[:180]
 
 
+def _safe_doc_name(name: str) -> str:
+    n = (name or "").strip()
+    if not n:
+        return "document.txt"
+    n = os.path.basename(n)
+    n = re.sub(r"[^a-zA-Z0-9._-]+", "_", n).strip("_")
+    return n[:180] or "document.txt"
+
+
 @dataclass(frozen=True)
 class UploadedSourceFile:
     bucket: str
@@ -79,6 +88,45 @@ class GcsSourceFileRepository:
             gcs_uri=gcs_uri,
             filename=safe,
             bytes=len(data),
+        )
+
+    def upload_file(self, *, bot_id: str, source_id: str, filename: str, data: bytes, content_type: str = "application/octet-stream") -> UploadedSourceFile:
+        """Upload a non-PDF source file (txt, md, docx, doc) to GCS."""
+        if not self._bucket_name:
+            raise RuntimeError("GCS bucket is not configured")
+        if not bot_id or not source_id:
+            raise ValueError("Missing bot_id/source_id")
+        if not data:
+            raise ValueError("Empty file")
+
+        safe = _safe_doc_name(filename)
+        prefix = f"{self._base_prefix}/source-files/{source_id}".strip("/")
+        blob_name = f"{prefix}/{safe}"
+
+        client = self._get_client()
+        bucket = client.bucket(self._bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(data, content_type=content_type)
+
+        gcs_uri = f"gs://{self._bucket_name}/{blob_name}"
+        logger.info("Uploaded doc source to %s (%d bytes)", gcs_uri, len(data))
+        return UploadedSourceFile(
+            bucket=self._bucket_name,
+            blob_name=blob_name,
+            gcs_uri=gcs_uri,
+            filename=safe,
+            bytes=len(data),
+        )
+
+    def upload_text(self, *, bot_id: str, source_id: str, content: str) -> UploadedSourceFile:
+        """Upload large plain-text content to GCS as content.txt."""
+        data = content.encode("utf-8")
+        return self.upload_file(
+            bot_id=bot_id,
+            source_id=source_id,
+            filename="content.txt",
+            data=data,
+            content_type="text/plain; charset=utf-8",
         )
 
     def download(self, *, blob_name: str) -> bytes:

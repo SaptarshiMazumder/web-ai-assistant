@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { StopIcon } from './DiscoveryIcons'
@@ -21,6 +21,12 @@ export default function CreateBotUrlsPage() {
     setTrainingUrls,
     pdfFiles,
     setPdfFiles,
+    textDocFiles,
+    setTextDocFiles,
+    plainTextContent,
+    setPlainTextContent,
+    customTextEntries,
+    setCustomTextEntries,
     isDiscovering,
     discoveryMethod,
     discoveryDurationMs,
@@ -46,6 +52,7 @@ export default function CreateBotUrlsPage() {
       : null
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [showExtraSources, setShowExtraSources] = useState(false)
   const [sharedDiscoveryUrl, setSharedDiscoveryUrl] = useState('')
   const [sharedNormalizedDiscoveryUrl, setSharedNormalizedDiscoveryUrl] = useState('')
   const [sharedDiscoveredUrls, setSharedDiscoveredUrls] = useState<string[]>([])
@@ -504,6 +511,137 @@ export default function CreateBotUrlsPage() {
     )
   }
 
+  /* ── Extra sources panel (shared between both hosting views) ───────────── */
+  const handleAddCustomEntry = () =>
+    setCustomTextEntries([...customTextEntries, { id: Date.now().toString(), title: '', content: '' }])
+  const handleRemoveCustomEntry = (id: string) => {
+    if (customTextEntries.length > 1) setCustomTextEntries(customTextEntries.filter((e) => e.id !== id))
+  }
+  const handleUpdateCustomEntry = (id: string, field: 'title' | 'content', value: string) =>
+    setCustomTextEntries(customTextEntries.map((e) => (e.id === id ? { ...e, [field]: value } : e)))
+
+  const extraSourcesPanel = (
+    <div style={{ marginTop: '1.25rem' }}>
+      <button
+        type="button"
+        onClick={() => setShowExtraSources((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '0.5rem 0',
+          color: 'var(--flow-muted)',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+        }}
+      >
+        {showExtraSources ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        Additional sources — text files, plain text, custom entries (optional)
+      </button>
+
+      {showExtraSources && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.75rem' }}>
+
+          {/* Text document files */}
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
+              Text documents (.txt, .md, .docx, .doc)
+            </div>
+            <FileDropzone
+              label="Drop text files here"
+              helperText="Upload .txt, .md, .docx, .doc files (up to 20)"
+              files={textDocFiles}
+              setFiles={setTextDocFiles}
+              accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              multiple
+              maxFiles={20}
+            />
+          </div>
+
+          {/* Plain text */}
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
+              Plain text
+            </div>
+            <textarea
+              value={plainTextContent}
+              onChange={(e) => setPlainTextContent(e.target.value)}
+              placeholder="Paste any text for your AI to learn from…"
+              rows={6}
+              style={{
+                width: '100%',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                padding: '0.75rem',
+                border: '1px solid var(--flow-border)',
+                borderRadius: 'var(--flow-radius)',
+                background: 'var(--flow-surface)',
+              }}
+            />
+          </div>
+
+          {/* Custom entries */}
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
+              Custom entries (FAQs, policies, hours…)
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {customTextEntries.map((entry, idx) => (
+                <div
+                  key={entry.id}
+                  style={{
+                    background: 'var(--flow-surface)',
+                    border: '1px solid var(--flow-border)',
+                    borderRadius: 'var(--flow-radius)',
+                    padding: '0.875rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--flow-heading)' }}>Entry #{idx + 1}</span>
+                    {customTextEntries.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCustomEntry(entry.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--flow-muted)', padding: '0.25rem' }}
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={entry.title}
+                    onChange={(e) => handleUpdateCustomEntry(entry.id, 'title', e.target.value)}
+                    placeholder="Title (e.g. Return Policy)"
+                    style={{ width: '100%', marginBottom: '0.5rem' }}
+                  />
+                  <textarea
+                    value={entry.content}
+                    onChange={(e) => handleUpdateCustomEntry(entry.id, 'content', e.target.value)}
+                    placeholder="Content…"
+                    rows={3}
+                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <UiButton
+              variant="secondary"
+              onClick={handleAddCustomEntry}
+              style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Plus size={14} />
+              Add entry
+            </UiButton>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
   /* ── Shared-hosting sub-view ───────────────────────────────────────────── */
   if (contentHosting !== 'own') {
     return (
@@ -917,17 +1055,7 @@ export default function CreateBotUrlsPage() {
 
           <div style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ 
-                width: '40px', 
-                height: '40px', 
-                borderRadius: '10px', 
-                background: 'var(--flow-accent)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center'
-              }}>
-                <FileText size={22} color="white" strokeWidth={2.5} />
-              </div>
+              
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>
                   Add Website Pages as PDFs
@@ -1026,6 +1154,7 @@ export default function CreateBotUrlsPage() {
             multiple
             maxFiles={20}
           />
+          {extraSourcesPanel}
         </div>
 
         {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
@@ -1311,6 +1440,7 @@ export default function CreateBotUrlsPage() {
         multiple
         maxFiles={20}
       />
+      {extraSourcesPanel}
 
       {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 

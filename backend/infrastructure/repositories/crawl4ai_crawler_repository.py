@@ -10,6 +10,7 @@ from domain.repositories import CrawlerRepository
 
 from infrastructure.rag.crawl_service import (
     _best_text,
+    _clean_markdown_for_rag,
     _get_str,
     _is_url_under_root_path,
     _len_attr,
@@ -153,6 +154,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                                     (None, None),
                                 )
                                 if content:
+                                    content = _clean_markdown_for_rag(content)
                                     all_docs.append(
                                         Document(
                                             url=result_url,
@@ -301,6 +303,7 @@ class Crawl4AICrawlerRepository(CrawlerRepository):
                             (None, None),
                         )
                         if content:
+                            content = _clean_markdown_for_rag(content)
                             docs.append(
                                 Document(
                                     url=result_url,

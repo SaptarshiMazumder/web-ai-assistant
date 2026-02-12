@@ -26,6 +26,8 @@ from infrastructure.celery_app import celery_app
 from infrastructure.tasks.crawl_tasks import crawl_job_task
 from infrastructure.tasks.single_page_crawl_tasks import single_page_crawl_job
 from infrastructure.tasks.pdf_source_tasks import pdf_source_ingest_job
+from infrastructure.tasks.text_source_tasks import text_source_ingest_job
+from infrastructure.tasks.docs_source_tasks import docs_source_ingest_job
 from infrastructure.services.indexing_service import (
     _bot_base_prefix,
     _display_name_from_url,
@@ -329,6 +331,182 @@ class IndexingService:
             job.last_error = f"Failed to queue PDF task: {str(e)[:200]}"
             self._job_repo.update_job(job)
             raise RuntimeError(f"Failed to queue PDF ingestion task: {str(e)}")
+
+        return source, job_id
+
+    async def create_text_source_and_start_ingest(
+        self,
+        *,
+        bot_id: str,
+        content: str,
+        title: Optional[str] = None,
+    ) -> Tuple[BotSource, str]:
+        """
+        Create a text/custom source and enqueue a background ingestion job.
+        For content >50 000 chars the raw text is stored in GCS instead of inline.
+        Returns (source, job_id).
+        """
+        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
+            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not bot_id:
+            raise ValueError("Missing bot_id")
+        content = (content or "").strip()
+        if not content:
+            raise ValueError("Empty text content")
+
+        corpus = self._rag_repo.ensure_corpus(bot_id)
+        bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+        base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        title_str = (title or "").strip() or None
+        display = title_str or f"Text ({len(content)} chars)"
+
+        source_cfg: dict = {
+            "title": title_str or "",
+            "char_count": len(content),
+        }
+
+        # Store large content in GCS to avoid DB bloat
+        if len(content) > 50_000:
+            source_cfg["content"] = ""  # placeholder; will be overwritten after GCS upload
+        else:
+            source_cfg["content"] = content
+
+        source = self.create_source(bot_id, "text", source_cfg, display_name=display)
+
+        if len(content) > 50_000:
+            file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix)
+            uploaded = file_repo.upload_text(bot_id=bot_id, source_id=source.source_id, content=content)
+            source.config = dict(source.config or {})
+            source.config.update({"gcs_content_blob": uploaded.blob_name, "gcs_content_uri": uploaded.gcs_uri})
+            source.updated_at = datetime.now(timezone.utc).isoformat()
+            self._source_repo.update_source(source)
+
+        job_id = uuid.uuid4().hex
+        job = IndexJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            url=f"https://text.local/{bot_id}/{source.source_id}",
+            hostname="text.local",
+            stage="queued",
+            pages_crawled=0,
+            docs_count=0,
+            last_crawled_url="",
+            last_depth=-1,
+            gcs_prefix="",
+            last_error="",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source.source_id,
+        )
+        self._job_repo.create_job(job)
+
+        try:
+            task = text_source_ingest_job.delay(
+                job_id=job_id,
+                bot_id=bot_id,
+                source_id=source.source_id,
+                bucket_name=bucket_name,
+                base_prefix=base_prefix,
+                corpus_resource=corpus,
+            )
+            task_id = task.id if task else None
+            if task_id:
+                job.celery_task_id = task_id
+                self._job_repo.update_job(job)
+        except Exception as e:
+            job.stage = "error"
+            job.last_error = f"Failed to queue text task: {str(e)[:200]}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue text ingestion task: {str(e)}")
+
+        return source, job_id
+
+    async def create_docs_source_and_start_ingest(
+        self,
+        *,
+        bot_id: str,
+        file_bytes: bytes,
+        filename: str,
+        content_type: str = "application/octet-stream",
+    ) -> Tuple[BotSource, str]:
+        """
+        Create a docs source (.txt/.md/.docx/.doc) and enqueue a background ingestion job.
+        Returns (source, job_id).
+        """
+        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
+            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not bot_id:
+            raise ValueError("Missing bot_id")
+        if not file_bytes:
+            raise ValueError("Empty file")
+
+        corpus = self._rag_repo.ensure_corpus(bot_id)
+        bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+        base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        source = self.create_source(
+            bot_id,
+            "docs",
+            {"filename": (filename or "").strip() or "document.txt", "content_type": content_type},
+            display_name=(filename or "").strip() or None,
+        )
+
+        file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix)
+        uploaded = file_repo.upload_file(
+            bot_id=bot_id,
+            source_id=source.source_id,
+            filename=filename,
+            data=file_bytes,
+            content_type=content_type,
+        )
+        source.config = dict(source.config or {})
+        source.config.update({
+            "filename": uploaded.filename,
+            "gcs_uri": uploaded.gcs_uri,
+            "gcs_blob": uploaded.blob_name,
+            "bytes": uploaded.bytes,
+        })
+        source.updated_at = datetime.now(timezone.utc).isoformat()
+        self._source_repo.update_source(source)
+
+        job_id = uuid.uuid4().hex
+        job = IndexJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            url=f"https://docs.local/{bot_id}/{source.source_id}/{uploaded.filename}",
+            hostname="docs.local",
+            stage="queued",
+            pages_crawled=0,
+            docs_count=0,
+            last_crawled_url="",
+            last_depth=-1,
+            gcs_prefix="",
+            last_error="",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source.source_id,
+        )
+        self._job_repo.create_job(job)
+
+        try:
+            task = docs_source_ingest_job.delay(
+                job_id=job_id,
+                bot_id=bot_id,
+                source_id=source.source_id,
+                bucket_name=bucket_name,
+                base_prefix=base_prefix,
+                corpus_resource=corpus,
+            )
+            task_id = task.id if task else None
+            if task_id:
+                job.celery_task_id = task_id
+                self._job_repo.update_job(job)
+        except Exception as e:
+            job.stage = "error"
+            job.last_error = f"Failed to queue docs task: {str(e)[:200]}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue docs ingestion task: {str(e)}")
 
         return source, job_id
 
