@@ -61,11 +61,12 @@ export default function BotDesignTab() {
 
   return (
     <AnimatedPage>
+
       <SectionHeader
-        eyebrow="Widget"
-        title="Visual design system"
-        subtitle="Tune surfaces, spacing, color accents, and micro-interactions for your bot widget."
+        title="Design the chat widget"
+        subtitle="Customize how the widget appears. Changes update the preview on the right."
       />
+
       <WidgetDesignForm
         value={state}
         onChange={update}

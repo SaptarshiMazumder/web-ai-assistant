@@ -500,6 +500,8 @@ class ExtractedTopicItem(BaseModel):
     category: Optional[str] = None
     confidence: float = 1.0
     source_urls: List[str] = []
+    source_url: Optional[str] = None
+    origin: str = "extracted"
     occurrence_count: int = 1
     is_active: bool = True
     extracted_at: Optional[str] = None
@@ -556,6 +558,47 @@ class TopicJobItem(BaseModel):
 class TopicJobsResponse(BaseModel):
     bot_id: str
     jobs: List[TopicJobItem] = []
+
+
+# ========== Topic Usage / Question Mapping ==========
+
+class TopicUsageItem(BaseModel):
+    topic_id: str
+    topic: str
+    category: str = "other"
+    question_count: int = 0
+    source_url: Optional[str] = None
+    origin: str = "extracted"
+
+
+class TopicUsageSummaryResponse(BaseModel):
+    bot_id: str
+    topics: List[TopicUsageItem] = []
+    total_questions: int = 0
+
+
+class TopicQuestionItem(BaseModel):
+    id: str
+    topic_id: str
+    session_id: str
+    message_id: Optional[str] = None
+    question_text: Optional[str] = None
+    asked_at: str
+    session_title: Optional[str] = None
+
+
+class TopicQuestionsResponse(BaseModel):
+    topic_id: str
+    questions: List[TopicQuestionItem] = []
+
+
+class SyncUrlBankRequest(BaseModel):
+    url_bank: List[dict] = []
+
+
+class ComputeMappingsResponse(BaseModel):
+    bot_id: str
+    new_mappings: int = 0
 
 
 # ========== Availability Jobs ==========

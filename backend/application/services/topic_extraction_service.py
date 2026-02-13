@@ -65,9 +65,9 @@ Rules:
 
 Example output:
 [
-  {"topic": "refunds", "confidence": 0.95},
-  {"topic": "pricing plans", "confidence": 0.9},
-  {"topic": "business hours", "confidence": 0.85}
+  {{"topic": "refunds", "confidence": 0.95}},
+  {{"topic": "pricing plans", "confidence": 0.9}},
+  {{"topic": "business hours", "confidence": 0.85}}
 ]
 
 Extract up to {max_topics} most relevant topics. Be specific and practical.
@@ -81,13 +81,13 @@ Guidelines:
 - Categories should be lowercase, 1-3 words.
 - Use categories that fit the business domain. Examples only: pricing, faq, refunds, shipping, support.
 - Return ONLY a JSON object with no markdown fences or commentary:
-  {
+  {{
     "categories": ["category1", "category2", "..."],
     "topics": [
-      {"topic": "topic text", "category": "category1"},
+      {{"topic": "topic text", "category": "category1"}},
       ...
     ]
-  }
+  }}
 - Every topic must appear exactly once in "topics".
 - Each topic's category must be one of "categories".
 - Include "other" as a category if needed.
@@ -425,18 +425,23 @@ class TopicExtractionService:
         try:
             client = _get_genai_client()
             chunks = _split_content_into_chunks(content, TOPIC_CHUNK_CHARS, TOPIC_MAX_CHUNKS)
+            print(f"[TopicExtraction] Content {len(content)} chars → {len(chunks)} chunks")
             candidates: List[Dict[str, Any]] = []
-            for chunk in chunks:
-                candidates.extend(_extract_topic_candidates_from_chunk(
+            for i, chunk in enumerate(chunks):
+                chunk_candidates = _extract_topic_candidates_from_chunk(
                     client,
                     chunk,
                     TOPIC_MAX_TOPICS_PER_CHUNK,
-                ))
+                )
+                print(f"[TopicExtraction] Chunk {i+1}/{len(chunks)}: {len(chunk_candidates)} candidates")
+                candidates.extend(chunk_candidates)
 
+            print(f"[TopicExtraction] Total candidates before dedup: {len(candidates)}")
             if not candidates:
                 return []
 
             deduped = _dedupe_topic_candidates(candidates)
+            print(f"[TopicExtraction] After dedup: {len(deduped)} topics")
             if not deduped:
                 return []
             if len(deduped) > TOPIC_MAX_TOPICS_TOTAL:
@@ -462,10 +467,13 @@ class TopicExtractionService:
                     validated["source_urls"] = source_urls or []
                     topics.append(validated)
 
+            print(f"[TopicExtraction] Final validated topics: {len(topics)}")
             return topics
-            
+
         except Exception as e:
+            import traceback
             print(f"[TopicExtraction] Error extracting topics: {e}")
+            traceback.print_exc()
             return []
     
     def extract_topics_for_bot(
@@ -638,6 +646,8 @@ class TopicExtractionService:
                 "category": t.category,
                 "confidence": t.confidence,
                 "source_urls": t.source_urls,
+                "source_url": t.source_url,
+                "origin": t.origin,
                 "occurrence_count": t.occurrence_count,
                 "is_active": t.is_active,
                 "extracted_at": t.extracted_at,
@@ -645,7 +655,7 @@ class TopicExtractionService:
             }
             for t in topics
         ]
-    
+
     def update_topic(
         self,
         *,
@@ -678,6 +688,58 @@ class TopicExtractionService:
     def delete_topic(self, *, topic_id: str) -> bool:
         """Delete a topic."""
         return self._topic_repo.delete_topic(topic_id=topic_id)
+
+    def sync_url_bank_topics(
+        self,
+        *,
+        org_id: str,
+        bot_id: str,
+        url_bank: List[Dict[str, str]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Sync URL bank entries as topics with origin='url_bank'.
+        Each entry {label, url} becomes a topic named by its label with source_url set.
+        Existing url_bank topics not in new list are deactivated.
+        """
+        if not url_bank:
+            return []
+        topics_to_save = []
+        for entry in url_bank:
+            label = (entry.get("label") or "").strip()
+            url = (entry.get("url") or "").strip()
+            if not label:
+                continue
+            topics_to_save.append({
+                "topic": label.lower(),
+                "category": "other",
+                "confidence": 1.0,
+                "source_urls": [url] if url else [],
+                "source_url": url or None,
+                "origin": "url_bank",
+            })
+        if not topics_to_save:
+            return []
+        saved = self._topic_repo.save_extracted_topics(
+            org_id=org_id,
+            bot_id=bot_id,
+            topics=topics_to_save,
+        )
+        return [
+            {
+                "topic_id": t.topic_id,
+                "topic": t.topic,
+                "category": t.category,
+                "confidence": t.confidence,
+                "source_urls": t.source_urls,
+                "source_url": t.source_url,
+                "origin": t.origin,
+                "occurrence_count": t.occurrence_count,
+                "is_active": t.is_active,
+                "extracted_at": t.extracted_at,
+                "updated_at": t.updated_at,
+            }
+            for t in saved
+        ]
 
 
 # Singleton instance

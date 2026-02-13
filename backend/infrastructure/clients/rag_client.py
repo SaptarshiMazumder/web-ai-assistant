@@ -77,7 +77,12 @@ def format_evidence_block(evidence: List[Dict[str, str]], limit: int = 60) -> st
         if len(snip) > 1500:
             snip = snip[:1500] + " ..."
         url = e.get("url") or ""
-        lines.append(f"--- snippet from {url} ---\n{snip}")
+        title = (e.get("title") or "").strip()
+        header = f"--- snippet from {url}"
+        if title:
+            header += f' ("{title}")'
+        header += " ---"
+        lines.append(f"{header}\n{snip}")
     return "\n\n".join(lines)
 
 def sanitize_answer_citations(text: str) -> str:
@@ -105,6 +110,13 @@ def sanitize_answer_citations(text: str) -> str:
             seg = re.sub(r"[\-_]+", " ", seg)
             seg = re.sub(r"\s+", " ", seg).strip()
             if not seg or seg in ("index", "home", "top"):
+                return "this page"
+            # Detect garbage alphanumeric segments (e.g. "13267332" or "a3f9c2b1")
+            # If mostly digits or looks like a hash/ID, fall back to a cleaner label
+            digit_ratio = sum(1 for c in seg if c.isdigit()) / max(1, len(seg))
+            if digit_ratio > 0.5 and len(seg) > 4:
+                return "this page"
+            if re.fullmatch(r"[a-f0-9]{6,}", seg):  # looks like a hex hash
                 return "this page"
             common = {
                 "about": "about page",
@@ -1017,3 +1029,64 @@ def run_vertex_rag_stream(
         "selected_links": [],
         "visited_urls": [],
     }
+
+def extract_topics_from_titles(titles: List[str]) -> Dict[str, int]:
+    """
+    Given a list of session titles (user queries), use LLM to cluster them into topics with counts.
+    """
+    if not titles:
+        # Default empty dict
+        return {}
+    
+    # We must ensure client init here
+    if not PROJECT_ID:
+        # If project ID is not set, we cannot use LLM.
+        return {}
+
+    try:
+        # We can reuse the same global client if we want, but creating a new one with correct vertexai init is safer
+        # to ensure context is clean if run outside the main app context (e.g. celery task).
+        client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+
+        # Cap to 500 items to be safe and efficient
+        sample = titles[:500]
+        
+        # Build prompt
+        prompt = (
+            "Analyze the following user queries from a chatbot session history. "
+            "Group them into 5-10 distinct, meaningful high-level topics (e.g., 'Pricing', 'Technical Support', 'Product Info'). "
+            "Return a strictly valid JSON object mapping each topic name to the count of queries that belong to it.\n"
+            "Rules:\n"
+            "1. Topics must be short (2-5 words).\n"
+            "2. Ignore simple greetings (hi, hello) unless they are the majority.\n"
+            "3. Output ONLY valid JSON: {\"Topic A\": 5, \"Topic B\": 3}\n"
+            "4. Do not include markdown code fences (```json or ```).\n\n"
+            "User Queries:\n" + "\n".join(f"- {t}" for t in sample)
+        )
+        
+        resp = client.models.generate_content(
+            model=MODEL_NAME,
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=prompt)])],
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                max_output_tokens=1024,
+                response_mime_type="application/json",
+            ),
+        )
+        
+        txt = (resp.text or "").strip()
+        # Clean up code fences just in case
+        txt = re.sub(r"^```json\s*", "", txt, flags=re.MULTILINE)
+        txt = re.sub(r"\s*```$", "", txt, flags=re.MULTILINE)
+        
+        data = json.loads(txt)
+        cleaned = {}
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if isinstance(v, (int, float)):
+                    cleaned[str(k).strip()] = int(v)
+        return cleaned
+        
+    except Exception as e:
+        print(f"[TopicExtraction] LLM error: {e}")
+        return {}

@@ -10,7 +10,6 @@ const FOOTER_MAX_LENGTH = 200
 export type WidgetDesignState = {
   widgetPosition: 'bottom-right' | 'bottom-left'
   widgetPrimaryColor: string
-  businessType: '' | 'hotel' | 'other'
   widgetTitle: string
   widgetSize: 'small' | 'medium' | 'large'
   welcomeMessage: string
@@ -43,7 +42,6 @@ export type SuggestedMessageConfig = {
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   widgetPosition: 'bottom-right',
   widgetPrimaryColor: '#e4587a',
-  businessType: '',
   widgetTitle: 'Chat',
   widgetSize: 'medium',
   welcomeMessage: 'Welcome! How can I help you today?',
@@ -76,8 +74,6 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   const pos = config.position
   if (pos === 'bottom-right' || pos === 'bottom-left') d.widgetPosition = pos
   if (typeof config.color === 'string') d.widgetPrimaryColor = config.color
-  const bt = config.businessType
-  if (bt === 'hotel' || bt === 'other') d.businessType = bt
   if (typeof config.title === 'string') d.widgetTitle = config.title
   const size = config.size
   if (size === 'small' || size === 'medium' || size === 'large') d.widgetSize = size
@@ -124,7 +120,6 @@ export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknow
   return {
     position: s.widgetPosition,
     color: s.widgetPrimaryColor,
-    businessType: s.businessType || undefined,
     title: s.widgetTitle || 'Chat',
     size: s.widgetSize,
     welcomeMessage: s.welcomeMessage || undefined,
@@ -190,7 +185,6 @@ export function WidgetDesignForm({
   const {
     widgetPosition,
     widgetPrimaryColor,
-    businessType,
     widgetTitle,
     widgetSize,
     welcomeMessage,
@@ -221,13 +215,8 @@ export function WidgetDesignForm({
   }, [maxHeight, maxHeightLimit, update])
 
   return (
-    <div className="flow-panel-body">
-      <div>
-        <h2 className="card-title" style={{ marginBottom: '0.25rem' }}>Design the chat widget</h2>
-        <p className="card-subtitle" style={{ margin: 0 }}>
-          Customize how the widget appears. Changes update the preview on the right.
-        </p>
-      </div>
+    <div className="flow-panel-body flow-panel-body--wide">
+
 
       {banner}
 
@@ -286,19 +275,7 @@ export function WidgetDesignForm({
                     />
                   </div>
                 </div>
-                <div className="design-form-field">
-                  <label className="design-form-label">Business type</label>
-                  <span className="design-form-hint">Hotel bots can use booking and availability features.</span>
-                  <FlowSelect
-                    value={businessType}
-                    onChange={(next) => update('businessType', (next || '') as '' | 'hotel' | 'other')}
-                    options={[
-                      { value: '', label: '--' },
-                      { value: 'hotel', label: 'Hotel' },
-                      { value: 'other', label: 'Other' },
-                    ]}
-                  />
-                </div>
+
               </div>
               <div className="design-form-field design-form-field-full">
                 <label className="design-form-label">Initial welcome message</label>

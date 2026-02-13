@@ -11,13 +11,18 @@ import {
   Palette,
   MessageCircle,
   FlaskConical,
-  MessageSquare,
+
   Bell,
   Settings,
-  Tags,
-  MessagesSquare,
   Instagram,
+  Globe,
+  UserCircle,
+  UsersRound,
+  History,
+  Briefcase,
+  AlertCircle,
 } from 'lucide-react'
+import { LineIcon } from '../assets/icons/LineIcon'
 
 export type PrimaryNavItem = {
   id: string
@@ -31,6 +36,8 @@ export type SecondaryNavItem = {
   label: string
   to: string
   icon: LucideIcon
+  header?: string // Optional category header
+  separator?: boolean // Optional separator before item
 }
 
 export const primaryNavConfig: PrimaryNavItem[] = [
@@ -63,18 +70,33 @@ export const botsSecondaryItemsBase: SecondaryNavItem[] = [
   { id: 'create', label: 'Create AI Agent', to: '/create-bot', icon: Plus },
 ]
 
-export const botTabSecondaryItems = (botId: string) => [
+export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
+  // Top-level (no header)
   { id: 'overview', label: 'Overview', to: `/bots/${botId}/overview`, icon: LayoutDashboard },
-  { id: 'knowledge', label: 'Knowledge', to: `/bots/${botId}/knowledge`, icon: BookOpen },
-  { id: 'design', label: 'Design', to: `/bots/${botId}/design`, icon: Palette },
-  { id: 'suggested', label: 'Suggestions', to: `/bots/${botId}/suggested-messages`, icon: MessageCircle },
-  { id: 'topics', label: 'Topics', to: `/bots/${botId}/topics`, icon: Tags },
-  { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical },
-  { id: 'conversations', label: 'Conversations', to: `/bots/${botId}/conversations`, icon: MessageSquare },
-  { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: Bell },
-  { id: 'instagram', label: 'Instagram', to: `/bots/${botId}/instagram`, icon: Instagram },
-  { id: 'line', label: 'LINE', to: `/bots/${botId}/line`, icon: MessagesSquare },
-  { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings },
+  { id: 'notifications', label: 'Notifications', to: `/bots/${botId}/notifications`, icon: Bell },
+
+  // Sources section (was Knowledge)
+  { id: 'knowledge', label: 'Sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'Agent Knowledge' },
+  { id: 'suggested', label: 'Suggested Messages', to: `/bots/${botId}/suggested-messages`, icon: MessageCircle, header: 'Agent Knowledge' },
+  { id: 'business-assets', label: 'Business Assets', to: `/bots/${botId}/business-assets`, icon: Briefcase, header: 'Agent Knowledge' },
+
+  // Appearance section (was Design)
+  { id: 'design', label: 'Appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'Agent Design' },
+  { id: 'persona', label: 'Personas', to: `/bots/${botId}/persona`, icon: UserCircle, header: 'Agent Design' },
+  { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'Agent Design' },
+
+  // Install section
+  { id: 'website', label: 'Website', to: `/bots/${botId}/website`, icon: Globe, header: 'Install' },
+  { id: 'instagram', label: 'Instagram', to: `/bots/${botId}/instagram`, icon: Instagram, header: 'Install' },
+  { id: 'line', label: 'LINE', to: `/bots/${botId}/line`, icon: LineIcon, header: 'Install' },
+
+  // Contacts section
+  { id: 'conversations', label: 'Chat History', to: `/bots/${botId}/conversations`, icon: History, header: 'Contacts' },
+  { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'Contacts' },
+  { id: 'leads', label: 'Leads', to: `/bots/${botId}/leads`, icon: UsersRound, header: 'Contacts' },
+
+  // Settings (standalone with separator)
+  { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings, separator: true },
 ]
 
 export type SidebarItem = {

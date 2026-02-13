@@ -5,7 +5,6 @@
 
 import autographIcon from '../../assets/icons8/autograph.png'
 import googleDocsIcon from '../../assets/icons8/google-docs.png'
-import chainIcon from '../../assets/icons8/chain.png'
 import learningIcon from '../../assets/icons8/learning.png'
 import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
 import googleCodeIcon from '../../assets/icons8/google-code.png'
@@ -53,14 +52,6 @@ const BASE_STEPS: readonly CreateBotStep[] = [
     description: "We'll start learning from what you added.",
     icon: 'model_training',
     iconUrl: learningIcon,
-  },
-  {
-    id: 'topics',
-    path: '/create-bot/topics',
-    label: 'Helpful links',
-    description: 'Add important links for common customer questions.',
-    icon: 'link',
-    iconUrl: chainIcon,
   },
   {
     id: 'widget',

@@ -7,7 +7,7 @@ function sourceTypeLabel(type: string): string {
   const t = (type || '').toLowerCase()
   if (t === 'url') return 'URL'
   if (t === 'drive') return 'Drive'
-  if (t === 'docs') return 'Google Docs'
+  if (t === 'docs') return 'Doc'
   return type || '—'
 }
 

@@ -145,184 +145,182 @@ export default function BotConversationsTab() {
   }
 
   return (
-    <AnimatedPage className="conversations-page">
+    <AnimatedPage>
       <SectionHeader
         eyebrow="Conversations"
         title="Live inbox and replay"
         subtitle="Track active chats, escalations, and message timelines in one place."
       />
       <div className="card-grid conversation-grid">
-      <GlassCard className="conversation-panel conversation-panel--list">
-        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <MessagesSquare size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-          Conversation sessions
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search messages…"
-            style={{ flex: 1 }}
-          />
-          <UiButton variant="secondary" onClick={() => void loadSessions()} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-            <Search size={14} />
-            Search
-          </UiButton>
-          <UiButton
-            variant="ghost"
-            onClick={() => void exportConversationsCsv(selectedBot.bot_id, { q: query.trim() || null })}
-            disabled={loading}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <Download size={14} />
-            Export CSV
-          </UiButton>
-        </div>
-        {loading && <div className="muted">Loading...</div>}
-        {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
-        <div className="conversation-list">
-          {sessions.map((s) => (
-            <button
-              key={s.session_id}
-              type="button"
-              className={`conversation-row${s.session_id === selectedSession ? ' conversation-row--selected' : ''}`}
-              onClick={() => void openSession(s.session_id)}
+        <GlassCard className="conversation-panel conversation-panel--list">
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessagesSquare size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+            Conversation sessions
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search messages…"
+              style={{ flex: 1 }}
+            />
+            <UiButton variant="secondary" onClick={() => void loadSessions()} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Search size={14} />
+              Search
+            </UiButton>
+            <UiButton
+              variant="ghost"
+              onClick={() => void exportConversationsCsv(selectedBot.bot_id, { q: query.trim() || null })}
+              disabled={loading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
             >
-              <div className="conversation-row-top">
-                <div className="conversation-title">
-                  {s.title || s.site_title || s.site_url || s.session_id}
+              <Download size={14} />
+              Export CSV
+            </UiButton>
+          </div>
+          {loading && <div className="muted">Loading...</div>}
+          {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
+          <div className="conversation-list">
+            {sessions.map((s) => (
+              <button
+                key={s.session_id}
+                type="button"
+                className={`conversation-row${s.session_id === selectedSession ? ' conversation-row--selected' : ''}`}
+                onClick={() => void openSession(s.session_id)}
+              >
+                <div className="conversation-row-top">
+                  <div className="conversation-title">
+                    {s.title || s.site_title || s.site_url || s.session_id}
+                  </div>
+                  <div className="conversation-time">{formatListTime(s.last_active_at)}</div>
                 </div>
-                <div className="conversation-time">{formatListTime(s.last_active_at)}</div>
-              </div>
-              <div className="conversation-meta">
-                {statusForSession(s) && (
-                  <span
-                    className={`conversation-status ${
-                      statusForSession(s) === 'Active'
-                        ? 'active'
-                        : statusForSession(s) === 'Away'
-                        ? 'inactive'
-                        : 'ended'
-                    }`}
-                  >
-                    {statusForSession(s)}
-                  </span>
-                )}
-                {s.message_count} messages
-                {escalatedSessionIds.has(s.session_id) && (
-                  <span className="conversation-pill conversation-pill--escalated">Escalated</span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      </GlassCard>
+                <div className="conversation-meta">
+                  {statusForSession(s) && (
+                    <span
+                      className={`conversation-status ${statusForSession(s) === 'Active'
+                          ? 'active'
+                          : statusForSession(s) === 'Away'
+                            ? 'inactive'
+                            : 'ended'
+                        }`}
+                    >
+                      {statusForSession(s)}
+                    </span>
+                  )}
+                  {s.message_count} messages
+                  {escalatedSessionIds.has(s.session_id) && (
+                    <span className="conversation-pill conversation-pill--escalated">Escalated</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </GlassCard>
 
-      <GlassCard className="conversation-panel conversation-panel--detail">
-        <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <MessageCircle size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-          Conversation details{messages.length ? ` (${messages.length} messages)` : ''}
-        </div>
-        {!selectedSession && <div className="muted">Select a session to view messages.</div>}
-        {selectedSession && (
-          <>
-            {selectedSessionRecord && (
-              <>
-                <div className="detail-row">
-                  <span>Status</span>
-                  <span
-                    className={`conversation-status ${
-                      statusForSession(selectedSessionRecord) === 'Active'
-                        ? 'active'
-                        : statusForSession(selectedSessionRecord) === 'Away'
-                        ? 'inactive'
-                        : statusForSession(selectedSessionRecord) === 'Session ended'
-                        ? 'ended'
-                        : 'inactive'
-                    }`}
-                  >
-                    {statusForSession(selectedSessionRecord)}
-                  </span>
-                </div>
-              </>
-            )}
-            <div className="conversation-actions">
-              <UiButton variant="secondary" onClick={() => setSelectedSession(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <ArrowLeft size={14} />
-                Back to list
-              </UiButton>
-              <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <XCircle size={14} />
-                End session
-              </UiButton>
-            </div>
-            <div className="conversation-messages">
-              {(() => {
-                let escalationRendered = false
-                return messages.map((m, idx) => {
-                const prev = messages[idx - 1]
-                const showDate = toDateKey(m.created_at || null) !== toDateKey(prev?.created_at || null)
-                if (m.role === 'system') {
-                  const shouldShowEscalation =
-                    !escalationRendered &&
-                    !!escalation?.visitor_email &&
-                    m.content?.toLowerCase().includes('escalated to support')
-                  if (shouldShowEscalation) {
-                    escalationRendered = true
-                  }
-                  return (
-                    <div key={m.message_id || `${m.role}-${idx}`}>
-                      {showDate && (
-                        <div className="conversation-date-separator">
-                          {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
-                        </div>
-                      )}
-                      <div className="conversation-system-note">{m.content}</div>
-                      {shouldShowEscalation && (
-                        <div className="conversation-escalation-box">
-                          <div className="conversation-escalation-row">
-                            <span>Email</span>
-                            <span>{escalation?.visitor_email}</span>
-                          </div>
-                          {escalation?.details && (
-                            <div className="conversation-escalation-row">
-                              <span>Details</span>
-                              <span>{escalation.details}</span>
+        <GlassCard className="conversation-panel conversation-panel--detail">
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <MessageCircle size={16} style={{ color: 'var(--ui-flow-accent)' }} />
+            Conversation details{messages.length ? ` (${messages.length} messages)` : ''}
+          </div>
+          {!selectedSession && <div className="muted">Select a session to view messages.</div>}
+          {selectedSession && (
+            <>
+              {selectedSessionRecord && (
+                <>
+                  <div className="detail-row">
+                    <span>Status</span>
+                    <span
+                      className={`conversation-status ${statusForSession(selectedSessionRecord) === 'Active'
+                          ? 'active'
+                          : statusForSession(selectedSessionRecord) === 'Away'
+                            ? 'inactive'
+                            : statusForSession(selectedSessionRecord) === 'Session ended'
+                              ? 'ended'
+                              : 'inactive'
+                        }`}
+                    >
+                      {statusForSession(selectedSessionRecord)}
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="conversation-actions">
+                <UiButton variant="secondary" onClick={() => setSelectedSession(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <ArrowLeft size={14} />
+                  Back to list
+                </UiButton>
+                <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <XCircle size={14} />
+                  End session
+                </UiButton>
+              </div>
+              <div className="conversation-messages">
+                {(() => {
+                  let escalationRendered = false
+                  return messages.map((m, idx) => {
+                    const prev = messages[idx - 1]
+                    const showDate = toDateKey(m.created_at || null) !== toDateKey(prev?.created_at || null)
+                    if (m.role === 'system') {
+                      const shouldShowEscalation =
+                        !escalationRendered &&
+                        !!escalation?.visitor_email &&
+                        m.content?.toLowerCase().includes('escalated to support')
+                      if (shouldShowEscalation) {
+                        escalationRendered = true
+                      }
+                      return (
+                        <div key={m.message_id || `${m.role}-${idx}`}>
+                          {showDate && (
+                            <div className="conversation-date-separator">
+                              {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
+                            </div>
+                          )}
+                          <div className="conversation-system-note">{m.content}</div>
+                          {shouldShowEscalation && (
+                            <div className="conversation-escalation-box">
+                              <div className="conversation-escalation-row">
+                                <span>Email</span>
+                                <span>{escalation?.visitor_email}</span>
+                              </div>
+                              {escalation?.details && (
+                                <div className="conversation-escalation-row">
+                                  <span>Details</span>
+                                  <span>{escalation.details}</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
-                  )
-                }
-                return (
-                  <div key={m.message_id || `${m.role}-${idx}`}>
-                    {showDate && (
-                      <div className="conversation-date-separator">
-                        {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
-                      </div>
-                    )}
-                    <div className={`conversation-bubble-row conversation-bubble-row--${m.role}`}>
-                      <div className={`conversation-avatar conversation-avatar--${m.role}`}>
-                        {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                      </div>
-                      <div className={`conversation-message conversation-message--${m.role}`}>
-                        {m.sender_name && <div className="conversation-sender-name">{m.sender_name}</div>}
-                        <div className="conversation-message-content">{m.content}</div>
-                        <div className="conversation-message-time">
-                          {formatMessageTime(m.created_at || null)}
+                      )
+                    }
+                    return (
+                      <div key={m.message_id || `${m.role}-${idx}`}>
+                        {showDate && (
+                          <div className="conversation-date-separator">
+                            {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
+                          </div>
+                        )}
+                        <div className={`conversation-bubble-row conversation-bubble-row--${m.role}`}>
+                          <div className={`conversation-avatar conversation-avatar--${m.role}`}>
+                            {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                          </div>
+                          <div className={`conversation-message conversation-message--${m.role}`}>
+                            {m.sender_name && <div className="conversation-sender-name">{m.sender_name}</div>}
+                            <div className="conversation-message-content">{m.content}</div>
+                            <div className="conversation-message-time">
+                              {formatMessageTime(m.created_at || null)}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                )
-              })
-              })()}
-              {messages.length === 0 && !loading && <div className="muted">No messages found.</div>}
-            </div>
-          </>
-        )}
-      </GlassCard>
+                    )
+                  })
+                })()}
+                {messages.length === 0 && !loading && <div className="muted">No messages found.</div>}
+              </div>
+            </>
+          )}
+        </GlassCard>
       </div>
     </AnimatedPage>
   )

@@ -35,4 +35,9 @@ worker_disable_rate_limits = False
 # }
 
 # Beat schedule (for periodic tasks - not needed now, but ready for future)
-beat_schedule = {}
+beat_schedule = {
+    "rollup-analytics-hourly": {
+        "task": "infrastructure.tasks.analytics_tasks.rollup_analytics",
+        "schedule": crontab(minute="0"),  # Run once an hour
+    },
+}

@@ -376,6 +376,28 @@ def _best_text(result: Any) -> Tuple[str, str]:
     return _normalize_text_encoding(combined), used_src or primary_src or ""
 
 
+def _extract_page_title(result: Any) -> str:
+    """Extract human-readable page title from a crawl result."""
+    # Try crawl4ai direct title attribute
+    title = getattr(result, "title", "") or ""
+    if title and isinstance(title, str):
+        return title.strip()
+    # Try metadata dict
+    meta = getattr(result, "metadata", None)
+    if isinstance(meta, dict):
+        title = meta.get("title", "") or meta.get("og:title", "") or ""
+        if title:
+            return str(title).strip()
+    # Fallback: parse <title> from HTML
+    html = _get_str(result, "html") or _get_str(result, "raw_html")
+    if html:
+        import re as _re
+        m = _re.search(r"<title[^>]*>([^<]+)</title>", html, _re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
 def _quality_score(text: str) -> float:
     if not text:
         return 0.0
@@ -570,15 +592,16 @@ def upload_markdown_docs_to_gcs(
     host_prefix = host_prefix_from_url(first_url)
     prefix = f"{base_prefix}/{host_prefix}/{timestamp}"
 
-    url_map: Dict[str, str] = {}  # filename -> page URL for citation resolution at retrieval
+    url_map: Dict[str, Any] = {}  # filename -> {url, title} for citation resolution at retrieval
     for doc in docs:
         url = doc["url"]
         md = doc["markdown"]
+        title = (doc.get("title") or "").strip()
         parsed = urlparse(url)
         path_slug = _slugify(parsed.path or "index")
         url_hash = hashlib.sha1(url.encode("utf-8")).hexdigest()[:10]
         filename = f"{path_slug or 'index'}-{url_hash}.md"
-        url_map[filename] = url
+        url_map[filename] = {"url": url, "title": title}
         blob_name = f"{prefix}/{filename}"
         blob = bucket.blob(blob_name)
         md_bytes = md.encode("utf-8") if isinstance(md, str) else md
@@ -701,9 +724,13 @@ async def crawl_site_bfs(
                         content, src = _best_text(result)
                         if content:
                             content = _clean_markdown_for_rag(content)
+                            title = _extract_page_title(result)
                             # Prefix the content with its source URL so retrieval can match vague queries
                             # without the user having to type the site/service name.
-                            all_results.append({"url": result.url, "markdown": f"Source URL: {result.url}\n\n{content}"})
+                            header = f"Source URL: {result.url}\n"
+                            if title:
+                                header += f"Page Title: {title}\n"
+                            all_results.append({"url": result.url, "title": title, "markdown": header + "\n" + content})
                             if src != "markdown":
                                 # Helpful when debugging "0 pages" issues.
                                 print(f"[crawl] Used fallback content '{src}' for {result.url}")

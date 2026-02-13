@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { RefreshCw, Trash2, X, Check, Plus, FolderPlus } from 'lucide-react'
+import { RefreshCw, Trash2, X, Check, Plus, FolderPlus, ExternalLink } from 'lucide-react'
 import { useDashboardData, type ExtractedTopic } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
@@ -358,8 +358,25 @@ export default function BotTopicsTab() {
                               }}
                             >
                               {topic.topic}
+                              {topic.origin && topic.origin !== 'extracted' && (
+                                <span className="topic-origin-badge topic-origin-badge--inline">
+                                  {topic.origin === 'url_bank' ? 'link' : topic.origin}
+                                </span>
+                              )}
                             </span>
                             <div className="topic-bubble-actions">
+                              {topic.source_url && (
+                                <a
+                                  href={topic.source_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="topic-source-link"
+                                  title="View source"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink size={11} />
+                                </a>
+                              )}
                               <button
                                 type="button"
                                 className={`topic-toggle ${topic.is_active ? 'active' : ''}`}

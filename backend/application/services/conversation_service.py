@@ -3,6 +3,8 @@ from typing import Dict, List, Optional
 
 from domain.entities import ConversationMessage, ConversationSession
 from infrastructure.db.repositories import PostgresConversationRepository
+from redis import Redis
+from common.config import config
 
 CONVERSATION_HISTORY_MESSAGES = 20
 
@@ -11,6 +13,7 @@ class ConversationService:
     def __init__(self, repo: Optional[PostgresConversationRepository] = None):
         self._repo = repo or PostgresConversationRepository()
         self._ttl = timedelta(minutes=30)
+        self._redis = Redis.from_url(config.CELERY_BROKER_URL, decode_responses=True)
 
     def get_or_create_session(
         self,
@@ -52,7 +55,7 @@ class ConversationService:
         citations: Optional[List[Dict[str, str]]] = None,
         sender_name: Optional[str] = None,
     ) -> ConversationMessage:
-        return self._repo.add_message(
+        msg = self._repo.add_message(
             session_id=session_id,
             bot_id=bot_id,
             role=role,
@@ -60,6 +63,8 @@ class ConversationService:
             citations=citations or [],
             sender_name=sender_name,
         )
+        self._redis.sadd("analytics:dirty_bots", bot_id)
+        return msg
 
     def list_sessions(self, bot_id: str, *, limit: int = 50, before: Optional[str] = None) -> List[ConversationSession]:
         return self._repo.list_sessions_for_bot(bot_id, limit=limit, before=before)
@@ -77,6 +82,9 @@ class ConversationService:
         return self._repo.get_session(session_id)
 
     def end_session(self, session_id: str, status: str = "ended") -> None:
+        session = self._repo.get_session(session_id)
+        if session:
+            self._redis.sadd("analytics:dirty_bots", session.bot_id)
         self._repo.end_session(session_id, status=status)
 
     def create_escalation(self, *, bot_id: str, session_id: str, visitor_email: str, details: Optional[str] = None):

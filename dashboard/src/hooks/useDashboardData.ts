@@ -276,6 +276,8 @@ export type ExtractedTopic = {
   category?: string | null
   confidence: number
   source_urls: string[]
+  source_url?: string | null
+  origin?: string
   occurrence_count: number
   is_active: boolean
   extracted_at?: string | null
@@ -286,6 +288,36 @@ export type ExtractedTopicsResponse = {
   bot_id: string
   topics: ExtractedTopic[]
   total_count: number
+}
+
+export type TopicUsageItem = {
+  topic_id: string
+  topic: string
+  category: string
+  question_count: number
+  source_url?: string | null
+  origin?: string
+}
+
+export type TopicUsageSummary = {
+  bot_id: string
+  topics: TopicUsageItem[]
+  total_questions: number
+}
+
+export type TopicQuestionItem = {
+  id: string
+  topic_id: string
+  session_id: string
+  message_id?: string | null
+  question_text?: string | null
+  asked_at: string
+  session_title?: string | null
+}
+
+export type TopicQuestionsResponse = {
+  topic_id: string
+  questions: TopicQuestionItem[]
 }
 
 export type ConversationSearchSessionRecord = ConversationSessionRecord & { snippet?: string | null }
@@ -314,14 +346,14 @@ type TokenClaims = Record<string, unknown>
 
 type DashboardData = {
   user:
-    | {
-        email?: string | null
-        name?: string | null
-        given_name?: string | null
-        family_name?: string | null
-        picture?: string | null
-      }
-    | undefined
+  | {
+    email?: string | null
+    name?: string | null
+    given_name?: string | null
+    family_name?: string | null
+    picture?: string | null
+  }
+  | undefined
   logout: (options?: { logoutParams?: { returnTo?: string } }) => void
   bots: BotSummary[]
   selectedBotId: string | null
@@ -395,7 +427,7 @@ type DashboardData = {
   discoverUrls: (
     url: string,
     discoveryMethod?: string,
-    onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
+    onEvent?: (evt: { type: string;[key: string]: unknown }) => void,
     signal?: AbortSignal,
     options?: { max_duration_sec?: number }
   ) => Promise<{ urls: string[]; error?: string; methodUsed?: string; failureReason?: string }>
@@ -403,8 +435,6 @@ type DashboardData = {
   cancelDiscoveryJob: (botId: string, jobId: string) => Promise<{ status: string } | null>
   listDiscoveryJobs: (botId: string) => Promise<DiscoveryJobRecord[]>
   getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
-  listTopicJobs: (botId: string) => Promise<TopicJobRecord[]>
-  getTopicJob: (botId: string, jobId: string) => Promise<TopicJobRecord | null>
   listBookingLinkJobs: (botId: string) => Promise<BookingLinkJobRecord[]>
   getBookingLinkJob: (botId: string, jobId: string) => Promise<BookingLinkJobRecord | null>
   startAvailabilityJob: (
@@ -428,13 +458,13 @@ type DashboardData = {
     format?: 'text' | 'html' | 'debug',
     maxChars?: number
   ) => Promise<{ format: string; content: string } | null>
-    deleteBot: (botId: string) => Promise<boolean>
-    renameBot: (botId: string, displayName: string) => Promise<boolean>
-    listConversations: (
-      botId: string,
-      limit?: number,
-      cursor?: string | null
-    ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>
+  deleteBot: (botId: string) => Promise<boolean>
+  renameBot: (botId: string, displayName: string) => Promise<boolean>
+  listConversations: (
+    botId: string,
+    limit?: number,
+    cursor?: string | null
+  ) => Promise<{ sessions: ConversationSessionRecord[]; next_cursor?: string | null; total_count?: number | null }>
   searchConversations: (
     botId: string,
     args: {
@@ -461,14 +491,14 @@ type DashboardData = {
       site_url?: string | null
     }
   ) => Promise<void>
-    getConversation: (
-      botId: string,
-      sessionId: string,
-      limit?: number
-    ) => Promise<ConversationMessageRecord[]>
-    endConversation: (botId: string, sessionId: string) => Promise<void>
-    getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
-    saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
+  getConversation: (
+    botId: string,
+    sessionId: string,
+    limit?: number
+  ) => Promise<ConversationMessageRecord[]>
+  endConversation: (botId: string, sessionId: string) => Promise<void>
+  getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
+  saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
   getEscalationCounts: (botId: string) => Promise<{ total: number; open: number } | null>
   recomputeAnalytics: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<boolean>
   getAnalyticsSummary: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<AnalyticsSummary | null>
@@ -477,23 +507,23 @@ type DashboardData = {
     botId: string,
     args?: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number }
   ) => Promise<TopSources | null>
-  getAnalyticsTopics: (
-    botId: string,
-    args?: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number }
-  ) => Promise<Topics | null>
   listEscalations: (
     botId: string,
     limit?: number,
     cursor?: string | null
   ) => Promise<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }>
-    getEscalationForSession: (botId: string, sessionId: string) => Promise<EscalationRecord | null>
-    updateEscalationStatus: (botId: string, escalationId: string, status: 'open' | 'resolved') => Promise<void>
+  getEscalationForSession: (botId: string, sessionId: string) => Promise<EscalationRecord | null>
+  updateEscalationStatus: (botId: string, escalationId: string, status: 'open' | 'resolved') => Promise<void>
   getExtractedTopics: (botId: string, activeOnly?: boolean, limit?: number) => Promise<ExtractedTopicsResponse | null>
   extractTopics: (botId: string, clearExisting?: boolean) => Promise<ExtractedTopicsResponse | null>
   updateExtractedTopic: (botId: string, topicId: string, updates: { is_active?: boolean; category?: string }) => Promise<ExtractedTopic | null>
   createExtractedTopic: (botId: string, topic: string, category?: string) => Promise<ExtractedTopic | null>
   deleteExtractedTopic: (botId: string, topicId: string) => Promise<boolean>
-  }
+  getTopicUsageSummary: (botId: string) => Promise<TopicUsageSummary | null>
+  computeTopicMappings: (botId: string) => Promise<{ new_mappings: number } | null>
+  getTopicQuestions: (botId: string, topicId: string, limit?: number) => Promise<TopicQuestionsResponse | null>
+  syncUrlBankTopics: (botId: string, urlBank: Array<{ label: string; url: string }>) => Promise<ExtractedTopicsResponse | null>
+}
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
 
@@ -1212,30 +1242,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function listTopicJobs(botId: string): Promise<TopicJobRecord[]> {
-    if (isSuperAdmin && !activeOrgId) return []
-    try {
-      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const path = withOrgParam(`/v1/org/bots/${botId}/topic-jobs`, orgOverride)
-      const data = await fetchAuthedJson<{ jobs: TopicJobRecord[] }>(path)
-      return data.jobs || []
-    } catch (err) {
-      setError((err as Error).message)
-      return []
-    }
-  }
 
-  async function getTopicJob(botId: string, jobId: string): Promise<TopicJobRecord | null> {
-    if (isSuperAdmin && !activeOrgId) return null
-    try {
-      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const path = withOrgParam(`/v1/org/bots/${botId}/topic-jobs/${encodeURIComponent(jobId)}`, orgOverride)
-      return await fetchAuthedJson<TopicJobRecord>(path)
-    } catch (err) {
-      setError((err as Error).message)
-      return null
-    }
-  }
 
   async function listBookingLinkJobs(botId: string): Promise<BookingLinkJobRecord[]> {
     if (isSuperAdmin && !activeOrgId) return []
@@ -1522,29 +1529,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function getAnalyticsTopics(
-    botId: string,
-    args: { range?: string; from_day?: string | null; to_day?: string | null; limit?: number } = {}
-  ): Promise<Topics | null> {
-    if (isSuperAdmin && !activeOrgId) return null
-    try {
-      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-      const limit = args.limit ?? 20
-      const qp = new URLSearchParams()
-      qp.set('range', args.range || '30d')
-      qp.set('limit', String(limit))
-      if (args.from_day) qp.set('from_day', args.from_day)
-      if (args.to_day) qp.set('to_day', args.to_day)
-      const path = withOrgParam(
-        `/v1/org/bots/${botId}/analytics/topics?${qp.toString()}`,
-        orgOverride
-      )
-      return await fetchAuthedJson<Topics>(path)
-    } catch (err) {
-      setError((err as Error).message)
-      return null
-    }
-  }
 
   async function getConversation(
     botId: string,
@@ -1753,10 +1737,60 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function getTopicUsageSummary(botId: string): Promise<TopicUsageSummary | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topics/usage-summary`, orgOverride)
+      return await fetchAuthedJson<TopicUsageSummary>(path)
+    } catch (err) {
+      return null
+    }
+  }
+
+  async function computeTopicMappings(botId: string): Promise<{ new_mappings: number } | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topics/compute-mappings`, orgOverride)
+      return await fetchAuthedJson<{ new_mappings: number }>(path, { method: 'POST', body: '{}' })
+    } catch (err) {
+      return null
+    }
+  }
+
+  async function getTopicQuestions(botId: string, topicId: string, limit = 50): Promise<TopicQuestionsResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topics/${encodeURIComponent(topicId)}/questions?limit=${limit}`, orgOverride)
+      return await fetchAuthedJson<TopicQuestionsResponse>(path)
+    } catch (err) {
+      return null
+    }
+  }
+
+  async function syncUrlBankTopics(
+    botId: string,
+    urlBank: Array<{ label: string; url: string }>
+  ): Promise<ExtractedTopicsResponse | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/topics/sync-url-bank`, orgOverride)
+      return await fetchAuthedJson<ExtractedTopicsResponse>(path, {
+        method: 'POST',
+        body: JSON.stringify({ url_bank: urlBank }),
+      })
+    } catch (err) {
+      return null
+    }
+  }
+
   async function discoverUrls(
     url: string,
     discoveryMethod: string = 'auto',
-    onEvent?: (evt: { type: string; [key: string]: unknown }) => void,
+    onEvent?: (evt: { type: string;[key: string]: unknown }) => void,
     signal?: AbortSignal,
     options?: { max_duration_sec?: number }
   ): Promise<{ urls: string[]; error?: string; methodUsed?: string; failureReason?: string }> {
@@ -1817,9 +1851,9 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed) continue
-          let evt: { type: string; [key: string]: unknown }
+          let evt: { type: string;[key: string]: unknown }
           try {
-            evt = JSON.parse(trimmed) as { type: string; [key: string]: unknown }
+            evt = JSON.parse(trimmed) as { type: string;[key: string]: unknown }
           } catch {
             continue
           }
@@ -2168,8 +2202,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     cancelDiscoveryJob,
     listDiscoveryJobs,
     getDiscoveryJob,
-    listTopicJobs,
-    getTopicJob,
     listBookingLinkJobs,
     getBookingLinkJob,
     startAvailabilityJob,
@@ -2187,7 +2219,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getAnalyticsSummary,
     getAnalyticsTimeseries,
     getAnalyticsTopSources,
-    getAnalyticsTopics,
     getEscalationConfig,
     saveEscalationConfig,
     getEscalationCounts,
@@ -2199,6 +2230,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     updateExtractedTopic,
     createExtractedTopic,
     deleteExtractedTopic,
+    getTopicUsageSummary,
+    computeTopicMappings,
+    getTopicQuestions,
+    syncUrlBankTopics,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

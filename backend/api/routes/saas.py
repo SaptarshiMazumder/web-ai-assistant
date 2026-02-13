@@ -2785,11 +2785,18 @@ from api.schemas import (
     DeleteTopicResponse,
     TopicJobItem,
     TopicJobsResponse,
+    TopicUsageItem,
+    TopicUsageSummaryResponse,
+    TopicQuestionItem,
+    TopicQuestionsResponse,
+    SyncUrlBankRequest,
+    ComputeMappingsResponse,
     AvailabilityRequest,
     AvailabilityJobItem,
     AvailabilityJobsResponse,
 )
 from application.services.topic_extraction_service import topic_extraction_service
+from application.services.topic_question_service import topic_question_service
 from infrastructure.db.repositories import PostgresTopicJobRepository, PostgresAvailabilityJobRepository
 from domain.entities import AvailabilityJob
 from infrastructure.availability.url_pattern import build_url, get_default_pattern, infer_pattern
@@ -2905,9 +2912,9 @@ async def v1_org_extract_topics(
         client = storage.Client()
         bucket = client.bucket(bucket_name)
         
-        # List and read markdown files from the GCS prefix
+        # List and read markdown files from the GCS prefix (no max_results to find all .md in sub-dirs)
         documents = []
-        blobs = list(bucket.list_blobs(prefix=gcs_prefix, max_results=50))
+        blobs = list(bucket.list_blobs(prefix=gcs_prefix))
         print(f"[TopicExtraction] Found {len(blobs)} blobs in GCS")
         
         for blob in blobs:
@@ -3035,6 +3042,88 @@ async def v1_org_get_topic_job(
     if not job:
         raise HTTPException(status_code=404, detail="Topic job not found")
     return TopicJobItem(**job.__dict__)
+
+
+# ========== Topic Usage & Question Mapping ==========
+
+@router.get("/v1/org/bots/{bot_id}/topics/usage-summary", response_model=TopicUsageSummaryResponse)
+async def v1_org_topic_usage_summary(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Return topic usage counts for the donut chart (how many questions per topic)."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    summary = topic_question_service().get_topic_usage_summary(
+        org_id=resolved_org,
+        bot_id=bot_id,
+    )
+    return TopicUsageSummaryResponse(
+        bot_id=bot_id,
+        topics=[TopicUsageItem(**t) for t in summary["topics"]],
+        total_questions=summary["total_questions"],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/topics/compute-mappings", response_model=ComputeMappingsResponse)
+async def v1_org_compute_topic_mappings(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Scan conversations and map questions to topics. Call on dashboard load or on refresh."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    new_count = topic_question_service().compute_topic_mappings(
+        org_id=resolved_org,
+        bot_id=bot_id,
+    )
+    return ComputeMappingsResponse(bot_id=bot_id, new_mappings=new_count)
+
+
+@router.get("/v1/org/bots/{bot_id}/topics/{topic_id}/questions", response_model=TopicQuestionsResponse)
+async def v1_org_topic_questions(
+    bot_id: str,
+    topic_id: str,
+    limit: int = 50,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Get questions linked to a specific topic."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    questions = topic_question_service().get_questions_for_topic(
+        topic_id=topic_id,
+        bot_id=bot_id,
+        limit=limit,
+    )
+    return TopicQuestionsResponse(
+        topic_id=topic_id,
+        questions=[TopicQuestionItem(**q) for q in questions],
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/topics/sync-url-bank", response_model=ExtractedTopicsResponse)
+async def v1_org_sync_url_bank_topics(
+    bot_id: str,
+    payload: SyncUrlBankRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Sync URL bank entries as topics. Call when URL bank is saved."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    synced = topic_extraction_service().sync_url_bank_topics(
+        org_id=resolved_org,
+        bot_id=bot_id,
+        url_bank=payload.url_bank,
+    )
+    return ExtractedTopicsResponse(
+        bot_id=bot_id,
+        topics=[ExtractedTopicItem(**t) for t in synced],
+        total_count=len(synced),
+    )
 
 
 @router.post("/v1/org/bots/{bot_id}/availability", response_model=AvailabilityJobItem)

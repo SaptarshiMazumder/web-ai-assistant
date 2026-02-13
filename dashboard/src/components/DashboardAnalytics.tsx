@@ -92,70 +92,70 @@ function LineChartWithAxes({
   return (
     <div style={{ flex: 1, minHeight: CHART_HEIGHT, width: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} width="100%" height="100%" style={{ display: 'block', minHeight: CHART_HEIGHT }} preserveAspectRatio="xMidYMid meet">
-      {yTickValues.map((val) => {
-        const y = CHART_PAD_TOP + ((max - val) / range) * plotH
-        return (
-          <g key={val}>
-            <line x1={CHART_PAD_LEFT} y1={y} x2={CHART_PAD_LEFT + plotW} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2,2" />
-            <text x={CHART_PAD_LEFT - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize="9" fill="#64748b">{val}</text>
-          </g>
-        )
-      })}
-      {xTickIndices.map((idx) => {
-        const x = CHART_PAD_LEFT + (idx * plotW) / Math.max(labels.length - 1, 1)
-        const label = labels[idx]
-        const short = label ? label.slice(5) : '' // MM-DD
-        return (
-          <text key={idx} x={x} y={CHART_HEIGHT - 8} textAnchor="middle" fontSize="9" fill="#64748b">{short}</text>
-        )
-      })}
-      <path d={d} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Interactive clickable points */}
-      {pts.map((pt, idx) => (
-        <g key={idx}>
-          {/* Invisible larger hit area for easier clicking */}
-          <circle
-            cx={pt.x}
-            cy={pt.y}
-            r={12}
-            fill="transparent"
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHoveredIndex(idx)}
-            onMouseLeave={() => setHoveredIndex(null)}
-            onClick={() => setHoveredIndex(hoveredIndex === idx ? null : idx)}
-          />
-          {/* Visible point */}
-          <circle
-            cx={pt.x}
-            cy={pt.y}
-            r={hoveredIndex === idx ? 6 : 4}
-            fill={hoveredIndex === idx ? stroke : 'white'}
-            stroke={stroke}
-            strokeWidth="2"
-            style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
-          />
-          {/* Tooltip */}
-          {hoveredIndex === idx && (
-            <g>
-              <rect
-                x={pt.x - 35}
-                y={pt.y - 38}
-                width={70}
-                height={28}
-                rx={4}
-                fill="#1e293b"
-              />
-              <text x={pt.x} y={pt.y - 27} textAnchor="middle" fontSize="10" fill="#94a3b8">
-                {labels[idx]?.slice(5) || ''}
-              </text>
-              <text x={pt.x} y={pt.y - 15} textAnchor="middle" fontSize="12" fontWeight="600" fill="white">
-                {values[idx]}
-              </text>
+        {yTickValues.map((val) => {
+          const y = CHART_PAD_TOP + ((max - val) / range) * plotH
+          return (
+            <g key={val}>
+              <line x1={CHART_PAD_LEFT} y1={y} x2={CHART_PAD_LEFT + plotW} y2={y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="2,2" />
+              <text x={CHART_PAD_LEFT - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize="9" fill="#64748b">{val}</text>
             </g>
-          )}
-        </g>
-      ))}
-    </svg>
+          )
+        })}
+        {xTickIndices.map((idx) => {
+          const x = CHART_PAD_LEFT + (idx * plotW) / Math.max(labels.length - 1, 1)
+          const label = labels[idx]
+          const short = label ? label.slice(5) : '' // MM-DD
+          return (
+            <text key={idx} x={x} y={CHART_HEIGHT - 8} textAnchor="middle" fontSize="9" fill="#64748b">{short}</text>
+          )
+        })}
+        <path d={d} fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Interactive clickable points */}
+        {pts.map((pt, idx) => (
+          <g key={idx}>
+            {/* Invisible larger hit area for easier clicking */}
+            <circle
+              cx={pt.x}
+              cy={pt.y}
+              r={12}
+              fill="transparent"
+              style={{ cursor: 'pointer' }}
+              onMouseEnter={() => setHoveredIndex(idx)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              onClick={() => setHoveredIndex(hoveredIndex === idx ? null : idx)}
+            />
+            {/* Visible point */}
+            <circle
+              cx={pt.x}
+              cy={pt.y}
+              r={hoveredIndex === idx ? 6 : 4}
+              fill={hoveredIndex === idx ? stroke : 'white'}
+              stroke={stroke}
+              strokeWidth="2"
+              style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
+            />
+            {/* Tooltip */}
+            {hoveredIndex === idx && (
+              <g>
+                <rect
+                  x={pt.x - 35}
+                  y={pt.y - 38}
+                  width={70}
+                  height={28}
+                  rx={4}
+                  fill="#1e293b"
+                />
+                <text x={pt.x} y={pt.y - 27} textAnchor="middle" fontSize="10" fill="#94a3b8">
+                  {labels[idx]?.slice(5) || ''}
+                </text>
+                <text x={pt.x} y={pt.y - 15} textAnchor="middle" fontSize="12" fontWeight="600" fill="white">
+                  {values[idx]}
+                </text>
+              </g>
+            )}
+          </g>
+        ))}
+      </svg>
     </div>
   )
 }
@@ -222,7 +222,7 @@ function RangeControls({
       >
         <span>{presetLabels[preset]}</span>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 6 }}>
-          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {isOpen && (
@@ -246,7 +246,7 @@ function RangeControls({
               >
                 {presetLabels['custom']}
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ marginLeft: 'auto' }}>
-                  <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             </>
@@ -258,25 +258,25 @@ function RangeControls({
                 onClick={() => setShowCustomPicker(false)}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span>Back</span>
               </button>
               <div className="range-dropdown-custom-fields">
                 <label>
                   <span>From</span>
-                  <input 
-                    type="date" 
-                    value={custom.fromDay} 
-                    onChange={(e) => setCustom({ ...custom, fromDay: e.target.value })} 
+                  <input
+                    type="date"
+                    value={custom.fromDay}
+                    onChange={(e) => setCustom({ ...custom, fromDay: e.target.value })}
                   />
                 </label>
                 <label>
                   <span>To</span>
-                  <input 
-                    type="date" 
-                    value={custom.toDay} 
-                    onChange={(e) => setCustom({ ...custom, toDay: e.target.value })} 
+                  <input
+                    type="date"
+                    value={custom.toDay}
+                    onChange={(e) => setCustom({ ...custom, toDay: e.target.value })}
                   />
                 </label>
               </div>
@@ -346,11 +346,11 @@ type DashboardAnalyticsCacheEntry = {
   topics: Topics | null
 }
 
-const ANALYTICS_STALE_MS = 45_000
+const ANALYTICS_STALE_MS = 10 * 60 * 1000 // 10 minutes
 const DASHBOARD_ANALYTICS_CACHE = new Map<string, DashboardAnalyticsCacheEntry>()
 
 export default function DashboardAnalytics({ botId, setupPills }: Props) {
-  const { getAnalyticsSummary, getAnalyticsTimeseries, getAnalyticsTopSources, getAnalyticsTopics, getEscalationCounts, recomputeAnalytics } =
+  const { getAnalyticsSummary, getAnalyticsTimeseries, getAnalyticsTopSources, getEscalationCounts, recomputeAnalytics } =
     useDashboardData()
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -359,7 +359,6 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
   const [convSeries, setConvSeries] = useState<AnalyticsTimeseries | null>(null)
   const [escSeries, setEscSeries] = useState<AnalyticsTimeseries | null>(null)
   const [sources, setSources] = useState<TopSources | null>(null)
-  const [topics, setTopics] = useState<Topics | null>(null)
 
   const [convPreset, setConvPreset] = useState<PresetRange>('7d')
   const [convCustom, setConvCustom] = useState<{ fromDay: string; toDay: string }>(() => ({
@@ -399,7 +398,6 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       setConvSeries(cached.convSeries)
       setEscSeries(cached.escSeries)
       setSources(cached.sources)
-      setTopics(cached.topics)
       setUnresolvedEscalations(cached.unresolvedEscalations)
 
       const isFresh = Date.now() - cached.updatedAt < ANALYTICS_STALE_MS
@@ -416,17 +414,15 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
         await recomputeAnalytics(botId, { from_day: recomputeStart, to_day: recomputeEnd })
       }
 
-      const [s, ts, src, t, counts] = await Promise.all([
+      const [s, ts, src, counts] = await Promise.all([
         getAnalyticsSummary(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day }),
         getAnalyticsTimeseries(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day }),
         getAnalyticsTopSources(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day, limit: 10 }),
-        getAnalyticsTopics(botId, { from_day: convWindow.from_day, to_day: convWindow.to_day, limit: 20 }),
         getEscalationCounts(botId),
       ])
       setSummary(s)
       setConvSeries(ts)
       setSources(src)
-      setTopics(t)
       setUnresolvedEscalations(counts?.open ?? 0)
 
       const escTs = await getAnalyticsTimeseries(botId, { from_day: escWindow.from_day, to_day: escWindow.to_day })
@@ -439,7 +435,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
         convSeries: ts,
         escSeries: escTs,
         sources: src,
-        topics: t,
+        topics: null,
       })
     } finally {
       setLoading(false)
@@ -566,22 +562,6 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
                   <div key={s.source_url} className="detail-row">
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.source_url}</span>
                     <span>{s.count}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-        <section className="ui-glass-card analytics-list-card">
-          <div className="card-title">Question topic report</div>
-          <div className="analytics-list-scroll">
-            {!topics?.items?.length && <div className="muted">No data yet.</div>}
-            {!!topics?.items?.length && (
-              <div>
-                {topics.items.slice(0, 12).map((t) => (
-                  <div key={t.topic} className="detail-row">
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.topic}</span>
-                    <span>{t.count}</span>
                   </div>
                 ))}
               </div>

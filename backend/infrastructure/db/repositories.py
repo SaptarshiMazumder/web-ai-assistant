@@ -37,6 +37,7 @@ from domain.repositories import (
     TopicJobRepository,
 )
 from infrastructure.db.connection import get_connection
+from infrastructure.clients.rag_client import extract_topics_from_titles
 
 
 def _utc_now() -> str:
@@ -2401,36 +2402,41 @@ class PostgresAnalyticsRepository:
                     (oid, bid, day_s, u, int(ct)),
                 )
 
-            # Topics/day: deterministic, based on session title (first user message).
-            rows = con.execute(
-                """
-                SELECT substring(started_at, 1, 10) AS day, COALESCE(NULLIF(title,''), '')
-                FROM conversation_sessions
-                WHERE org_id=%s AND bot_id=%s AND started_at >= %s AND started_at < %s
-                """,
-                (oid, bid, start_iso, end_iso),
-            ).fetchall()
-            topic_counts: Dict[Tuple[str, str], int] = {}
-            for day_s, title in rows or []:
-                t = (title or "").strip().lower()
-                if not t:
-                    continue
-                # Keep a stable short topic key: first 6 words.
-                cleaned = re.sub(r"[^a-z0-9\s]", " ", t)
-                words = [w for w in re.split(r"\s+", cleaned) if w]
-                if not words:
-                    continue
-                topic = " ".join(words[:6])
-                key = (day_s, topic)
-                topic_counts[key] = topic_counts.get(key, 0) + 1
-            for (day_s, topic), ct in topic_counts.items():
-                con.execute(
-                    """
-                    INSERT INTO bot_topics_daily(org_id, bot_id, day, topic, count)
-                    VALUES (%s,%s,%s,%s,%s)
-                    """,
-                    (oid, bid, day_s, topic, int(ct)),
-                )
+            # Topics/day: LLM-based clustering.
+            # DISABLED for now per user request.
+            # rows = con.execute(
+            #     """
+            #     SELECT substring(started_at, 1, 10) AS day, COALESCE(NULLIF(title,''), '')
+            #     FROM conversation_sessions
+            #     WHERE org_id=%s AND bot_id=%s AND started_at >= %s AND started_at < %s
+            #     """,
+            #     (oid, bid, start_iso, end_iso),
+            # ).fetchall()
+            #
+            # day_titles: Dict[str, List[str]] = {}
+            # for day_s, title in rows or []:
+            #     t = (title or "").strip()
+            #     if not t:
+            #         continue
+            #     if day_s not in day_titles:
+            #         day_titles[day_s] = []
+            #     day_titles[day_s].append(t)
+            #
+            # for day_s, titles in day_titles.items():
+            #     if not titles:
+            #         continue
+            #     try:
+            #         daily_topics = extract_topics_from_titles(titles)
+            #         for topic, ct in daily_topics.items():
+            #             con.execute(
+            #                 """
+            #                 INSERT INTO bot_topics_daily(org_id, bot_id, day, topic, count)
+            #                 VALUES (%s,%s,%s,%s,%s)
+            #                 """,
+            #                 (oid, bid, day_s, topic, int(ct)),
+            #             )
+            #     except Exception as e:
+            #         print(f"[Analytics] Error extracting topics for {day_s}: {e}")
 
             # Watermark: set to end_iso (exclusive).
             con.execute(
@@ -2577,6 +2583,8 @@ class ExtractedTopic:
     is_active: bool
     extracted_at: str
     updated_at: str
+    source_url: Optional[str] = None
+    origin: str = "extracted"
 
 
 class PostgresExtractedTopicRepository:
@@ -2615,11 +2623,13 @@ class PostgresExtractedTopicRepository:
                         source_urls = json.loads(source_urls)
                     except json.JSONDecodeError:
                         source_urls = []
+                source_url = (t.get("source_url") or "").strip() or None
+                origin = (t.get("origin") or "extracted").strip() or "extracted"
 
                 # Check if topic already exists for this bot
                 existing = con.execute(
                     """
-                    SELECT topic_id, source_urls, occurrence_count
+                    SELECT topic_id, source_urls, occurrence_count, source_url, origin
                     FROM bot_extracted_topics
                     WHERE org_id = %s AND bot_id = %s AND lower(topic) = %s
                     """,
@@ -2632,6 +2642,10 @@ class PostgresExtractedTopicRepository:
                     existing_urls = json.loads(existing[1] or "[]")
                     merged_urls = list(set(existing_urls + source_urls))
                     new_count = (existing[2] or 1) + 1
+                    # Keep existing source_url unless a new one is provided
+                    resolved_source_url = source_url or existing[3]
+                    # url_bank origin takes precedence (don't downgrade to extracted)
+                    resolved_origin = existing[4] if existing[4] == "url_bank" else origin
 
                     con.execute(
                         """
@@ -2640,10 +2654,13 @@ class PostgresExtractedTopicRepository:
                             confidence = %s,
                             source_urls = %s,
                             occurrence_count = %s,
+                            source_url = COALESCE(%s, source_url),
+                            origin = %s,
                             updated_at = %s
                         WHERE topic_id = %s
                         """,
-                        (category, confidence, json.dumps(merged_urls), new_count, now, topic_id),
+                        (category, confidence, json.dumps(merged_urls), new_count,
+                         resolved_source_url, resolved_origin, now, topic_id),
                     )
                     results.append(ExtractedTopic(
                         topic_id=topic_id,
@@ -2657,6 +2674,8 @@ class PostgresExtractedTopicRepository:
                         is_active=True,
                         extracted_at=now,
                         updated_at=now,
+                        source_url=resolved_source_url,
+                        origin=resolved_origin,
                     ))
                 else:
                     # Insert new topic
@@ -2664,10 +2683,10 @@ class PostgresExtractedTopicRepository:
                     con.execute(
                         """
                         INSERT INTO bot_extracted_topics
-                        (topic_id, org_id, bot_id, topic, category, confidence, source_urls, occurrence_count, is_active, extracted_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (topic_id, org_id, bot_id, topic, category, confidence, source_urls, occurrence_count, is_active, extracted_at, updated_at, source_url, origin)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
-                        (topic_id, oid, bid, topic_text, category, confidence, json.dumps(source_urls), 1, True, now, now),
+                        (topic_id, oid, bid, topic_text, category, confidence, json.dumps(source_urls), 1, True, now, now, source_url, origin),
                     )
                     results.append(ExtractedTopic(
                         topic_id=topic_id,
@@ -2681,6 +2700,8 @@ class PostgresExtractedTopicRepository:
                         is_active=True,
                         extracted_at=now,
                         updated_at=now,
+                        source_url=source_url,
+                        origin=origin,
                     ))
 
             con.commit()
@@ -2705,7 +2726,8 @@ class PostgresExtractedTopicRepository:
         try:
             query = """
                 SELECT topic_id, org_id, bot_id, topic, category, confidence,
-                       source_urls, occurrence_count, is_active, extracted_at, updated_at
+                       source_urls, occurrence_count, is_active, extracted_at, updated_at,
+                       source_url, origin
                 FROM bot_extracted_topics
                 WHERE org_id = %s AND bot_id = %s
             """
@@ -2737,6 +2759,8 @@ class PostgresExtractedTopicRepository:
                     is_active=bool(r[8]),
                     extracted_at=r[9],
                     updated_at=r[10],
+                    source_url=r[11],
+                    origin=(r[12] or "extracted"),
                 ))
             return results
         finally:
@@ -2784,7 +2808,8 @@ class PostgresExtractedTopicRepository:
             row = con.execute(
                 """
                 SELECT topic_id, org_id, bot_id, topic, category, confidence,
-                       source_urls, occurrence_count, is_active, extracted_at, updated_at
+                       source_urls, occurrence_count, is_active, extracted_at, updated_at,
+                       source_url, origin
                 FROM bot_extracted_topics
                 WHERE topic_id = %s
                 """,
@@ -2812,6 +2837,8 @@ class PostgresExtractedTopicRepository:
                 is_active=bool(row[8]),
                 extracted_at=row[9],
                 updated_at=row[10],
+                source_url=row[11],
+                origin=(row[12] or "extracted"),
             )
         finally:
             con.close()
@@ -2845,6 +2872,120 @@ class PostgresExtractedTopicRepository:
             result = con.execute(
                 "DELETE FROM bot_extracted_topics WHERE org_id = %s AND bot_id = %s",
                 (oid, bid),
+            )
+            con.commit()
+            return result.rowcount
+        finally:
+            con.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Topic-question mapping repository
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _new_tqm_id() -> str:
+    return "tqm_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
+@dataclass
+class TopicQuestion:
+    id: str
+    topic_id: str
+    org_id: str
+    bot_id: str
+    session_id: str
+    message_id: Optional[str]
+    question_text: Optional[str]
+    matched_at: str
+    match_method: str
+
+
+class PostgresTopicQuestionRepository:
+    """Repository for topic-question mapping."""
+
+    def upsert_mapping(
+        self,
+        *,
+        topic_id: str,
+        org_id: str,
+        bot_id: str,
+        session_id: str,
+        message_id: Optional[str],
+        question_text: Optional[str],
+        match_method: str = "keyword",
+    ) -> bool:
+        """Insert a mapping if it doesn't exist yet. Returns True if inserted."""
+        con = _connect()
+        try:
+            existing = con.execute(
+                "SELECT id FROM topic_question_mappings WHERE topic_id = %s AND session_id = %s AND message_id = %s",
+                (topic_id, session_id, message_id),
+            ).fetchone()
+            if existing:
+                return False
+            con.execute(
+                """
+                INSERT INTO topic_question_mappings
+                (id, topic_id, org_id, bot_id, session_id, message_id, question_text, matched_at, match_method)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (_new_tqm_id(), topic_id, org_id, bot_id, session_id, message_id, question_text, _utc_now(), match_method),
+            )
+            con.commit()
+            return True
+        finally:
+            con.close()
+
+    def get_questions_for_topic(self, *, topic_id: str, limit: int = 50) -> List[TopicQuestion]:
+        """Return questions linked to a topic."""
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT id, topic_id, org_id, bot_id, session_id, message_id, question_text, matched_at, match_method
+                FROM topic_question_mappings
+                WHERE topic_id = %s
+                ORDER BY matched_at DESC
+                LIMIT %s
+                """,
+                (topic_id, max(1, min(int(limit), 200))),
+            ).fetchall()
+            return [
+                TopicQuestion(
+                    id=r[0], topic_id=r[1], org_id=r[2], bot_id=r[3],
+                    session_id=r[4], message_id=r[5], question_text=r[6],
+                    matched_at=r[7], match_method=(r[8] or "keyword"),
+                )
+                for r in (rows or [])
+            ]
+        finally:
+            con.close()
+
+    def get_usage_counts(self, *, org_id: str, bot_id: str) -> Dict[str, int]:
+        """Return {topic_id: question_count} for all topics of a bot."""
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT topic_id, COUNT(*) as cnt
+                FROM topic_question_mappings
+                WHERE org_id = %s AND bot_id = %s
+                GROUP BY topic_id
+                """,
+                (org_id, bot_id),
+            ).fetchall()
+            return {r[0]: int(r[1]) for r in (rows or [])}
+        finally:
+            con.close()
+
+    def delete_for_bot(self, *, org_id: str, bot_id: str) -> int:
+        """Delete all mappings for a bot. Returns count deleted."""
+        con = _connect()
+        try:
+            result = con.execute(
+                "DELETE FROM topic_question_mappings WHERE org_id = %s AND bot_id = %s",
+                (org_id, bot_id),
             )
             con.commit()
             return result.rowcount

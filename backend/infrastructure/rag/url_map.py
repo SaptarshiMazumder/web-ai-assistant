@@ -1,11 +1,12 @@
 """
 Resolve GCS chunk URIs to original page URLs for chat citations.
-At index time we write url_map.json (filename -> page URL) per GCS prefix.
+At index time we write url_map.json (filename -> {url, title}) per GCS prefix.
 At retrieval we load the map and replace evidence[].url so the widget shows page links.
+Backward-compatible: old format stored filename -> url_string (plain string).
 """
 import json
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from google.cloud import storage
 
@@ -13,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 URL_MAP_FILENAME = "url_map.json"
 
-# In-memory cache per (bucket, prefix) to avoid repeated GCS reads in the same process.
-_prefix_cache: Dict[Tuple[str, str], Dict[str, str]] = {}
+# In-memory cache per (bucket, prefix): stores rich map {filename: {"url": ..., "title": ...}}
+_prefix_cache: Dict[Tuple[str, str], Dict[str, Dict[str, str]]] = {}
 
 
 def _parse_gcs_uri(gcs_uri: str) -> Optional[Tuple[str, str, str]]:
@@ -34,12 +35,14 @@ def _parse_gcs_uri(gcs_uri: str) -> Optional[Tuple[str, str, str]]:
     return (bucket, prefix, filename)
 
 
-def load_url_map(bucket_name: str, prefix: str) -> Dict[str, str]:
-    """Load url_map.json from gs://bucket_name/prefix/url_map.json. Returns filename -> page URL."""
+def _load_rich_url_map(bucket_name: str, prefix: str) -> Dict[str, Dict[str, str]]:
+    """Load url_map.json, returning {filename: {url, title}}.
+    Handles both old format (filename -> url_string) and new format (filename -> {url, title}).
+    """
     cache_key = (bucket_name, prefix)
     if cache_key in _prefix_cache:
         return _prefix_cache[cache_key]
-    result: Dict[str, str] = {}
+    result: Dict[str, Dict[str, str]] = {}
     try:
         client = storage.Client()
         bucket = client.bucket(bucket_name)
@@ -50,17 +53,31 @@ def load_url_map(bucket_name: str, prefix: str) -> Dict[str, str]:
         data = blob.download_as_text(encoding="utf-8")
         loaded = json.loads(data)
         if isinstance(loaded, dict):
-            result = {str(k): str(v) for k, v in loaded.items()}
+            for k, v in loaded.items():
+                key = str(k)
+                if isinstance(v, str):
+                    # old format: filename -> url_string
+                    result[key] = {"url": v, "title": ""}
+                elif isinstance(v, dict):
+                    # new format: filename -> {url, title}
+                    result[key] = {"url": str(v.get("url", "")), "title": str(v.get("title", ""))}
     except Exception as e:
         logger.debug("url_map load failed for gs://%s/%s: %s", bucket_name, prefix, e)
     _prefix_cache[cache_key] = result
     return result
 
 
-def resolve_evidence_urls(evidence: List[Dict[str, str]], bucket_name: str) -> None:
+def load_url_map(bucket_name: str, prefix: str) -> Dict[str, str]:
+    """Load url_map.json. Returns filename -> page URL (backward-compatible)."""
+    rich = _load_rich_url_map(bucket_name, prefix)
+    return {k: v["url"] for k, v in rich.items()}
+
+
+def resolve_evidence_urls(evidence: List[Dict[str, Any]], bucket_name: str) -> None:
     """
     In-place: replace evidence[].url when it is a GCS URI with the original page URL
-    from url_map.json in that prefix. If bucket_name is empty or no map exists, leave url unchanged.
+    from url_map.json in that prefix. Also sets evidence[].title when available.
+    If bucket_name is empty or no map exists, leave url unchanged.
     """
     if not bucket_name or not evidence:
         return
@@ -76,7 +93,9 @@ def resolve_evidence_urls(evidence: List[Dict[str, str]], bucket_name: str) -> N
             continue
         # Strip fragment (#) and query (?) — Vertex RAG may return gs://.../file.md#chunk-0
         base_filename = filename.split("#")[0].split("?")[0]
-        url_map = load_url_map(bucket_name, prefix)
-        page_url = url_map.get(base_filename) or url_map.get(filename)
-        if page_url:
-            e["url"] = page_url
+        rich_map = _load_rich_url_map(bucket_name, prefix)
+        entry = rich_map.get(base_filename) or rich_map.get(filename)
+        if entry:
+            e["url"] = entry["url"]
+            if entry.get("title"):
+                e["title"] = entry["title"]

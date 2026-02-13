@@ -14,7 +14,6 @@ import CreateBotDetailsPage from './pages/createBot/CreateBotDetailsPage'
 import CreateBotEmbedPage from './pages/createBot/CreateBotEmbedPage'
 import CreateBotLayout from './pages/createBot/CreateBotLayout'
 import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
-import CreateBotTopicsPage from './pages/createBot/CreateBotTopicsPage'
 import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
 import CreateBotAdditionalSourcesPage from './pages/createBot/CreateBotAdditionalSourcesPage'
 import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
@@ -30,7 +29,11 @@ import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotInstagramSettingsTab from './pages/bot/BotInstagramSettingsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
-import BotTopicsTab from './pages/bot/BotTopicsTab'
+import BotPersonaTab from './pages/bot/BotPersonaTab'
+import BotLeadsTab from './pages/bot/BotLeadsTab'
+import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
+import BotBusinessAssetsTab from './pages/bot/BotBusinessAssetsTab'
+import BotNotificationsTab from './pages/bot/BotNotificationsTab'
 
 function mostRecentBotId(bots: { bot_id: string; created_at: string }[]): string | null {
   if (bots.length === 0) return null
@@ -86,7 +89,6 @@ export default function App() {
             <Route path="urls" element={<Navigate to="/create-bot/sources" replace />} />
             <Route path="additional-sources" element={<CreateBotAdditionalSourcesPage />} />
             <Route path="progress" element={<CreateBotProgressPage />} />
-            <Route path="topics" element={<CreateBotTopicsPage />} />
             <Route path="widget" element={<CreateBotWidgetPage />} />
             <Route path="embed" element={<CreateBotEmbedPage />} />
             <Route path="*" element={<Navigate to="/create-bot" replace />} />
@@ -100,15 +102,19 @@ export default function App() {
             <Route path="bots/:botId" element={<BotDetailLayout />}>
               <Route index element={<Navigate to="overview" replace />} />
               <Route path="overview" element={<BotOverviewTab />} />
+              <Route path="notifications" element={<BotNotificationsTab />} />
               <Route path="knowledge" element={<BotKnowledgeTab />} />
+              <Route path="business-assets" element={<BotBusinessAssetsTab />} />
               <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
+              <Route path="persona" element={<BotPersonaTab />} />
               <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
-              <Route path="topics" element={<BotTopicsTab />} />
               <Route path="testing" element={<BotTestingTab />} />
               <Route path="conversations" element={<BotConversationsTab />} />
               <Route path="escalations" element={<BotEscalationsTab />} />
+              <Route path="leads" element={<BotLeadsTab />} />
+              <Route path="website" element={<BotWebsiteSettingsTab />} />
               <Route path="instagram" element={<BotInstagramSettingsTab />} />
               <Route path="line" element={<BotLineSettingsTab />} />
               <Route path="settings" element={<BotSettingsTab />} />

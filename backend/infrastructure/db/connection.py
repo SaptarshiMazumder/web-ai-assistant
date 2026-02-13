@@ -376,6 +376,26 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "CREATE INDEX IF NOT EXISTS instagram_user_sessions_session_id ON instagram_user_sessions (session_id)",
+    # ── Topic system v2 ──
+    "ALTER TABLE bot_extracted_topics ADD COLUMN IF NOT EXISTS source_url TEXT",
+    "ALTER TABLE bot_extracted_topics ADD COLUMN IF NOT EXISTS origin TEXT DEFAULT 'extracted'",
+    "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS page_title TEXT",
+    """
+    CREATE TABLE IF NOT EXISTS topic_question_mappings (
+      id TEXT PRIMARY KEY,
+      topic_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      message_id TEXT,
+      question_text TEXT,
+      matched_at TEXT NOT NULL,
+      match_method TEXT DEFAULT 'keyword'
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_tqm_topic ON topic_question_mappings (topic_id)",
+    "CREATE INDEX IF NOT EXISTS idx_tqm_session ON topic_question_mappings (session_id)",
+    "CREATE INDEX IF NOT EXISTS idx_tqm_bot ON topic_question_mappings (org_id, bot_id)",
 )
 
 _SCHEMA_INITIALIZED = False

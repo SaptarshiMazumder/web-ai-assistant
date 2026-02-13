@@ -105,8 +105,6 @@ export type CreateBotStep4Slice = {
   setWidgetPosition: (value: 'bottom-right' | 'bottom-left') => void
   widgetPrimaryColor: string
   setWidgetPrimaryColor: (value: string) => void
-  businessType: '' | 'hotel' | 'other'
-  setBusinessType: (value: '' | 'hotel' | 'other') => void
   widgetTitle: string
   setWidgetTitle: (value: string) => void
   widgetSize: 'small' | 'medium' | 'large'
@@ -143,8 +141,6 @@ export type CreateBotStep4Slice = {
   setDisplaySourcesInMessages: (value: boolean) => void
   sourcesLabel: string
   setSourcesLabel: (value: string) => void
-  selectedSuggestedTopics: string[]
-  setSelectedSuggestedTopics: (value: string[]) => void
   suggestedMessages: SuggestedMessageConfig[]
   setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
 }
@@ -186,7 +182,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     createBot,
     discoverUrls: discoverUrlsFromHook,
     queueCrawlUrls,
-    startBackgroundDiscovery,
     saveWidgetConfig,
     getJobStatus,
     uploadPdfSources,
@@ -235,7 +230,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [localErrorType, setLocalErrorType] = useState<'error' | 'warning' | null>(null)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#e4587a')
-  const [widgetBusinessType, setWidgetBusinessType] = useState<'' | 'hotel' | 'other'>('')
   const [widgetTitle, setWidgetTitle] = useState('Chat')
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large'>('medium')
   const [welcomeMessage, setWelcomeMessage] = useState('Welcome! How can I help you today?')
@@ -254,7 +248,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [autoScrollNewMessages, setAutoScrollNewMessages] = useState(true)
   const [displaySourcesInMessages, setDisplaySourcesInMessages] = useState(false)
   const [sourcesLabel, setSourcesLabel] = useState('Sources')
-  const [selectedSuggestedTopics, setSelectedSuggestedTopics] = useState<string[]>([])
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
     DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages
   )
@@ -291,7 +284,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setLocalError(null)
     setWidgetPosition('bottom-right')
     setWidgetPrimaryColor('#e4587a')
-    setWidgetBusinessType('')
     setWidgetTitle('Chat')
     setWidgetSize('medium')
     setWelcomeMessage('Welcome! How can I help you today?')
@@ -310,7 +302,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setAutoScrollNewMessages(true)
     setDisplaySourcesInMessages(false)
     setSourcesLabel('Sources')
-    setSelectedSuggestedTopics([])
     setSuggestedMessages(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
   }, [])
 
@@ -400,7 +391,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           if (start != null) setDiscoveryDurationMs(Date.now() - start)
           setIsDiscovering(false)
           if ((evt as { timed_out?: boolean }).timed_out === true) {
-            setDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+            setDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
           }
           const urls = (evt as { urls?: unknown[] }).urls || []
           const reason = (evt as { failure_reason?: string }).failure_reason
@@ -451,7 +442,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             const start = discoveryStartTimeRef.current
             if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
             if (discoveryTimedOutByTimerRef.current) {
-              setDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+              setDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
             }
           }
         })
@@ -462,7 +453,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           }
           setIsDiscovering(false)
           discoveryAbortRef.current = null
-          
+
           // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show error.
           // Use local count to avoid stale React state in closure.
           if (localDiscoveredCount <= 1 && !hasShownError) {
@@ -524,7 +515,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       contentHosting: 'shared',
       businessType: businessType || undefined,
       urlBank: urlBankForSave,
-    }).catch(() => {})
+    }).catch(() => { })
     setTrainingStage('complete')
     setTrainingProgress(100)
     setTrainingPagesCrawled(0)
@@ -646,7 +637,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       contentHosting: 'shared',
       businessType: businessType || undefined,
       urlBank,
-    }).catch(() => {})
+    }).catch(() => { })
     if (!finalUrls.length && !hasPdfs && !hasDocs && !hasPlainText && !hasCustom) {
       setTrainingStage('complete')
       setTrainingProgress(100)
@@ -681,7 +672,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             if (jobIdResult) setJobId(jobIdResult)
             else setLocalError('Could not start. Please try again.')
           })
-          .catch(() => {})
+          .catch(() => { })
       )
     }
     if (hasPdfs) {
@@ -714,7 +705,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
             setExtraJobIds((prev) => [...prev, ...ids])
           })
-          .catch(() => {})
+          .catch(() => { })
       )
     }
 
@@ -726,7 +717,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
             setExtraJobIds((prev) => [...prev, ...ids])
           })
-          .catch(() => {})
+          .catch(() => { })
       )
     }
 
@@ -741,26 +732,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             const ids = (resp?.items || []).map((it) => it.job_id).filter(Boolean)
             setExtraJobIds((prev) => [...prev, ...ids])
           })
-          .catch(() => {})
+          .catch(() => { })
       )
     }
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
-    const backgroundTarget = (() => {
-      const raw = websiteUrl.trim()
-      if (!raw) return normalizedWebsiteUrl
-      try {
-        return normalizeUrl(raw)
-      } catch {
-        return normalizedWebsiteUrl
-      }
-    })()
-    // Only run background discovery for the user's own website, never for 3rd-party shared URLs
-    if (backgroundTarget && contentHosting === 'own') {
-      void startBackgroundDiscovery(created.bot_id, backgroundTarget, discoveryMethod)
-    }
+    // Background discovery disabled for now.
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, startBackgroundDiscovery, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -921,13 +900,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setLocalError,
         resetFlow,
       },
-    step4: {
+      step4: {
         widgetPosition,
         setWidgetPosition,
         widgetPrimaryColor,
         setWidgetPrimaryColor,
-        businessType: widgetBusinessType,
-        setBusinessType: setWidgetBusinessType,
         widgetTitle,
         setWidgetTitle,
         widgetSize,
@@ -960,15 +937,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setAutoPopupWelcome,
         autoScrollNewMessages,
         setAutoScrollNewMessages,
-      displaySourcesInMessages,
-      setDisplaySourcesInMessages,
-      sourcesLabel,
-      setSourcesLabel,
-      selectedSuggestedTopics,
-      setSelectedSuggestedTopics,
-      suggestedMessages,
-      setSuggestedMessages,
-    },
+        displaySourcesInMessages,
+        setDisplaySourcesInMessages,
+        sourcesLabel,
+        setSourcesLabel,
+        suggestedMessages,
+        setSuggestedMessages,
+      },
       flow: {
         nextPath,
         prevPath,
@@ -1019,8 +994,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setWidgetPosition,
       widgetPrimaryColor,
       setWidgetPrimaryColor,
-      widgetBusinessType,
-      setWidgetBusinessType,
       widgetTitle,
       setWidgetTitle,
       widgetSize,
@@ -1057,8 +1030,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setDisplaySourcesInMessages,
       sourcesLabel,
       setSourcesLabel,
-      selectedSuggestedTopics,
-      setSelectedSuggestedTopics,
       suggestedMessages,
       setSuggestedMessages,
       continueWithoutSources,
@@ -1070,6 +1041,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       deselectAll,
       startTraining,
       resetFlow,
+      businessType,
+      setBusinessType,
       nextPath,
       prevPath,
     ]

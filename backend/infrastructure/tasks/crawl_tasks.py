@@ -346,7 +346,9 @@ def _load_docs_from_gcs_prefix(gcs_prefix: str) -> List[Dict[str, Any]]:
     bucket_name = bucket_raw.strip("/").split("/", 1)[0]
     client = storage.Client()
     bucket = client.bucket(bucket_name)
-    blobs = list(bucket.list_blobs(prefix=gcs_prefix, max_results=200))
+    # Use no max_results limit to find all .md files under any sub-prefix
+    blobs = list(bucket.list_blobs(prefix=gcs_prefix))
+    print(f"[TopicExtraction] _load_docs_from_gcs_prefix: prefix={gcs_prefix}, total_blobs={len(blobs)}")
     documents: List[Dict[str, Any]] = []
     for blob in blobs:
         if not blob.name.endswith(".md"):
@@ -361,6 +363,7 @@ def _load_docs_from_gcs_prefix(gcs_prefix: str) -> List[Dict[str, Any]]:
             url = first_line.replace("Source URL:", "").strip()
         if content:
             documents.append({"content": content, "url": url})
+    print(f"[TopicExtraction] _load_docs_from_gcs_prefix: loaded {len(documents)} .md documents")
     return documents
 
 

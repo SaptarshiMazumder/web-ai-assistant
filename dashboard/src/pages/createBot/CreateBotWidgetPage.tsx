@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check } from 'lucide-react'
-import { UiButton } from '../../components/ui'
+import { UiButton, SectionHeader } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '../../components/WidgetDesignForm'
@@ -11,7 +11,7 @@ export default function CreateBotWidgetPage() {
   const { saveWidgetConfig } = useDashboardData()
   const { step1, step2, step3, step4, flow } = useCreateBotFlow()
   const [saving, setSaving] = useState(false)
-  const { botName, businessType: step1BusinessType } = step1
+  const { botName } = step1
   const { botId, trainingStage, localError: trainingError } = step3
   const { contentHosting } = step2
 
@@ -27,16 +27,9 @@ export default function CreateBotWidgetPage() {
     }
   }, [botName, step4.widgetTitle, step4.setWidgetTitle])
 
-  useEffect(() => {
-    if (step1BusinessType && !step4.businessType) {
-      step4.setBusinessType(step1BusinessType)
-    }
-  }, [step1BusinessType, step4.businessType, step4.setBusinessType])
-
   const value: WidgetDesignState = {
     widgetPosition: step4.widgetPosition,
     widgetPrimaryColor: step4.widgetPrimaryColor,
-    businessType: step4.businessType,
     widgetTitle: step4.widgetTitle,
     widgetSize: step4.widgetSize,
     welcomeMessage: step4.welcomeMessage,
@@ -70,7 +63,7 @@ export default function CreateBotWidgetPage() {
     try {
       await saveWidgetConfig(botId, {
         ...stateToWidgetConfig(value),
-        businessType: step1.businessType || step4.businessType || undefined,
+        businessType: step1.businessType || undefined,
         contentHosting: contentHosting || undefined,
       })
       navigate(flow.nextPath)
@@ -120,11 +113,17 @@ export default function CreateBotWidgetPage() {
   )
 
   return (
-    <WidgetDesignForm
-      value={value}
-      onChange={onChange}
-      banner={banner}
-      actions={actions}
-    />
+    <>
+      <SectionHeader
+        title="Design the chat widget"
+        subtitle="Customize how the widget appears. Changes update the preview on the right."
+      />
+      <WidgetDesignForm
+        value={value}
+        onChange={onChange}
+        banner={banner}
+        actions={actions}
+      />
+    </>
   )
 }

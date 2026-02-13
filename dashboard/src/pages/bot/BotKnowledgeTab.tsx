@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
-import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord, type DiscoveryJobRecord } from '../../hooks/useDashboardData'
+import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord } from '../../hooks/useDashboardData'
 import {
   categorizeUrls,
   getAllExpandablePaths,
@@ -10,7 +10,7 @@ import {
   getCategoryUrlCount,
   type UrlCategory,
 } from '../createBot/urlCategorizer'
-import { AnimatedPage, GlassCard, SectionHeader } from '../../components/ui'
+import { AnimatedPage, GlassCard } from '../../components/ui'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
@@ -85,36 +85,7 @@ function trainingProgressLabel(stage: string | undefined): string {
 
 const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled', 'import_submitted'])
 
-const TOPIC_JOB_TERMINAL_STATUS = new Set(['done', 'error'])
 const BOOKING_LINK_JOB_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
-
-function topicProgressPercent(status?: string, stage?: string): number {
-  const s = (status || '').toLowerCase()
-  const st = (stage || '').toLowerCase()
-  if (s === 'done' || st === 'done') return 100
-  if (s === 'error' || st === 'error') return 100
-  if (st === 'saving') return 90
-  if (st === 'categorizing') return 80
-  if (st === 'extracting') return 60
-  if (st === 'loading_docs') return 30
-  if (s === 'queued' || st === 'queued') return 15
-  if (s === 'running') return 45
-  return 10
-}
-
-function topicStatusLabel(status?: string, stage?: string): string {
-  const s = (status || '').toLowerCase()
-  const st = (stage || '').toLowerCase()
-  if (s === 'done' || st === 'done') return '✓ Topics ready'
-  if (s === 'error' || st === 'error') return 'Topic extraction failed'
-  if (st === 'loading_docs') return 'Loading documents…'
-  if (st === 'extracting') return 'Extracting topics…'
-  if (st === 'categorizing') return 'Categorizing topics…'
-  if (st === 'saving') return 'Saving topics…'
-  if (s === 'queued' || st === 'queued') return 'Topics queued…'
-  if (s === 'running') return 'Topics in progress…'
-  return 'Topics…'
-}
 
 function bookingStatusLabel(status?: string): string {
   const s = (status || '').toLowerCase()
@@ -148,17 +119,13 @@ export default function BotKnowledgeTab() {
     cancelIndexJob,
     discoverUrls,
     getJobStatus,
-    cancelDiscoveryJob,
-    listDiscoveryJobs,
-    getDiscoveryJob,
-    listTopicJobs,
-    getTopicJob,
     listBookingLinkJobs,
     getBookingLinkJob,
     startAvailabilityJob,
     getAvailabilityJob,
     saveWidgetConfig,
     selectedBotWidgetConfig,
+    syncUrlBankTopics,
   } = useDashboardData()
 
   const allowKnowledgeDiscovery = !(
@@ -196,22 +163,6 @@ export default function BotKnowledgeTab() {
   const [discoverTrainingUrlCount, setDiscoverTrainingUrlCount] = useState(0)
   const [discoverTrainingSuccess, setDiscoverTrainingSuccess] = useState(false)
 
-  // Background discovery jobs (created during onboarding)
-  const [bgDiscoveryJob, setBgDiscoveryJob] = useState<DiscoveryJobRecord | null>(null)
-  const [bgDiscoverySelected, setBgDiscoverySelected] = useState<Set<string>>(new Set())
-  const [bgDiscoveryExpanded, setBgDiscoveryExpanded] = useState<Set<string>>(new Set())
-  const [bgDiscoveryAdding, setBgDiscoveryAdding] = useState(false)
-  const [bgDiscoveryTrainingPhase, setBgDiscoveryTrainingPhase] = useState<'idle' | 'training_started' | 'training_complete'>('idle')
-  const [bgDiscoveryCardDismissed, setBgDiscoveryCardDismissed] = useState(false)
-  const [bgDiscoveryZeroNotice, setBgDiscoveryZeroNotice] = useState(false)
-  const [bgDiscoveryStopping, setBgDiscoveryStopping] = useState(false)
-  const hadActiveSourcesJobRef = useRef(false)
-  const bgDiscoveryDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const bgDiscoveryPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const bgDiscoveryZeroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const bgDiscoveryPrevStatusRef = useRef<{ jobId: string | null; status: string | null }>({ jobId: null, status: null })
-  const allowBgDiscovery = true
-
   const [sourcesTrainingJobId, setSourcesTrainingJobId] = useState<string | null>(null)
   const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<{
     stage?: string
@@ -219,14 +170,7 @@ export default function BotKnowledgeTab() {
     docs_count?: number
     last_error?: string
   } | null>(null)
-  const [topicJobStatus, setTopicJobStatus] = useState<{
-    status?: string
-    stage?: string
-    docs_count?: number
-    topics_count?: number
-    last_error?: string | null
-    updated_at?: string
-  } | null>(null)
+
   const [bookingLinkJob, setBookingLinkJob] = useState<BookingLinkJobRecord | null>(null)
 
   const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
@@ -285,13 +229,16 @@ export default function BotKnowledgeTab() {
           m.set(url, { url, label })
         }
       }
-      await saveWidgetConfig(selectedBot.bot_id, { ...base, urlBank: Array.from(m.values()) })
+      const urlBankEntries = Array.from(m.values())
+      await saveWidgetConfig(selectedBot.bot_id, { ...base, urlBank: urlBankEntries })
+      // Sync URL bank entries as topics (fire-and-forget, non-blocking)
+      syncUrlBankTopics(selectedBot.bot_id, urlBankEntries).catch(() => {/* non-fatal */ })
       setUrlBankSaved(true)
       window.setTimeout(() => setUrlBankSaved(false), 2200)
     } finally {
       setSavingUrlBank(false)
     }
-  }, [normalizeUrlBankUrl, saveWidgetConfig, selectedBot, selectedBotWidgetConfig, urlBankRows])
+  }, [normalizeUrlBankUrl, saveWidgetConfig, selectedBot, selectedBotWidgetConfig, syncUrlBankTopics, urlBankRows])
 
   const discoverSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const DISCOVER_TERMINAL_STAGES = new Set(['done', 'error', 'cancelled', 'import_submitted'])
@@ -376,63 +323,6 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, availabilityTestJob?.job_id, availabilityTestJob?.status, getAvailabilityJob])
 
-  // Background discovery: load list when bot is set; poll latest job if running/queued
-  useEffect(() => {
-    if (!botId || !selectedBot) {
-      setBgDiscoveryJob(null)
-      setBgDiscoveryCardDismissed(false)
-      setBgDiscoveryTrainingPhase('idle')
-      if (bgDiscoveryPollRef.current) {
-        clearInterval(bgDiscoveryPollRef.current)
-        bgDiscoveryPollRef.current = null
-      }
-      return
-    }
-    let cancelled = false
-    const load = async () => {
-      const list = await listDiscoveryJobs(botId)
-      if (cancelled) return
-      const latest =
-        list
-          .slice()
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null
-      setBgDiscoveryJob((prev) => {
-        if (prev?.job_id !== latest?.job_id) {
-          setBgDiscoveryCardDismissed(false)
-          setBgDiscoveryTrainingPhase('idle')
-        }
-        return latest
-      })
-      if (latest && (latest.status === 'running' || latest.status === 'queued')) {
-        if (!bgDiscoveryPollRef.current) {
-          bgDiscoveryPollRef.current = setInterval(async () => {
-            const updated = await getDiscoveryJob(botId, latest.job_id)
-            if (!cancelled && updated) {
-              setBgDiscoveryJob(updated)
-              if (updated.status !== 'running' && updated.status !== 'queued') {
-                if (bgDiscoveryPollRef.current) {
-                  clearInterval(bgDiscoveryPollRef.current)
-                  bgDiscoveryPollRef.current = null
-                }
-              }
-            }
-          }, 6000)
-        }
-      } else if (bgDiscoveryPollRef.current) {
-        clearInterval(bgDiscoveryPollRef.current)
-        bgDiscoveryPollRef.current = null
-      }
-    }
-    void load()
-    return () => {
-      cancelled = true
-      if (bgDiscoveryPollRef.current) {
-        clearInterval(bgDiscoveryPollRef.current)
-        bgDiscoveryPollRef.current = null
-      }
-    }
-  }, [botId, selectedBot, listDiscoveryJobs, getDiscoveryJob])
-
   // Sources section: detect in-progress index job and poll so we can show training progress bar (ignore stale jobs)
   const activeSourcesJob = useMemo(() => {
     if (!selectedBot || !jobs.length) return null
@@ -484,61 +374,6 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, activeSourcesJob?.job_id, getJobStatus, loadJobs, loadSources])
 
-  // Topic extraction progress (separate job)
-  useEffect(() => {
-    if (!selectedBot) {
-      setTopicJobStatus(null)
-      return
-    }
-    let cancelled = false
-    let pollTimer: ReturnType<typeof setInterval> | null = null
-
-    const load = async () => {
-      const jobs = await listTopicJobs(selectedBot.bot_id)
-      if (cancelled) return
-      if (!jobs.length) {
-        setTopicJobStatus(null)
-        return
-      }
-      const latest = jobs[0]
-      setTopicJobStatus({
-        status: latest.status,
-        stage: latest.stage,
-        docs_count: latest.docs_count,
-        topics_count: latest.topics_count,
-        last_error: latest.last_error,
-        updated_at: latest.updated_at,
-      })
-
-      const isTerminal = TOPIC_JOB_TERMINAL_STATUS.has((latest.status || '').toLowerCase())
-      const stale = isJobStale({ updated_at: latest.updated_at })
-      if (isTerminal || stale) return
-
-      pollTimer = setInterval(async () => {
-        const current = await getTopicJob(selectedBot.bot_id, latest.job_id)
-        if (cancelled || !current) return
-        setTopicJobStatus({
-          status: current.status,
-          stage: current.stage,
-          docs_count: current.docs_count,
-          topics_count: current.topics_count,
-          last_error: current.last_error,
-          updated_at: current.updated_at,
-        })
-        const terminalNow = TOPIC_JOB_TERMINAL_STATUS.has((current.status || '').toLowerCase())
-        if (terminalNow && pollTimer) {
-          clearInterval(pollTimer)
-          pollTimer = null
-        }
-      }, 4000)
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-      if (pollTimer) clearInterval(pollTimer)
-    }
-  }, [selectedBot, listTopicJobs, getTopicJob])
 
   // Booking link extraction (RAG) progress
   useEffect(() => {
@@ -581,38 +416,6 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, listBookingLinkJobs, getBookingLinkJob])
 
-  // When background-discovery "Add to training" job finishes: show "Training complete" then dismiss card
-  useEffect(() => {
-    if (!allowBgDiscovery) return
-    if (bgDiscoveryTrainingPhase !== 'training_started') return
-    if (activeSourcesJob) {
-      hadActiveSourcesJobRef.current = true
-      return
-    }
-    if (!hadActiveSourcesJobRef.current) return
-    hadActiveSourcesJobRef.current = false
-    setBgDiscoveryTrainingPhase('training_complete')
-    if (bgDiscoveryDismissTimerRef.current) clearTimeout(bgDiscoveryDismissTimerRef.current)
-    bgDiscoveryDismissTimerRef.current = setTimeout(() => {
-      setBgDiscoveryCardDismissed(true)
-      setBgDiscoveryTrainingPhase('idle')
-      bgDiscoveryDismissTimerRef.current = null
-    }, 3500)
-  }, [allowBgDiscovery, bgDiscoveryTrainingPhase, activeSourcesJob])
-
-  useEffect(() => {
-    return () => {
-      if (bgDiscoveryDismissTimerRef.current) {
-        clearTimeout(bgDiscoveryDismissTimerRef.current)
-        bgDiscoveryDismissTimerRef.current = null
-      }
-      if (bgDiscoveryZeroTimerRef.current) {
-        clearTimeout(bgDiscoveryZeroTimerRef.current)
-        bgDiscoveryZeroTimerRef.current = null
-      }
-    }
-  }, [])
-
   const normalizedDiscoverUrl = (discoverInputUrl || '').trim().replace(/\/+$/, '') || undefined
   const urlCategories = useMemo(() => {
     if (!discoveredUrls.length || !normalizedDiscoverUrl) return null
@@ -630,290 +433,6 @@ export default function BotKnowledgeTab() {
       hasExpandedDefault.current = true
     }
   }, [urlCategories, discoveredUrls.length])
-
-  /** Normalize URL for comparing discovered vs existing sources (origin + pathname, no fragment). */
-  const normalizeUrlForCompare = useCallback((url: string): string => {
-    try {
-      const u = new URL(url.startsWith('http') ? url : `https://${url}`)
-      const path = (u.pathname || '/').replace(/\/+$/, '') || ''
-      return (u.origin + path).toLowerCase()
-    } catch {
-      return url.toLowerCase()
-    }
-  }, [])
-
-  const existingSourceUrls = useMemo(() => {
-    const set = new Set<string>()
-    sources.filter((s) => s.type === 'url' && s.config?.url).forEach((s) => set.add(normalizeUrlForCompare(String(s.config!.url))))
-    return set
-  }, [sources, normalizeUrlForCompare])
-
-  const bgDiscoveryNewUrls = useMemo(() => {
-    if (!bgDiscoveryJob || bgDiscoveryJob.status !== 'done' || !bgDiscoveryJob.discovered_urls?.length) return []
-    return bgDiscoveryJob.discovered_urls.filter((u) => !existingSourceUrls.has(normalizeUrlForCompare(u)))
-  }, [bgDiscoveryJob, existingSourceUrls, normalizeUrlForCompare])
-
-  useEffect(() => {
-    if (!allowBgDiscovery) return
-    if (!bgDiscoveryJob) {
-      bgDiscoveryPrevStatusRef.current = { jobId: null, status: null }
-      return
-    }
-    const prev = bgDiscoveryPrevStatusRef.current
-    const currentJobId = bgDiscoveryJob.job_id
-    const currentStatus = bgDiscoveryJob.status
-    const transitionedToDone =
-      prev.jobId === currentJobId &&
-      (prev.status === 'running' || prev.status === 'queued') &&
-      currentStatus === 'done'
-
-    bgDiscoveryPrevStatusRef.current = { jobId: currentJobId, status: currentStatus }
-
-    if (!transitionedToDone) return
-    if (bgDiscoveryNewUrls.length > 0) return
-
-    setBgDiscoveryZeroNotice(true)
-    if (bgDiscoveryZeroTimerRef.current) {
-      clearTimeout(bgDiscoveryZeroTimerRef.current)
-    }
-    bgDiscoveryZeroTimerRef.current = setTimeout(() => {
-      setBgDiscoveryZeroNotice(false)
-      bgDiscoveryZeroTimerRef.current = null
-    }, 4000)
-  }, [allowBgDiscovery, bgDiscoveryJob, bgDiscoveryNewUrls.length])
-
-  const bgDiscoveryUrlCategories = useMemo(() => {
-    if (!bgDiscoveryNewUrls.length || !bgDiscoveryJob?.root_url) return null
-    return categorizeUrls(bgDiscoveryNewUrls, bgDiscoveryJob.root_url)
-  }, [bgDiscoveryNewUrls, bgDiscoveryJob?.root_url])
-
-  const bgDiscoveryHasExpandedDefault = useRef(false)
-  useEffect(() => {
-    if (!allowBgDiscovery) return
-    if (bgDiscoveryUrlCategories && !bgDiscoveryHasExpandedDefault.current) {
-      setBgDiscoveryExpanded(new Set(getAllExpandablePaths(bgDiscoveryUrlCategories)))
-      bgDiscoveryHasExpandedDefault.current = true
-    }
-    if (!bgDiscoveryUrlCategories) bgDiscoveryHasExpandedDefault.current = false
-  }, [allowBgDiscovery, bgDiscoveryUrlCategories])
-
-  const bgDiscoverySelectAll = useCallback(() => {
-    if (bgDiscoveryNewUrls.length > 0 && bgDiscoverySelected.size === bgDiscoveryNewUrls.length) {
-      setBgDiscoverySelected(new Set())
-    } else {
-      setBgDiscoverySelected(new Set(bgDiscoveryNewUrls))
-    }
-  }, [bgDiscoveryNewUrls, bgDiscoverySelected.size])
-
-  const bgDiscoveryExpandAll = useCallback(() => {
-    if (bgDiscoveryUrlCategories) setBgDiscoveryExpanded(new Set(getAllExpandablePaths(bgDiscoveryUrlCategories)))
-  }, [bgDiscoveryUrlCategories])
-
-  const bgDiscoveryCollapseAll = useCallback(() => setBgDiscoveryExpanded(new Set()), [])
-
-  const toggleBgDiscoveryCategoryExpand = useCallback((path: string) => {
-    setBgDiscoveryExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(path)) next.delete(path)
-      else next.add(path)
-      return next
-    })
-  }, [])
-
-  const isBgDiscoveryCategorySelected = useCallback(
-    (category: UrlCategory): boolean => {
-      const categoryUrls = getAllUrlsFromCategory(category)
-      return categoryUrls.length > 0 && categoryUrls.every((url) => bgDiscoverySelected.has(url))
-    },
-    [bgDiscoverySelected]
-  )
-
-  const isBgDiscoveryCategoryPartiallySelected = useCallback(
-    (category: UrlCategory): boolean => {
-      const categoryUrls = getAllUrlsFromCategory(category)
-      const count = categoryUrls.filter((url) => bgDiscoverySelected.has(url)).length
-      return count > 0 && count < categoryUrls.length
-    },
-    [bgDiscoverySelected]
-  )
-
-  const toggleBgDiscoveryCategory = useCallback((_path: string, categoryUrls: string[]) => {
-    setBgDiscoverySelected((prev) => {
-      const next = new Set(prev)
-      const allSelected = categoryUrls.length > 0 && categoryUrls.every((u) => next.has(u))
-      if (allSelected) categoryUrls.forEach((u) => next.delete(u))
-      else categoryUrls.forEach((u) => next.add(u))
-      return next
-    })
-  }, [])
-
-  const toggleBgDiscoveryUrl = useCallback((url: string) => {
-    setBgDiscoverySelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(url)) next.delete(url)
-      else next.add(url)
-      return next
-    })
-  }, [])
-
-  const handleBgDiscoveryAddToTraining = useCallback(async () => {
-    if (!allowBgDiscovery) return
-    if (!selectedBot || bgDiscoverySelected.size === 0 || bgDiscoveryAdding) return
-    const urls = Array.from(bgDiscoverySelected)
-    setBgDiscoveryTrainingPhase('training_started')
-    setBgDiscoveryAdding(true)
-    try {
-      await queueCrawlUrls(selectedBot.bot_id, urls)
-      setBgDiscoverySelected(new Set())
-      void loadSources(selectedBot.bot_id)
-      void loadJobs(selectedBot.bot_id)
-    } finally {
-      setBgDiscoveryAdding(false)
-    }
-  }, [allowBgDiscovery, selectedBot, bgDiscoverySelected, bgDiscoveryAdding, queueCrawlUrls, loadSources, loadJobs])
-
-  const handleStopBgDiscovery = useCallback(async () => {
-    if (!allowBgDiscovery) return
-    if (!selectedBot || !bgDiscoveryJob || bgDiscoveryStopping) return
-    if (bgDiscoveryJob.status !== 'running' && bgDiscoveryJob.status !== 'queued') return
-    setBgDiscoveryStopping(true)
-    try {
-      await cancelDiscoveryJob(selectedBot.bot_id, bgDiscoveryJob.job_id)
-      setBgDiscoveryCardDismissed(true)
-      setBgDiscoveryJob(null)
-      if (bgDiscoveryPollRef.current) {
-        clearInterval(bgDiscoveryPollRef.current)
-        bgDiscoveryPollRef.current = null
-      }
-    } finally {
-      setBgDiscoveryStopping(false)
-    }
-  }, [allowBgDiscovery, selectedBot, bgDiscoveryJob, bgDiscoveryStopping, cancelDiscoveryJob])
-
-  const renderBgDiscoveryCategory = useCallback(
-    (category: UrlCategory): React.ReactNode => {
-      const categoryUrls = getAllUrlsFromCategory(category)
-      const urlCount = getCategoryUrlCount(category)
-      const isExpanded = bgDiscoveryExpanded.has(category.path)
-      const isSelected = isBgDiscoveryCategorySelected(category)
-      const isPartial = isBgDiscoveryCategoryPartiallySelected(category)
-      const hasChildCategories = category.children.size > 0
-      const hasExpandableContent = hasChildCategories || category.urls.length > 0
-
-      return (
-        <div key={category.path || 'root'} style={{ marginLeft: `${category.level * 20}px` }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '8px 0',
-              cursor: 'pointer',
-              userSelect: 'none',
-            }}
-          >
-            {hasExpandableContent ? (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation()
-                  toggleBgDiscoveryCategoryExpand(category.path)
-                }}
-                style={{
-                  marginRight: '8px',
-                  width: '14px',
-                  height: '14px',
-                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  color: '#64748b',
-                }}
-                aria-hidden
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
-              </span>
-            ) : (
-              <span style={{ marginRight: '16px', width: '12px' }} />
-            )}
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation()
-                toggleBgDiscoveryCategory(category.path, categoryUrls)
-              }}
-              ref={(input) => {
-                if (input) input.indeterminate = isPartial
-              }}
-              style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-            />
-            <span
-              onClick={() => hasExpandableContent && toggleBgDiscoveryCategoryExpand(category.path)}
-              style={{ flex: 1, cursor: hasExpandableContent ? 'pointer' : 'default' }}
-            >
-              {getCategoryDisplayPath(category)}
-            </span>
-            <span
-              style={{
-                marginLeft: '8px',
-                padding: '2px 8px',
-                borderRadius: '999px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#4f46e5',
-                fontSize: '13px',
-                fontWeight: 500,
-              }}
-            >
-              {urlCount} {urlCount === 1 ? 'page' : 'pages'}
-            </span>
-          </div>
-          {hasExpandableContent && isExpanded && (
-            <div>
-              {Array.from(category.children.values())
-                .sort((a, b) => {
-                  const countA = getCategoryUrlCount(a)
-                  const countB = getCategoryUrlCount(b)
-                  if (countA !== countB) return countB - countA
-                  return a.name.localeCompare(b.name)
-                })
-                .map((child) => renderBgDiscoveryCategory(child))}
-              {category.urls.length > 0 && (
-                <div style={{ marginLeft: '20px', paddingLeft: '20px' }}>
-                  {category.urls.map((url) => (
-                    <label
-                      key={url}
-                      className="url-list-item"
-                      style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={bgDiscoverySelected.has(url)}
-                        onChange={() => toggleBgDiscoveryUrl(url)}
-                        style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-                      />
-                      <span style={{ fontSize: '14px', color: '#334155', wordBreak: 'break-all' }}>{url}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )
-    },
-    [
-      bgDiscoveryExpanded,
-      bgDiscoverySelected,
-      isBgDiscoveryCategorySelected,
-      isBgDiscoveryCategoryPartiallySelected,
-      toggleBgDiscoveryCategoryExpand,
-      toggleBgDiscoveryCategory,
-      toggleBgDiscoveryUrl,
-    ]
-  )
 
   // Refetch jobs/sources when Knowledge tab is shown for a bot so we pick up data from create-bot (queueCrawlUrls may have completed after initial load).
   const lastRefetchedBotIdRef = useRef<string | null>(null)
@@ -1118,7 +637,7 @@ export default function BotKnowledgeTab() {
               ref={(input) => {
                 if (input) input.indeterminate = isPartial
               }}
-              style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+              style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
             />
             <span
               onClick={() => hasExpandableContent && toggleCategoryExpand(category.path)}
@@ -1131,8 +650,8 @@ export default function BotKnowledgeTab() {
                 marginLeft: '8px',
                 padding: '2px 8px',
                 borderRadius: '999px',
-                background: 'rgba(99, 102, 241, 0.15)',
-                color: '#4f46e5',
+                background: 'rgba(246, 180, 109, 0.2)',
+                color: '#d97706',
                 fontSize: '13px',
                 fontWeight: 500,
               }}
@@ -1162,7 +681,7 @@ export default function BotKnowledgeTab() {
                         type="checkbox"
                         checked={selectedDiscovered.has(url)}
                         onChange={() => toggleDiscovered(url)}
-                        style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                        style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                       />
                       <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
                     </label>
@@ -1246,21 +765,6 @@ export default function BotKnowledgeTab() {
     saveWidgetConfig,
     startAvailabilityJob,
   ])
-
-  const showBgDiscoveryCard = Boolean(
-    allowBgDiscovery &&
-      selectedBot &&
-      bgDiscoveryJob &&
-      !bgDiscoveryCardDismissed &&
-      (
-        bgDiscoveryJob.status === 'running' ||
-        bgDiscoveryJob.status === 'queued' ||
-        bgDiscoveryJob.status === 'failed' ||
-        bgDiscoveryJob.status === 'error' ||
-        (bgDiscoveryJob.status === 'done' && (bgDiscoveryNewUrls.length > 0 || bgDiscoveryTrainingPhase !== 'idle'))
-      )
-  )
-  const bgDiscoveryJobForCard = showBgDiscoveryCard ? bgDiscoveryJob : null
 
   if (!selectedBot) {
     return <div className="empty-panel">Select a bot to manage knowledge.</div>
@@ -1363,7 +867,7 @@ export default function BotKnowledgeTab() {
     if (t === 'url') return 'URL'
     if (t === 'pdf') return 'PDF'
     if (t === 'drive') return 'Drive'
-    if (t === 'docs') return 'Google Docs'
+    if (t === 'docs') return 'Doc'
     return type || '—'
   }
 
@@ -1388,12 +892,208 @@ export default function BotKnowledgeTab() {
 
   return (
     <AnimatedPage className="card-grid knowledge-redesign">
-      <SectionHeader
-        eyebrow="Knowledge"
-        title="Train and expand your source graph"
-        subtitle="Discover pages, upload docs, and monitor extraction jobs with warm visual feedback."
-        className="knowledge-header"
-      />
+
+
+
+      {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
+      <GlassCard style={{ gridColumn: '1 / -1' }}>
+        <div className="card-title">Sources ({sources.length})</div>
+        {sourcesTrainingJobId && sourcesTrainingStatus ? (
+          (() => {
+            const totalUrls = sources.length
+            const pct = trainingProgressDisplayPercent(
+              sourcesTrainingStatus.stage,
+              sourcesTrainingStatus.pages_crawled,
+              totalUrls
+            )
+            return (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                  <span className="discovery-loading-dots" aria-hidden>
+                    <span /><span /><span />
+                  </span>
+                  <span style={{ color: 'var(--ui-flow-accent)', fontWeight: 600 }}>
+                    {trainingProgressLabel(sourcesTrainingStatus.stage)} {pct}%
+                  </span>
+                  {sourcesTrainingStatus.pages_crawled != null && sourcesTrainingStatus.pages_crawled > 0 && (
+                    <span className="muted" style={{ fontSize: '0.875rem' }}>
+                      · {sourcesTrainingStatus.pages_crawled} pages · {sourcesTrainingStatus.docs_count ?? 0} docs
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={handleStopTraining}
+                    disabled={stoppingTraining}
+                    style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <span aria-hidden style={{ display: 'inline-block', width: 12, height: 12, backgroundColor: 'currentColor', borderRadius: 2 }} />
+                    {stoppingTraining ? 'Stopping…' : 'Stop training'}
+                  </button>
+                </div>
+                <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
+                  <div
+                    className="progress-fill"
+                    style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      borderRadius: '4px',
+                      transition: 'width 0.3s ease',
+                    }}
+                  />
+                </div>
+                {sourcesTrainingStatus.last_error && (
+                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+                    {sourcesTrainingStatus.last_error}
+                  </div>
+                )}
+              </div>
+            )
+          })()
+        ) : (
+          <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
+            Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.
+          </p>
+        )}
+        <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {sourcesTrainingJobId && sourcesTrainingStatus ? (
+            <span className="primary" style={{ opacity: 0.6, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', padding: '0.6rem 1.1rem', borderRadius: '10px', border: '1px solid transparent', fontWeight: 500, fontSize: '1rem' }} aria-disabled>
+              + Add source
+            </span>
+          ) : (
+            <Link to={botId ? `/bots/${botId}/sources/new` : '#'} className="primary">
+              + Add source
+            </Link>
+          )}
+          {sources.length > 0 && (
+            <>
+              <button
+                type="button"
+                className={sourcesSelected.size === sources.length ? 'ghost' : 'secondary'}
+                onClick={selectAllSources}
+                disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+              >
+                {sourcesSelected.size === sources.length ? 'Deselect all' : 'Select all'}
+              </button>
+              {sourcesSelected.size > 0 && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={handleDeleteSelectedSources}
+                  disabled={deletingSelectedSources || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  style={{ color: '#dc2626' }}
+                >
+                  {deletingSelectedSources ? 'Deleting…' : `Delete selected (${sourcesSelected.size})`}
+                </button>
+              )}
+              {sourcesSelected.size > 0 && <span className="muted">{sourcesSelected.size} selected</span>}
+            </>
+          )}
+        </div>
+        {sources.length > 0 ? (
+          <div className="knowledge-table-wrap knowledge-table-wrap-scroll">
+            <table className="knowledge-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '44px' }} aria-label="Select">
+                    <input
+                      type="checkbox"
+                      checked={sources.length > 0 && sourcesSelected.size === sources.length}
+                      ref={(el) => { if (el) el.indeterminate = sourcesSelected.size > 0 && sourcesSelected.size < sources.length }}
+                      onChange={() => sourcesSelected.size === sources.length ? deselectAllSources() : selectAllSources()}
+                      disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                      aria-label="Select all sources"
+                      style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
+                    />
+                  </th>
+                  <th style={{ width: '120px' }}>Type</th>
+                  <th style={{ width: '160px' }}>Name</th>
+                  <th>Source</th>
+                  <th style={{ width: '100px' }}>Status</th>
+                  <th>Added</th>
+                  <th style={{ width: '80px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sources.map((s) => {
+                  const training = isSourceTraining(s.source_id, s.type)
+                  return (
+                    <tr key={s.source_id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={sourcesSelected.has(s.source_id)}
+                          onChange={() => toggleSourcesSelected(s.source_id)}
+                          disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                          aria-label={`Select ${sourceDisplayName(s)}`}
+                          style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
+                        />
+                      </td>
+                      <td>
+                        <span className="source-type-badge" data-type={s.type.toLowerCase()}>
+                          {sourceTypeLabel(s.type)}
+                        </span>
+                      </td>
+                      <td className="knowledge-name">{sourceDisplayName(s)}</td>
+                      <td className="knowledge-name" style={{ wordBreak: 'break-all' }}>
+                        {sourceUrlOrConfig(s)}
+                      </td>
+                      <td>
+                        <span
+                          className="pill"
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '9999px',
+                            fontSize: '0.8125rem',
+                            fontWeight: 500,
+                            ...(training
+                              ? { background: '#e2e8f0', color: '#64748b' }
+                              : { background: 'rgba(246, 180, 109, 0.2)', color: '#d97706' }),
+                          }}
+                        >
+                          {training ? 'Training' : 'Trained'}
+                        </span>
+                      </td>
+                      <td className="muted">{formatRelativeTime(s.updated_at)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSource(s.source_id)}
+                          disabled={deletingSourceId === s.source_id}
+                          aria-label={`Delete ${sourceDisplayName(s)}`}
+                          style={{
+                            padding: '0.25rem',
+                            background: 'none',
+                            border: 'none',
+                            cursor: deletingSourceId === s.source_id ? 'not-allowed' : 'pointer',
+                            color: deletingSourceId === s.source_id ? '#94a3b8' : '#dc2626',
+                            opacity: deletingSourceId === s.source_id ? 0.7 : 1,
+                          }}
+                        >
+                          {deletingSourceId === s.source_id ? (
+                            <span style={{ fontSize: '0.875rem' }}>…</span>
+                          ) : (
+                            <Trash2 size={18} aria-hidden />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : sourcesTrainingJobId && sourcesTrainingStatus ? (
+          <div className="empty muted" style={{ padding: '1.5rem' }}>
+            Training your selected URLs… Check progress above.
+          </div>
+        ) : (
+          <div className="empty muted" style={{ padding: '1.5rem' }}>
+            No sources yet. Add a URL or PDF to train this bot.
+          </div>
+        )}
+      </GlassCard>
+
       {/* Answer links (URL bank): links the agent can share in answers (not part of Sources). */}
       <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1467,276 +1167,78 @@ export default function BotKnowledgeTab() {
         </div>
       </GlassCard>
 
-      {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
-      <GlassCard style={{ gridColumn: '1 / -1' }}>
-        <div className="card-title">Sources ({sources.length})</div>
-        {sourcesTrainingJobId && sourcesTrainingStatus ? (
-          (() => {
-            const totalUrls = sources.length
-            const pct = trainingProgressDisplayPercent(
-              sourcesTrainingStatus.stage,
-              sourcesTrainingStatus.pages_crawled,
-              totalUrls
-            )
-            return (
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <span className="discovery-loading-dots" aria-hidden>
-                <span /><span /><span />
-              </span>
-              <span style={{ color: 'var(--ui-flow-accent)', fontWeight: 600 }}>
-                {trainingProgressLabel(sourcesTrainingStatus.stage)} {pct}%
-              </span>
-              {sourcesTrainingStatus.pages_crawled != null && sourcesTrainingStatus.pages_crawled > 0 && (
-                <span className="muted" style={{ fontSize: '0.875rem' }}>
-                  · {sourcesTrainingStatus.pages_crawled} pages · {sourcesTrainingStatus.docs_count ?? 0} docs
-                </span>
-              )}
-              <button
-                type="button"
-                className="primary"
-                onClick={handleStopTraining}
-                disabled={stoppingTraining}
-                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <span aria-hidden style={{ display: 'inline-block', width: 12, height: 12, backgroundColor: 'currentColor', borderRadius: 2 }} />
-                {stoppingTraining ? 'Stopping…' : 'Stop training'}
-              </button>
-            </div>
-            <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
-              <div
-                className="progress-fill"
-                style={{
-                  height: '100%',
-                  width: `${pct}%`,
-                  borderRadius: '4px',
-                  transition: 'width 0.3s ease',
-                }}
-              />
-            </div>
-            {sourcesTrainingStatus.last_error && (
-              <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                {sourcesTrainingStatus.last_error}
-              </div>
-            )}
-          </div>
-            )
-          })()
-        ) : (
-          <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.
-          </p>
-        )}
-        <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          {sourcesTrainingJobId && sourcesTrainingStatus ? (
-            <span className="primary" style={{ opacity: 0.6, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', padding: '0.6rem 1.1rem', borderRadius: '10px', border: '1px solid transparent', fontWeight: 500, fontSize: '1rem' }} aria-disabled>
-              + Add source
-            </span>
-          ) : (
-            <Link to={botId ? `/bots/${botId}/sources/new` : '#'} className="primary">
-              + Add source
-            </Link>
-          )}
-          {sources.length > 0 && (
-            <>
-              <button
-                type="button"
-                className={sourcesSelected.size === sources.length ? 'ghost' : 'secondary'}
-                onClick={selectAllSources}
-                disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-              >
-                {sourcesSelected.size === sources.length ? 'Deselect all' : 'Select all'}
-              </button>
-              {sourcesSelected.size > 0 && (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={handleDeleteSelectedSources}
-                  disabled={deletingSelectedSources || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                  style={{ color: '#dc2626' }}
-                >
-                  {deletingSelectedSources ? 'Deleting…' : `Delete selected (${sourcesSelected.size})`}
-                </button>
-              )}
-              {sourcesSelected.size > 0 && <span className="muted">{sourcesSelected.size} selected</span>}
-            </>
-          )}
-        </div>
-        {sources.length > 0 ? (
-          <div className="knowledge-table-wrap knowledge-table-wrap-scroll">
-            <table className="knowledge-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '44px' }} aria-label="Select">
-                    <input
-                      type="checkbox"
-                      checked={sources.length > 0 && sourcesSelected.size === sources.length}
-                      ref={(el) => { if (el) el.indeterminate = sourcesSelected.size > 0 && sourcesSelected.size < sources.length }}
-                      onChange={() => sourcesSelected.size === sources.length ? deselectAllSources() : selectAllSources()}
-                      disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                      aria-label="Select all sources"
-                      style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                    />
-                  </th>
-                  <th style={{ width: '120px' }}>Type</th>
-                  <th style={{ width: '160px' }}>Name</th>
-                  <th>Source</th>
-                  <th style={{ width: '100px' }}>Status</th>
-                  <th>Added</th>
-                  <th style={{ width: '80px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sources.map((s) => {
-                  const training = isSourceTraining(s.source_id, s.type)
-                  return (
-                  <tr key={s.source_id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={sourcesSelected.has(s.source_id)}
-                        onChange={() => toggleSourcesSelected(s.source_id)}
-                        disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                        aria-label={`Select ${sourceDisplayName(s)}`}
-                        style={{ cursor: 'pointer', accentColor: '#6366f1' }}
-                      />
-                    </td>
-                    <td>
-                      <span className="source-type-badge" data-type={s.type.toLowerCase()}>
-                        {sourceTypeLabel(s.type)}
-                      </span>
-                    </td>
-                    <td className="knowledge-name">{sourceDisplayName(s)}</td>
-                    <td className="knowledge-name" style={{ wordBreak: 'break-all' }}>
-                      {sourceUrlOrConfig(s)}
-                    </td>
-                    <td>
-                      <span
-                        className="pill"
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          borderRadius: '9999px',
-                          fontSize: '0.8125rem',
-                          fontWeight: 500,
-                          ...(training
-                            ? { background: '#e2e8f0', color: '#64748b' }
-                            : { background: 'rgba(99, 102, 241, 0.15)', color: '#4f46e5' }),
-                        }}
-                      >
-                        {training ? 'Training' : 'Trained'}
-                      </span>
-                    </td>
-                    <td className="muted">{formatRelativeTime(s.updated_at)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSource(s.source_id)}
-                        disabled={deletingSourceId === s.source_id}
-                        aria-label={`Delete ${sourceDisplayName(s)}`}
-                        style={{
-                          padding: '0.25rem',
-                          background: 'none',
-                          border: 'none',
-                          cursor: deletingSourceId === s.source_id ? 'not-allowed' : 'pointer',
-                          color: deletingSourceId === s.source_id ? '#94a3b8' : '#dc2626',
-                          opacity: deletingSourceId === s.source_id ? 0.7 : 1,
-                        }}
-                      >
-                        {deletingSourceId === s.source_id ? (
-                          <span style={{ fontSize: '0.875rem' }}>…</span>
-                        ) : (
-                          <Trash2 size={18} aria-hidden />
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : sourcesTrainingJobId && sourcesTrainingStatus ? (
-          <div className="empty muted" style={{ padding: '1.5rem' }}>
-            Training your selected URLs… Check progress above.
-          </div>
-        ) : (
-          <div className="empty muted" style={{ padding: '1.5rem' }}>
-            No sources yet. Add a URL or PDF to train this bot.
-          </div>
-        )}
-      </GlassCard>
 
       {/* Booking links - hotel bots only */}
       {selectedBotWidgetConfig?.businessType === 'hotel' && (
-      <GlassCard style={{ gridColumn: '1 / -1' }}>
-        <div className="card-title">Booking links</div>
-        {bookingLinkJob ? (
-          (() => {
-            const status = (bookingLinkJob.status || '').toLowerCase()
-            const isError = status === 'failed' || status === 'error'
-            const isDone = status === 'done'
-            const links = (bookingLinkJob.links || []) as BookingLinkEntry[]
-            return (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                  {!isDone && !isError && (
-                    <span className="discovery-loading-dots" aria-hidden>
-                      <span /><span /><span />
+        <GlassCard style={{ gridColumn: '1 / -1' }}>
+          <div className="card-title">Booking links</div>
+          {bookingLinkJob ? (
+            (() => {
+              const status = (bookingLinkJob.status || '').toLowerCase()
+              const isError = status === 'failed' || status === 'error'
+              const isDone = status === 'done'
+              const links = (bookingLinkJob.links || []) as BookingLinkEntry[]
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                    {!isDone && !isError && (
+                      <span className="discovery-loading-dots" aria-hidden>
+                        <span /><span /><span />
+                      </span>
+                    )}
+                    <span style={{ color: isError ? '#dc2626' : '#0f766e', fontWeight: 600 }}>
+                      {bookingStatusLabel(bookingLinkJob.status)}
                     </span>
-                  )}
-                  <span style={{ color: isError ? '#dc2626' : '#0f766e', fontWeight: 600 }}>
-                    {bookingStatusLabel(bookingLinkJob.status)}
-                  </span>
-                  {bookingLinkJob.updated_at && (
-                    <span className="muted" style={{ fontSize: '0.875rem' }}>
-                      · Updated {formatRelativeTime(bookingLinkJob.updated_at)}
-                    </span>
-                  )}
-                </div>
-                {bookingLinkJob.error && (
-                  <div className="alert error" style={{ marginBottom: '0.75rem' }}>
-                    {bookingLinkJob.error}
+                    {bookingLinkJob.updated_at && (
+                      <span className="muted" style={{ fontSize: '0.875rem' }}>
+                        · Updated {formatRelativeTime(bookingLinkJob.updated_at)}
+                      </span>
+                    )}
                   </div>
-                )}
-                {links.length > 0 ? (
-                  <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px' }}>
-                    {links.map((link) => {
-                      const url = link.url || ''
-                      const rawConfidence = typeof link.confidence === 'number' ? link.confidence : Number(link.confidence || 0)
-                      const confidence = Number.isFinite(rawConfidence) ? rawConfidence : 0
-                      const confidencePct = Math.round(confidence * 100)
-                      const reason = Array.isArray(link.reasons) && link.reasons.length > 0 ? link.reasons[0] : ''
-                      return (
-                        <div key={url} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <a href={url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', wordBreak: 'break-all' }}>
-                              {url}
-                            </a>
-                            <span className="muted" style={{ fontSize: '0.85rem' }}>
-                              · Confidence {confidencePct}%
-                            </span>
-                          </div>
-                          {reason && (
-                            <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                              {reason}
+                  {bookingLinkJob.error && (
+                    <div className="alert error" style={{ marginBottom: '0.75rem' }}>
+                      {bookingLinkJob.error}
+                    </div>
+                  )}
+                  {links.length > 0 ? (
+                    <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px' }}>
+                      {links.map((link) => {
+                        const url = link.url || ''
+                        const rawConfidence = typeof link.confidence === 'number' ? link.confidence : Number(link.confidence || 0)
+                        const confidence = Number.isFinite(rawConfidence) ? rawConfidence : 0
+                        const confidencePct = Math.round(confidence * 100)
+                        const reason = Array.isArray(link.reasons) && link.reasons.length > 0 ? link.reasons[0] : ''
+                        return (
+                          <div key={url} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <a href={url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', wordBreak: 'break-all' }}>
+                                {url}
+                              </a>
+                              <span className="muted" style={{ fontSize: '0.85rem' }}>
+                                · Confidence {confidencePct}%
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="muted">No booking links found yet.</div>
-                )}
-              </>
-            )
-          })()
-        ) : (
-          <p className="card-subtitle" style={{ marginTop: 0 }}>
-            Booking links are extracted from your trained knowledge after import completes.
-          </p>
-        )}
-      </GlassCard>
+                            {reason && (
+                              <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
+                                {reason}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="muted">No booking links found yet.</div>
+                  )}
+                </>
+              )
+            })()
+          ) : (
+            <p className="card-subtitle" style={{ marginTop: 0 }}>
+              Booking links are extracted from your trained knowledge after import completes.
+            </p>
+          )}
+        </GlassCard>
       )}
 
       {/* Realtime availability (hotel bots only) */}
@@ -1757,7 +1259,7 @@ export default function BotKnowledgeTab() {
                   type="checkbox"
                   checked={allowRealtimeAvailability}
                   onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
-                  style={{ accentColor: '#6366f1' }}
+                  style={{ accentColor: 'var(--ui-flow-accent-secondary)' }}
                 />
                 <span>Allow agent to check real-time room availability and answer user queries</span>
               </label>
@@ -1849,179 +1351,6 @@ export default function BotKnowledgeTab() {
         </GlassCard>
       )}
 
-      {/* Topic extraction progress */}
-      <GlassCard style={{ gridColumn: '1 / -1' }}>
-        <div className="card-title">Topics extraction</div>
-        {topicJobStatus ? (
-          (() => {
-            const pct = topicProgressPercent(topicJobStatus.status, topicJobStatus.stage)
-            const isError = (topicJobStatus.status || '').toLowerCase() === 'error' || (topicJobStatus.stage || '').toLowerCase() === 'error'
-            const isDone = (topicJobStatus.status || '').toLowerCase() === 'done' || (topicJobStatus.stage || '').toLowerCase() === 'done'
-            const label = topicStatusLabel(topicJobStatus.status, topicJobStatus.stage)
-            return (
-              <div style={{ marginTop: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                  {!isDone && !isError && (
-                    <span className="discovery-loading-dots" aria-hidden>
-                      <span /><span /><span />
-                    </span>
-                  )}
-                  <span style={{ color: isError ? '#dc2626' : '#0f766e', fontWeight: 600 }}>
-                    {label} {pct}%
-                  </span>
-                  {topicJobStatus.docs_count != null && (
-                    <span className="muted" style={{ fontSize: '0.875rem' }}>
-                      · {topicJobStatus.docs_count} docs · {topicJobStatus.topics_count ?? 0} topics
-                    </span>
-                  )}
-                  {topicJobStatus.updated_at && (
-                    <span className="muted" style={{ fontSize: '0.875rem' }}>
-                      · Updated {formatRelativeTime(topicJobStatus.updated_at)}
-                    </span>
-                  )}
-                </div>
-                <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: '#e2e8f0' }}>
-                  <div
-                    className="progress-fill"
-                    style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      background: isError ? '#f87171' : '#0f766e',
-                      borderRadius: '4px',
-                      transition: 'width 0.3s ease',
-                    }}
-                  />
-                </div>
-                {topicJobStatus.last_error && (
-                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                    {topicJobStatus.last_error}
-                  </div>
-                )}
-              </div>
-            )
-          })()
-        ) : (
-          <p className="card-subtitle" style={{ marginTop: '0.5rem' }}>
-            No topic extraction jobs yet. Topics run in parallel during training.
-          </p>
-        )}
-      </GlassCard>
-
-      {allowBgDiscovery && bgDiscoveryZeroNotice && (
-        <div className="alert info" style={{ gridColumn: '1 / -1' }}>
-          Background discovery completed. No new URLs were found.
-        </div>
-      )}
-
-      {/* Background discovery — show only for own-website bots */}
-      {allowBgDiscovery && bgDiscoveryJobForCard && (
-        <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">Background discovery</div>
-          {(bgDiscoveryJobForCard.status !== 'running' && bgDiscoveryJobForCard.status !== 'queued') && (
-            <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
-              More URLs from your site (discovered in the background). Add new URLs to training below.
-            </p>
-          )}
-          {bgDiscoveryJobForCard.status === 'running' || bgDiscoveryJobForCard.status === 'queued' ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-              <div className="alert info" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
-                <span className="discovery-loading-dots" aria-hidden style={{ marginRight: '8px' }}>
-                  <span /><span /><span />
-                </span>
-                Discovering… {bgDiscoveryJobForCard.discovered_count ?? bgDiscoveryJobForCard.discovered_urls?.length ?? 0} URLs so far
-              </div>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => void handleStopBgDiscovery()}
-                disabled={bgDiscoveryStopping}
-              >
-                {bgDiscoveryStopping ? 'Stopping…' : 'Stop discovery'}
-              </button>
-            </div>
-          ) : (bgDiscoveryJobForCard.status === 'failed' || bgDiscoveryJobForCard.status === 'error') ? (
-            <div className="alert error">{bgDiscoveryJobForCard.error ?? 'Discovery failed'}</div>
-          ) : bgDiscoveryJobForCard.status === 'done' && (bgDiscoveryTrainingPhase === 'training_started' || bgDiscoveryTrainingPhase === 'training_complete') ? (
-            <div className="alert info" style={{ marginBottom: 0, color: '#6366f1', fontWeight: 500 }}>
-              {bgDiscoveryTrainingPhase === 'training_started'
-                ? 'Training started. Check progress in Sources above.'
-                : 'Training complete.'}
-            </div>
-          ) : bgDiscoveryJobForCard.status === 'done' ? (
-            <>
-              <div style={{ marginBottom: '0.75rem', color: '#6366f1', fontWeight: 500 }}>
-                Discovery complete: <strong>{bgDiscoveryNewUrls.length}</strong> new URL{bgDiscoveryNewUrls.length !== 1 ? 's' : ''} ({(bgDiscoveryJobForCard.discovered_count ?? 0) - bgDiscoveryNewUrls.length} already in knowledge)
-              </div>
-              {bgDiscoveryNewUrls.length > 0 ? (
-                <>
-                  <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
-                    <button
-                      type="button"
-                      className={bgDiscoverySelected.size === bgDiscoveryNewUrls.length && bgDiscoveryNewUrls.length > 0 ? 'ghost' : 'secondary'}
-                      onClick={bgDiscoverySelectAll}
-                    >
-                      {bgDiscoverySelected.size === bgDiscoveryNewUrls.length && bgDiscoveryNewUrls.length > 0 ? 'Deselect all' : 'Select all'}
-                    </button>
-                    <button
-                      type="button"
-                      className={bgDiscoveryExpanded.size > 0 ? 'ghost' : 'secondary'}
-                      onClick={bgDiscoveryExpanded.size > 0 ? bgDiscoveryCollapseAll : bgDiscoveryExpandAll}
-                    >
-                      {bgDiscoveryExpanded.size > 0 ? 'Collapse all' : 'Expand all'}
-                    </button>
-                    <div className="muted">{bgDiscoverySelected.size} selected</div>
-                  </div>
-                  <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px', marginBottom: '0.75rem' }}>
-                    {bgDiscoveryUrlCategories ? (
-                      <div>
-                        {Array.from(bgDiscoveryUrlCategories.children.values())
-                          .sort((a, b) => {
-                            const countA = getCategoryUrlCount(a)
-                            const countB = getCategoryUrlCount(b)
-                            if (countA !== countB) return countB - countA
-                            return a.name.localeCompare(b.name)
-                          })
-                          .map((category) => renderBgDiscoveryCategory(category))}
-                        {bgDiscoveryUrlCategories.urls.length > 0 && (
-                          <div style={{ marginLeft: 0 }}>
-                            {bgDiscoveryUrlCategories.urls.map((url) => (
-                              <label
-                                key={url}
-                                className="url-list-item"
-                                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={bgDiscoverySelected.has(url)}
-                                  onChange={() => toggleBgDiscoveryUrl(url)}
-                                  style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
-                                />
-                                <span style={{ fontSize: '14px', color: '#334155', wordBreak: 'break-all' }}>{url}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="muted">Loading categories…</div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="primary"
-                    onClick={handleBgDiscoveryAddToTraining}
-                    disabled={bgDiscoverySelected.size === 0 || bgDiscoveryAdding || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                  >
-                    {bgDiscoveryAdding ? 'Adding…' : `Add to training (${bgDiscoverySelected.size} selected)`}
-                  </button>
-                </>
-              ) : (
-                <div className="muted">All discovered URLs are already in your knowledge.</div>
-              )}
-            </>
-          ) : null}
-        </GlassCard>
-      )}
 
       {/* Add more pages — own-website bots only */}
       {allowKnowledgeDiscovery && (
@@ -2035,7 +1364,7 @@ export default function BotKnowledgeTab() {
                   <span />
                   <span />
                 </span>
-                <span style={{ color: '#6366f1', fontWeight: 500 }}>
+                <span style={{ color: 'var(--ui-flow-accent-secondary)', fontWeight: 500 }}>
                   Discovering pages… {discoveredUrls.length} found so far
                 </span>
               </span>
@@ -2043,7 +1372,7 @@ export default function BotKnowledgeTab() {
               <>
                 Enter a website URL to discover pages. Choose the ones your bot should learn from.
                 {discoveredUrls.length > 0 && (
-                  <span style={{ marginLeft: '8px', color: '#6366f1', fontWeight: 500 }}>
+                  <span style={{ marginLeft: '8px', color: 'var(--ui-flow-accent-secondary)', fontWeight: 500 }}>
                     {discoveredUrls.length} page{discoveredUrls.length === 1 ? '' : 's'} found.
                   </span>
                 )}
@@ -2155,7 +1484,7 @@ export default function BotKnowledgeTab() {
                               type="checkbox"
                               checked={selectedDiscovered.has(url)}
                               onChange={() => toggleDiscovered(url)}
-                              style={{ marginRight: '8px', cursor: 'pointer', accentColor: '#6366f1' }}
+                              style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                             />
                             <span style={{ fontSize: '16px', color: '#334155' }}>{url}</span>
                           </label>

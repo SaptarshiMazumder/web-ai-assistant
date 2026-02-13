@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
+import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { StopIcon } from './DiscoveryIcons'
@@ -21,12 +21,6 @@ export default function CreateBotUrlsPage() {
     setTrainingUrls,
     pdfFiles,
     setPdfFiles,
-    textDocFiles,
-    setTextDocFiles,
-    plainTextContent,
-    setPlainTextContent,
-    customTextEntries,
-    setCustomTextEntries,
     isDiscovering,
     discoveryMethod,
     discoveryDurationMs,
@@ -52,7 +46,6 @@ export default function CreateBotUrlsPage() {
       : null
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
-  const [showExtraSources, setShowExtraSources] = useState(false)
   const [sharedDiscoveryUrl, setSharedDiscoveryUrl] = useState('')
   const [sharedNormalizedDiscoveryUrl, setSharedNormalizedDiscoveryUrl] = useState('')
   const [sharedDiscoveredUrls, setSharedDiscoveredUrls] = useState<string[]>([])
@@ -231,7 +224,7 @@ export default function CreateBotUrlsPage() {
             if (start != null) setSharedDiscoveryDurationMs(Date.now() - start)
             setIsSharedDiscovering(false)
             if ((evt as { timed_out?: boolean }).timed_out === true) {
-              setSharedDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+              setSharedDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
             }
             const urls = (evt as { urls?: unknown[] }).urls || []
             const reason = (evt as { failure_reason?: string }).failure_reason
@@ -290,7 +283,7 @@ export default function CreateBotUrlsPage() {
         const start = sharedDiscoveryStartTimeRef.current
         if (start != null) setSharedDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
         if (sharedDiscoveryTimedOutByTimerRef.current) {
-          setSharedDiscoveryTimedOutMessage("Found main URLs. You can train on these now; we'll discover more in the background.")
+          setSharedDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
         }
       } else {
         hasShownError = true
@@ -305,7 +298,7 @@ export default function CreateBotUrlsPage() {
       }
       setIsSharedDiscovering(false)
       sharedDiscoveryAbortRef.current = null
-      
+
       // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show PDF fallback.
       // Use local count to avoid stale React state in closure.
       if (localDiscoveredCount <= 1 && !hasShownError) {
@@ -511,136 +504,6 @@ export default function CreateBotUrlsPage() {
     )
   }
 
-  /* ── Extra sources panel (shared between both hosting views) ───────────── */
-  const handleAddCustomEntry = () =>
-    setCustomTextEntries([...customTextEntries, { id: Date.now().toString(), title: '', content: '' }])
-  const handleRemoveCustomEntry = (id: string) => {
-    if (customTextEntries.length > 1) setCustomTextEntries(customTextEntries.filter((e) => e.id !== id))
-  }
-  const handleUpdateCustomEntry = (id: string, field: 'title' | 'content', value: string) =>
-    setCustomTextEntries(customTextEntries.map((e) => (e.id === id ? { ...e, [field]: value } : e)))
-
-  const extraSourcesPanel = (
-    <div style={{ marginTop: '1.25rem' }}>
-      <button
-        type="button"
-        onClick={() => setShowExtraSources((v) => !v)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '0.5rem 0',
-          color: 'var(--flow-muted)',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-        }}
-      >
-        {showExtraSources ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        Additional sources — text files, plain text, custom entries (optional)
-      </button>
-
-      {showExtraSources && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.75rem' }}>
-
-          {/* Text document files */}
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-              Text documents (.txt, .md, .docx, .doc)
-            </div>
-            <FileDropzone
-              label="Drop text files here"
-              helperText="Upload .txt, .md, .docx, .doc files (up to 20)"
-              files={textDocFiles}
-              setFiles={setTextDocFiles}
-              accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              multiple
-              maxFiles={20}
-            />
-          </div>
-
-          {/* Plain text */}
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-              Plain text
-            </div>
-            <textarea
-              value={plainTextContent}
-              onChange={(e) => setPlainTextContent(e.target.value)}
-              placeholder="Paste any text for your AI to learn from…"
-              rows={6}
-              style={{
-                width: '100%',
-                resize: 'vertical',
-                fontFamily: 'inherit',
-                padding: '0.75rem',
-                border: '1px solid var(--flow-border)',
-                borderRadius: 'var(--flow-radius)',
-                background: 'var(--flow-surface)',
-              }}
-            />
-          </div>
-
-          {/* Custom entries */}
-          <div>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-              Custom entries (FAQs, policies, hours…)
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {customTextEntries.map((entry, idx) => (
-                <div
-                  key={entry.id}
-                  style={{
-                    background: 'var(--flow-surface)',
-                    border: '1px solid var(--flow-border)',
-                    borderRadius: 'var(--flow-radius)',
-                    padding: '0.875rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--flow-heading)' }}>Entry #{idx + 1}</span>
-                    {customTextEntries.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCustomEntry(entry.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--flow-muted)', padding: '0.25rem' }}
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    value={entry.title}
-                    onChange={(e) => handleUpdateCustomEntry(entry.id, 'title', e.target.value)}
-                    placeholder="Title (e.g. Return Policy)"
-                    style={{ width: '100%', marginBottom: '0.5rem' }}
-                  />
-                  <textarea
-                    value={entry.content}
-                    onChange={(e) => handleUpdateCustomEntry(entry.id, 'content', e.target.value)}
-                    placeholder="Content…"
-                    rows={3}
-                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
-                  />
-                </div>
-              ))}
-            </div>
-            <UiButton
-              variant="secondary"
-              onClick={handleAddCustomEntry}
-              style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              <Plus size={14} />
-              Add entry
-            </UiButton>
-          </div>
-        </div>
-      )}
-    </div>
-  )
 
   /* ── Shared-hosting sub-view ───────────────────────────────────────────── */
   if (contentHosting !== 'own') {
@@ -733,21 +596,21 @@ export default function CreateBotUrlsPage() {
           )}
 
           {showPdfFallback && !isSharedDiscovering && (
-            <div style={{ 
-              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', 
-              border: '2px solid #0ea5e9', 
-              borderRadius: '16px', 
+            <div style={{
+              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+              border: '2px solid #0ea5e9',
+              borderRadius: '16px',
               padding: '2rem',
               marginBottom: '1.5rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div style={{ 
-                  width: '48px', 
-                  height: '48px', 
-                  borderRadius: '12px', 
-                  background: '#0ea5e9', 
-                  display: 'flex', 
-                  alignItems: 'center', 
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  background: '#0ea5e9',
+                  display: 'flex',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0
                 }}>
@@ -763,36 +626,36 @@ export default function CreateBotUrlsPage() {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: '1rem', 
-                marginBottom: '1.5rem' 
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+                marginBottom: '1.5rem'
               }}>
-                <div style={{ 
-                  background: 'white', 
-                  borderRadius: '12px', 
-                  padding: '1.25rem', 
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                   border: '1px solid #e2e8f0'
                 }}>
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '10px', 
-                    background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'var(--ui-flow-brand-gradient)',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '0.75rem'
                   }}>
                     <MousePointerClick size={22} color="white" strokeWidth={2.5} />
                   </div>
-                  <div style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: 800, 
-                    color: '#cbd5e1', 
-                    marginBottom: '0.5rem' 
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 800,
+                    color: '#cbd5e1',
+                    marginBottom: '0.5rem'
                   }}>
                     STEP 1
                   </div>
@@ -804,30 +667,30 @@ export default function CreateBotUrlsPage() {
                   </p>
                 </div>
 
-                <div style={{ 
-                  background: 'white', 
-                  borderRadius: '12px', 
-                  padding: '1.25rem', 
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                   border: '1px solid #e2e8f0'
                 }}>
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '10px', 
-                    background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '0.75rem'
                   }}>
                     <Printer size={22} color="white" strokeWidth={2.5} />
                   </div>
-                  <div style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: 800, 
-                    color: '#cbd5e1', 
-                    marginBottom: '0.5rem' 
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 800,
+                    color: '#cbd5e1',
+                    marginBottom: '0.5rem'
                   }}>
                     STEP 2
                   </div>
@@ -839,30 +702,30 @@ export default function CreateBotUrlsPage() {
                   </p>
                 </div>
 
-                <div style={{ 
-                  background: 'white', 
-                  borderRadius: '12px', 
-                  padding: '1.25rem', 
+                <div style={{
+                  background: 'white',
+                  borderRadius: '12px',
+                  padding: '1.25rem',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                   border: '1px solid #e2e8f0'
                 }}>
-                  <div style={{ 
-                    width: '40px', 
-                    height: '40px', 
-                    borderRadius: '10px', 
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     marginBottom: '0.75rem'
                   }}>
                     <UploadCloud size={22} color="white" strokeWidth={2.5} />
                   </div>
-                  <div style={{ 
-                    fontSize: '1.5rem', 
-                    fontWeight: 800, 
-                    color: '#cbd5e1', 
-                    marginBottom: '0.5rem' 
+                  <div style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 800,
+                    color: '#cbd5e1',
+                    marginBottom: '0.5rem'
                   }}>
                     STEP 3
                   </div>
@@ -875,9 +738,9 @@ export default function CreateBotUrlsPage() {
                 </div>
               </div>
 
-              <div style={{ 
-                background: 'rgba(14, 165, 233, 0.1)', 
-                borderRadius: '12px', 
+              <div style={{
+                background: 'rgba(14, 165, 233, 0.1)',
+                borderRadius: '12px',
                 padding: '1rem 1.25rem',
                 border: '1px solid rgba(14, 165, 233, 0.3)'
               }}>
@@ -892,6 +755,40 @@ export default function CreateBotUrlsPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div style={{ marginTop: '1.25rem' }}>
+                {pdfFiles.length > 0 && (
+                  <div style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    padding: '1rem 1.25rem',
+                    marginBottom: '1rem',
+                    border: '1px solid rgba(14, 165, 233, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                  }}>
+                    <CheckCircle2 size={24} color="#0ea5e9" strokeWidth={2.5} />
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
+                        Perfect! {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#64748b' }}>
+                        Click "Start training" below to teach your AI
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <FileDropzone
+                  label="📄 Drop your PDFs here"
+                  helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
+                  files={pdfFiles}
+                  setFiles={setPdfFiles}
+                  accept="application/pdf"
+                  multiple
+                  maxFiles={20}
+                />
               </div>
             </div>
           )}
@@ -999,163 +896,7 @@ export default function CreateBotUrlsPage() {
           )}
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            margin: '0.75rem 0 1rem',
-          }}
-        >
-          <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
-          <span
-            style={{
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              color: 'var(--flow-muted)',
-            }}
-          >
-            OR
-          </span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
-        </div>
 
-        <div
-          style={{
-            padding: '1.5rem',
-            background: 'var(--flow-surface)',
-            border: '1px solid var(--flow-border)',
-            borderRadius: 'var(--flow-radius)',
-            marginBottom: '1.5rem',
-          }}
-        >
-          {pdfFiles.length > 0 && (
-            <div style={{ 
-              background: 'var(--flow-bg)',
-              borderRadius: '12px',
-              padding: '1rem 1.25rem',
-              marginBottom: '1.25rem',
-              border: '1px solid var(--flow-border)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem'
-            }}>
-              <CheckCircle2 size={24} color="var(--flow-accent)" strokeWidth={2.5} />
-              <div>
-                <p style={{ margin: 0, fontWeight: 700, color: 'var(--flow-heading)', fontSize: '1rem' }}>
-                  Perfect! {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
-                </p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--flow-muted)' }}>
-                  Click "Start training" below to teach your AI
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>
-                  Add Website Pages as PDFs
-                </h3>
-                <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>
-                  Follow these 3 easy steps
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '1rem' }}>
-            <div className="flow-instruction-card" style={{
-              background: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center'
-                }}>
-                  <MousePointerClick size={18} color="white" strokeWidth={2.5} />
-                </div>
-                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
-                  STEP 1
-                </span>
-              </div>
-              <div className="flow-instruction-card-heading">Open the page</div>
-              <div className="flow-instruction-card-body">
-                Open important pages (services, prices, hours, booking, contact).
-              </div>
-            </div>
-            <div className="flow-instruction-card" style={{
-              background: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center'
-                }}>
-                  <Printer size={18} color="white" strokeWidth={2.5} />
-                </div>
-                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
-                  STEP 2
-                </span>
-              </div>
-              <div className="flow-instruction-card-heading">Save as PDF</div>
-              <div className="flow-instruction-card-body">
-                Right-click → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.
-              </div>
-            </div>
-            <div className="flow-instruction-card" style={{
-              background: 'white',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center'
-                }}>
-                  <UploadCloud size={18} color="white" strokeWidth={2.5} />
-                </div>
-                <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>
-                  STEP 3
-                </span>
-              </div>
-              <div className="flow-instruction-card-heading">Upload here</div>
-              <div className="flow-instruction-card-body">
-                Drop your PDFs in the box below. Your AI will learn from them!
-              </div>
-            </div>
-          </div>
-
-          <FileDropzone
-            label="📄 Drop your PDFs here"
-            helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
-            files={pdfFiles}
-            setFiles={setPdfFiles}
-            accept="application/pdf"
-            multiple
-            maxFiles={20}
-          />
-          {extraSourcesPanel}
-        </div>
 
         {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 
@@ -1440,7 +1181,6 @@ export default function CreateBotUrlsPage() {
         multiple
         maxFiles={20}
       />
-      {extraSourcesPanel}
 
       {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 

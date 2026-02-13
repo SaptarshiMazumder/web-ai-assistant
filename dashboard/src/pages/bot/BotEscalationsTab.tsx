@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Check, CheckCircle, Clock, RotateCcw, Bell, BellRing, Mail, Settings2, MessageSquare } from 'lucide-react'
 import { useDashboardData, type EscalationConfig, type EscalationRecord } from '../../hooks/useDashboardData'
-import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import { AnimatedPage, GlassCard, SectionHeader, UiButton, SegmentedTabs } from '../../components/ui'
 
 const DEFAULT_CONFIG: EscalationConfig = {
   enabled: false,
@@ -121,164 +121,155 @@ export default function BotEscalationsTab() {
         subtitle="Manage handoff rules and resolve customer requests from one timeline."
       />
 
-      <GlassCard>
-        <div className="tab-row">
-          <button
-            type="button"
-            className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
-          >
-            <Settings2 size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            Settings
-          </button>
-          <button
-            type="button"
-            className={`tab-button ${activeTab === 'escalations' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('escalations')
-              void loadEscalations()
-            }}
-          >
-            <MessageSquare size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            Escalated conversations
-          </button>
-        </div>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <SegmentedTabs
+          value={activeTab}
+          onChange={(val) => {
+            setActiveTab(val)
+            if (val === 'escalations') void loadEscalations()
+          }}
+          options={[
+            { id: 'settings', label: 'Settings', icon: <Settings2 size={16} /> },
+            { id: 'escalations', label: 'Escalated conversations', icon: <MessageSquare size={16} /> },
+          ]}
+          ariaLabel="Escalation tabs"
+        />
+      </div>
 
-        {activeTab === 'settings' && (
-          <div style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <Bell size={18} style={{ color: 'var(--ui-flow-accent)' }} />
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Enable escalations</div>
-                  <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                    Allow visitors to escalate to support with their email.
-                  </p>
-                </div>
+      {activeTab === 'settings' && (
+        <GlassCard style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Bell size={18} style={{ color: 'var(--ui-flow-accent)' }} />
+              <div>
+                <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Enable escalations</div>
+                <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
+                  Allow visitors to escalate to support with their email.
+                </p>
               </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={config.enabled}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, enabled: e.target.checked }))}
-                />
-                <span className="toggle-slider" />
-              </label>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <BellRing size={18} style={{ color: 'var(--ui-flow-accent)' }} />
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Email notifications</div>
-                  <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                    Receive notifications when visitors escalate.
-                  </p>
-                </div>
-              </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={config.notify_enabled}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, notify_enabled: e.target.checked }))}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 500, fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--ui-flow-text)' }}>
-                <Mail size={15} style={{ color: 'var(--ui-flow-accent)' }} />
-                Notification email(s)
-              </label>
+            <label className="toggle">
               <input
-                type="text"
-                placeholder="team@company.com; support@company.com"
-                value={config.notification_emails}
-                onChange={(e) => setConfig((prev) => ({ ...prev, notification_emails: e.target.value }))}
-                style={{ width: '100%' }}
+                type="checkbox"
+                checked={config.enabled}
+                onChange={(e) => setConfig((prev) => ({ ...prev, enabled: e.target.checked }))}
               />
-              <span className="muted" style={{ fontSize: '0.82rem', display: 'block', marginTop: '0.3rem' }}>
-                Separate multiple emails with semicolons (;).
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <UiButton variant="primary" onClick={() => void handleSave()} disabled={saving}>
-                {saving ? 'Saving...' : 'Save settings'}
-              </UiButton>
-            </div>
+              <span className="toggle-slider" />
+            </label>
           </div>
-        )}
 
-        {activeTab === 'escalations' && (
-          <div style={{ marginTop: '0.5rem' }}>
-            {escalations.length === 0 && <div className="muted" style={{ padding: '1rem 0' }}>No escalations yet.</div>}
-            <div className="escalation-list">
-              {escalations.map((e) => (
-                <button
-                  key={e.escalation_id}
-                  type="button"
-                  className="conversation-row"
-                  onClick={() => navigate(`/bots/${botId}/conversations?session=${encodeURIComponent(e.session_id)}`)}
-                >
-                  <div className="conversation-row-top">
-                    <div className="conversation-title">{titleForEscalation(e)}</div>
-                    <div className="conversation-time">{formatTime(e.created_at)}</div>
-                  </div>
-                  <div className="conversation-meta escalation-meta-row">
-                    <span className="escalation-email">{e.visitor_email}</span>
-                    <div className="escalation-status-actions">
-                      {e.status === 'resolved' ? (
-                        <>
-                          <span className="conversation-status resolved">
-                            <CheckCircle size={14} />
-                            Resolved
-                          </span>
-                          <button
-                            type="button"
-                            className="icon-pill"
-                            aria-label="Undo resolve"
-                            onClick={(evt) => {
-                              evt.stopPropagation()
-                              void handleReopen(e.escalation_id)
-                            }}
-                          >
-                            <RotateCcw size={14} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="conversation-status pending">
-                            <Clock size={14} />
-                            Pending
-                          </span>
-                          <button
-                            type="button"
-                            className="pill-action"
-                            onClick={(evt) => {
-                              evt.stopPropagation()
-                              void handleResolve(e.escalation_id)
-                            }}
-                          >
-                            <Check size={14} />
-                            Mark as resolved
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {e.details && (
-                    <div className="muted" style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
-                      {e.details}
-                    </div>
-                  )}
-                </button>
-              ))}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <BellRing size={18} style={{ color: 'var(--ui-flow-accent)' }} />
+              <div>
+                <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Email notifications</div>
+                <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
+                  Receive notifications when visitors escalate.
+                </p>
+              </div>
             </div>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={config.notify_enabled}
+                onChange={(e) => setConfig((prev) => ({ ...prev, notify_enabled: e.target.checked }))}
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
-        )}
-      </GlassCard>
-    </AnimatedPage>
+
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 500, fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--ui-flow-text)' }}>
+              <Mail size={15} style={{ color: 'var(--ui-flow-accent)' }} />
+              Notification email(s)
+            </label>
+            <input
+              type="text"
+              placeholder="team@company.com; support@company.com"
+              value={config.notification_emails}
+              onChange={(e) => setConfig((prev) => ({ ...prev, notification_emails: e.target.value }))}
+              style={{ width: '100%' }}
+            />
+            <span className="muted" style={{ fontSize: '0.82rem', display: 'block', marginTop: '0.3rem' }}>
+              Separate multiple emails with semicolons (;).
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <UiButton variant="primary" onClick={() => void handleSave()} disabled={saving}>
+              {saving ? 'Saving...' : 'Save settings'}
+            </UiButton>
+          </div>
+        </GlassCard>
+      )}
+
+      {activeTab === 'escalations' && (
+        <GlassCard style={{ marginTop: '0.5rem' }}>
+          {escalations.length === 0 && <div className="muted" style={{ padding: '1rem 0' }}>No escalations yet.</div>}
+          <div className="escalation-list">
+            {escalations.map((e) => (
+              <button
+                key={e.escalation_id}
+                type="button"
+                className="conversation-row"
+                onClick={() => navigate(`/bots/${botId}/conversations?session=${encodeURIComponent(e.session_id)}`)}
+              >
+                <div className="conversation-row-top">
+                  <div className="conversation-title">{titleForEscalation(e)}</div>
+                  <div className="conversation-time">{formatTime(e.created_at)}</div>
+                </div>
+                <div className="conversation-meta escalation-meta-row">
+                  <span className="escalation-email">{e.visitor_email}</span>
+                  <div className="escalation-status-actions">
+                    {e.status === 'resolved' ? (
+                      <>
+                        <span className="conversation-status resolved">
+                          <CheckCircle size={14} />
+                          Resolved
+                        </span>
+                        <button
+                          type="button"
+                          className="icon-pill"
+                          aria-label="Undo resolve"
+                          onClick={(evt) => {
+                            evt.stopPropagation()
+                            void handleReopen(e.escalation_id)
+                          }}
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="conversation-status pending">
+                          <Clock size={14} />
+                          Pending
+                        </span>
+                        <button
+                          type="button"
+                          className="pill-action"
+                          onClick={(evt) => {
+                            evt.stopPropagation()
+                            void handleResolve(e.escalation_id)
+                          }}
+                        >
+                          <Check size={14} />
+                          Mark as resolved
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {e.details && (
+                  <div className="muted" style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
+                    {e.details}
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+      )}
+    </AnimatedPage >
   )
 }
