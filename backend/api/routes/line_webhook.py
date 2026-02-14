@@ -27,7 +27,7 @@ from infrastructure.clients.line_client import (
     reply_message,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
-from infrastructure.assets.asset_resolver import build_asset_instruction, process_answer_assets
+from infrastructure.assets.asset_resolver import process_answer_assets
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
     PostgresLineUserSessionRepository,
@@ -336,11 +336,6 @@ async def _handle_text_message(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
-    # Inject business asset descriptions into system prompt
-    asset_instruction = build_asset_instruction(bot.bot_id)
-    if asset_instruction:
-        system_instruction = f"{system_instruction}\n{asset_instruction}" if system_instruction else asset_instruction
-
     # Run RAG
     asset_cards: list = []
     try:
@@ -359,8 +354,8 @@ async def _handle_text_message(
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
-            # Resolve asset markers + keyword fallback
-            answer, asset_cards = process_answer_assets(answer, bot.bot_id)
+            # Match business assets after answer generation
+            answer, asset_cards = process_answer_assets(answer, bot.bot_id, user_query=text)
     except Exception:
         logger.exception("RAG error for LINE message bot_id=%s", bot.bot_id)
         answer = "I'm sorry, something went wrong. Please try again in a moment."

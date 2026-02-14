@@ -15,7 +15,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import httpx
@@ -60,6 +60,68 @@ Example: [{{"name":"Room A","description":"A nice room.","link_url":null,"image_
 
 _ASSET_IMAGE_CANDIDATE_LIMIT = max(50, min(int(os.environ.get("ASSET_IMAGE_CANDIDATE_LIMIT", "400")), 1000))
 _ASSET_PROMPT_IMAGE_LIMIT = max(20, min(int(os.environ.get("ASSET_PROMPT_IMAGE_LIMIT", "120")), 400))
+_ASSET_EXTRACTION_MODE = (os.environ.get("ASSET_EXTRACTION_MODE") or "llm").strip().lower()
+_ASSET_FILTER_MODEL = (
+    os.environ.get("VERTEX_ASSET_FILTER_MODEL")
+    or os.environ.get("VERTEX_ASSET_MODEL")
+    or "gemini-2.0-flash-lite-001"
+).strip()
+_ASSET_FILTER_BATCH_SIZE = max(20, min(int(os.environ.get("ASSET_FILTER_BATCH_SIZE", "80")), 200))
+
+_GENERIC_SECTION_NAMES = {
+    "about",
+    "about us",
+    "contact",
+    "contact us",
+    "home",
+    "services",
+    "products",
+    "product",
+    "service",
+    "menu",
+    "rooms",
+    "room",
+    "gallery",
+    "portfolio",
+    "blog",
+    "news",
+    "faq",
+    "careers",
+    "privacy",
+    "terms",
+    "login",
+    "sign in",
+    "signup",
+    "register",
+}
+
+_STOPWORDS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "this",
+    "that",
+    "your",
+    "our",
+    "you",
+    "are",
+    "was",
+    "were",
+    "have",
+    "has",
+    "had",
+    "into",
+    "over",
+    "under",
+    "each",
+    "per",
+    "all",
+    "any",
+    "item",
+    "items",
+}
 
 
 def _scrape_image_urls(page_url: str) -> List[str]:
@@ -246,6 +308,479 @@ def _chunk_content(content: str) -> List[str]:
     return chunks
 
 
+_LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+\.)\s+(.*)$")
+_HEADING_RE = re.compile(r"^\s{0,3}(#{2,6})\s+(.+)$")
+_TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?(?:\s*:?-{2,}:?\s*\|)+\s*:?-{2,}:?\s*\|?\s*$")
+_INLINE_SPLIT_RE = re.compile(r"^(.{2,120}?)(?:\s(?:-|\u2013|\u2014|:)\s)(.{6,300})$")
+
+
+def _strip_markdown(text: str) -> str:
+    if not text:
+        return ""
+    out = text
+    out = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", r"\1", out)
+    out = re.sub(r"(?<!!)\[([^\]]+)\]\(([^)]+)\)", r"\1", out)
+    out = re.sub(r"<[^>]+>", " ", out)
+    out = out.replace("`", " ")
+    out = re.sub(r"[*_~>|#]", " ", out)
+    out = re.sub(r"\s+", " ", out)
+    return out.strip(" \t\r\n-:")
+
+
+def _tokenize(text: str) -> List[str]:
+    if not text:
+        return []
+    return re.findall(r"[A-Za-z0-9\u00C0-\u024F\u3040-\u30FF\u3400-\u9FFF]+", text.lower())
+
+
+def _is_cjk_token(token: str) -> bool:
+    return bool(re.search(r"[\u3040-\u30FF\u3400-\u9FFF]", token or ""))
+
+
+def _looks_like_asset_name(name: str, *, allow_generic: bool = False) -> bool:
+    cleaned = _strip_markdown(name)
+    if len(cleaned) < 2 or len(cleaned) > 120:
+        return False
+
+    lowered = cleaned.lower()
+    if not allow_generic and lowered in _GENERIC_SECTION_NAMES:
+        return False
+    if lowered.startswith(("http://", "https://", "www.")):
+        return False
+
+    tokens = _tokenize(cleaned)
+    if not tokens:
+        return False
+    if (not allow_generic) and all(t in _STOPWORDS or t in _GENERIC_SECTION_NAMES for t in tokens):
+        return False
+    if len(tokens) > 20:
+        return False
+
+    # Reject mostly punctuation.
+    alpha_num = sum(1 for ch in cleaned if ch.isalnum())
+    if alpha_num < max(2, len(cleaned) // 8):
+        return False
+
+    return True
+
+
+def _resolve_link_url(page_url: str, raw_link: str) -> Optional[str]:
+    link = (raw_link or "").strip()
+    if not link:
+        return None
+    if link.startswith(("mailto:", "tel:", "javascript:", "#")):
+        return None
+    return urljoin(page_url, link)
+
+
+def _extract_first_link_url(text: str, page_url: str) -> Optional[str]:
+    if not text:
+        return None
+    match = re.search(r"(?<!!)\[[^\]]+\]\(([^)]+)\)", text)
+    if match:
+        return _resolve_link_url(page_url, match.group(1))
+    raw = re.search(r"(https?://[^\s)]+)", text)
+    if raw:
+        return _resolve_link_url(page_url, raw.group(1))
+    return None
+
+
+def _extract_links_from_markdown(markdown_text: str, page_url: str) -> List[Tuple[str, str]]:
+    out: List[Tuple[str, str]] = []
+    for anchor, href in re.findall(r"(?<!!)\[([^\]]+)\]\(([^)]+)\)", markdown_text or ""):
+        link = _resolve_link_url(page_url, href)
+        anchor_text = _strip_markdown(anchor)
+        if link and anchor_text:
+            out.append((anchor_text, link))
+    return out
+
+
+def _extract_markdown_image_urls(markdown_text: str, page_url: str) -> List[str]:
+    out: List[str] = []
+    seen: Set[str] = set()
+    for href in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", markdown_text or ""):
+        resolved = _resolve_link_url(page_url, href)
+        if not resolved:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        out.append(resolved)
+    return out
+
+
+def _split_name_description(raw_text: str) -> Tuple[str, str]:
+    cleaned = _strip_markdown(raw_text)
+    if not cleaned:
+        return "", ""
+
+    for delim in (" - ", " – ", " — ", ": "):
+        if delim in cleaned:
+            left, right = cleaned.split(delim, 1)
+            left = left.strip()
+            right = right.strip()
+            if _looks_like_asset_name(left, allow_generic=True):
+                return left, right
+
+    return cleaned.strip(), ""
+
+
+def _keywords_for_asset(name: str, description: str) -> List[str]:
+    result: List[str] = []
+    seen: Set[str] = set()
+
+    for token in _tokenize(f"{name} {description}"):
+        if token in seen:
+            continue
+        if token in _STOPWORDS or token in _GENERIC_SECTION_NAMES:
+            continue
+        if len(token) < 2 and not _is_cjk_token(token):
+            continue
+        seen.add(token)
+        result.append(token)
+        if len(result) >= 6:
+            break
+
+    return result[:6]
+
+
+def _image_url_tokens(url: str) -> Set[str]:
+    parsed = urlparse(url or "")
+    material = f"{parsed.netloc} {parsed.path} {parsed.query}"
+    return set(_tokenize(material))
+
+
+def _pick_best_image_url(name: str, description: str, image_urls: List[str]) -> Optional[str]:
+    if not image_urls:
+        return None
+
+    query_tokens = set(_tokenize(f"{name} {description}"))
+    fallback = None
+    best_url = None
+    best_score = float("-inf")
+
+    for image_url in image_urls:
+        lower = (image_url or "").lower()
+        if not fallback and not any(x in lower for x in ("icon", "favicon", "tracking", "spacer", "1x1")):
+            fallback = image_url
+
+        score = 0.0
+        if any(x in lower for x in ("icon", "favicon", "tracking", "spacer", "1x1", "sprite")):
+            score -= 4.0
+        if lower.endswith(".svg"):
+            score -= 0.5
+
+        image_tokens = _image_url_tokens(image_url)
+        overlap = len(query_tokens & image_tokens) if query_tokens else 0
+        score += overlap * 3.0
+
+        if query_tokens and any(tok in lower for tok in query_tokens):
+            score += 1.5
+        if lower.endswith((".jpg", ".jpeg", ".png", ".webp")):
+            score += 0.2
+
+        if score > best_score:
+            best_score = score
+            best_url = image_url
+
+    if best_url and best_score > 0:
+        return best_url
+    return fallback or image_urls[0]
+
+
+def _extract_table_candidates(lines: List[str], page_url: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for line in lines:
+        stripped = (line or "").strip()
+        if "|" not in stripped:
+            continue
+        if _TABLE_SEPARATOR_RE.match(stripped):
+            continue
+
+        cells = [_strip_markdown(c).strip() for c in stripped.strip("|").split("|")]
+        cells = [c for c in cells if c]
+        if len(cells) < 2:
+            continue
+
+        name = cells[0]
+        if not _looks_like_asset_name(name, allow_generic=True):
+            continue
+        description = " ".join(cells[1:3]).strip()
+        link_url = _extract_first_link_url(stripped, page_url)
+        out.append({"name": name, "description": description, "link_url": link_url or ""})
+    return out
+
+
+def _extract_list_candidates(lines: List[str], page_url: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for line in lines:
+        m = _LIST_ITEM_RE.match(line or "")
+        if not m:
+            continue
+
+        body = m.group(1).strip()
+        if not body:
+            continue
+        name, description = _split_name_description(body)
+        if not _looks_like_asset_name(name, allow_generic=True):
+            continue
+        link_url = _extract_first_link_url(body, page_url)
+        out.append({"name": name, "description": description, "link_url": link_url or ""})
+    return out
+
+
+def _extract_heading_candidates(lines: List[str], page_url: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for idx, line in enumerate(lines):
+        m = _HEADING_RE.match(line or "")
+        if not m:
+            continue
+
+        level = len(m.group(1))
+        if level < 3:
+            continue
+        name = _strip_markdown(m.group(2))
+        if not _looks_like_asset_name(name, allow_generic=True):
+            continue
+
+        description = ""
+        for lookahead in range(idx + 1, min(len(lines), idx + 5)):
+            nxt = (lines[lookahead] or "").strip()
+            if not nxt:
+                continue
+            if _HEADING_RE.match(nxt) or _LIST_ITEM_RE.match(nxt) or "|" in nxt:
+                break
+            description = _strip_markdown(nxt)
+            break
+
+        link_url = _extract_first_link_url(line, page_url)
+        out.append({"name": name, "description": description, "link_url": link_url or ""})
+    return out
+
+
+def _extract_inline_candidates(lines: List[str], page_url: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for line in lines:
+        stripped = (line or "").strip()
+        if not stripped:
+            continue
+        if _HEADING_RE.match(stripped) or _LIST_ITEM_RE.match(stripped) or "|" in stripped:
+            continue
+
+        normalized = _strip_markdown(stripped)
+        m = _INLINE_SPLIT_RE.match(normalized)
+        if not m:
+            continue
+        name = m.group(1).strip()
+        description = m.group(2).strip()
+        if not _looks_like_asset_name(name, allow_generic=True):
+            continue
+        link_url = _extract_first_link_url(stripped, page_url)
+        out.append({"name": name, "description": description, "link_url": link_url or ""})
+    return out
+
+
+def _extract_anchor_candidates(markdown_text: str, page_url: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for anchor, link in _extract_links_from_markdown(markdown_text, page_url):
+        if not _looks_like_asset_name(anchor, allow_generic=True):
+            continue
+        out.append({"name": anchor, "description": "", "link_url": link})
+    return out
+
+
+def _extract_assets_from_page_deterministic(
+    page_url: str,
+    page_content: str,
+    image_urls: List[str],
+) -> List[Dict[str, Any]]:
+    if not page_content:
+        return []
+
+    content = page_content
+    if content.startswith("Source URL:"):
+        parts = content.splitlines()
+        content = "\n".join(parts[1:]) if len(parts) > 1 else ""
+
+    lines = content.splitlines()
+    if not lines:
+        return []
+
+    image_candidates: List[str] = []
+    image_seen: Set[str] = set()
+    for u in image_urls + _extract_markdown_image_urls(content, page_url):
+        if not u or u in image_seen:
+            continue
+        image_seen.add(u)
+        image_candidates.append(u)
+
+    candidates: List[Dict[str, str]] = []
+    candidates.extend(_extract_table_candidates(lines, page_url))
+    candidates.extend(_extract_list_candidates(lines, page_url))
+    candidates.extend(_extract_heading_candidates(lines, page_url))
+    candidates.extend(_extract_inline_candidates(lines, page_url))
+    candidates.extend(_extract_anchor_candidates(content, page_url))
+
+    assets: List[Dict[str, Any]] = []
+    seen_names: Set[str] = set()
+    for cand in candidates:
+        name = _strip_markdown(cand.get("name", ""))
+        if not _looks_like_asset_name(name, allow_generic=True):
+            continue
+
+        key = name.lower()
+        if key in seen_names:
+            continue
+        seen_names.add(key)
+
+        description = _strip_markdown(cand.get("description", ""))[:280]
+        link_url = (cand.get("link_url") or "").strip() or page_url
+        image_url = _pick_best_image_url(name, description, image_candidates)
+        keywords = _keywords_for_asset(name, description)
+
+        assets.append(
+            {
+                "name": name,
+                "description": description,
+                "link_url": link_url,
+                "image_url": image_url,
+                "keywords": keywords,
+            }
+        )
+
+    return assets
+
+
+def _filter_business_assets_heuristic(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    kept: List[Dict[str, Any]] = []
+    for item in candidates:
+        name = _strip_markdown(str(item.get("name") or ""))
+        if not _looks_like_asset_name(name, allow_generic=False):
+            continue
+        kept.append(item)
+    return kept
+
+
+def _parse_non_business_ids(text: str) -> Tuple[Set[int], bool]:
+    raw = (text or "").strip()
+    if not raw:
+        return set(), False
+
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        if lines and lines[-1].strip() == "```":
+            raw = "\n".join(lines[1:-1]).strip()
+        else:
+            raw = "\n".join(lines[1:]).strip()
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        m = re.search(r"\{[\s\S]*\}", raw)
+        if not m:
+            return set(), False
+        try:
+            data = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return set(), False
+
+    ids_raw: Any = None
+    if isinstance(data, dict):
+        ids_raw = (
+            data.get("non_business_ids")
+            or data.get("exclude_ids")
+            or data.get("excluded_ids")
+            or []
+        )
+    elif isinstance(data, list):
+        ids_raw = data
+    else:
+        ids_raw = []
+
+    if not isinstance(ids_raw, list):
+        return set(), False
+
+    out: Set[int] = set()
+    for value in ids_raw:
+        try:
+            out.add(int(value))
+        except (TypeError, ValueError):
+            continue
+    return out, True
+
+
+def _filter_business_assets_with_llm(page_url: str, candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    if not candidates:
+        return []
+
+    project = (os.environ.get("PROJECT_ID") or "").strip()
+    if not project:
+        return _filter_business_assets_heuristic(candidates)
+
+    try:
+        from google import genai
+        from google.genai import types
+    except Exception:
+        return _filter_business_assets_heuristic(candidates)
+
+    location = (os.environ.get("GENAI_LOCATION") or "global").strip()
+    client = genai.Client(vertexai=True, project=project, location=location)
+    kept: List[Dict[str, Any]] = []
+
+    for offset in range(0, len(candidates), _ASSET_FILTER_BATCH_SIZE):
+        batch = candidates[offset: offset + _ASSET_FILTER_BATCH_SIZE]
+        payload = []
+        for idx, item in enumerate(batch):
+            payload.append(
+                {
+                    "id": idx,
+                    "name": str(item.get("name") or "").strip(),
+                    "description": str(item.get("description") or "").strip(),
+                    "link_url": str(item.get("link_url") or "").strip() or None,
+                }
+            )
+
+        prompt = (
+            "You are filtering candidate items extracted from a business webpage.\n"
+            "Identify which candidate IDs are NOT concrete business assets offered to customers.\n"
+            "Non-business examples: About, Contact, Blog posts, Careers, Policy pages, Login/Register, generic site sections.\n"
+            "Business examples: products, services, rooms, menu items, plans, packages, bookable offerings, facilities sold/offered.\n\n"
+            f"Page URL: {page_url}\n\n"
+            "Candidates JSON:\n"
+            f"{json.dumps(payload, ensure_ascii=False)}\n\n"
+            "Return ONLY JSON object: {\"non_business_ids\": [<id>, ...]}"
+        )
+
+        try:
+            response = client.models.generate_content(
+                model=_ASSET_FILTER_MODEL,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.0,
+                    max_output_tokens=1024,
+                ),
+            )
+            ids, ok = _parse_non_business_ids((response.text or "").strip())
+            if not ok:
+                # If parsing fails, use strict local heuristic for this batch.
+                kept.extend(_filter_business_assets_heuristic(batch))
+                continue
+            for idx, item in enumerate(batch):
+                if idx in ids:
+                    continue
+                kept.append(item)
+        except Exception as e:
+            logger.warning(
+                "[AssetExtraction] LLM filter failed for %s: %s: %s",
+                page_url,
+                type(e).__name__,
+                str(e)[:200],
+            )
+            kept.extend(_filter_business_assets_heuristic(batch))
+
+    return kept
+
+
 def _normalize_url_for_match(url: str) -> str:
     raw = (url or "").strip()
     if not raw:
@@ -387,20 +922,17 @@ class AssetExtractionService:
             image_urls = _scrape_image_urls(url)
             chunks = _chunk_content(content)
             logger.info(
-                "[AssetExtraction] Processing %s: %d chunks, %d image candidates",
+                "[AssetExtraction] Processing %s: mode=%s, %d chunks, %d image candidates",
                 url,
+                _ASSET_EXTRACTION_MODE,
                 len(chunks),
                 len(image_urls),
             )
 
-            for chunk in chunks:
-                if len(all_extracted) >= max_assets:
-                    break
-
-                page_assets = _extract_assets_from_page(url, chunk, image_urls)
+            def _append_page_assets(page_assets: List[Dict[str, Any]]) -> None:
                 for asset_data in page_assets:
                     if len(all_extracted) >= max_assets:
-                        break
+                        return
                     name = (asset_data.get("name") or "").strip()
                     if not name:
                         continue
@@ -412,6 +944,28 @@ class AssetExtractionService:
                         **asset_data,
                         "source_url": url,
                     })
+
+            extraction_mode = _ASSET_EXTRACTION_MODE
+            if extraction_mode not in ("deterministic", "llm", "hybrid"):
+                extraction_mode = "deterministic"
+
+            if extraction_mode in ("llm", "hybrid") and len(all_extracted) < max_assets:
+                for chunk in chunks:
+                    if len(all_extracted) >= max_assets:
+                        break
+                    page_assets = _extract_assets_from_page(url, chunk, image_urls)
+                    _append_page_assets(page_assets)
+
+            if extraction_mode in ("deterministic", "hybrid") and len(all_extracted) < max_assets:
+                deterministic_assets = _extract_assets_from_page_deterministic(url, content, image_urls)
+                filtered_assets = _filter_business_assets_with_llm(url, deterministic_assets)
+                logger.info(
+                    "[AssetExtraction] Deterministic candidates on %s: %d -> kept %d",
+                    url,
+                    len(deterministic_assets),
+                    len(filtered_assets),
+                )
+                _append_page_assets(filtered_assets)
 
         # Save to database
         created: List[BotAsset] = []
