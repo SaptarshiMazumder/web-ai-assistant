@@ -266,6 +266,29 @@ export default function BotConversationsTab() {
                   </div>
                 </>
               )}
+              {escalation && (
+                <div className="conversation-escalation-box conversation-escalation-box--top">
+                  <div className="conversation-escalation-title">Support requested</div>
+                  <div className="conversation-escalation-row">
+                    <span>Email</span>
+                    <span>{escalation.visitor_email}</span>
+                  </div>
+                  <div className="conversation-escalation-row">
+                    <span>Status</span>
+                    <span>{escalation.status === 'resolved' ? 'Resolved' : 'Pending'}</span>
+                  </div>
+                  <div className="conversation-escalation-row">
+                    <span>Requested</span>
+                    <span>{formatMessageTime(escalation.created_at || null)}</span>
+                  </div>
+                  {escalation.details && (
+                    <div className="conversation-escalation-row">
+                      <span>Details</span>
+                      <span>{escalation.details}</span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="conversation-actions">
                 <UiButton variant="secondary" onClick={() => setSelectedSession(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <ArrowLeft size={14} />
@@ -277,44 +300,10 @@ export default function BotConversationsTab() {
                 </UiButton>
               </div>
               <div className="conversation-messages">
-                {(() => {
-                  let escalationRendered = false
-                  return messages.map((m, idx) => {
-                    const prev = messages[idx - 1]
-                    const showDate = toDateKey(m.created_at || null) !== toDateKey(prev?.created_at || null)
-                    if (m.role === 'system') {
-                      const shouldShowEscalation =
-                        !escalationRendered &&
-                        !!escalation?.visitor_email &&
-                        m.content?.toLowerCase().includes('escalated to support')
-                      if (shouldShowEscalation) {
-                        escalationRendered = true
-                      }
-                      return (
-                        <div key={m.message_id || `${m.role}-${idx}`}>
-                          {showDate && (
-                            <div className="conversation-date-separator">
-                              {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
-                            </div>
-                          )}
-                          <div className="conversation-system-note">{m.content}</div>
-                          {shouldShowEscalation && (
-                            <div className="conversation-escalation-box">
-                              <div className="conversation-escalation-row">
-                                <span>Email</span>
-                                <span>{escalation?.visitor_email}</span>
-                              </div>
-                              {escalation?.details && (
-                                <div className="conversation-escalation-row">
-                                  <span>Details</span>
-                                  <span>{escalation.details}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    }
+                {messages.map((m, idx) => {
+                  const prev = messages[idx - 1]
+                  const showDate = toDateKey(m.created_at || null) !== toDateKey(prev?.created_at || null)
+                  if (m.role === 'system') {
                     return (
                       <div key={m.message_id || `${m.role}-${idx}`}>
                         {showDate && (
@@ -322,22 +311,32 @@ export default function BotConversationsTab() {
                             {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
                           </div>
                         )}
-                        <div className={`conversation-bubble-row conversation-bubble-row--${m.role}`}>
-                          <div className={`conversation-avatar conversation-avatar--${m.role}`}>
-                            {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-                          </div>
-                          <div className={`conversation-message conversation-message--${m.role}`}>
-                            {m.sender_name && <div className="conversation-sender-name">{m.sender_name}</div>}
-                            <div className="conversation-message-content">{m.content}</div>
-                            <div className="conversation-message-time">
-                              {formatMessageTime(m.created_at || null)}
-                            </div>
+                        <div className="conversation-system-note">{m.content}</div>
+                      </div>
+                    )
+                  }
+                  return (
+                    <div key={m.message_id || `${m.role}-${idx}`}>
+                      {showDate && (
+                        <div className="conversation-date-separator">
+                          {toDateKey(m.created_at) || toDateKey(new Date().toISOString())}
+                        </div>
+                      )}
+                      <div className={`conversation-bubble-row conversation-bubble-row--${m.role}`}>
+                        <div className={`conversation-avatar conversation-avatar--${m.role}`}>
+                          {m.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                        </div>
+                        <div className={`conversation-message conversation-message--${m.role}`}>
+                          {m.sender_name && <div className="conversation-sender-name">{m.sender_name}</div>}
+                          <div className="conversation-message-content">{m.content}</div>
+                          <div className="conversation-message-time">
+                            {formatMessageTime(m.created_at || null)}
                           </div>
                         </div>
                       </div>
-                    )
-                  })
-                })()}
+                    </div>
+                  )
+                })}
                 {messages.length === 0 && !loading && <div className="muted">No messages found.</div>}
               </div>
             </>

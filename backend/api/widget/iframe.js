@@ -22,6 +22,7 @@
   let isSessionEnded = false;
   let botPending = false;
   let hasBotReply = false;
+  let supportRequestSubmitted = false;
   const seenMessageIds = new Set();
 
   function parseBool(val, def) {
@@ -35,10 +36,13 @@
     return list
       .map((item, idx) => {
         const label = item && typeof item.label === "string" ? item.label : "";
-        const type = item && (item.type === "ai_response" || item.type === "escalate" || item.type === "availability") ? item.type : "user_message";
+        const type = item && item.type === "escalate" ? "escalate" : "ai_response";
         const message = item && typeof item.message === "string" ? item.message : "";
         const prompt = item && typeof item.prompt === "string" ? item.prompt : "";
-        return { id: String(item && item.id ? item.id : `suggest_${idx}`), label, type, message, prompt };
+        const urls = Array.isArray(item && item.urls)
+          ? item.urls.map((u) => (typeof u === "string" ? u.trim() : "")).filter(Boolean)
+          : [];
+        return { id: String(item && item.id ? item.id : `suggest_${idx}`), label, type, message, prompt, urls };
       })
       .filter((item) => item.label);
   }
@@ -52,10 +56,9 @@
       } catch (e) {}
     }
     return [
-      { id: "default_1", label: "What can you do?", type: "user_message", message: "What can you do?" },
-      { id: "default_2", label: "Ask a question", type: "user_message", message: "Ask a question" },
-      { id: "default_3", label: "Get help", type: "user_message", message: "Get help" },
-      { id: "default_4", label: "Escalate to support", type: "escalate", message: "" },
+      { id: "default_1", label: "What can you do?", type: "ai_response", prompt: "What can you do?" },
+      { id: "default_2", label: "Ask a question", type: "ai_response", prompt: "Ask a question" },
+      { id: "default_3", label: "Request human support", type: "escalate", message: "" },
     ];
   }
 
@@ -182,20 +185,34 @@
   function buildSuggestionButton(item) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = item.label;
+    const isSupportDone = item.type === "escalate" && supportRequestSubmitted;
+    btn.textContent = isSupportDone ? "\u2713 Support requested" : item.label;
+    if (isSupportDone) {
+      btn.disabled = true;
+      btn.classList.add("suggestion-complete");
+      btn.setAttribute("aria-label", "Support requested");
+      btn.title = "Support requested";
+    }
     btn.addEventListener("click", () => {
+      if (isSupportDone) return;
       if (item.type === "ai_response") {
-        const prompt = item.prompt || item.message || item.label;
+        const promptBase = item.prompt || item.message || item.label;
+        const urls = Array.isArray(item.urls)
+          ? item.urls
+              .map((u) => (u || "").trim())
+              .filter(Boolean)
+              .map((u) => (u.toLowerCase().startsWith("http://") || u.toLowerCase().startsWith("https://") ? u : `https://${u}`))
+          : [];
+        const prompt =
+          urls.length > 0
+            ? `${promptBase}\n\nReference URLs:\n${urls.map((u) => `- ${u}`).join("\n")}\nUse these URLs when relevant in your answer.`
+            : promptBase;
         const display = item.label || prompt;
         sendMessageWithContent(prompt, display);
         return;
       }
       if (item.type === "escalate") {
         openEscalationModal();
-        return;
-      }
-      if (item.type === "availability") {
-        openAvailabilityModal();
         return;
       }
       const content = item.message || item.label;
@@ -473,6 +490,8 @@
         }
         const data = await resp.json().catch(() => null);
         if (data && data.session_id) setSession(data.session_id);
+        supportRequestSubmitted = true;
+        renderQuickActions(true);
         overlay.remove();
         appendBubble("Thanks! Support has been notified and will reach out soon.", "bot");
       } catch (e) {
@@ -989,6 +1008,7 @@
     sessionId = "";
     hasBotReply = false;
     botPending = false;
+    supportRequestSubmitted = false;
     updateEscalationUI();
     renderQuickActions(true);
   }

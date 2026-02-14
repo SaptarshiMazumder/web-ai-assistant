@@ -168,6 +168,18 @@
         font-weight: normal;
       }
 
+      .suggestions button:disabled {
+        opacity: 1;
+      }
+
+      .suggestions button.suggestion-complete {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+        cursor: default;
+        font-weight: 600;
+      }
+
       .suggestions-sticky {
         padding: 0 16px 8px 16px;
         background: #ffffff;
@@ -412,6 +424,7 @@
       [data-theme="dark"] input { background: transparent; color: #e2e8f0; }
       [data-theme="dark"] .bubble.bot { background: #334155; color: #e2e8f0; }
       [data-theme="dark"] .suggestions button { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+      [data-theme="dark"] .suggestions button.suggestion-complete { background: rgba(34, 197, 94, 0.2); border-color: rgba(134, 239, 172, 0.55); color: #bbf7d0; }
       [data-theme="dark"] .footer-msg { background: #1e293b; color: #94a3b8; }
       [data-theme="dark"] .chat { scrollbar-color: rgba(148, 163, 184, 0.5) transparent; }
       [data-theme="dark"] .chat::-webkit-scrollbar-thumb { background-color: rgba(148, 163, 184, 0.45); }

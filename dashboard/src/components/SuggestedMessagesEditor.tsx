@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { FlowIcon } from './FlowIcon'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
 
@@ -7,6 +8,9 @@ type SuggestedMessagesEditorProps = {
   onChange: (next: SuggestedMessageConfig[]) => void
   title?: string
   subtitle?: string
+  addButtonPlacement?: 'top' | 'bottom'
+  maxItems?: number
+  actions?: React.ReactNode
 }
 
 export function SuggestedMessagesEditor({
@@ -14,24 +18,49 @@ export function SuggestedMessagesEditor({
   onChange,
   title = 'Suggested messages',
   subtitle = 'Quick actions shown to users when the chat opens.',
+  addButtonPlacement = 'top',
+  maxItems,
+  actions,
 }: SuggestedMessagesEditorProps) {
   const [editingSuggestion, setEditingSuggestion] = useState<SuggestedMessageConfig | null>(null)
   const [suggestionDraft, setSuggestionDraft] = useState<SuggestedMessageConfig | null>(null)
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false)
+  const canAdd = useMemo(
+    () => (typeof maxItems === 'number' ? suggestedMessages.length < maxItems : true),
+    [maxItems, suggestedMessages.length]
+  )
+
+  const normalizeOneUrl = useCallback((entry: string): string => {
+    const raw = (entry || '').trim()
+    if (!raw) return ''
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return ''
+      return parsed.toString()
+    } catch {
+      return ''
+    }
+  }, [])
 
   const openSuggestionModal = useCallback((item?: SuggestedMessageConfig) => {
+    if (!item && !canAdd) return
     const base: SuggestedMessageConfig = item
-      ? { ...item }
+      ? {
+          ...item,
+          // Deprecated types are normalized to ai_response.
+          type: item.type === 'escalate' ? 'escalate' : 'ai_response',
+          urls: Array.isArray(item.urls) ? item.urls : [],
+        }
       : {
           id: `suggest_${Date.now()}`,
           label: '',
-          type: 'user_message',
-          message: '',
+          type: 'ai_response',
+          urls: [],
         }
     setEditingSuggestion(item || null)
     setSuggestionDraft(base)
     setIsSuggestionModalOpen(true)
-  }, [])
+  }, [canAdd])
 
   const closeSuggestionModal = useCallback(() => {
     setIsSuggestionModalOpen(false)
@@ -41,8 +70,29 @@ export function SuggestedMessagesEditor({
 
   const saveSuggestion = useCallback(() => {
     if (!suggestionDraft) return
-    const next = suggestionDraft.label.trim() ? suggestionDraft : null
+    if (!suggestionDraft.label.trim()) {
+      closeSuggestionModal()
+      return
+    }
+    const normalizedUrls = Array.from(
+      new Set(
+        (Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls : [])
+          .map((url) => normalizeOneUrl(url))
+          .filter(Boolean)
+      )
+    )
+    const next: SuggestedMessageConfig = {
+      ...suggestionDraft,
+      type: suggestionDraft.type === 'escalate' ? 'escalate' : 'ai_response',
+      message: undefined,
+      urls: suggestionDraft.type === 'ai_response' ? normalizedUrls : undefined,
+      prompt: suggestionDraft.type === 'ai_response' ? suggestionDraft.prompt : undefined,
+    }
     if (!next) {
+      closeSuggestionModal()
+      return
+    }
+    if (!editingSuggestion && typeof maxItems === 'number' && suggestedMessages.length >= maxItems) {
       closeSuggestionModal()
       return
     }
@@ -51,7 +101,7 @@ export function SuggestedMessagesEditor({
       : [...suggestedMessages, next]
     onChange(updated)
     closeSuggestionModal()
-  }, [suggestionDraft, editingSuggestion, suggestedMessages, onChange, closeSuggestionModal])
+  }, [suggestionDraft, editingSuggestion, maxItems, normalizeOneUrl, suggestedMessages, onChange, closeSuggestionModal])
 
   const removeSuggestion = useCallback(
     (id: string) => {
@@ -70,11 +120,20 @@ export function SuggestedMessagesEditor({
               <span className="design-form-hint">{subtitle}</span>
             </div>
           )}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" className="primary" onClick={() => openSuggestionModal()}>
-              Add
-            </button>
-          </div>
+          {addButtonPlacement === 'top' && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => openSuggestionModal()}
+                disabled={!canAdd}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+              >
+                <Plus size={15} />
+                Add
+              </button>
+            </div>
+          )}
         </div>
         <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.75rem' }}>
           {suggestedMessages.length === 0 && <span className="muted">No suggested messages yet.</span>}
@@ -84,12 +143,8 @@ export function SuggestedMessagesEditor({
                 <div style={{ fontWeight: 600 }}>{msg.label}</div>
                 <div className="muted" style={{ fontSize: '0.85rem' }}>
                   {msg.type === 'ai_response'
-                    ? 'AI response'
-                    : msg.type === 'escalate'
-                    ? 'Escalate to support'
-                    : msg.type === 'availability'
-                    ? 'Check availability form'
-                    : 'User message'}
+                    ? `AI response${Array.isArray(msg.urls) && msg.urls.length ? ` - ${msg.urls.length} URL${msg.urls.length === 1 ? '' : 's'}` : ''}`
+                    : 'Request human support'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -103,6 +158,30 @@ export function SuggestedMessagesEditor({
             </div>
           ))}
         </div>
+        {(addButtonPlacement === 'bottom' || actions) && (
+          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {addButtonPlacement === 'bottom' && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => openSuggestionModal()}
+                  disabled={!canAdd}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                >
+                  <Plus size={15} />
+                  Add
+                </button>
+              )}
+              {typeof maxItems === 'number' && (
+                <span className="muted" style={{ fontSize: '0.85rem' }}>
+                  {suggestedMessages.length}/{maxItems}
+                </span>
+              )}
+            </div>
+            {actions ? <div>{actions}</div> : null}
+          </div>
+        )}
       </div>
 
       {isSuggestionModalOpen && suggestionDraft && (
@@ -141,17 +220,15 @@ export function SuggestedMessagesEditor({
                   setSuggestionDraft((prev) => {
                     if (!prev) return prev
                     const next = { ...prev, type: newType }
-                    if (newType === 'availability' && !prev.label.trim()) {
-                      next.label = 'Check availability'
+                    if (newType === 'escalate' && !prev.label.trim()) {
+                      next.label = 'Request human support'
                     }
                     return next
                   })
                 }}
               >
-                <option value="user_message">User message</option>
                 <option value="ai_response">AI response</option>
-                <option value="escalate">Escalate to support</option>
-                <option value="availability">Check availability form</option>
+                <option value="escalate">Request human support</option>
               </select>
               {suggestionDraft.type === 'ai_response' && (
                 <>
@@ -167,32 +244,28 @@ export function SuggestedMessagesEditor({
                     }
                     placeholder="Can you show me some user success stories?"
                   />
-                </>
-              )}
-              {suggestionDraft.type === 'user_message' && (
-                <>
                   <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                    Message
+                    URLs (optional)
                   </label>
                   <textarea
                     className="design-form-input"
-                    rows={2}
-                    value={suggestionDraft.message || ''}
+                    rows={3}
+                    value={Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls.join('\n') : ''}
                     onChange={(e) =>
-                      setSuggestionDraft((prev) => (prev ? { ...prev, message: e.target.value } : prev))
+                      setSuggestionDraft((prev) =>
+                        prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
+                      )
                     }
-                    placeholder="What can you do?"
+                    placeholder={'https://example.com/pricing\nhttps://example.com/faq'}
                   />
+                  <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
+                    One URL per line.
+                  </div>
                 </>
               )}
               {suggestionDraft.type === 'escalate' && (
                 <div className="muted" style={{ marginTop: '0.75rem' }}>
-                  Visitors will be prompted for their email before escalation is submitted.
-                </div>
-              )}
-              {suggestionDraft.type === 'availability' && (
-                <div className="muted" style={{ marginTop: '0.75rem' }}>
-                  Visitors will see a form to enter check-in, check-out dates, and guest details before the availability check runs.
+                  Visitors will be asked for their email and optional details, then the chat is escalated to support.
                 </div>
               )}
             </div>

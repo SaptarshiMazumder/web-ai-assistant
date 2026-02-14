@@ -34,9 +34,10 @@ export type WidgetDesignState = {
 export type SuggestedMessageConfig = {
   id: string
   label: string
-  type: 'user_message' | 'ai_response' | 'escalate' | 'availability'
+  type: 'ai_response' | 'escalate'
   message?: string
   prompt?: string
+  urls?: string[]
 }
 
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
@@ -61,10 +62,9 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   displaySourcesInMessages: false,
   sourcesLabel: 'Sources',
   suggestedMessages: [
-    { id: 'suggest_1', label: 'What can you do?', type: 'user_message', message: 'What can you do?' },
-    { id: 'suggest_2', label: 'Ask a question', type: 'user_message', message: 'Ask a question' },
-    { id: 'suggest_3', label: 'Get help', type: 'user_message', message: 'Get help' },
-    { id: 'suggest_4', label: 'Escalate to support', type: 'escalate' },
+    { id: 'suggest_1', label: 'What can you do?', type: 'ai_response', prompt: 'What can you do?' },
+    { id: 'suggest_2', label: 'Ask a question', type: 'ai_response', prompt: 'Ask a question' },
+    { id: 'suggest_3', label: 'Request human support', type: 'escalate' },
   ],
 }
 
@@ -104,12 +104,15 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
         const label = typeof item?.label === 'string' ? item.label : ''
         if (!label) return null
         const type =
-          item?.type === 'ai_response' || item?.type === 'user_message' || item?.type === 'escalate' || item?.type === 'availability'
+          item?.type === 'ai_response' || item?.type === 'escalate'
             ? item.type
-            : 'user_message'
+            : 'ai_response'
         const message = typeof item?.message === 'string' ? item.message : undefined
         const prompt = typeof item?.prompt === 'string' ? item.prompt : undefined
-        return { id: String(item?.id || `suggest_${idx}`), label, type, message, prompt }
+        const urls = Array.isArray(item?.urls)
+          ? item.urls.filter((u): u is string => typeof u === 'string').map((u) => u.trim()).filter(Boolean)
+          : undefined
+        return { id: String(item?.id || `suggest_${idx}`), label, type, message, prompt, urls }
       })
       .filter((item): item is SuggestedMessageConfig => Boolean(item))
   }

@@ -21,6 +21,7 @@ import {
   History,
   Briefcase,
   AlertCircle,
+  Link2,
 } from 'lucide-react'
 import { LineIcon } from '../assets/icons/LineIcon'
 
@@ -77,6 +78,7 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
 
   // Sources section (was Knowledge)
   { id: 'knowledge', label: 'Sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'Agent Knowledge' },
+  { id: 'info-links', label: 'Info Links', to: `/bots/${botId}/info-links`, icon: Link2, header: 'Agent Knowledge' },
 
   { id: 'business-assets', label: 'Business Assets', to: `/bots/${botId}/business-assets`, icon: Briefcase, header: 'Agent Knowledge' },
 

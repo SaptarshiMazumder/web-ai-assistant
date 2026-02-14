@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, MessageSquare } from 'lucide-react'
+import { Check, Save } from 'lucide-react'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
   widgetConfigToState,
@@ -45,6 +45,29 @@ export default function BotSuggestedMessagesTab() {
   if (loading && !selectedBot) return <div className="empty-panel">Loading...</div>
   if (selectedBot?.bot_id !== botId) return <div className="empty-panel">Loading...</div>
 
+  const saveAction = (
+    <UiButton
+      variant="primary"
+      onClick={() => void handleSave()}
+      disabled={saving || savedJustNow}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+    >
+      {saving ? (
+        'Saving...'
+      ) : savedJustNow ? (
+        <>
+          <Check size={18} strokeWidth={2.5} aria-hidden />
+          <span>Saved</span>
+        </>
+      ) : (
+        <>
+          <Save size={16} />
+          Save
+        </>
+      )}
+    </UiButton>
+  )
+
   return (
     <AnimatedPage>
       <SectionHeader
@@ -58,30 +81,10 @@ export default function BotSuggestedMessagesTab() {
           onChange={(next) => update('suggestedMessages', next)}
           title=""
           subtitle=""
+          addButtonPlacement="bottom"
+          maxItems={10}
+          actions={saveAction}
         />
-
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <UiButton
-            variant="primary"
-            onClick={() => void handleSave()}
-            disabled={saving || savedJustNow}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            {saving ? (
-              'Saving...'
-            ) : savedJustNow ? (
-              <>
-                <Check size={18} strokeWidth={2.5} aria-hidden />
-                <span>Saved</span>
-              </>
-            ) : (
-              <>
-                <MessageSquare size={16} />
-                Save
-              </>
-            )}
-          </UiButton>
-        </div>
       </GlassCard>
     </AnimatedPage>
   )
