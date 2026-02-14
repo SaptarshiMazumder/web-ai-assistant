@@ -736,6 +736,20 @@ class BotAssetResponse(BaseModel):
 class BotAssetListResponse(BaseModel):
     bot_id: str
     assets: List[BotAssetResponse] = []
+    count: int = 0
+    limit: int = 50
+
+
+class BotAssetAutoExtractRequest(BaseModel):
+    page_urls: List[str] = []
+
+
+class BotAssetAutoExtractResponse(BaseModel):
+    ok: bool = True
+    assets_extracted: int = 0
+    assets_count: int = 0
+    assets_limit: int = 50
+    pages_considered: int = 0
 
 
 class BotAssetDeleteResponse(BaseModel):

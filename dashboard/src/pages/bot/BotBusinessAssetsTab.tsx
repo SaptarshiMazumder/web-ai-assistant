@@ -10,10 +10,14 @@ import {
   X,
   Check,
   Upload,
+  Sparkles,
+  CheckSquare,
+  Square,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
+const ASSET_LIMIT_FALLBACK = 50
 
 type AssetRecord = {
   asset_id: string
@@ -29,11 +33,32 @@ type AssetRecord = {
   updated_at: string
 }
 
+type AssetListResponse = {
+  assets: AssetRecord[]
+  count?: number
+  limit?: number
+}
+
+type IndexJobRecord = {
+  job_id: string
+  url: string
+  crawled_urls?: string[]
+}
+
+type AutoExtractResponse = {
+  assets_extracted: number
+  assets_count?: number
+  assets_limit?: number
+  pages_considered?: number
+}
+
 export default function BotBusinessAssetsTab() {
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
 
   const [assets, setAssets] = useState<AssetRecord[]>([])
+  const [assetCount, setAssetCount] = useState(0)
+  const [assetLimit, setAssetLimit] = useState(ASSET_LIMIT_FALLBACK)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -57,6 +82,18 @@ export default function BotBusinessAssetsTab() {
   const [editSaving, setEditSaving] = useState(false)
 
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractResult, setExtractResult] = useState<string | null>(null)
+  const [showExtractSettings, setShowExtractSettings] = useState(false)
+  const [loadingExtractPages, setLoadingExtractPages] = useState(false)
+  const [extractPages, setExtractPages] = useState<string[]>([])
+  const [selectedExtractPages, setSelectedExtractPages] = useState<Set<string>>(new Set())
+  const [extractPageFilter, setExtractPageFilter] = useState('')
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const hasReachedAssetLimit = assetCount >= assetLimit
 
   const authedFetch = useCallback(
     async (path: string, init?: RequestInit): Promise<Response> => {
@@ -82,8 +119,11 @@ export default function BotBusinessAssetsTab() {
         const body = await resp.json().catch(() => ({}))
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
-      const data = (await resp.json()) as { assets: AssetRecord[] }
-      setAssets(data.assets || [])
+      const data = (await resp.json()) as AssetListResponse
+      const nextAssets = data.assets || []
+      setAssets(nextAssets)
+      setAssetCount(typeof data.count === 'number' ? data.count : nextAssets.length)
+      setAssetLimit(typeof data.limit === 'number' ? data.limit : ASSET_LIMIT_FALLBACK)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -94,6 +134,83 @@ export default function BotBusinessAssetsTab() {
   useEffect(() => {
     void loadAssets()
   }, [loadAssets])
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const valid = new Set(assets.map((a) => a.asset_id))
+      const next = new Set<string>()
+      prev.forEach((id) => {
+        if (valid.has(id)) next.add(id)
+      })
+      return next
+    })
+  }, [assets])
+
+  const loadExtractPages = useCallback(async () => {
+    if (!botId) return
+    setLoadingExtractPages(true)
+    try {
+      const resp = await authedFetch(`/v1/org/bots/${botId}/jobs`)
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error((body as { detail?: string }).detail || resp.statusText)
+      }
+      const data = (await resp.json()) as { jobs: IndexJobRecord[] }
+      const seen = new Set<string>()
+      const urls: string[] = []
+
+      for (const job of data.jobs || []) {
+        const crawlUrls = Array.isArray(job.crawled_urls) ? job.crawled_urls : []
+        for (const raw of crawlUrls) {
+          const cleaned = (raw || '').trim()
+          if (!cleaned || seen.has(cleaned)) continue
+          seen.add(cleaned)
+          urls.push(cleaned)
+        }
+
+        const fallback = (job.url || '').trim()
+        if (fallback && !seen.has(fallback)) {
+          seen.add(fallback)
+          urls.push(fallback)
+        }
+      }
+
+      setExtractPages(urls)
+      setSelectedExtractPages((prev) => {
+        if (!prev.size) return new Set(urls)
+        const next = new Set<string>()
+        prev.forEach((url) => {
+          if (seen.has(url)) next.add(url)
+        })
+        return next
+      })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoadingExtractPages(false)
+    }
+  }, [authedFetch, botId])
+
+  const toggleExtractSettings = async () => {
+    const nextOpen = !showExtractSettings
+    setShowExtractSettings(nextOpen)
+    if (nextOpen && extractPages.length === 0) {
+      await loadExtractPages()
+    }
+  }
+
+  const toggleExtractPage = (url: string) => {
+    setSelectedExtractPages((prev) => {
+      const next = new Set(prev)
+      if (next.has(url)) next.delete(url)
+      else next.add(url)
+      return next
+    })
+  }
+
+  const filteredExtractPages = extractPages.filter((url) =>
+    url.toLowerCase().includes(extractPageFilter.trim().toLowerCase())
+  )
 
   // File preview
   const handleFileChange = (file: File | null, setFileFn: (f: File | null) => void, setPreviewFn?: (url: string | null) => void) => {
@@ -111,6 +228,10 @@ export default function BotBusinessAssetsTab() {
 
   const handleAdd = async () => {
     if (!botId || !addFile || !addName.trim()) return
+    if (hasReachedAssetLimit) {
+      setError(`Asset limit reached (${assetLimit}). Delete assets or raise the limit before adding new ones.`)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -202,12 +323,96 @@ export default function BotBusinessAssetsTab() {
     }
   }
 
+  const handleAutoExtract = async () => {
+    if (!botId) return
+    if (hasReachedAssetLimit) {
+      setExtractResult(`Asset limit reached (${assetCount}/${assetLimit}).`)
+      return
+    }
+    if (extractPages.length > 0 && selectedExtractPages.size === 0) {
+      setError('Select at least one page for extraction.')
+      return
+    }
+    setExtracting(true)
+    setError(null)
+    setExtractResult(null)
+    try {
+      const payload = {
+        page_urls: extractPages.length > 0 ? Array.from(selectedExtractPages) : [],
+      }
+      const resp = await authedFetch(`/v1/org/bots/${botId}/assets/auto-extract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error((body as { detail?: string }).detail || resp.statusText)
+      }
+      const data = (await resp.json()) as AutoExtractResponse
+      const extractedCount = data.assets_extracted || 0
+      if (typeof data.assets_count === 'number') setAssetCount(data.assets_count)
+      if (typeof data.assets_limit === 'number') setAssetLimit(data.assets_limit)
+      const sourcePages = data.pages_considered || 0
+      const sourceSuffix =
+        sourcePages > 0
+          ? ` from ${sourcePages} selected page${sourcePages !== 1 ? 's' : ''}`
+          : ' from training data'
+      setExtractResult(
+        extractedCount > 0
+          ? `Extracted ${extractedCount} asset${extractedCount !== 1 ? 's' : ''}${sourceSuffix}`
+          : `No new assets found${sourceSuffix}`
+      )
+      await loadAssets()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  const toggleSelect = (assetId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(assetId)) next.delete(assetId)
+      else next.add(assetId)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === assets.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(assets.map((a) => a.asset_id)))
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (!botId || selectedIds.size === 0) return
+    setBulkDeleting(true)
+    setError(null)
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          authedFetch(`/v1/org/bots/${botId}/assets/${id}`, { method: 'DELETE' })
+        )
+      )
+      setSelectedIds(new Set())
+      await loadAssets()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   return (
     <AnimatedPage>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <SectionHeader
           title="Business Assets"
-          subtitle="Upload images with titles and links that your AI agent can show in chat conversations."
+          subtitle="Products, services, and offerings your AI agent can show in conversations. Auto-extracted from training data or uploaded manually."
         />
 
         {error && (
@@ -225,21 +430,315 @@ export default function BotBusinessAssetsTab() {
           </div>
         )}
 
-        {/* Add Asset Button */}
         {!showAdd && (
-          <UiButton
-            variant="primary"
-            onClick={() => setShowAdd(true)}
+          <>
+            <div
+              style={{
+                marginBottom: '0.75rem',
+                padding: '0.6rem 0.85rem',
+                borderRadius: 10,
+                background: hasReachedAssetLimit ? '#fff7ed' : '#f8fafc',
+                border: hasReachedAssetLimit ? '1px solid #fdba74' : '1px solid #e2e8f0',
+                fontSize: '0.9rem',
+                color: '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                flexWrap: 'wrap',
+              }}
+            >
+              <strong>
+                {assetCount}/{assetLimit}
+              </strong>
+              <span>assets used</span>
+              <span style={{ color: hasReachedAssetLimit ? '#c2410c' : '#64748b' }}>
+                {hasReachedAssetLimit ? 'Limit reached' : `${assetLimit - assetCount} slots left`}
+              </span>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <UiButton
+                variant="primary"
+                onClick={() => setShowAdd(true)}
+                disabled={hasReachedAssetLimit}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Plus size={16} />
+                Add Asset
+              </UiButton>
+              <UiButton
+                variant="secondary"
+                onClick={() => void toggleExtractSettings()}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Sparkles size={16} />
+                {showExtractSettings ? 'Hide Page Selection' : 'Choose Source Pages'}
+              </UiButton>
+              <UiButton
+                variant="secondary"
+                onClick={() => void handleAutoExtract()}
+                disabled={extracting || hasReachedAssetLimit || (extractPages.length > 0 && selectedExtractPages.size === 0)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {extracting ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+                {extracting ? 'Extracting...' : 'Auto-extract from URLs'}
+              </UiButton>
+            </div>
+          </>
+        )}
+
+        {showExtractSettings && (
+          <GlassCard style={{ marginBottom: '1rem', padding: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              <strong style={{ fontSize: '0.95rem' }}>Extraction Source Pages</strong>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => void loadExtractPages()}
+                  disabled={loadingExtractPages}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    cursor: loadingExtractPages ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loadingExtractPages ? 'Refreshing...' : 'Refresh Pages'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExtractPages(new Set(extractPages))}
+                  disabled={extractPages.length === 0}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    cursor: extractPages.length === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedExtractPages(new Set())}
+                  disabled={extractPages.length === 0}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                    background: '#fff',
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.8rem',
+                    color: '#475569',
+                    cursor: extractPages.length === 0 ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              value={extractPageFilter}
+              onChange={(e) => setExtractPageFilter(e.target.value)}
+              placeholder="Filter pages..."
+              style={{
+                width: '100%',
+                marginBottom: '0.75rem',
+                border: '1px solid #dbe3ee',
+                borderRadius: 8,
+                padding: '0.45rem 0.65rem',
+                fontSize: '0.85rem',
+              }}
+            />
+
+            {loadingExtractPages ? (
+              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '0.35rem 0' }}>Loading pages...</div>
+            ) : extractPages.length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '0.35rem 0' }}>
+                No crawled pages found yet. Train URLs first to target specific pages.
+              </div>
+            ) : (
+              <div
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                  padding: '0.35rem',
+                  display: 'grid',
+                  gap: '0.35rem',
+                }}
+              >
+                {filteredExtractPages.map((url) => {
+                  const checked = selectedExtractPages.has(url)
+                  return (
+                    <label
+                      key={url}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: '0.82rem',
+                        color: '#334155',
+                        padding: '0.3rem 0.4rem',
+                        borderRadius: 6,
+                        background: checked ? 'rgba(228,88,122,0.08)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleExtractPage(url)}
+                      />
+                      <span style={{ wordBreak: 'break-all' }}>{url}</span>
+                    </label>
+                  )
+                })}
+                {filteredExtractPages.length === 0 && (
+                  <div style={{ color: '#64748b', fontSize: '0.8rem', padding: '0.25rem 0.3rem' }}>
+                    No pages match this filter.
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: '0.65rem', fontSize: '0.8rem', color: '#64748b' }}>
+              {selectedExtractPages.size} page{selectedExtractPages.size !== 1 ? 's' : ''} selected for extraction.
+            </div>
+          </GlassCard>
+        )}
+
+        {/* Extract result message */}
+        {extractResult && (
+          <div
             style={{
-              display: 'inline-flex',
+              padding: '0.75rem 1rem',
+              borderRadius: 10,
+              background: '#f0fdf4',
+              color: '#16a34a',
+              marginBottom: '1rem',
+              fontSize: '0.9rem',
+              display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              marginBottom: '1.5rem',
+              justifyContent: 'space-between',
             }}
           >
-            <Plus size={16} />
-            Add Asset
-          </UiButton>
+            <span>{extractResult}</span>
+            <button
+              onClick={() => setExtractResult(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#16a34a', padding: 2 }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Bulk-selection toolbar — only shown when assets exist and none in edit mode */}
+        {!loading && assets.length > 0 && !showAdd && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 10,
+              background: selectedIds.size > 0 ? 'rgba(239,68,68,0.07)' : 'transparent',
+              border: selectedIds.size > 0 ? '1px solid rgba(239,68,68,0.2)' : '1px solid transparent',
+              transition: 'all 0.2s',
+              flexWrap: 'wrap',
+            }}
+          >
+            {/* Select-all toggle */}
+            <button
+              onClick={handleSelectAll}
+              title={selectedIds.size === assets.length ? 'Deselect all' : 'Select all'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#64748b',
+                fontSize: '0.85rem',
+                padding: '4px 6px',
+                borderRadius: 6,
+              }}
+            >
+              {selectedIds.size === assets.length && assets.length > 0 ? (
+                <CheckSquare size={16} color="#e4587a" />
+              ) : (
+                <Square size={16} />
+              )}
+              {selectedIds.size === assets.length && assets.length > 0 ? 'Deselect All' : 'Select All'}
+            </button>
+
+            {selectedIds.size > 0 && (
+              <>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  {selectedIds.size} selected
+                </span>
+                <button
+                  onClick={() => void handleDeleteSelected()}
+                  disabled={bulkDeleting}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginLeft: 'auto',
+                    padding: '0.45rem 1rem',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: bulkDeleting ? 'not-allowed' : 'pointer',
+                    opacity: bulkDeleting ? 0.7 : 1,
+                    transition: 'opacity 0.15s',
+                  }}
+                >
+                  {bulkDeleting ? <Loader2 size={15} className="spin" /> : <Trash2 size={15} />}
+                  {bulkDeleting ? 'Deleting...' : `Delete Selected (${selectedIds.size})`}
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  title="Clear selection"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    padding: 4,
+                  }}
+                >
+                  <X size={15} />
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         {/* Add Asset Form */}
@@ -361,7 +860,7 @@ export default function BotBusinessAssetsTab() {
                 <UiButton
                   variant="primary"
                   onClick={() => void handleAdd()}
-                  disabled={!addFile || !addName.trim() || saving}
+                  disabled={!addFile || !addName.trim() || saving || hasReachedAssetLimit}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
                   {saving ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
@@ -387,9 +886,9 @@ export default function BotBusinessAssetsTab() {
             <h3 style={{ margin: '0 0 0.5rem', fontWeight: 600, color: '#334155' }}>
               No assets yet
             </h3>
-            <p style={{ margin: 0, color: '#94a3b8', maxWidth: 400, marginInline: 'auto' }}>
-              Upload product images, menus, room photos, or any visual assets. Your AI agent will
-              automatically show them in conversations when relevant.
+            <p style={{ margin: 0, color: '#94a3b8', maxWidth: 440, marginInline: 'auto' }}>
+              Click <strong>Auto-extract from URLs</strong> to automatically detect products, services,
+              and offerings from your training data. You can also upload assets manually.
             </p>
           </GlassCard>
         )}
@@ -406,16 +905,33 @@ export default function BotBusinessAssetsTab() {
                   <GlassCard key={a.asset_id} style={{ padding: '1rem' }}>
                     <div style={{ display: 'grid', gap: '0.75rem' }}>
                       {/* Image preview */}
-                      <img
-                        src={`${API_BASE}${a.image_url}`}
-                        alt={a.name}
-                        style={{
-                          width: '100%',
-                          height: 160,
-                          objectFit: 'cover',
-                          borderRadius: 8,
-                        }}
-                      />
+                      {a.image_url ? (
+                        <img
+                          src={`${API_BASE}${a.image_url}`}
+                          alt={a.name}
+                          style={{
+                            width: '100%',
+                            height: 160,
+                            objectFit: 'cover',
+                            borderRadius: 8,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: 100,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#f1f5f9',
+                            borderRadius: 8,
+                            color: '#94a3b8',
+                          }}
+                        >
+                          <Image size={32} />
+                        </div>
+                      )}
                       <label
                         style={{
                           display: 'flex',
@@ -488,6 +1004,8 @@ export default function BotBusinessAssetsTab() {
                 )
               }
 
+              const isSelected = selectedIds.has(a.asset_id)
+
               return (
                 <GlassCard
                   key={a.asset_id}
@@ -495,18 +1013,64 @@ export default function BotBusinessAssetsTab() {
                     padding: 0,
                     overflow: 'hidden',
                     opacity: a.is_active ? 1 : 0.5,
+                    outline: isSelected ? '2px solid #e4587a' : '2px solid transparent',
+                    outlineOffset: -2,
+                    transition: 'outline 0.15s',
+                    position: 'relative',
                   }}
                 >
-                  <img
-                    src={`${API_BASE}${a.image_url}`}
-                    alt={a.name}
+                  {/* Checkbox overlay */}
+                  <button
+                    onClick={() => toggleSelect(a.asset_id)}
+                    title={isSelected ? 'Deselect' : 'Select'}
                     style={{
-                      width: '100%',
-                      height: 180,
-                      objectFit: 'cover',
-                      display: 'block',
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                      zIndex: 10,
+                      background: isSelected ? '#e4587a' : 'rgba(255,255,255,0.85)',
+                      border: isSelected ? '2px solid #e4587a' : '2px solid #cbd5e1',
+                      borderRadius: 5,
+                      width: 22,
+                      height: 22,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                      transition: 'all 0.15s',
                     }}
-                  />
+                  >
+                    {isSelected && <Check size={13} color="#fff" strokeWidth={3} />}
+                  </button>
+
+                  {a.image_url ? (
+                    <img
+                      src={`${API_BASE}${a.image_url}`}
+                      alt={a.name}
+                      style={{
+                        width: '100%',
+                        height: 180,
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: 120,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                        color: '#94a3b8',
+                      }}
+                    >
+                      <Image size={36} />
+                    </div>
+                  )}
                   <div style={{ padding: '0.75rem 1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>

@@ -20,6 +20,7 @@ import codecs
 from infrastructure.repositories import Crawl4AICrawlerRepository, GCSDocumentStorageRepository, VertexRAGRepository
 from infrastructure.db.repositories import (
     PostgresBookingLinkJobRepository,
+    PostgresBotAssetRepository,
     PostgresBotRepository,
     PostgresIndexJobRepository,
     PostgresTopicJobRepository,
@@ -34,6 +35,14 @@ from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 logger = logging.getLogger(__name__)
 
 _MAX_CRAWL_DURATION_SEC = 600  # HARD 10-MINUTE LIMIT for training/crawl to GCS/RAG
+
+
+def _asset_limit() -> int:
+    raw = (os.environ.get("ASSET_MAX_PER_BOT") or "50").strip()
+    try:
+        return max(1, min(int(raw), 1000))
+    except ValueError:
+        return 50
 
 
 def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
@@ -229,6 +238,27 @@ def _repair_docs_for_language(docs: List[Document], *, lang: str) -> List[Docume
     return docs
 
 
+def _start_asset_extraction(bot_id: str, gcs_prefix: str) -> None:
+    """Queue asset extraction from crawled content (non-blocking)."""
+    if not bot_id or not gcs_prefix:
+        return
+    auto = (os.environ.get("ASSET_AUTO_EXTRACT") or "true").strip().lower()
+    if auto not in ("1", "true", "yes", "on"):
+        return
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            return
+        asset_extraction_task.delay(
+            bot_id=bot_id,
+            org_id=bot.org_id,
+            gcs_prefix=gcs_prefix,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to queue asset extraction for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+
+
 def _start_topic_extraction_job(bot_id: str, gcs_prefix: str) -> None:
     if not bot_id or not gcs_prefix:
         return
@@ -419,6 +449,48 @@ def topic_extraction_job(
         return {"status": "error", "error": job.last_error}
 
 
+@celery_app.task(name="infrastructure.tasks.crawl_tasks.asset_extraction_task", bind=True)
+def asset_extraction_task(
+    self: Task,
+    bot_id: str,
+    org_id: str,
+    gcs_prefix: str,
+) -> Dict[str, Any]:
+    """Extract business assets from crawled documents using LLM."""
+    try:
+        limit = _asset_limit()
+        repo = PostgresBotAssetRepository()
+        existing_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
+        remaining = max(0, limit - existing_count)
+        if remaining <= 0:
+            return {
+                "status": "done",
+                "assets_count": 0,
+                "assets_total": existing_count,
+                "assets_limit": limit,
+            }
+
+        from application.services.asset_extraction_service import asset_extraction_service
+        service = asset_extraction_service()
+        count = service.extract_from_gcs_prefix(
+            org_id=org_id,
+            bot_id=bot_id,
+            gcs_prefix=gcs_prefix,
+            max_assets=remaining,
+        )
+        total_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
+        logger.info(f"Asset extraction completed for bot {bot_id}: {count} assets created")
+        return {
+            "status": "done",
+            "assets_count": count,
+            "assets_total": total_count,
+            "assets_limit": limit,
+        }
+    except Exception as e:
+        logger.warning(f"Asset extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+        return {"status": "error", "error": str(e)[:200]}
+
+
 async def _execute_crawl(
     job_id: str,
     bot_id: str,
@@ -590,6 +662,12 @@ async def _execute_crawl(
                 _start_topic_extraction_job(bot_id, gcs_prefix)
             except Exception as topic_error:
                 logger.warning(f"Topic extraction queue failed: {type(topic_error).__name__}: {str(topic_error)[:200]}")
+
+            # Auto-extract business assets from crawled content
+            try:
+                _start_asset_extraction(bot_id, gcs_prefix)
+            except Exception as asset_error:
+                logger.warning(f"Asset extraction queue failed: {type(asset_error).__name__}: {str(asset_error)[:200]}")
 
         # Import to RAG with error handling
         job.stage = "importing"

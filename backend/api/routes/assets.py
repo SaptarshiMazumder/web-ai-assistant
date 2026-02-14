@@ -3,19 +3,25 @@ Business Assets API – upload, list, update, delete asset cards for a bot.
 Also exposes a **public** image proxy endpoint so LINE / Instagram can fetch images.
 """
 
-import io
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from google.cloud import storage  # type: ignore[import-untyped]
 
+from application.services.asset_image_service import optimize_asset_image
 from api.deps.auth import get_current_user, is_super_admin
-from api.schemas import BotAssetDeleteResponse, BotAssetListResponse, BotAssetResponse
-from common.config import config
+from api.schemas import (
+    BotAssetAutoExtractRequest,
+    BotAssetAutoExtractResponse,
+    BotAssetDeleteResponse,
+    BotAssetListResponse,
+    BotAssetResponse,
+)
 from common.di.container import asset_repo, bot_service
 from domain.entities import BotAsset
 from infrastructure.services.indexing_service import _parse_bucket_and_prefix
@@ -35,6 +41,14 @@ _ALLOWED_IMAGE_TYPES = {
     "image/webp",
     "image/svg+xml",
 }
+
+
+def _asset_limit() -> int:
+    raw = (os.environ.get("ASSET_MAX_PER_BOT") or "50").strip()
+    try:
+        return max(1, min(int(raw), 1000))
+    except ValueError:
+        return 50
 
 
 def _resolve_org_id(user_ctx, org_id: Optional[str]) -> str:
@@ -92,6 +106,11 @@ async def create_asset(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
 
+    limit = _asset_limit()
+    existing_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False)
+    if len(existing_assets) >= limit:
+        raise HTTPException(status_code=400, detail=f"Asset limit reached ({limit}).")
+
     content_type = (getattr(file, "content_type", None) or "").strip().lower()
     if content_type not in _ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported image type: {content_type}")
@@ -99,11 +118,11 @@ async def create_asset(
     data = await file.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")
+    data, content_type, ext = optimize_asset_image(data, content_type)
 
     # Upload to GCS
     bucket_name, base_prefix = _parse_bucket_and_prefix()
     asset_id = "asset_" + uuid.uuid4().hex[:16]
-    ext = (file.filename or "image").rsplit(".", 1)[-1] if file.filename else "bin"
     blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
 
     client = storage.Client()
@@ -145,9 +164,12 @@ async def list_assets(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     assets = asset_repo().list_assets_for_bot(bot_id)
+    limit = _asset_limit()
     return BotAssetListResponse(
         bot_id=bot_id,
         assets=[_asset_to_response(a) for a in assets],
+        count=len(assets),
+        limit=limit,
     )
 
 
@@ -178,14 +200,15 @@ async def update_asset(
             raise HTTPException(status_code=400, detail=f"Unsupported image type: {content_type}")
         data = await file.read()
         if data:
+            data, content_type, ext = optimize_asset_image(data, content_type)
             bucket_name, base_prefix = _parse_bucket_and_prefix()
-            ext = (file.filename or "image").rsplit(".", 1)[-1]
             blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
             client = storage.Client()
             bucket_obj = client.bucket(bucket_name)
             blob = bucket_obj.blob(blob_name)
             blob.upload_from_string(data, content_type=content_type)
             existing.image_gcs_uri = f"gs://{bucket_name}/{blob_name}"
+            existing.image_public_url = f"/v1/assets/{asset_id}/image"
 
     now = datetime.now(timezone.utc).isoformat()
     kw_list = [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
@@ -230,6 +253,81 @@ async def delete_asset(
 
     asset_repo().delete_asset(bot_id, asset_id)
     return BotAssetDeleteResponse(bot_id=bot_id, asset_id=asset_id)
+
+
+# ---------------------------------------------------------------------------
+# Auto-extract assets from training data (authenticated)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/v1/org/bots/{bot_id}/assets/auto-extract", response_model=BotAssetAutoExtractResponse)
+async def auto_extract_assets(
+    bot_id: str,
+    payload: BotAssetAutoExtractRequest = Body(default_factory=BotAssetAutoExtractRequest),
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Extract business assets from the bot's crawled training data using LLM."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+
+    selected_pages = []
+    seen_pages = set()
+    for raw in payload.page_urls or []:
+        cleaned = (raw or "").strip()
+        if not cleaned or cleaned in seen_pages:
+            continue
+        seen_pages.add(cleaned)
+        selected_pages.append(cleaned)
+
+    # Find the latest GCS prefix from index jobs
+    from infrastructure.db.repositories import PostgresIndexJobRepository
+    job_repo = PostgresIndexJobRepository()
+    jobs = job_repo.list_jobs_for_bot(bot_id)
+    gcs_prefix = ""
+    if jobs:
+        # Get latest completed job with a gcs_prefix
+        for j in sorted(jobs, key=lambda x: x.created_at or "", reverse=True):
+            if j.gcs_prefix:
+                gcs_prefix = j.gcs_prefix
+                break
+
+    if not gcs_prefix:
+        raise HTTPException(
+            status_code=400,
+            detail="No training data found. Train the bot first.",
+        )
+
+    limit = _asset_limit()
+    current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False)
+    current_count = len(current_assets)
+    remaining = max(0, limit - current_count)
+    if remaining <= 0:
+        return BotAssetAutoExtractResponse(
+            ok=True,
+            assets_extracted=0,
+            assets_count=current_count,
+            assets_limit=limit,
+            pages_considered=len(selected_pages),
+        )
+
+    from application.services.asset_extraction_service import asset_extraction_service
+    service = asset_extraction_service()
+    count = service.extract_from_gcs_prefix(
+        org_id=resolved_org,
+        bot_id=bot_id,
+        gcs_prefix=gcs_prefix,
+        max_assets=remaining,
+        page_urls=selected_pages or None,
+    )
+    final_count = len(asset_repo().list_assets_for_bot(bot_id, active_only=False))
+    return BotAssetAutoExtractResponse(
+        ok=True,
+        assets_extracted=count,
+        assets_count=final_count,
+        assets_limit=limit,
+        pages_considered=len(selected_pages),
+    )
 
 
 # ---------------------------------------------------------------------------
