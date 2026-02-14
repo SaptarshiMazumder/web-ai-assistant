@@ -789,6 +789,43 @@
     bubble.appendChild(meta);
   }
 
+  function appendAssetCardsToBubble(bubble, assets) {
+    if (!assets || !assets.length) return;
+    var wrap = document.createElement("div");
+    wrap.className = "asset-cards";
+    assets.forEach(function (a) {
+      var card = document.createElement("div");
+      card.className = "asset-card";
+      if (a.link_url) {
+        card.onclick = function () { window.open(a.link_url, "_blank", "noopener"); };
+      }
+      var img = document.createElement("img");
+      img.src = a.image_url || "";
+      img.alt = a.name || "";
+      img.loading = "lazy";
+      card.appendChild(img);
+      var body = document.createElement("div");
+      body.className = "asset-card-body";
+      var title = document.createElement("span");
+      title.className = "asset-card-title";
+      title.textContent = a.name || "";
+      body.appendChild(title);
+      if (a.link_url) {
+        var link = document.createElement("a");
+        link.className = "asset-card-link";
+        link.href = a.link_url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "View \u2192";
+        link.onclick = function (e) { e.stopPropagation(); };
+        body.appendChild(link);
+      }
+      card.appendChild(body);
+      wrap.appendChild(card);
+    });
+    bubble.appendChild(wrap);
+  }
+
   const STREAM_TICK_MS = 24;
   const STREAM_CHARS_PER_TICK = 3;
 
@@ -824,6 +861,7 @@
           text = doneEvent.answer || text;
           setBubbleText(bubble, text, "bot");
           appendCitationsToBubble(bubble, doneEvent.citations || []);
+          appendAssetCardsToBubble(bubble, doneEvent.assets || []);
           if (chat) chat.scrollTop = chat.scrollHeight;
           doneEvent = null;
           botPending = false;
@@ -872,6 +910,7 @@
       text = doneEvent.answer || text;
       setBubbleText(bubble, text, "bot");
       appendCitationsToBubble(bubble, doneEvent.citations || []);
+      appendAssetCardsToBubble(bubble, doneEvent.assets || []);
       if (chat) chat.scrollTop = chat.scrollHeight;
       botPending = false;
       hasBotReply = true;

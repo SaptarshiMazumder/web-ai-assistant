@@ -37,13 +37,69 @@ def _text_message(text: str) -> dict:
     return {"type": "text", "text": text}
 
 
+def _flex_image_card(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
+    """Build a LINE Flex Message bubble with a hero image and title."""
+    body_contents: List[dict] = [
+        {"type": "text", "text": name, "weight": "bold", "size": "md", "wrap": True},
+    ]
+    hero: dict = {
+        "type": "image",
+        "url": image_url,
+        "size": "full",
+        "aspectRatio": "20:13",
+        "aspectMode": "cover",
+    }
+    if link_url:
+        hero["action"] = {"type": "uri", "label": name, "uri": link_url}
+    bubble: dict = {
+        "type": "bubble",
+        "hero": hero,
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": body_contents,
+        },
+    }
+    if link_url:
+        bubble["footer"] = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "button",
+                    "action": {"type": "uri", "label": "View", "uri": link_url},
+                    "style": "primary",
+                    "height": "sm",
+                }
+            ],
+        }
+    return {
+        "type": "flex",
+        "altText": name,
+        "contents": bubble,
+    }
+
+
 async def reply_message(
     reply_token: str,
     texts: List[str],
     access_token: str,
+    *,
+    asset_cards: Optional[List[dict]] = None,
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
-    messages = [_text_message(t) for t in texts[:5]]  # LINE allows max 5 per reply
+    messages: List[dict] = [_text_message(t) for t in texts[:5]]
+    # Append asset flex cards (up to remaining slots; LINE allows max 5 per reply)
+    if asset_cards:
+        remaining = 5 - len(messages)
+        for card in asset_cards[:remaining]:
+            messages.append(
+                _flex_image_card(
+                    card.get("name", ""),
+                    card.get("image_url", ""),
+                    card.get("link_url") or None,
+                )
+            )
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/reply",
@@ -60,9 +116,21 @@ async def push_message(
     user_id: str,
     texts: List[str],
     access_token: str,
+    *,
+    asset_cards: Optional[List[dict]] = None,
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
-    messages = [_text_message(t) for t in texts[:5]]
+    messages: List[dict] = [_text_message(t) for t in texts[:5]]
+    if asset_cards:
+        remaining = 5 - len(messages)
+        for card in asset_cards[:remaining]:
+            messages.append(
+                _flex_image_card(
+                    card.get("name", ""),
+                    card.get("image_url", ""),
+                    card.get("link_url") or None,
+                )
+            )
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/push",

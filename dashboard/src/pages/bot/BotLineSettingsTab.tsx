@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
-import { Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2, Trash2 } from 'lucide-react'
-import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
+import { Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2, Trash2, Zap, MessageCircle } from 'lucide-react'
+import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
 
 type LineChannelConfig = {
   channel_id: string
@@ -16,99 +16,6 @@ type LineChannelConfig = {
 }
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
-
-/* ─── Styles ─────────────────────────────────────────────────────── */
-
-const stepCard: React.CSSProperties = {
-  border: '1px solid var(--border-color)',
-  borderRadius: '10px',
-  padding: '20px 24px',
-  marginBottom: '16px',
-  background: 'var(--bg-primary)',
-}
-
-const stepHeader: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  marginBottom: '12px',
-}
-
-const stepNumber: React.CSSProperties = {
-  width: '28px',
-  height: '28px',
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '13px',
-  fontWeight: 600,
-  flexShrink: 0,
-}
-
-const stepTitle: React.CSSProperties = {
-  fontSize: '15px',
-  fontWeight: 600,
-}
-
-const stepBody: React.CSSProperties = {
-  marginLeft: '40px',
-  color: 'var(--text-secondary)',
-  fontSize: '14px',
-  lineHeight: '1.7',
-}
-
-const inputLabel: React.CSSProperties = {
-  display: 'block',
-  marginBottom: '6px',
-  fontWeight: 500,
-  fontSize: '13px',
-  color: 'var(--text-primary)',
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '9px 12px',
-  borderRadius: '6px',
-  border: '1px solid var(--border-color)',
-  fontSize: '14px',
-  fontFamily: 'Google Sans, sans-serif',
-  background: 'var(--bg-secondary)',
-}
-
-const linkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '4px',
-  color: 'var(--accent-color, #2563eb)',
-  fontWeight: 500,
-  textDecoration: 'none',
-}
-
-const successBanner: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  padding: '14px 18px',
-  background: 'var(--success-bg, #d4edda)',
-  color: 'var(--success-text, #155724)',
-  borderRadius: '8px',
-  fontSize: '14px',
-  marginBottom: '16px',
-}
-
-const connectedBanner: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '16px 20px',
-  background: 'var(--success-bg, #d4edda)',
-  color: 'var(--success-text, #155724)',
-  borderRadius: '10px',
-  marginBottom: '20px',
-}
-
-/* ─── Component ──────────────────────────────────────────────────── */
 
 export default function BotLineSettingsTab() {
   const { botId } = useParams()
@@ -204,7 +111,7 @@ export default function BotLineSettingsTab() {
       setExisting(data)
       setLineChannelSecret('')
       setLineAccessToken('')
-      setSuccess('LINE channel connected successfully! Your bot is now live on LINE.')
+      setSuccess('Connected! Your bot is live on LINE.')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -232,7 +139,7 @@ export default function BotLineSettingsTab() {
 
   async function handleDelete() {
     if (!botId) return
-    const confirmed = window.confirm('Are you sure you want to disconnect LINE? The bot will stop responding to LINE messages.')
+    const confirmed = window.confirm('Disconnect LINE integration?')
     if (!confirmed) return
     setDeleting(true)
     setError(null)
@@ -271,100 +178,221 @@ export default function BotLineSettingsTab() {
   if (existing) {
     return (
       <AnimatedPage className="page-body">
-        <SectionHeader eyebrow="Integrations" title="LINE channel" subtitle="Control webhook health, credentials, and live status in one place." />
-        <div style={connectedBanner}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <CheckCircle size={20} />
-            <div>
-              <strong>LINE is connected</strong>
-              <div style={{ fontSize: '13px', opacity: 0.85, marginTop: '2px' }}>
-                Channel ID: {existing.line_channel_id} &middot; {existing.is_active ? 'Active' : 'Paused'}
+        <SectionHeader
+          eyebrow="Integrations"
+          title="LINE channel"
+          subtitle="Your bot is live and responding to messages on LINE."
+        />
+
+        {/* Status Hero */}
+        <div style={{
+          background: 'linear-gradient(135deg, #06c755 0%, #00b140 100%)',
+          borderRadius: '18px',
+          padding: '2rem',
+          marginBottom: '2rem',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(6, 199, 85, 0.25)',
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            right: '-20%',
+            width: '500px',
+            height: '500px',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+            borderRadius: '50%',
+            pointerEvents: 'none',
+          }} />
+
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '16px',
+                background: 'rgba(255,255,255,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+              }}>
+                <MessageCircle size={30} color="#fff" />
+              </div>
+              <div>
+                <div style={{
+                  fontSize: '1.4rem',
+                  fontWeight: 700,
+                  color: '#fff',
+                  marginBottom: '0.25rem',
+                }}>
+                  Connected & Active
+                </div>
+                <div style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                }}>
+                  Channel ID: <code style={{
+                    background: 'rgba(0,0,0,0.2)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontFamily: 'monospace',
+                  }}>{existing.line_channel_id}</code> • {existing.is_active ? 'Active' : 'Paused'}
+                </div>
               </div>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+
             <button
               onClick={handleTestConnection}
               disabled={testing}
-              style={{ fontSize: '13px', padding: '6px 14px' }}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255,255,255,0.3)',
+                borderRadius: '12px',
+                padding: '0.75rem 1.5rem',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                cursor: testing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                transition: 'all 0.2s',
+                opacity: testing ? 0.7 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!testing) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.3)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
             >
-              {testing ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginRight: '4px' }} /> Testing...</> : 'Test Connection'}
+              {testing ? (
+                <>
+                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <Zap size={18} />
+                  Test Connection
+                </>
+              )}
             </button>
           </div>
         </div>
 
+        {/* Test Result - Clean inline text */}
         {testResult && (
           <div style={{
-            ...successBanner,
-            background: testResult.ok ? 'var(--success-bg, #d4edda)' : 'var(--error-bg, #f8d7da)',
-            color: testResult.ok ? 'var(--success-text, #155724)' : 'var(--error-text, #721c24)',
+            marginBottom: '1.5rem',
+            color: testResult.ok ? '#00b140' : '#e74c3c',
+            fontWeight: 600,
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           }}>
-            {testResult.ok ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+            {testResult.ok ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
             {testResult.message}
           </div>
         )}
 
-        {error && <div className="error-message" style={{ marginBottom: '16px' }}>{error}</div>}
-        {success && <div style={{ ...successBanner }}><CheckCircle size={16} />{success}</div>}
+        {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
+        {success && <div style={{ marginBottom: '1.5rem', color: '#00b140', fontWeight: 600 }}>{success}</div>}
 
-        {/* Webhook URL */}
-        <div style={stepCard}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Webhook URL</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <code style={{
-              flex: 1, padding: '8px 12px', background: 'var(--bg-secondary)', borderRadius: '6px',
-              fontSize: '13px', wordBreak: 'break-all', border: '1px solid var(--border-color)',
-            }}>
-              {webhookUrl}
-            </code>
-            <button onClick={copyWebhookUrl} title="Copy" style={{ minWidth: '36px', padding: '7px' }}>
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Update credentials */}
-        <div style={stepCard}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px' }}>Update Credentials</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={inputLabel}>Channel ID</label>
-              <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} style={inputStyle} />
+        {/* Cards Grid */}
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          {/* Webhook URL Card */}
+          <GlassCard>
+            <div className="card-title" style={{ marginBottom: '1rem' }}>
+              Webhook URL
             </div>
-            <div>
-              <label style={inputLabel}>Channel Secret</label>
-              <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)}
-                placeholder="Leave blank to keep current" style={inputStyle} />
-            </div>
-            <div>
-              <label style={inputLabel}>Channel Access Token</label>
-              <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)}
-                placeholder="Leave blank to keep current" style={inputStyle} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input type="checkbox" id="line-active-edit" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-              <label htmlFor="line-active-edit" style={{ fontSize: '14px' }}>Active</label>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <UiButton variant="primary" onClick={handleSave} disabled={saving} style={{ fontSize: '13px' }}>
-                {saving ? 'Saving...' : 'Save Changes'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <code style={{
+                flex: 1,
+                padding: '0.85rem 1rem',
+                background: 'var(--ui-flow-surface)',
+                borderRadius: '10px',
+                fontSize: '0.9rem',
+                wordBreak: 'break-all',
+                border: '1.5px solid var(--ui-flow-border)',
+              }}>
+                {webhookUrl}
+              </code>
+              <UiButton
+                variant={copied ? "primary" : "secondary"}
+                onClick={copyWebhookUrl}
+                style={{ padding: '0.85rem 1.1rem' }}
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
               </UiButton>
-              <button onClick={handleDelete} disabled={deleting}
-                style={{ fontSize: '13px', color: 'var(--error-text, #dc3545)', background: 'transparent', border: '1px solid var(--error-text, #dc3545)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Trash2 size={14} /> {deleting ? 'Removing...' : 'Disconnect LINE'}
-              </button>
             </div>
-          </div>
-        </div>
+          </GlassCard>
 
-        {/* Escalation info */}
-        <div style={stepCard}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Human Escalation</div>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.7' }}>
-            When a customer says <strong>"staff"</strong> or <strong>"human"</strong>, the bot steps aside.
-            Your staff can reply directly in the <strong>LINE Official Account Manager</strong> app.
-            Customer says <strong>"back to bot"</strong> to return to AI.
-          </p>
+          {/* Update Credentials Card */}
+          <GlassCard>
+            <div className="card-title" style={{ marginBottom: '1.25rem' }}>
+              Update Credentials
+            </div>
+            <div style={{ display: 'grid', gap: '1.25rem' }}>
+              <GlassField label="Channel ID">
+                <input
+                  type="text"
+                  value={lineChannelId}
+                  onChange={(e) => setLineChannelId(e.target.value)}
+                />
+              </GlassField>
+              <GlassField label="Channel Secret">
+                <input
+                  type="password"
+                  value={lineChannelSecret}
+                  onChange={(e) => setLineChannelSecret(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                />
+              </GlassField>
+              <GlassField label="Channel Access Token">
+                <input
+                  type="password"
+                  value={lineAccessToken}
+                  onChange={(e) => setLineAccessToken(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                />
+              </GlassField>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <input
+                  type="checkbox"
+                  id="line-active-edit"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                />
+                <label htmlFor="line-active-edit" style={{ fontSize: '0.95rem', fontWeight: 500 }}>
+                  Active
+                </label>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <UiButton variant="primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </UiButton>
+                <UiButton
+                  variant="secondary"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e74c3c', borderColor: '#e74c3c' }}
+                >
+                  <Trash2 size={16} />
+                  {deleting ? 'Removing...' : 'Disconnect'}
+                </UiButton>
+              </div>
+            </div>
+          </GlassCard>
         </div>
       </AnimatedPage>
     )
@@ -373,121 +401,166 @@ export default function BotLineSettingsTab() {
   /* ─── Setup wizard (not yet connected) ─────────────────────── */
   return (
     <AnimatedPage className="page-body">
-      <SectionHeader eyebrow="Integrations" title="Connect LINE" subtitle="Step-by-step channel setup for instant AI responses on LINE." />
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: '0 0 6px 0', fontSize: '20px' }}>Connect LINE to your bot</h2>
-        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-          Follow these 4 steps to let your customers chat with your AI bot through LINE.
-        </p>
-      </div>
+      <SectionHeader
+        eyebrow="Integrations"
+        title="Connect LINE"
+        subtitle="Step-by-step channel setup for instant AI responses on LINE."
+      />
 
-      {error && <div className="error-message" style={{ marginBottom: '16px' }}>{error}</div>}
-      {success && <div style={successBanner}><CheckCircle size={16} />{success}</div>}
+      {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
+      {success && <div style={{ marginBottom: '1.5rem', color: '#00b140', fontWeight: 600 }}>{success}</div>}
 
-      {/* Step 1 */}
-      <div style={stepCard}>
-        <div style={stepHeader}>
-          <div style={{ ...stepNumber, background: 'var(--accent-color, #2563eb)', color: '#fff' }}>1</div>
-          <div style={stepTitle}>Create a LINE Messaging API channel</div>
-        </div>
-        <div style={stepBody}>
-          <p style={{ margin: '0 0 10px 0' }}>
-            If you already have a LINE Official Account, skip to step 2.
-          </p>
-          <ol style={{ margin: '0 0 10px 0', paddingLeft: '18px' }}>
-            <li>
-              Open the{' '}
-              <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-                LINE Developer Console <ExternalLink size={12} />
-              </a>
-            </li>
-            <li>Click <strong>"Create a new provider"</strong> (or select an existing one)</li>
-            <li>Click <strong>"Create a Messaging API channel"</strong></li>
-            <li>Fill in your business name, description, and category</li>
-          </ol>
-        </div>
-      </div>
-
-      {/* Step 2 */}
-      <div style={stepCard}>
-        <div style={stepHeader}>
-          <div style={{ ...stepNumber, background: 'var(--accent-color, #2563eb)', color: '#fff' }}>2</div>
-          <div style={stepTitle}>Copy your channel credentials</div>
-        </div>
-        <div style={stepBody}>
-          <p style={{ margin: '0 0 10px 0' }}>
-            In your channel&apos;s settings, find and copy these 3 values:
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '12px' }}>
-            <div>
-              <label style={inputLabel}>
-                Channel ID <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>&#8212; found under "Basic settings"</span>
-              </label>
-              <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)}
-                placeholder="e.g. 1234567890" style={inputStyle} />
+      {/* Step Cards */}
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {[
+          {
+            num: 1,
+            title: 'Create a LINE Messaging API channel',
+            content: (
+              <>
+                <p style={{ margin: '0 0 1rem 0' }}>If you already have a LINE Official Account, skip to step 2.</p>
+                <ol style={{ margin: 0, paddingLeft: '1.25rem', lineHeight: '1.8' }}>
+                  <li>
+                    Open the{' '}
+                    <a
+                      href="https://developers.line.biz/console/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--ui-flow-accent)', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      LINE Developer Console <ExternalLink size={14} />
+                    </a>
+                  </li>
+                  <li>Click <strong>"Create a new provider"</strong> (or select an existing one)</li>
+                  <li>Click <strong>"Create a Messaging API channel"</strong></li>
+                  <li>Fill in your business name, description, and category</li>
+                </ol>
+              </>
+            ),
+          },
+          {
+            num: 2,
+            title: 'Copy your channel credentials',
+            content: (
+              <div style={{ display: 'grid', gap: '1.25rem' }}>
+                <p style={{ margin: 0 }}>In your channel's settings, find and copy these 3 values:</p>
+                <GlassField
+                  label="Channel ID"
+                  helper='found under "Basic settings"'
+                >
+                  <input
+                    type="text"
+                    value={lineChannelId}
+                    onChange={(e) => setLineChannelId(e.target.value)}
+                    placeholder="e.g. 1234567890"
+                  />
+                </GlassField>
+                <GlassField
+                  label="Channel Secret"
+                  helper='found under "Basic settings"'
+                >
+                  <input
+                    type="password"
+                    value={lineChannelSecret}
+                    onChange={(e) => setLineChannelSecret(e.target.value)}
+                    placeholder="Paste your channel secret"
+                  />
+                </GlassField>
+                <GlassField
+                  label="Channel Access Token"
+                  helper='under "Messaging API", click "Issue"'
+                >
+                  <input
+                    type="password"
+                    value={lineAccessToken}
+                    onChange={(e) => setLineAccessToken(e.target.value)}
+                    placeholder="Paste the long-lived token"
+                  />
+                </GlassField>
+              </div>
+            ),
+          },
+          {
+            num: 3,
+            title: 'Set your webhook URL in LINE',
+            content: (
+              <>
+                <p style={{ margin: '0 0 1rem 0' }}>
+                  Copy this URL and paste it in your channel's <strong>Messaging API → Webhook URL</strong> field. Then turn on{' '}
+                  <strong>"Use webhook"</strong>.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <code
+                    style={{
+                      flex: 1,
+                      padding: '0.85rem 1rem',
+                      background: 'var(--ui-flow-surface)',
+                      borderRadius: '10px',
+                      fontSize: '0.9rem',
+                      wordBreak: 'break-all',
+                      border: '1.5px solid var(--ui-flow-border)',
+                    }}
+                  >
+                    {webhookUrl}
+                  </code>
+                  <UiButton
+                    variant={copied ? 'primary' : 'secondary'}
+                    onClick={copyWebhookUrl}
+                    style={{ padding: '0.85rem 1.1rem' }}
+                  >
+                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                  </UiButton>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  Also go to <strong>LINE Official Account features → Response settings</strong> and enable both <strong>Webhook</strong> and{' '}
+                  <strong>Chat</strong>. Disable <strong>Auto-reply messages</strong>.
+                </p>
+              </>
+            ),
+          },
+          {
+            num: 4,
+            title: 'Connect',
+            content: (
+              <>
+                <p style={{ margin: '0 0 1.25rem 0' }}>
+                  Once you've completed steps 1-3, click the button below to connect your LINE channel.
+                </p>
+                <UiButton variant="primary" onClick={handleSave} disabled={saving} style={{ fontSize: '1rem', padding: '0.85rem 2rem' }}>
+                  {saving ? 'Connecting...' : 'Connect LINE Channel'}
+                </UiButton>
+              </>
+            ),
+          },
+        ].map((step) => (
+          <GlassCard key={step.num}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+              <div
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #06c755 0%, #00b140 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  color: '#fff',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 16px rgba(6, 199, 85, 0.3)',
+                }}
+              >
+                {step.num}
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{step.title}</div>
             </div>
-            <div>
-              <label style={inputLabel}>
-                Channel Secret <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>&#8212; found under "Basic settings"</span>
-              </label>
-              <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)}
-                placeholder="Paste your channel secret" style={inputStyle} />
+            <div style={{ marginLeft: '58px', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.7' }}>
+              {step.content}
             </div>
-            <div>
-              <label style={inputLabel}>
-                Channel Access Token <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>&#8212; under "Messaging API", click "Issue"</span>
-              </label>
-              <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)}
-                placeholder="Paste the long-lived token" style={inputStyle} />
-            </div>
-          </div>
-        </div>
+          </GlassCard>
+        ))}
       </div>
-
-      {/* Step 3 */}
-      <div style={stepCard}>
-        <div style={stepHeader}>
-          <div style={{ ...stepNumber, background: 'var(--accent-color, #2563eb)', color: '#fff' }}>3</div>
-          <div style={stepTitle}>Set your webhook URL in LINE</div>
-        </div>
-        <div style={stepBody}>
-          <p style={{ margin: '0 0 10px 0' }}>
-            Copy this URL and paste it in your channel&apos;s <strong>Messaging API &rarr; Webhook URL</strong> field. Then turn on <strong>"Use webhook"</strong>.
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <code style={{
-              flex: 1, padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: '6px',
-              fontSize: '13px', wordBreak: 'break-all', border: '1px solid var(--border-color)',
-            }}>
-              {webhookUrl}
-            </code>
-            <button onClick={copyWebhookUrl} title="Copy webhook URL" style={{ minWidth: '40px', padding: '8px' }}>
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-            </button>
-          </div>
-          <p style={{ margin: 0, fontSize: '13px' }}>
-            Also go to <strong>LINE Official Account features &rarr; Response settings</strong> and enable both <strong>Webhook</strong> and <strong>Chat</strong>.
-            Disable <strong>Auto-reply messages</strong>.
-          </p>
-        </div>
-      </div>
-
-      {/* Step 4 */}
-      <div style={stepCard}>
-        <div style={stepHeader}>
-          <div style={{ ...stepNumber, background: 'var(--accent-color, #2563eb)', color: '#fff' }}>4</div>
-          <div style={stepTitle}>Connect</div>
-        </div>
-        <div style={stepBody}>
-          <p style={{ margin: '0 0 14px 0' }}>
-            Once you&apos;ve completed steps 1-3, click the button below to connect your LINE channel.
-          </p>
-          <UiButton variant="primary" onClick={handleSave} disabled={saving}
-            style={{ fontSize: '15px', padding: '10px 28px' }}>
-            {saving ? 'Connecting...' : 'Connect LINE Channel'}
-          </UiButton>
-        </div>
-      </div>
-    </AnimatedPage>
+    </AnimatedPage >
   )
 }

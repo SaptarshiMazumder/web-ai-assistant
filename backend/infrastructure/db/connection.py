@@ -396,6 +396,25 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE INDEX IF NOT EXISTS idx_tqm_topic ON topic_question_mappings (topic_id)",
     "CREATE INDEX IF NOT EXISTS idx_tqm_session ON topic_question_mappings (session_id)",
     "CREATE INDEX IF NOT EXISTS idx_tqm_bot ON topic_question_mappings (org_id, bot_id)",
+    # ── Business assets ──
+    """
+    CREATE TABLE IF NOT EXISTS bot_assets (
+      asset_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      image_gcs_uri TEXT NOT NULL,
+      image_public_url TEXT NOT NULL DEFAULT '',
+      link_url TEXT,
+      keywords TEXT NOT NULL DEFAULT '[]',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_assets_bot_id ON bot_assets (bot_id)",
+    "CREATE INDEX IF NOT EXISTS bot_assets_org_bot ON bot_assets (org_id, bot_id)",
 )
 
 _SCHEMA_INITIALIZED = False

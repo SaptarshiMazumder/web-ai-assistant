@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional, Callable
 import io
 import contextlib
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor
 
 from common.config import config
 from infrastructure.rag.url_map import resolve_evidence_urls
@@ -33,6 +34,10 @@ THINK_BUDGET      = int(os.environ.get("VERTEX_RAG_THINK_BUDGET", "256"))
 MAX_OUTPUT_TOKENS = int(os.environ.get("VERTEX_RAG_MAX_OUTPUT_TOKENS", "2048"))
 # Some models/endpoints reject thinking_config. Default off; opt-in via env var.
 ENABLE_THINKING   = os.environ.get("VERTEX_RAG_ENABLE_THINKING", "").strip().lower() in ("1", "true", "yes", "y")
+# Performance optimization flags (default OFF for speed)
+ENABLE_LLM_SUBQUERIES = os.environ.get("ENABLE_LLM_SUBQUERIES", "").strip().lower() in ("1", "true", "yes", "y")
+ENABLE_LLM_RERANK = os.environ.get("ENABLE_LLM_RERANK", "").strip().lower() in ("1", "true", "yes", "y")
+
 RETRIEVAL_TOP_K   = 16         # per subquery; increase to 24–32 for broader recall
 MAX_SUBQUERIES    = 5
 MAX_STEPS         = 1          # keep 1 for simplicity; raise if you want re-plan loops
@@ -363,6 +368,45 @@ def is_complex_question(client: genai.Client, question: str) -> bool:
         return False  # safe default: avoid over-planning
 
 # =========================
+# Query Expansion (local, no LLM)
+# =========================
+def expand_query_local(question: str) -> List[str]:
+    """
+    Fast local query expansion without LLM calls.
+    Returns 1-2 query variants based on simple keyword extraction.
+    """
+    q = (question or "").strip()
+    if not q:
+        return [q]
+    
+    # Always include the original question
+    variants = [q]
+    
+    # Extract key nouns/phrases (simple word splitting)
+    # Remove common stopwords and very short words
+    stopwords = {
+        "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
+        "can", "may", "might", "must", "i", "you", "he", "she", "it", "we", "they",
+        "me", "him", "her", "us", "them", "my", "your", "his", "its", "our", "their",
+        "this", "that", "these", "those", "what", "which", "who", "when", "where",
+        "why", "how", "about", "tell", "me", "please", "want", "know"
+    }
+    
+    # Simple tokenization
+    words = re.findall(r'\b\w+\b', q.lower())
+    keywords = [w for w in words if len(w) > 2 and w not in stopwords]
+    
+    # If we extracted meaningful keywords, create a keyword-only variant
+    if keywords and len(keywords) < len(words):
+        keyword_query = " ".join(keywords[:5])  # max 5 keywords
+        if keyword_query and keyword_query != q.lower():
+            variants.append(keyword_query)
+    
+    return variants[:MAX_SUBQUERIES]
+
+
+# =========================
 # Planning
 # =========================
 def plan_subqueries(client: genai.Client, question: str) -> List[str]:
@@ -488,6 +532,61 @@ def rerank_evidence(
         pass  # fallback: return original order truncated
 
     return evidence[:top_n]
+
+
+def heuristic_rerank(
+    question: str,
+    evidence: List[Dict[str, str]],
+    top_n: int = 15,
+) -> List[Dict[str, str]]:
+    """
+    Fast heuristic reranking using keyword overlap scoring.
+    No LLM call - pure local computation.
+    """
+    if len(evidence) <= top_n:
+        return evidence
+    
+    # Extract keywords from question (lowercase, remove stopwords)
+    stopwords = {
+        "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
+        "can", "may", "might", "must", "i", "you", "he", "she", "it", "we", "they",
+        "me", "him", "her", "us", "them", "my", "your", "his", "its", "our", "their",
+        "this", "that", "these", "those", "what", "which", "who", "when", "where",
+        "why", "how", "about", "tell", "me", "please", "want", "know"
+    }
+    
+    q_words = re.findall(r'\b\w+\b', question.lower())
+    q_keywords = set(w for w in q_words if len(w) > 2 and w not in stopwords)
+    
+    if not q_keywords:
+        # No keywords to match, return original order truncated
+        return evidence[:top_n]
+    
+    # Score each evidence chunk
+    scored = []
+    for e in evidence:
+        snippet = (e.get("snippet") or "").lower()
+        url = (e.get("url") or "").lower()
+        
+        # Count keyword matches in snippet
+        keyword_matches = sum(1 for kw in q_keywords if kw in snippet)
+        
+        # Normalize by number of keywords
+        keyword_score = keyword_matches / len(q_keywords) if q_keywords else 0
+        
+        # Slight bonus for longer snippets (more context)
+        length_score = min(len(snippet) / 1000.0, 1.0) * 0.2
+        
+        # Slight bonus if URL path contains query keywords
+        url_score = sum(0.1 for kw in q_keywords if kw in url)
+        
+        total_score = keyword_score + length_score + url_score
+        scored.append((total_score, e))
+    
+    # Sort by score descending, return top N
+    scored.sort(key=lambda x: -x[0])
+    return [e for _, e in scored[:top_n]]
 
 
 # =========================
@@ -826,27 +925,39 @@ def run_vertex_rag(
     sources: List[Dict[str, str]] = []
 
     # Retrieval pipeline:
-    # 1) Expand query into multiple sub-queries (better recall for exact terms + semantic)
-    # 2) Retrieve from corpus for each sub-query and merge
+    # 1) Expand query (optionally using LLM or local heuristics)
+    # 2) Retrieve from corpus for each sub-query in parallel
     # 3) Optionally filter to the allowed host
-    # 4) Rerank by relevance using Gemini Flash
+    # 4) Rerank by relevance (optionally using LLM or heuristics)
     # 5) Synthesize answer ONLY from top-ranked snippets
 
     # Step 1: query expansion
-    subqueries = plan_subqueries(client, question)
-    if not subqueries:
-        subqueries = [question]
-    elif question not in subqueries:
-        subqueries = [question] + subqueries[:2]  # original + max 2 variants
+    if ENABLE_LLM_SUBQUERIES:
+        subqueries = plan_subqueries(client, question)
+        if not subqueries:
+            subqueries = [question]
+        elif question not in subqueries:
+            subqueries = [question] + subqueries[:2]
+        else:
+            subqueries = subqueries[:3]
     else:
-        subqueries = subqueries[:3]
-    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries})
+        # Fast local expansion
+        subqueries = expand_query_local(question)
+    
+    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries, "llm_enabled": ENABLE_LLM_SUBQUERIES})
 
-    # Step 2: multi-query retrieval
+    # Step 2: multi-query retrieval (PARALLEL)
     all_evidence: List[Dict[str, str]] = []
-    for sq in subqueries:
+    
+    def _retrieve_one(sq: str) -> List[Dict[str, str]]:
         _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
-        all_evidence.extend(retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K))
+        return retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
+    
+    with ThreadPoolExecutor(max_workers=min(len(subqueries), 5)) as executor:
+        futures = [executor.submit(_retrieve_one, sq) for sq in subqueries]
+        for future in futures:
+            all_evidence.extend(future.result())
+    
     evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
@@ -875,10 +986,13 @@ def run_vertex_rag(
             "visited_urls": [],
         }
 
-    # Step 4: LLM reranking — score chunks by relevance, keep best 15
+    # Step 4: Reranking — score chunks by relevance, keep best 15
     if len(evidence) > 4:
-        evidence = rerank_evidence(client, question, evidence, top_n=15)
-        _dbg({"type": "reranking_done", "evidence_count": len(evidence)})
+        if ENABLE_LLM_RERANK:
+            evidence = rerank_evidence(client, question, evidence, top_n=15)
+        else:
+            evidence = heuristic_rerank(question, evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(evidence), "llm_enabled": ENABLE_LLM_RERANK})
 
     # Step 5: Synthesize grounded answer from top-ranked snippets.
     # Actual system + user prompts sent to Gemini are logged via gemini_prompt in synthesize_with_evidence.
@@ -951,20 +1065,32 @@ def run_vertex_rag_stream(
     sources: List[Dict[str, str]] = []
 
     # Step 1: query expansion
-    subqueries = plan_subqueries(client, question)
-    if not subqueries:
-        subqueries = [question]
-    elif question not in subqueries:
-        subqueries = [question] + subqueries[:2]
+    if ENABLE_LLM_SUBQUERIES:
+        subqueries = plan_subqueries(client, question)
+        if not subqueries:
+            subqueries = [question]
+        elif question not in subqueries:
+            subqueries = [question] + subqueries[:2]
+        else:
+            subqueries = subqueries[:3]
     else:
-        subqueries = subqueries[:3]
-    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries})
+        # Fast local expansion
+        subqueries = expand_query_local(question)
+    
+    _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries, "llm_enabled": ENABLE_LLM_SUBQUERIES})
 
-    # Step 2: multi-query retrieval
+    # Step 2: multi-query retrieval (PARALLEL)
     all_evidence: List[Dict[str, str]] = []
-    for sq in subqueries:
+    
+    def _retrieve_one(sq: str) -> List[Dict[str, str]]:
         _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
-        all_evidence.extend(retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K))
+        return retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
+    
+    with ThreadPoolExecutor(max_workers=min(len(subqueries), 5)) as executor:
+        futures = [executor.submit(_retrieve_one, sq) for sq in subqueries]
+        for future in futures:
+            all_evidence.extend(future.result())
+    
     evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
@@ -995,10 +1121,13 @@ def run_vertex_rag_stream(
         }
         return
 
-    # Step 4: LLM reranking
+    # Step 4: Reranking
     if len(evidence) > 4:
-        evidence = rerank_evidence(client, question, evidence, top_n=15)
-        _dbg({"type": "reranking_done", "evidence_count": len(evidence)})
+        if ENABLE_LLM_RERANK:
+            evidence = rerank_evidence(client, question, evidence, top_n=15)
+        else:
+            evidence = heuristic_rerank(question, evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(evidence), "llm_enabled": ENABLE_LLM_RERANK})
 
     answer_parts: List[str] = []
     for delta in synthesize_with_evidence_stream(

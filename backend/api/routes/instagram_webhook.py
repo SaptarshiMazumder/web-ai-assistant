@@ -28,8 +28,10 @@ from common.di.container import bot_service, conversation_service
 from infrastructure.clients.instagram_client import (
     verify_signature,
     send_message,
+    send_image,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
+from infrastructure.assets.asset_resolver import build_asset_instruction, process_answer_assets
 from infrastructure.db.repositories import (
     PostgresInstagramChannelRepository,
     PostgresInstagramUserSessionRepository,
@@ -217,6 +219,7 @@ async def instagram_webhook(bot_id: str, request: Request):
                 channel=channel,
                 ig_user_id=ig_user_id,
                 text=text,
+                request=request,
             )
 
     return {"ok": True}
@@ -228,6 +231,7 @@ async def _handle_text_message(
     channel,
     ig_user_id: str,
     text: str,
+    request: Request,
 ) -> None:
     """Core handler for a single text DM from Instagram."""
     access_token = channel.page_access_token
@@ -357,6 +361,12 @@ async def _handle_text_message(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
+    # Inject business asset descriptions into system prompt
+    asset_instruction = build_asset_instruction(bot.bot_id)
+    if asset_instruction:
+        system_instruction = f"{system_instruction}\n{asset_instruction}" if system_instruction else asset_instruction
+
+    asset_cards: list = []
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
         result = run_vertex_rag(
@@ -372,6 +382,9 @@ async def _handle_text_message(
         answer = str(result.get("answer") or "").strip()
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
+        else:
+            # Resolve asset markers + keyword fallback
+            answer, asset_cards = process_answer_assets(answer, bot.bot_id)
     except Exception:
         logger.exception("RAG error for Instagram message bot_id=%s", bot.bot_id)
         answer = "I'm sorry, something went wrong. Please try again in a moment."
@@ -390,6 +403,17 @@ async def _handle_text_message(
             await send_message(ig_user_id, chunk, access_token)
     else:
         await send_message(ig_user_id, answer, access_token)
+
+    # Send asset images as separate messages (Instagram doesn't support inline images in text)
+    for card in asset_cards:
+        img_url = card.get("image_url", "")
+        if img_url:
+            # Build absolute URL for the public image proxy
+            abs_url = img_url if img_url.startswith("http") else f"https://{request.headers.get('host', 'localhost')}{img_url}"
+            try:
+                await send_image(ig_user_id, abs_url, access_token)
+            except Exception:
+                logger.warning("Failed to send asset image %s to Instagram user", card.get("asset_id", ""))
 
 
 # ══════════════════════════════════════════════════════════════════════

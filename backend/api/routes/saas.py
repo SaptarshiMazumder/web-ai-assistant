@@ -16,6 +16,7 @@ from api.deps.auth import get_current_user, require_org_admin, require_super_adm
 from api.schemas import (
     AgentConfigPayload,
     AgentConfigResponse,
+    AssetCard,
     BotCreateRequest,
     BotCreateResponse,
     BotRenameRequest,
@@ -150,6 +151,7 @@ def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) ->
 
 
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
+from infrastructure.assets.asset_resolver import build_asset_instruction, process_answer_assets
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository
@@ -533,12 +535,21 @@ async def v1_pk_widget_config(publishable_key: str):
     bot = bot_service().get_bot_by_publishable_key(publishable_key)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
-    if not getattr(bot, "widget_config", None) or not (bot.widget_config or "").strip():
-        return {}
-    try:
-        return json.loads(bot.widget_config)
-    except (TypeError, ValueError):
-        return {}
+    
+    # Parse widget config or start with empty dict
+    config = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            config = {}
+    
+    # Fallback: if no custom title is set, use the bot's display_name
+    # This ensures renamed bots automatically show the new name in the widget
+    if not config.get("title"):
+        config["title"] = getattr(bot, "display_name", "Chat")
+    
+    return config
 
 
 @router.get("/v1/pk/{publishable_key}/escalation-config", response_model=EscalationConfigResponse)
@@ -699,6 +710,11 @@ async def v1_widget_chat(
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
 
+    # Inject business asset descriptions into system prompt
+    asset_instruction = build_asset_instruction(bot.bot_id)
+    if asset_instruction:
+        system_instruction = f"{system_instruction}\n{asset_instruction}" if system_instruction else asset_instruction
+
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -749,6 +765,11 @@ async def v1_widget_chat(
         }
     )
     answer = str(result.get("answer") or "")
+
+    # Resolve asset markers + keyword fallback
+    answer, asset_cards = process_answer_assets(answer, bot.bot_id)
+    assets = [AssetCard(**c) for c in asset_cards]
+
     conversation_service().add_message(
         session_id=session.session_id,
         bot_id=bot.bot_id,
@@ -756,7 +777,7 @@ async def v1_widget_chat(
         content=answer,
         citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
     )
-    return WidgetChatResponse(answer=answer, citations=citations, session_id=session.session_id)
+    return WidgetChatResponse(answer=answer, citations=citations, assets=assets, session_id=session.session_id)
 
 
 @router.post("/v1/pk/{publishable_key}/chat/stream")
@@ -904,6 +925,11 @@ async def v1_widget_chat_stream(
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
 
+    # Inject business asset descriptions into system prompt
+    asset_instruction_stream = build_asset_instruction(bot.bot_id)
+    if asset_instruction_stream:
+        system_instruction = f"{system_instruction}\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
+
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
@@ -954,15 +980,18 @@ async def v1_widget_chat_stream(
                             ensure_ascii=False,
                         ) + "\n"
                     else:
+                        answer = str(evt.get("answer") or "")
+                        # Resolve asset markers + keyword fallback
+                        answer, asset_cards_stream = process_answer_assets(answer, bot.bot_id)
                         chat_debug_emit(
                             {
                                 "type": "chat_response",
                                 "trace_id": trace_id,
-                                "answer": str(evt.get("answer") or ""),
+                                "answer": answer,
                                 "citations": citations,
+                                "assets": asset_cards_stream,
                             }
                         )
-                        answer = str(evt.get("answer") or "")
                         conversation_service().add_message(
                             session_id=session.session_id,
                             bot_id=bot.bot_id,
@@ -975,6 +1004,7 @@ async def v1_widget_chat_stream(
                                 "type": "done",
                                 "answer": answer,
                                 "citations": citations,
+                                "assets": asset_cards_stream,
                                 "session_id": session.session_id,
                             },
                             ensure_ascii=False,

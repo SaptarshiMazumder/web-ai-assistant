@@ -9,7 +9,7 @@ import {
   Plus,
   BookOpen,
   Palette,
-  MessageCircle,
+  MessageSquare,
   FlaskConical,
 
   Bell,
@@ -77,11 +77,12 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
 
   // Sources section (was Knowledge)
   { id: 'knowledge', label: 'Sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'Agent Knowledge' },
-  { id: 'suggested', label: 'Suggested Messages', to: `/bots/${botId}/suggested-messages`, icon: MessageCircle, header: 'Agent Knowledge' },
+
   { id: 'business-assets', label: 'Business Assets', to: `/bots/${botId}/business-assets`, icon: Briefcase, header: 'Agent Knowledge' },
 
   // Appearance section (was Design)
   { id: 'design', label: 'Appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'Agent Design' },
+  { id: 'suggested-messages', label: 'Suggested Messages', to: `/bots/${botId}/suggested-messages`, icon: MessageSquare, header: 'Agent Design' },
   { id: 'persona', label: 'Personas', to: `/bots/${botId}/persona`, icon: UserCircle, header: 'Agent Design' },
   { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'Agent Design' },
 
@@ -91,7 +92,7 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
   { id: 'line', label: 'LINE', to: `/bots/${botId}/line`, icon: LineIcon, header: 'Install' },
 
   // Contacts section
-  { id: 'conversations', label: 'Chat History', to: `/bots/${botId}/conversations`, icon: History, header: 'Contacts' },
+  { id: 'conversations', label: 'Conversations History', to: `/bots/${botId}/conversations`, icon: History, header: 'Contacts' },
   { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'Contacts' },
   { id: 'leads', label: 'Leads', to: `/bots/${botId}/leads`, icon: UsersRound, header: 'Contacts' },
 

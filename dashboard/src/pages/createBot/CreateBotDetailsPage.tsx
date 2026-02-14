@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { FlowSelect } from '../../components/FlowSelect'
-import { UiButton } from '../../components/ui'
+import { GlassField, UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotDetailsPage() {
@@ -27,33 +27,29 @@ export default function CreateBotDetailsPage() {
         </div>
       </div>
 
-      <div className="flow-field">
-        <label className="flow-field-label">Agent name</label>
-        <div className="flow-field-input-wrap">
-          <input
-            type="text"
-            value={botName}
-            onChange={(event) => setBotName(event.target.value)}
-            placeholder="e.g. Concierge, Support, Luna..."
-          />
-        </div>
-      </div>
+      <GlassField label="Agent name">
+        <input
+          type="text"
+          value={botName}
+          onChange={(event) => setBotName(event.target.value)}
+          placeholder="e.g. Concierge, Support, Luna..."
+        />
+      </GlassField>
 
-      <div className="flow-field">
-        <label className="flow-field-label">Business type (optional)</label>
-        <div className="flow-field-input-wrap">
-          <FlowSelect
-            value={businessType}
-            onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'other')}
-            options={[
-              { value: '', label: '--' },
-              { value: 'hotel', label: 'Hotel' },
-              { value: 'other', label: 'Other' },
-            ]}
-          />
-        </div>
-        <span className="flow-field-helper">Helps us tailor suggestions for your industry.</span>
-      </div>
+      <GlassField
+        label="Business type (optional)"
+        helper="Helps us tailor suggestions for your industry."
+      >
+        <FlowSelect
+          value={businessType}
+          onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'other')}
+          options={[
+            { value: '', label: '--' },
+            { value: 'hotel', label: 'Hotel' },
+            { value: 'other', label: 'Other' },
+          ]}
+        />
+      </GlassField>
 
       {localError && (
         <div className="alert error">

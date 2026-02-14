@@ -368,6 +368,43 @@
         background-color: rgba(100, 116, 139, 0.65);
       }
 
+      /* Asset cards */
+      .asset-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+      .asset-card {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        cursor: pointer;
+        transition: box-shadow 0.2s ease;
+      }
+      .asset-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      .asset-card img {
+        width: 100%;
+        height: auto;
+        max-height: 180px;
+        object-fit: cover;
+        display: block;
+      }
+      .asset-card-body {
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .asset-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+      }
+      .asset-card-link {
+        font-size: 12px;
+        color: var(--widget-color);
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .asset-card-link:hover { text-decoration: underline; }
+
       [data-theme="dark"] .chat { background: #1e293b; }
       [data-theme="dark"] .wrap { background: #1e293b; }
       [data-theme="dark"] .row { background: transparent; }
@@ -379,6 +416,8 @@
       [data-theme="dark"] .chat { scrollbar-color: rgba(148, 163, 184, 0.5) transparent; }
       [data-theme="dark"] .chat::-webkit-scrollbar-thumb { background-color: rgba(148, 163, 184, 0.45); }
       [data-theme="dark"] .chat::-webkit-scrollbar-thumb:hover { background-color: rgba(148, 163, 184, 0.65); }
+      [data-theme="dark"] .asset-card { border-color: #475569; background: #1e293b; }
+      [data-theme="dark"] .asset-card-title { color: #e2e8f0; }
     </style>
   </head>
 

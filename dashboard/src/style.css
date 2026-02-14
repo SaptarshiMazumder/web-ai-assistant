@@ -2714,7 +2714,8 @@ a.primary:hover {
   color: #b38d97;
 }
 
-.flow-shell .flow-field {
+.flow-shell .flow-field,
+.ui-glass-field {
   position: relative;
   display: grid;
   gap: 0.45rem;
@@ -2723,11 +2724,13 @@ a.primary:hover {
   z-index: 0;
 }
 
-.flow-shell .flow-field:focus-within {
+.flow-shell .flow-field:focus-within,
+.ui-glass-field:focus-within {
   z-index: 10;
 }
 
-.flow-shell .flow-field-label {
+.flow-shell .flow-field-label,
+.ui-glass-field-label {
   position: absolute;
   top: -0.62rem;
   left: 0.95rem;
@@ -2740,21 +2743,31 @@ a.primary:hover {
   letter-spacing: 0.01em;
 }
 
-.flow-shell .flow-field-input-wrap {
+.flow-shell .flow-field-input-wrap,
+.ui-glass-field-input-wrap {
   position: relative;
 }
 
 .flow-shell .flow-field-input-wrap input,
 .flow-shell .flow-field-input-wrap select,
-.flow-shell .flow-field-input-wrap textarea {
+.flow-shell .flow-field-input-wrap textarea,
+.ui-glass-field-input-wrap input,
+.ui-glass-field-input-wrap select,
+.ui-glass-field-input-wrap textarea {
   width: 100%;
   padding: 0.92rem 0.95rem;
 }
 
-.flow-shell .flow-field-helper {
+.flow-shell .flow-field-helper,
+.ui-glass-field-helper {
   color: var(--flow-muted);
   font-size: 0.84rem;
   margin-top: 0.2rem;
+}
+
+.flow-shell .flow-field-helper.error,
+.ui-glass-field-helper.error {
+  color: #dc2626;
 }
 
 .flow-shell .flow-field-suffix {
@@ -4447,6 +4460,12 @@ select.design-form-input:focus {
 .conversation-pill--escalated {
   background: #dc2626;
   color: #fff;
+}
+
+.conversation-pill--channel {
+  background: var(--ui-flow-accent-soft);
+  color: var(--ui-flow-accent);
+  border: 1px solid rgba(228, 88, 122, 0.18);
 }
 
 .escalation-meta-row {
@@ -6315,45 +6334,50 @@ pre {
   padding: 6px;
 }
 
-/* Reusable segmented tabs (pill style) */
+/* Reusable segmented tabs (vibrant pill style) */
 .ui-segmented-tabs {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.24rem;
-  border: 1px solid var(--flow-border);
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1.5px solid #fde2e4;
   border-radius: 999px;
-  background: var(--flow-surface);
+  background: #ffffff;
+  box-shadow: 0 4px 20px rgba(228, 88, 122, 0.05);
 }
 
 .ui-segmented-tab {
   border: 0;
   background: transparent;
-  color: var(--flow-text);
+  color: var(--ui-flow-text);
   border-radius: 999px;
-  padding: 0.55rem 1.15rem;
-  font-size: 0.92rem;
-  font-weight: 500;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  transition: all 160ms ease;
+  gap: 0.6rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  opacity: 0.8;
 }
 
-.ui-segmented-tab:hover {
-  background: rgba(228, 88, 122, 0.08);
+.ui-segmented-tab:hover:not(.is-active) {
+  background: rgba(228, 88, 122, 0.06);
+  opacity: 1;
 }
 
 .ui-segmented-tab.is-active {
   color: #fff;
-  background: var(--flow-accent);
-  box-shadow: 0 2px 8px rgba(228, 88, 122, 0.35);
+  background: linear-gradient(135deg, #e4587a 0%, #f0806b 100%);
+  box-shadow: 0 6px 16px rgba(228, 88, 122, 0.35);
+  opacity: 1;
+  transform: translateY(-0.5px);
 }
 
 .ui-segmented-tab:disabled {
-  opacity: 0.55;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -6364,9 +6388,54 @@ pre {
 }
 
 .cta-create-bot {
-  min-height: 160px;
+  min-height: 180px;
   color: #fff;
-  background: var(--app-gradient);
+  background: var(--ui-flow-brand-gradient);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(230, 99, 151, 0.2);
+  cursor: pointer;
+  padding: 1.5rem;
+}
+
+.cta-create-bot:hover:not(:disabled) {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(230, 99, 151, 0.35);
+  background: var(--ui-flow-brand-gradient-dark);
+}
+
+.cta-create-bot:active:not(:disabled) {
+  transform: translateY(-2px) scale(1);
+}
+
+.cta-create-bot-icon-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.cta-create-bot:hover:not(:disabled) .cta-create-bot-icon-wrap {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.cta-create-bot span {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Make dense pages match light warm style */
@@ -6711,6 +6780,48 @@ select:hover {
 .content-shell .flow-shell .ui-glass-card:hover {
   transform: none;
   box-shadow: none;
+}
+
+/* ===== GlassField: dashboard context (outside .flow-shell) =============== */
+/* Give the floating label a white background so it masks the input border   */
+.content-shell .ui-glass-field-label {
+  background: #ffffff;
+  color: var(--app-muted, #b38d97);
+}
+
+/* Style inputs inside GlassField to match create-bot flow inputs            */
+.content-shell .ui-glass-field-input-wrap input,
+.content-shell .ui-glass-field-input-wrap select,
+.content-shell .ui-glass-field-input-wrap textarea {
+  font-family: inherit;
+  padding: 0.92rem 0.95rem;
+  border: 1.5px solid var(--app-border, #f2d8d2);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--app-text, #3a2236);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.content-shell .ui-glass-field-input-wrap input:focus,
+.content-shell .ui-glass-field-input-wrap select:focus,
+.content-shell .ui-glass-field-input-wrap textarea:focus {
+  border-color: var(--app-accent, #e4587a);
+  box-shadow: var(--ui-flow-focus-ring, 0 0 0 3px rgba(219, 95, 84, 0.16));
+}
+
+.content-shell .ui-glass-field-input-wrap input::placeholder,
+.content-shell .ui-glass-field-input-wrap textarea::placeholder {
+  color: #b38d97;
+}
+
+.content-shell .ui-glass-field-helper {
+  color: var(--app-muted, #b38d97);
+}
+
+.content-shell .ui-glass-field-helper.error {
+  color: #dc2626;
 }
 
 @media (max-width: 1080px) {

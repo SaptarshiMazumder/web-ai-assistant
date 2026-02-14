@@ -10,7 +10,11 @@ import {
   getCategoryUrlCount,
   type UrlCategory,
 } from '../createBot/urlCategorizer'
-import { AnimatedPage, GlassCard } from '../../components/ui'
+import {
+  AnimatedPage,
+  GlassCard,
+  GlassField,
+} from '../../components/ui'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
@@ -1108,53 +1112,47 @@ export default function BotKnowledgeTab() {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gap: '10px', marginTop: '12px' }}>
+        <div style={{ display: 'grid', gap: '1.25rem', marginTop: '1.5rem' }}>
           {urlBankRows.map((row, idx) => (
-            <div key={`urlbank-${idx}`} className="row" style={{ gap: '10px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
+            <div key={`urlbank-${idx}`} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <GlassField label="Topic" style={{ flex: 1, minWidth: '160px' }}>
                 <input
                   type="text"
-                  className="design-form-input"
                   value={row.label}
                   onChange={(e) => {
                     const next = [...urlBankRows]
                     next[idx] = { ...next[idx], label: e.target.value }
                     setUrlBankRows(next)
                   }}
-                  placeholder="Topic (e.g. Pricing)"
-                  style={{ width: '100%' }}
+                  placeholder="e.g. Pricing"
                 />
-              </div>
-              <div style={{ flex: 2, minWidth: 260 }}>
+              </GlassField>
+              <GlassField label="Link" style={{ flex: 2, minWidth: '240px' }}>
                 <input
                   type="url"
-                  className="design-form-input"
                   value={row.url}
                   onChange={(e) => {
                     const next = [...urlBankRows]
                     next[idx] = { ...next[idx], url: e.target.value }
                     setUrlBankRows(next)
                   }}
-                  placeholder="Link (e.g. https://example.com/pricing)"
-                  style={{ width: '100%' }}
+                  placeholder="e.g. https://example.com/pricing"
                 />
-              </div>
-              <div style={{ alignSelf: 'end' }}>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => {
-                    const next = urlBankRows.filter((_, i) => i !== idx)
-                    setUrlBankRows(next.length ? next : [{ label: '', url: '' }])
-                  }}
-                  disabled={urlBankRows.length <= 1}
-                  aria-label="Remove link"
-                  title="Remove"
-                  style={{ color: '#dc2626', background: 'transparent' }}
-                >
-                  <Trash2 size={16} aria-hidden />
-                </button>
-              </div>
+              </GlassField>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  const next = urlBankRows.filter((_, i) => i !== idx)
+                  setUrlBankRows(next.length ? next : [{ label: '', url: '' }])
+                }}
+                disabled={urlBankRows.length <= 1}
+                aria-label="Remove link"
+                title="Remove"
+                style={{ color: '#dc2626', background: 'transparent', padding: '0.8rem 0.5rem', marginTop: '0.2rem' }}
+              >
+                <Trash2 size={18} aria-hidden />
+              </button>
             </div>
           ))}
         </div>

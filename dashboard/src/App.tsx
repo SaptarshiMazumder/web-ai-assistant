@@ -28,6 +28,7 @@ import BotConversationsTab from './pages/bot/BotConversationsTab'
 import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotInstagramSettingsTab from './pages/bot/BotInstagramSettingsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
+
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
 import BotPersonaTab from './pages/bot/BotPersonaTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
@@ -108,8 +109,9 @@ export default function App() {
               <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
-              <Route path="persona" element={<BotPersonaTab />} />
               <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
+              <Route path="persona" element={<BotPersonaTab />} />
+
               <Route path="testing" element={<BotTestingTab />} />
               <Route path="conversations" element={<BotConversationsTab />} />
               <Route path="escalations" element={<BotEscalationsTab />} />

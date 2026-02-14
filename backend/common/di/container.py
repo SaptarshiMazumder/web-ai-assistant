@@ -7,6 +7,7 @@ from application.services.conversation_service import ConversationService
 from application.services.analytics_service import AnalyticsService
 from application.services.user_service import UserService
 from infrastructure.db.repositories import (
+    PostgresBotAssetRepository,
     PostgresBotCorpusRepository,
     PostgresBotDomainRepository,
     PostgresBotRepository,
@@ -85,3 +86,8 @@ def conversation_service() -> ConversationService:
 @lru_cache(maxsize=1)
 def analytics_service() -> AnalyticsService:
     return AnalyticsService(PostgresAnalyticsRepository())
+
+
+@lru_cache(maxsize=1)
+def asset_repo() -> PostgresBotAssetRepository:
+    return PostgresBotAssetRepository()

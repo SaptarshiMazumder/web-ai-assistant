@@ -261,3 +261,19 @@ class InstagramUserSession:
     is_escalated: bool
     created_at: str
     updated_at: str
+
+
+@dataclass
+class BotAsset:
+    asset_id: str
+    bot_id: str
+    org_id: str
+    name: str
+    description: str
+    image_gcs_uri: str
+    image_public_url: str
+    link_url: Optional[str] = None
+    keywords: List[str] = field(default_factory=list)
+    is_active: bool = True
+    created_at: str = ""
+    updated_at: str = ""

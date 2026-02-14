@@ -19,6 +19,9 @@ services:
       CELERY_RESULT_BACKEND: "redis://redis:6379/0"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
   celery-worker:
     build:
       context: .
@@ -36,6 +39,9 @@ services:
       CELERY_RESULT_BACKEND: "redis://redis:6379/0"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command:
       [
         "sh",

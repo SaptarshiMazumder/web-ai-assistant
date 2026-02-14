@@ -29,7 +29,7 @@ import {
   getCategoryUrlCount,
   type UrlCategory,
 } from '../createBot/urlCategorizer'
-import { AnimatedPage, GlassCard } from '../../components/ui'
+import { AnimatedPage, GlassCard, GlassField } from '../../components/ui'
 
 type TabId = 'website' | 'pdf' | 'docs' | 'drive' | 'text' | 'custom'
 
@@ -94,10 +94,10 @@ export default function AddSourcePage() {
   const discoveryDurationLabel =
     discoveryDurationMs != null && !isDiscovering
       ? (() => {
-          const sec = Math.round(discoveryDurationMs / 1000)
-          if (sec < 60) return `${sec}s`
-          return `${Math.floor(sec / 60)}m ${sec % 60}s`
-        })()
+        const sec = Math.round(discoveryDurationMs / 1000)
+        if (sec < 60) return `${sec}s`
+        return `${Math.floor(sec / 60)}m ${sec % 60}s`
+      })()
       : null
 
   const handleDiscover = useCallback(async () => {
@@ -455,371 +455,371 @@ export default function AddSourcePage() {
           </div>
 
           {activeTab === 'website' && (
-          <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>Discover pages</div>
+            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>Discover pages</div>
 
-            {!isDiscovering && discoveredUrls.length > 0 && discoveryDurationLabel != null && (
-              <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
-                Discovered {discoveredUrls.length} page{discoveredUrls.length !== 1 ? 's' : ''} in {discoveryDurationLabel}.
-              </div>
-            )}
-            {isDiscovering && (
-              <div className="flow-hint-text discovery-loading" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
-                <span className="discovery-loading-dots" aria-hidden>
-                  <span /><span /><span />
-                </span>
-                Discovering pages... {discoveredUrls.length} found so far
-              </div>
-            )}
-            {!isDiscovering && discoveredUrls.length === 0 && (
-              <div className="flow-hint-text" style={{ marginBottom: '0.75rem' }}>
-                Enter your website (or a section) to find related pages automatically.
-              </div>
-            )}
-            {discoveryTimedOutMessage && !isDiscovering && (
-              <div className="alert info" style={{ marginBottom: '0.75rem' }}>
-                {discoveryTimedOutMessage}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="url"
-                  value={discoveryUrl}
-                  onChange={(e) => setDiscoveryUrl(e.target.value)}
-                  placeholder="https://example.com/your-section/"
-                  disabled={isDiscovering}
-                  style={{ width: '100%' }}
-                  onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
-                />
-              </div>
-              {!isDiscovering ? (
-                <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <ScanSearch size={16} />
-                  Scan
-                </UiButton>
-              ) : (
-                <UiButton variant="secondary" onClick={handleStopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <StopIcon />
-                  Stop
-                </UiButton>
+              {!isDiscovering && discoveredUrls.length > 0 && discoveryDurationLabel != null && (
+                <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
+                  Discovered {discoveredUrls.length} page{discoveredUrls.length !== 1 ? 's' : ''} in {discoveryDurationLabel}.
+                </div>
               )}
-            </div>
-
-            {discoveryError && (
-              <div className={`alert ${discoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
-                {discoveryError}
-              </div>
-            )}
-
-            {showPdfFallback && !isDiscovering && (
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                  border: '2px solid #0ea5e9',
-                  borderRadius: '16px',
-                  padding: '2rem',
-                  marginBottom: '1.5rem',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <AlertCircle size={28} color="white" strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>No problem! We have an easy solution</h3>
-                    <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>Follow these 3 simple steps to add your website pages</p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                      <MousePointerClick size={22} color="white" strokeWidth={2.5} />
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 1</div>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Open your webpage</h4>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Go to the important pages on your website (like Services, Prices, or Contact).</p>
-                  </div>
-                  <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                      <Printer size={22} color="white" strokeWidth={2.5} />
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 2</div>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Save as PDF</h4>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Right-click the page → <strong>Print</strong> → Choose <strong>&quot;Save as PDF&quot;</strong>.</p>
-                  </div>
-                  <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                      <UploadCloud size={22} color="white" strokeWidth={2.5} />
-                    </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 3</div>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Upload here</h4>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Drop your PDF in the box below. Your AI will learn from it!</p>
-                  </div>
-                </div>
-
-                <div style={{ background: 'rgba(14, 165, 233, 0.1)', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>Tip: Do this for every important page</p>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {(isDiscovering || discoveredUrls.length > 0) && (
-              <>
-                <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
-                  <UiButton
-                    variant={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
-                    onClick={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? handleDeselectAll : handleSelectAll}
-                  >
-                    {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
-                  </UiButton>
-                  <UiButton
-                    variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
-                    onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
-                    disabled={!urlCategories}
-                  >
-                    {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-                  </UiButton>
-                  <span className="muted" style={{ marginLeft: 'auto' }}>
-                    {selectedDiscoveredUrls.size} of {discoveredUrls.length} selected
+              {isDiscovering && (
+                <div className="flow-hint-text discovery-loading" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
+                  <span className="discovery-loading-dots" aria-hidden>
+                    <span /><span /><span />
                   </span>
+                  Discovering pages... {discoveredUrls.length} found so far
                 </div>
+              )}
+              {!isDiscovering && discoveredUrls.length === 0 && (
+                <div className="flow-hint-text" style={{ marginBottom: '0.75rem' }}>
+                  Enter your website (or a section) to find related pages automatically.
+                </div>
+              )}
+              {discoveryTimedOutMessage && !isDiscovering && (
+                <div className="alert info" style={{ marginBottom: '0.75rem' }}>
+                  {discoveryTimedOutMessage}
+                </div>
+              )}
 
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                <GlassField label="Website URL" style={{ flex: 1 }}>
+                  <input
+                    type="url"
+                    value={discoveryUrl}
+                    onChange={(e) => setDiscoveryUrl(e.target.value)}
+                    placeholder="https://example.com/your-section/"
+                    disabled={isDiscovering}
+                    onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
+                  />
+                </GlassField>
+                <div style={{ paddingTop: '0.2rem' }}>
+                  {!isDiscovering ? (
+                    <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <ScanSearch size={16} />
+                      Scan
+                    </UiButton>
+                  ) : (
+                    <UiButton variant="secondary" onClick={handleStopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <StopIcon />
+                      Stop
+                    </UiButton>
+                  )}
+                </div>
+              </div>
+
+              {discoveryError && (
+                <div className={`alert ${discoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
+                  {discoveryError}
+                </div>
+              )}
+
+              {showPdfFallback && !isDiscovering && (
                 <div
-                  className="url-list"
                   style={{
-                    maxHeight: '320px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--flow-border)',
-                    borderRadius: 'var(--flow-radius)',
-                    padding: '1rem 1.25rem',
-                    background: 'var(--flow-bg)',
-                    marginBottom: '0.75rem',
+                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                    border: '2px solid #0ea5e9',
+                    borderRadius: '16px',
+                    padding: '2rem',
+                    marginBottom: '1.5rem',
                   }}
                 >
-                  {isDiscovering && (
-                    <div style={{ marginBottom: 12, color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
-                      Scanning... ({discoveredUrls.length} found so far)
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <AlertCircle size={28} color="white" strokeWidth={2.5} />
                     </div>
-                  )}
-                  {urlCategories ? (
                     <div>
-                      {Array.from(urlCategories.children.values())
-                        .sort((a, b) => getCategoryUrlCount(b) - getCategoryUrlCount(a))
-                        .map((cat) => renderCategory(cat))}
-                      {urlCategories.urls.length > 0 && (
-                        <div style={{ marginLeft: 0 }}>
-                          {urlCategories.urls.map((url) => (
-                            <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                              <input
-                                type="checkbox"
-                                checked={selectedDiscoveredUrls.has(url)}
-                                onChange={() => handleToggleUrl(url)}
-                                style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
-                              />
-                              <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>No problem! We have an easy solution</h3>
+                      <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>Follow these 3 simple steps to add your website pages</p>
                     </div>
-                  ) : (
-                    <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'No discovered pages yet.'}</div>
-                  )}
-                </div>
+                  </div>
 
-                <UiButton variant="secondary" onClick={() => { setDiscoveredUrls([]); setSelectedDiscoveredUrls(new Set()); setDiscoveryUrl(''); setDiscoveryDurationMs(null); setDiscoveryTimedOutMessage(null); setDiscoveryError(null); }} disabled={isDiscovering}>
-                  Clear
-                </UiButton>
-              </>
-            )}
-          </GlassCard>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <MousePointerClick size={22} color="white" strokeWidth={2.5} />
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 1</div>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Open your webpage</h4>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Go to the important pages on your website (like Services, Prices, or Contact).</p>
+                    </div>
+                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <Printer size={22} color="white" strokeWidth={2.5} />
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 2</div>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Save as PDF</h4>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Right-click the page → <strong>Print</strong> → Choose <strong>&quot;Save as PDF&quot;</strong>.</p>
+                    </div>
+                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <UploadCloud size={22} color="white" strokeWidth={2.5} />
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 3</div>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Upload here</h4>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Drop your PDF in the box below. Your AI will learn from it!</p>
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(14, 165, 233, 0.1)', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <div>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>Tip: Do this for every important page</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(isDiscovering || discoveredUrls.length > 0) && (
+                <>
+                  <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
+                    <UiButton
+                      variant={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+                      onClick={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? handleDeselectAll : handleSelectAll}
+                    >
+                      {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+                    </UiButton>
+                    <UiButton
+                      variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+                      onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
+                      disabled={!urlCategories}
+                    >
+                      {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                    </UiButton>
+                    <span className="muted" style={{ marginLeft: 'auto' }}>
+                      {selectedDiscoveredUrls.size} of {discoveredUrls.length} selected
+                    </span>
+                  </div>
+
+                  <div
+                    className="url-list"
+                    style={{
+                      maxHeight: '320px',
+                      overflowY: 'auto',
+                      border: '1px solid var(--flow-border)',
+                      borderRadius: 'var(--flow-radius)',
+                      padding: '1rem 1.25rem',
+                      background: 'var(--flow-bg)',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    {isDiscovering && (
+                      <div style={{ marginBottom: 12, color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
+                        Scanning... ({discoveredUrls.length} found so far)
+                      </div>
+                    )}
+                    {urlCategories ? (
+                      <div>
+                        {Array.from(urlCategories.children.values())
+                          .sort((a, b) => getCategoryUrlCount(b) - getCategoryUrlCount(a))
+                          .map((cat) => renderCategory(cat))}
+                        {urlCategories.urls.length > 0 && (
+                          <div style={{ marginLeft: 0 }}>
+                            {urlCategories.urls.map((url) => (
+                              <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDiscoveredUrls.has(url)}
+                                  onChange={() => handleToggleUrl(url)}
+                                  style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                                />
+                                <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'No discovered pages yet.'}</div>
+                    )}
+                  </div>
+
+                  <UiButton variant="secondary" onClick={() => { setDiscoveredUrls([]); setSelectedDiscoveredUrls(new Set()); setDiscoveryUrl(''); setDiscoveryDurationMs(null); setDiscoveryTimedOutMessage(null); setDiscoveryError(null); }} disabled={isDiscovering}>
+                    Clear
+                  </UiButton>
+                </>
+              )}
+            </GlassCard>
           )}
 
           {activeTab === 'pdf' && (
-          <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            {pdfFiles.length > 0 && (
-              <div
-                style={{
-                  background: 'var(--flow-bg)',
-                  borderRadius: 12,
-                  padding: '1rem 1.25rem',
-                  marginBottom: '1.25rem',
-                  border: '1px solid var(--flow-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                }}
-              >
-                <CheckCircle2 size={24} color="var(--flow-accent)" strokeWidth={2.5} />
-                <div>
-                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--flow-heading)', fontSize: '1rem' }}>
-                    {pdfFiles.length} PDF{pdfFiles.length !== 1 ? 's' : ''} ready
-                  </p>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--flow-muted)' }}>
-                    These will be added to your knowledge base
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>Add Website Pages as PDFs</h3>
-                  <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>Follow these 3 easy steps</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1rem' }}>
-              <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <MousePointerClick size={18} color="white" strokeWidth={2.5} />
+            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+              {pdfFiles.length > 0 && (
+                <div
+                  style={{
+                    background: 'var(--flow-bg)',
+                    borderRadius: 12,
+                    padding: '1rem 1.25rem',
+                    marginBottom: '1.25rem',
+                    border: '1px solid var(--flow-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                  }}
+                >
+                  <CheckCircle2 size={24} color="var(--flow-accent)" strokeWidth={2.5} />
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--flow-heading)', fontSize: '1rem' }}>
+                      {pdfFiles.length} PDF{pdfFiles.length !== 1 ? 's' : ''} ready
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--flow-muted)' }}>
+                      These will be added to your knowledge base
+                    </p>
                   </div>
-                  <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>1</span>
                 </div>
-                <div className="flow-instruction-card-heading">Open the page</div>
-                <div className="flow-instruction-card-body">Open important pages (services, prices, hours, booking, contact).</div>
-              </div>
-              <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Printer size={18} color="white" strokeWidth={2.5} />
-                  </div>
-                  <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>2</span>
-                </div>
-                <div className="flow-instruction-card-heading">Save as PDF</div>
-                <div className="flow-instruction-card-body">Right-click → Print → &quot;Save as PDF&quot;</div>
-              </div>
-              <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <UploadCloud size={18} color="white" strokeWidth={2.5} />
-                  </div>
-                  <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>3</span>
-                </div>
-                <div className="flow-instruction-card-heading">Upload here</div>
-                <div className="flow-instruction-card-body">Drop your PDFs below. Your AI will learn from them!</div>
-              </div>
-            </div>
+              )}
 
-            <FileDropzone
-              label="Drop your PDFs here"
-              helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
-              files={pdfFiles}
-              setFiles={setPdfFiles}
-              accept="application/pdf"
-              multiple
-              maxFiles={20}
-            />
-          </GlassCard>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>Add Website Pages as PDFs</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>Follow these 3 easy steps</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1rem' }}>
+                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <MousePointerClick size={18} color="white" strokeWidth={2.5} />
+                    </div>
+                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>1</span>
+                  </div>
+                  <div className="flow-instruction-card-heading">Open the page</div>
+                  <div className="flow-instruction-card-body">Open important pages (services, prices, hours, booking, contact).</div>
+                </div>
+                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Printer size={18} color="white" strokeWidth={2.5} />
+                    </div>
+                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>2</span>
+                  </div>
+                  <div className="flow-instruction-card-heading">Save as PDF</div>
+                  <div className="flow-instruction-card-body">Right-click → Print → &quot;Save as PDF&quot;</div>
+                </div>
+                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <UploadCloud size={18} color="white" strokeWidth={2.5} />
+                    </div>
+                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>3</span>
+                  </div>
+                  <div className="flow-instruction-card-heading">Upload here</div>
+                  <div className="flow-instruction-card-body">Drop your PDFs below. Your AI will learn from them!</div>
+                </div>
+              </div>
+
+              <FileDropzone
+                label="Drop your PDFs here"
+                helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
+                files={pdfFiles}
+                setFiles={setPdfFiles}
+                accept="application/pdf"
+                multiple
+                maxFiles={20}
+              />
+            </GlassCard>
           )}
 
           {activeTab === 'docs' && (
-          <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <div className="card-title" style={{ marginBottom: '0.5rem' }}>Text documents</div>
-              <div className="card-subtitle">Upload .txt, .md, .doc, .docx for your assistant to learn from.</div>
-            </div>
-            <FileDropzone
-              label="Drop text files here"
-              helperText="Upload .txt, .md, .doc, .docx (up to 20 files)"
-              files={textDocFiles}
-              setFiles={setTextDocFiles}
-              accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              multiple
-              maxFiles={20}
-            />
-          </GlassCard>
+            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Text documents</div>
+                <div className="card-subtitle">Upload .txt, .md, .doc, .docx for your assistant to learn from.</div>
+              </div>
+              <FileDropzone
+                label="Drop text files here"
+                helperText="Upload .txt, .md, .doc, .docx (up to 20 files)"
+                files={textDocFiles}
+                setFiles={setTextDocFiles}
+                accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                multiple
+                maxFiles={20}
+              />
+            </GlassCard>
           )}
 
           {activeTab === 'drive' && (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--flow-surface)', borderRadius: 'var(--flow-radius)', border: '1px dashed var(--flow-border)', marginBottom: '1.5rem' }}>
-            <Upload size={48} color="var(--flow-muted)" style={{ marginBottom: '1rem' }} />
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.5rem' }}>Google Drive</div>
-            <div style={{ fontSize: '0.95rem', color: 'var(--flow-muted)', marginBottom: '1.5rem' }}>Coming soon! Sync files from Google Drive.</div>
-          </div>
+            <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--flow-surface)', borderRadius: 'var(--flow-radius)', border: '1px dashed var(--flow-border)', marginBottom: '1.5rem' }}>
+              <Upload size={48} color="var(--flow-muted)" style={{ marginBottom: '1rem' }} />
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.5rem' }}>Google Drive</div>
+              <div style={{ fontSize: '0.95rem', color: 'var(--flow-muted)', marginBottom: '1.5rem' }}>Coming soon! Sync files from Google Drive.</div>
+            </div>
           )}
 
           {activeTab === 'text' && (
-          <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <div className="card-title" style={{ marginBottom: '0.5rem' }}>Plain text</div>
-              <div className="card-subtitle">Paste or type text for your assistant to learn from.</div>
-            </div>
-            <textarea
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              placeholder="Paste or type your content here..."
-              rows={10}
-              style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', padding: '0.75rem', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', background: 'var(--flow-surface)' }}
-            />
-          </GlassCard>
+            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Plain text</div>
+                <div className="card-subtitle">Paste or type text for your assistant to learn from.</div>
+              </div>
+              <textarea
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                placeholder="Paste or type your content here..."
+                rows={10}
+                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', padding: '0.75rem', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', background: 'var(--flow-surface)' }}
+              />
+            </GlassCard>
           )}
 
           {activeTab === 'custom' && (
-          <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <div className="card-title" style={{ marginBottom: '0.5rem' }}>Custom text entries</div>
-              <div className="card-subtitle">Create structured entries (FAQs, policies, hours, etc.).</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {customTextEntries.map((field, idx) => (
-                    <div
-                      key={field.id}
-                      style={{ background: 'var(--flow-surface)', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', padding: '1rem' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--flow-heading)' }}>Entry #{idx + 1}</div>
-                        {customTextEntries.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTextField(field.id)}
-                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--flow-muted)' }}
-                          >
-                            <X size={18} />
-                          </button>
-                        )}
-                      </div>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>Title</label>
+            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Custom text entries</div>
+                <div className="card-subtitle">Create structured entries (FAQs, policies, hours, etc.).</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {customTextEntries.map((field, idx) => (
+                  <div
+                    key={field.id}
+                    style={{ background: 'var(--flow-surface)', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', padding: '1rem' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--flow-heading)' }}>Entry #{idx + 1}</div>
+                      {customTextEntries.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTextField(field.id)}
+                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem', color: 'var(--flow-muted)' }}
+                        >
+                          <X size={18} />
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'grid', gap: '1.25rem' }}>
+                      <GlassField label="Title">
                         <input
                           type="text"
                           value={field.title}
                           onChange={(e) => handleUpdateTextField(field.id, 'title', e.target.value)}
-                          placeholder="e.g., Return Policy"
-                          style={{ width: '100%' }}
+                          placeholder="Entry title (optional)"
                         />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>Content</label>
+                      </GlassField>
+                      <GlassField label="Content">
                         <textarea
                           value={field.content}
                           onChange={(e) => handleUpdateTextField(field.id, 'content', e.target.value)}
-                          placeholder="Enter text..."
-                          rows={4}
-                          style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+                          placeholder="Type or paste content here..."
+                          rows={6}
+                          style={{ minHeight: '120px' }}
                         />
-                      </div>
+                      </GlassField>
                     </div>
-                  ))}
-                </div>
-            <UiButton variant="secondary" onClick={handleAddTextField} style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Plus size={16} />
-              Add Another Entry
-            </UiButton>
-          </GlassCard>
+                  </div>
+                ))}
+              </div>
+              <UiButton variant="secondary" onClick={handleAddTextField} style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Plus size={16} />
+                Add Another Entry
+              </UiButton>
+            </GlassCard>
           )}
 
           {(localError || error) && (
@@ -839,6 +839,6 @@ export default function AddSourcePage() {
           </div>
         </div>
       </div>
-    </AnimatedPage>
+    </AnimatedPage >
   )
 }

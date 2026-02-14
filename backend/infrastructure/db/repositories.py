@@ -10,6 +10,7 @@ from psycopg import errors as pg_errors
 from domain.entities import (
     BookingLinkJob,
     Bot,
+    BotAsset,
     BotDomainRecord,
     BotRecord,
     BotSource,
@@ -3631,3 +3632,149 @@ class PostgresInstagramUserSessionRepository:
             )
         finally:
             con.close()
+
+
+# ── Bot Assets ──────────────────────────────────────────────────────────────
+
+
+class PostgresBotAssetRepository:
+    """CRUD for bot_assets (business image cards)."""
+
+    def create_asset(self, asset: BotAsset) -> None:
+        con = _connect()
+        try:
+            kw_json = json.dumps(asset.keywords if isinstance(asset.keywords, list) else [])
+            con.execute(
+                """
+                INSERT INTO bot_assets
+                  (asset_id, bot_id, org_id, name, description,
+                   image_gcs_uri, image_public_url, link_url,
+                   keywords, is_active, created_at, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    asset.asset_id, asset.bot_id, asset.org_id,
+                    asset.name, asset.description,
+                    asset.image_gcs_uri, asset.image_public_url, asset.link_url,
+                    kw_json, asset.is_active,
+                    asset.created_at, asset.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_asset(self, asset: BotAsset) -> None:
+        aid = (asset.asset_id or "").strip()
+        if not aid:
+            return
+        con = _connect()
+        try:
+            kw_json = json.dumps(asset.keywords if isinstance(asset.keywords, list) else [])
+            now = asset.updated_at or _utc_now()
+            con.execute(
+                """
+                UPDATE bot_assets
+                SET name=%s, description=%s, image_gcs_uri=%s,
+                    image_public_url=%s, link_url=%s, keywords=%s,
+                    is_active=%s, updated_at=%s
+                WHERE asset_id=%s
+                """,
+                (
+                    asset.name, asset.description,
+                    asset.image_gcs_uri, asset.image_public_url, asset.link_url,
+                    kw_json, asset.is_active, now, aid,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_asset(self, asset_id: str) -> Optional[BotAsset]:
+        aid = (asset_id or "").strip()
+        if not aid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT asset_id, bot_id, org_id, name, description,
+                       image_gcs_uri, image_public_url, link_url,
+                       keywords, is_active, created_at, updated_at
+                FROM bot_assets WHERE asset_id=%s
+                """,
+                (aid,),
+            ).fetchone()
+            if not row:
+                return None
+            return self._row_to_asset(row)
+        finally:
+            con.close()
+
+    def list_assets_for_bot(self, bot_id: str, *, active_only: bool = False) -> List[BotAsset]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            if active_only:
+                rows = con.execute(
+                    """
+                    SELECT asset_id, bot_id, org_id, name, description,
+                           image_gcs_uri, image_public_url, link_url,
+                           keywords, is_active, created_at, updated_at
+                    FROM bot_assets WHERE bot_id=%s AND is_active=TRUE
+                    ORDER BY created_at ASC
+                    """,
+                    (bid,),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    """
+                    SELECT asset_id, bot_id, org_id, name, description,
+                           image_gcs_uri, image_public_url, link_url,
+                           keywords, is_active, created_at, updated_at
+                    FROM bot_assets WHERE bot_id=%s
+                    ORDER BY created_at ASC
+                    """,
+                    (bid,),
+                ).fetchall()
+            return [self._row_to_asset(r) for r in rows]
+        finally:
+            con.close()
+
+    def delete_asset(self, bot_id: str, asset_id: str) -> None:
+        bid = (bot_id or "").strip()
+        aid = (asset_id or "").strip()
+        if not bid or not aid:
+            return
+        con = _connect()
+        try:
+            con.execute(
+                "DELETE FROM bot_assets WHERE bot_id=%s AND asset_id=%s",
+                (bid, aid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    @staticmethod
+    def _row_to_asset(row) -> BotAsset:
+        try:
+            kw = json.loads(row[8]) if isinstance(row[8], str) else (row[8] or [])
+        except (TypeError, ValueError):
+            kw = []
+        return BotAsset(
+            asset_id=row[0],
+            bot_id=row[1],
+            org_id=row[2],
+            name=row[3],
+            description=row[4] or "",
+            image_gcs_uri=row[5],
+            image_public_url=row[6] or "",
+            link_url=row[7],
+            keywords=kw if isinstance(kw, list) else [],
+            is_active=bool(row[9]),
+            created_at=row[10],
+            updated_at=row[11],
+        )

@@ -437,7 +437,7 @@ export default function CreateBotUrlsPage() {
                 input.indeterminate = isPartial
               }
             }}
-            style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+            style={{ marginRight: '8px', cursor: 'pointer' }}
           />
           <span
             onClick={() => hasExpandableContent && toggleSharedCategoryExpand(category.path)}
@@ -491,7 +491,7 @@ export default function CreateBotUrlsPage() {
                       type="checkbox"
                       checked={sharedSelectedDiscoveredUrls.has(url)}
                       onChange={() => handleToggleSharedDiscoveredUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                      style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
                     <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>
@@ -861,7 +861,7 @@ export default function CreateBotUrlsPage() {
                               type="checkbox"
                               checked={sharedSelectedDiscoveredUrls.has(url)}
                               onChange={() => handleToggleSharedDiscoveredUrl(url)}
-                              style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                              style={{ marginRight: '8px', cursor: 'pointer' }}
                             />
                             <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                           </label>
@@ -1000,7 +1000,7 @@ export default function CreateBotUrlsPage() {
                 input.indeterminate = isPartial
               }
             }}
-            style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+            style={{ marginRight: '8px', cursor: 'pointer' }}
           />
           <span
             onClick={() => hasExpandableContent && toggleCategoryExpand(category.path)}
@@ -1054,7 +1054,7 @@ export default function CreateBotUrlsPage() {
                       type="checkbox"
                       checked={selectedUrls.includes(url)}
                       onChange={() => toggleUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                      style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
                     <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>
@@ -1159,7 +1159,7 @@ export default function CreateBotUrlsPage() {
                       type="checkbox"
                       checked={selectedUrls.includes(url)}
                       onChange={() => toggleUrl(url)}
-                      style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                      style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
                     <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>

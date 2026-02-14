@@ -120,8 +120,13 @@ export default function BotsPage() {
 
             <div className="bot-card-grid">
               <button className="cta-create-bot ui-glass-card" onClick={() => navigate('/create-bot')} disabled={!canCreateBot || loading}>
-                <Plus className="create-bot-icon" aria-hidden="true" />
-                <span>Create bot</span>
+                <div className="cta-create-bot-icon-wrap">
+                  <Plus size={24} />
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Add Bot</div>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '2px' }}>Build a new AI agent</div>
+                </div>
               </button>
 
               {bots.map((bot) => (

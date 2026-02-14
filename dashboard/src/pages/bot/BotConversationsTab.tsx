@@ -139,6 +139,19 @@ export default function BotConversationsTab() {
     await loadSessions()
   }
 
+  function channelLabel(ch?: string | null): { emoji: string; label: string } {
+    switch ((ch || '').toLowerCase()) {
+      case 'web': return { emoji: '🌐', label: 'Website' }
+      case 'test': return { emoji: '🧪', label: 'Test' }
+      case 'line': return { emoji: '💬', label: 'LINE' }
+      case 'instagram': return { emoji: '📸', label: 'Instagram' }
+      default: {
+        const raw = (ch || 'unknown').trim()
+        return { emoji: '💬', label: raw.charAt(0).toUpperCase() + raw.slice(1) }
+      }
+    }
+  }
+
 
   if (!selectedBot) {
     return <div className="empty-panel">Select a bot to view conversations.</div>
@@ -198,16 +211,19 @@ export default function BotConversationsTab() {
                   {statusForSession(s) && (
                     <span
                       className={`conversation-status ${statusForSession(s) === 'Active'
-                          ? 'active'
-                          : statusForSession(s) === 'Away'
-                            ? 'inactive'
-                            : 'ended'
+                        ? 'active'
+                        : statusForSession(s) === 'Away'
+                          ? 'inactive'
+                          : 'ended'
                         }`}
                     >
                       {statusForSession(s)}
                     </span>
                   )}
                   {s.message_count} messages
+                  <span className="conversation-pill conversation-pill--channel">
+                    {channelLabel(s.channel).emoji} {channelLabel(s.channel).label}
+                  </span>
                   {escalatedSessionIds.has(s.session_id) && (
                     <span className="conversation-pill conversation-pill--escalated">Escalated</span>
                   )}
@@ -231,15 +247,21 @@ export default function BotConversationsTab() {
                     <span>Status</span>
                     <span
                       className={`conversation-status ${statusForSession(selectedSessionRecord) === 'Active'
-                          ? 'active'
-                          : statusForSession(selectedSessionRecord) === 'Away'
-                            ? 'inactive'
-                            : statusForSession(selectedSessionRecord) === 'Session ended'
-                              ? 'ended'
-                              : 'inactive'
+                        ? 'active'
+                        : statusForSession(selectedSessionRecord) === 'Away'
+                          ? 'inactive'
+                          : statusForSession(selectedSessionRecord) === 'Session ended'
+                            ? 'ended'
+                            : 'inactive'
                         }`}
                     >
                       {statusForSession(selectedSessionRecord)}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span>Channel</span>
+                    <span className="conversation-pill conversation-pill--channel">
+                      {channelLabel(selectedSessionRecord.channel).emoji} {channelLabel(selectedSessionRecord.channel).label}
                     </span>
                   </div>
                 </>

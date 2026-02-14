@@ -62,7 +62,7 @@ export default function BotOverviewTab() {
   const setupIndicators: SetupIndicator[] = [
     { id: 'sources', label: 'Knowledge and Training', done: hasSources, to: `/bots/${botId}/knowledge` },
     { id: 'design', label: 'Design', done: hasDesign, to: `/bots/${botId}/design` },
-    { id: 'suggestions', label: 'Suggested messages', done: hasSuggestedMessages, to: `/bots/${botId}/suggested-messages` },
+    { id: 'suggestions', label: 'Suggested messages', done: hasSuggestedMessages, to: `/bots/${botId}/design` },
     { id: 'deployment', label: 'Installation', done: hasVerifiedDomain, to: `/bots/${botId}/overview` },
     { id: 'escalation', label: 'Escalations', done: escalationSetUp, to: `/bots/${botId}/escalations` },
   ]
@@ -102,7 +102,7 @@ export default function BotOverviewTab() {
             <div className="card-title" style={{ marginBottom: '0.2rem' }}>Leads</div>
             <p className="card-subtitle" style={{ margin: 0 }}>Captured when visitors request human follow-up in chat.</p>
           </div>
-          <UiButton variant="secondary" onClick={() => {}} style={{ fontSize: '0.88rem', padding: '0.4rem 0.85rem' }}>
+          <UiButton variant="secondary" onClick={() => { }} style={{ fontSize: '0.88rem', padding: '0.4rem 0.85rem' }}>
             <Link to={`/bots/${botId}/escalations?tab=escalations`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'inherit' }}>
               <BarChart3 size={14} />
               View all

@@ -4,6 +4,7 @@ from .entities import (
     AvailabilityJob,
     BookingLinkJob,
     Bot,
+    BotAsset,
     BotDomainRecord,
     BotRecord,
     BotSource,
@@ -296,4 +297,21 @@ class RAGRepository(Protocol):
         """
         Import documents from storage prefix into the RAG corpus.
         """
+        ...
+
+
+class BotAssetRepository(Protocol):
+    def create_asset(self, asset: BotAsset) -> None:
+        ...
+
+    def update_asset(self, asset: BotAsset) -> None:
+        ...
+
+    def get_asset(self, asset_id: str) -> Optional[BotAsset]:
+        ...
+
+    def list_assets_for_bot(self, bot_id: str, *, active_only: bool = False) -> List[BotAsset]:
+        ...
+
+    def delete_asset(self, bot_id: str, asset_id: str) -> None:
         ...

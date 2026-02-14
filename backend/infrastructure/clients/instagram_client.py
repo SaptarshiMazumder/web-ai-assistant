@@ -74,6 +74,65 @@ async def send_message(
     return True
 
 
+async def send_image(
+    recipient_id: str,
+    image_url: str,
+    page_access_token: str,
+) -> bool:
+    """Send an image attachment DM to an Instagram user."""
+    base = _api_base(page_access_token)
+    payload = {
+        "recipient": {"id": recipient_id},
+        "message": {
+            "attachment": {
+                "type": "image",
+                "payload": {"url": image_url, "is_reusable": True},
+            }
+        },
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{base}/me/messages",
+            json=payload,
+            params={"access_token": page_access_token},
+        )
+    if resp.status_code != 200:
+        logger.error("Instagram send_image failed: %s %s", resp.status_code, resp.text)
+        return False
+    return True
+
+
+async def send_generic_template(
+    recipient_id: str,
+    elements: list,
+    page_access_token: str,
+) -> bool:
+    """Send a Generic Template with image cards via the Graph API."""
+    base = _api_base(page_access_token)
+    payload = {
+        "recipient": {"id": recipient_id},
+        "message": {
+            "attachment": {
+                "type": "template",
+                "payload": {
+                    "template_type": "generic",
+                    "elements": elements,
+                },
+            }
+        },
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{base}/me/messages",
+            json=payload,
+            params={"access_token": page_access_token},
+        )
+    if resp.status_code != 200:
+        logger.error("Instagram send_generic_template failed: %s %s", resp.status_code, resp.text)
+        return False
+    return True
+
+
 # ── Page info (connection test) ───────────────────────────────────────
 
 

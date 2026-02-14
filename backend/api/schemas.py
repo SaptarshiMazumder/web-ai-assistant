@@ -220,6 +220,7 @@ class Citation(BaseModel):
 class WidgetChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+    assets: List["AssetCard"] = []
     session_id: Optional[str] = None
 
 
@@ -705,3 +706,39 @@ class InstagramChannelResponse(BaseModel):
 class InstagramChannelDeleteResponse(BaseModel):
     ok: bool = True
     bot_id: str
+
+
+# ── Business Assets ─────────────────────────────────────────────────────────
+
+
+class AssetCard(BaseModel):
+    """Lightweight card included in chat responses."""
+    asset_id: str
+    name: str
+    image_url: str
+    link_url: Optional[str] = None
+
+
+class BotAssetResponse(BaseModel):
+    asset_id: str
+    bot_id: str
+    org_id: str
+    name: str
+    description: str
+    image_url: str
+    link_url: Optional[str] = None
+    keywords: List[str] = []
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class BotAssetListResponse(BaseModel):
+    bot_id: str
+    assets: List[BotAssetResponse] = []
+
+
+class BotAssetDeleteResponse(BaseModel):
+    ok: bool = True
+    bot_id: str
+    asset_id: str
