@@ -5,7 +5,7 @@ import { useDashboardData } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 export default function BotSettingsTab() {
-  const { selectedBot, deleteBot, renameBot, loading, error } = useDashboardData()
+  const { selectedBot, deleteBot, renameBot, saveWidgetConfig, selectedBotWidgetConfig, loading, error } = useDashboardData()
   const navigate = useNavigate()
 
   const [isEditing, setIsEditing] = useState(false)
@@ -37,8 +37,12 @@ export default function BotSettingsTab() {
   const handleSave = async () => {
     if (!selectedBot || !botName.trim()) return
 
-    const success = await renameBot(selectedBot.bot_id, botName.trim())
+    const trimmed = botName.trim()
+    const success = await renameBot(selectedBot.bot_id, trimmed)
     if (success) {
+      // Sync widget title to match new bot name
+      const existingConfig = selectedBotWidgetConfig ?? {}
+      await saveWidgetConfig(selectedBot.bot_id, { ...existingConfig, title: trimmed })
       setIsEditing(false)
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)

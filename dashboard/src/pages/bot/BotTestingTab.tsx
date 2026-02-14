@@ -6,6 +6,7 @@ import { useDashboardData, type SourceRecord, type DomainRecord, type Availabili
 import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
+const DEFAULT_PERSONA_ID = 'default-assistant'
 
 const DEFAULT_MODELS = [
   { value: '', label: 'Default' },
@@ -23,6 +24,15 @@ type AgentConfig = {
   model_id?: string | null
   instructions?: string | null
   temperature?: number | null
+  persona_id?: string | null
+}
+
+type PersonaItem = {
+  id: string
+  name: string
+  category: string
+  emoji: string
+  system_prompt: string
 }
 
 function withOrg(path: string, orgId: string | null): string {
@@ -101,6 +111,8 @@ export default function BotTestingTab() {
   const [modelId, setModelId] = useState('')
   const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS)
   const [temperature, setTemperature] = useState(0.2)
+  const [personaId, setPersonaId] = useState<string>(DEFAULT_PERSONA_ID)
+  const [personas, setPersonas] = useState<PersonaItem[]>([])
   const [configLoading, setConfigLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -190,6 +202,37 @@ export default function BotTestingTab() {
     return () => window.removeEventListener('beforeunload', endSession)
   }, [selectedBot])
 
+  // Load personas catalog
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/v1/personas`)
+        if (res.ok) {
+          const data = await res.json() as { personas: PersonaItem[] }
+          if (!cancelled) setPersonas(data.personas)
+        }
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  // When persona is selected, populate the instructions with its system prompt
+  const handlePersonaSelect = useCallback((selectedId: string) => {
+    setPersonaId(selectedId)
+    const selectedPersona = personas.find((p) => p.id === selectedId)
+    if (selectedPersona) {
+      setInstructions(selectedPersona.system_prompt)
+    }
+  }, [personas])
+
+  useEffect(() => {
+    if (!personas.length) return
+    if (!personas.some((p) => p.id === personaId)) {
+      setPersonaId(DEFAULT_PERSONA_ID)
+    }
+  }, [personas, personaId])
+
   const loadConfig = useCallback(async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
     setConfigLoading(true)
@@ -209,11 +252,13 @@ export default function BotTestingTab() {
           ? data.temperature
           : 0.2
       )
+      setPersonaId((data.persona_id || DEFAULT_PERSONA_ID).trim())
     } catch {
       setAgentConfig({})
       setModelId('')
       setInstructions(DEFAULT_INSTRUCTIONS)
       setTemperature(0.2)
+      setPersonaId(DEFAULT_PERSONA_ID)
     } finally {
       setConfigLoading(false)
     }
@@ -234,6 +279,7 @@ export default function BotTestingTab() {
       if (modelId.trim()) payload.model_id = modelId.trim()
       if (instructions.trim()) payload.instructions = instructions.trim()
       if (temperature !== 0.2) payload.temperature = temperature
+      payload.persona_id = personaId || DEFAULT_PERSONA_ID
       const res = await fetch(`${API_BASE}${path}`, {
         method: 'PUT',
         headers: {
@@ -257,6 +303,7 @@ export default function BotTestingTab() {
     setTemperature(
       typeof agentConfig.temperature === 'number' ? agentConfig.temperature : 0.2
     )
+    setPersonaId((agentConfig.persona_id || DEFAULT_PERSONA_ID).trim())
   }
 
   const loadAvailabilityJobs = useCallback(async () => {
@@ -375,7 +422,35 @@ export default function BotTestingTab() {
             </div>
 
             <div className="testing-field">
-              <label className="testing-label">Instructions (Prompt)</label>
+              <label className="testing-label">Active Persona</label>
+              <div className="persona-selector-compact">
+                <select
+                  className="persona-selector-dropdown"
+                  value={personaId}
+                  onChange={(e) => handlePersonaSelect(e.target.value)}
+                  disabled={configLoading}
+                >
+                  {personas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.emoji} {p.name} — {p.category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="testing-hint">
+                Select a persona to shape the AI's tone and personality.
+              </p>
+            </div>
+
+            <div className="testing-field">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <label className="testing-label">Instructions (Prompt)</label>
+                {personaId && personas.find((p) => p.id === personaId) && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--ui-flow-accent, #e4587a)', fontWeight: 500 }}>
+                    📋 Based on {personas.find((p) => p.id === personaId)?.name}
+                  </span>
+                )}
+              </div>
               <textarea
                 className="testing-textarea"
                 value={instructions}
@@ -384,6 +459,9 @@ export default function BotTestingTab() {
                 disabled={configLoading}
                 rows={10}
               />
+              <p className="testing-hint">
+                The above starts from your selected persona. Edit it to customize further.
+              </p>
             </div>
 
             <div className="testing-field">

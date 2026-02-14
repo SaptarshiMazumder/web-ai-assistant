@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Check, Clock, Copy, Key, Code2, CalendarDays, Mail, ExternalLink, BarChart3 } from 'lucide-react'
-import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
+import { Check, Clock, Copy, Key, Code2 } from 'lucide-react'
+import { useDashboardData } from '../../hooks/useDashboardData'
 import DashboardAnalytics from '../../components/DashboardAnalytics'
 import { GlassCard, UiButton } from '../../components/ui'
 
@@ -10,12 +10,6 @@ type SetupIndicator = {
   label: string
   done: boolean
   to: string
-}
-
-function formatLeadDate(iso: string) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 export default function BotOverviewTab() {
@@ -28,11 +22,9 @@ export default function BotOverviewTab() {
     domains,
     selectedBotWidgetConfig,
     getEscalationConfig,
-    listEscalations,
   } = useDashboardData()
 
   const [escalationEnabled, setEscalationEnabled] = useState<boolean | null>(null)
-  const [leads, setLeads] = useState<EscalationRecord[]>([])
 
   useEffect(() => {
     if (!botId) return
@@ -40,13 +32,6 @@ export default function BotOverviewTab() {
       setEscalationEnabled(config?.enabled ?? false)
     })
   }, [botId, getEscalationConfig])
-
-  useEffect(() => {
-    if (!botId) return
-    listEscalations(botId, 20).then((data) => {
-      setLeads(data?.escalations ?? [])
-    })
-  }, [botId, listEscalations])
 
   if (!selectedBot || !botId) {
     return <div className="empty-panel">Select a bot to view overview details.</div>
@@ -95,54 +80,6 @@ export default function BotOverviewTab() {
           </div>
         }
       />
-
-      <GlassCard className="leads-section">
-        <div className="leads-section-header">
-          <div>
-            <div className="card-title" style={{ marginBottom: '0.2rem' }}>Leads</div>
-            <p className="card-subtitle" style={{ margin: 0 }}>Captured when visitors request human follow-up in chat.</p>
-          </div>
-          <UiButton variant="secondary" onClick={() => { }} style={{ fontSize: '0.88rem', padding: '0.4rem 0.85rem' }}>
-            <Link to={`/bots/${botId}/escalations?tab=escalations`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'inherit' }}>
-              <BarChart3 size={14} />
-              View all
-            </Link>
-          </UiButton>
-        </div>
-        {leads.length === 0 ? (
-          <div className="muted" style={{ padding: '0.5rem 0' }}>No leads yet. Escalations will appear here once visitors request follow-up.</div>
-        ) : (
-          <div className="leads-table-wrap">
-            <table className="leads-table">
-              <thead>
-                <tr>
-                  <th><Mail size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Email</th>
-                  <th><CalendarDays size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />Date</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.escalation_id}>
-                    <td className="leads-email">{lead.visitor_email}</td>
-                    <td className="leads-date">{formatLeadDate(lead.created_at)}</td>
-                    <td>
-                      <span className={`leads-status leads-status--${lead.status}`}>{lead.status}</span>
-                    </td>
-                    <td>
-                      <Link to={`/bots/${botId}/conversations?session=${lead.session_id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--ui-flow-accent)', fontSize: '0.85rem', fontWeight: 500 }}>
-                        <ExternalLink size={13} />
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </GlassCard>
 
       <div className="card-grid" style={{ marginTop: 16 }}>
         <GlassCard>

@@ -47,6 +47,11 @@ try:
 except ImportError as e:
     import sys
     print(f"WARNING: Failed to import pdf_source_tasks: {e}", file=sys.stderr)
+try:
+    from infrastructure.tasks import instagram_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import instagram_tasks: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     print(f"Registered tasks: {list(celery_app.tasks.keys())}")

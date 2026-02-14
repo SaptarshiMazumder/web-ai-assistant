@@ -40,4 +40,8 @@ beat_schedule = {
         "task": "infrastructure.tasks.analytics_tasks.rollup_analytics",
         "schedule": crontab(minute="0"),  # Run once an hour
     },
+    "refresh-instagram-tokens-daily": {
+        "task": "infrastructure.tasks.instagram_tasks.refresh_instagram_tokens",
+        "schedule": crontab(hour="3", minute="0"),  # Run daily at 3 AM UTC
+    },
 }

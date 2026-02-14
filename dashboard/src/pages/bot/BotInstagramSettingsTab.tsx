@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
-import { Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2, Trash2, Zap, Instagram } from 'lucide-react'
-import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
+import { CheckCircle, AlertCircle, Loader2, Trash2, Zap, Instagram, ExternalLink, LogIn } from 'lucide-react'
+import { AnimatedPage, SectionHeader, UiButton, GlassCard } from '../../components/ui'
 
 type InstagramChannelConfig = {
   channel_id: string
@@ -14,6 +14,10 @@ type InstagramChannelConfig = {
   is_active: boolean
   created_at: string
   updated_at: string
+  ig_user_id?: string
+  ig_username?: string
+  token_expires_at?: string
+  connection_method?: string
 }
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
@@ -22,22 +26,36 @@ export default function BotInstagramSettingsTab() {
   const { botId } = useParams()
   const { selectedBot } = useDashboardData()
   const { getAccessTokenSilently } = useAuth0()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [igPageId, setIgPageId] = useState('')
-  const [appSecret, setAppSecret] = useState('')
-  const [pageAccessToken, setPageAccessToken] = useState('')
-  const [isActive, setIsActive] = useState(true)
   const [existing, setExisting] = useState<InstagramChannelConfig | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [connecting, setConnecting] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [verifyTokenCopied, setVerifyTokenCopied] = useState(false)
 
-  const webhookUrl = botId ? `${API_BASE}/webhooks/instagram/${botId}` : ''
+  // Check URL params for OAuth callback results
+  useEffect(() => {
+    const connected = searchParams.get('connected')
+    const username = searchParams.get('username')
+    const igError = searchParams.get('ig_error')
+
+    if (connected === 'true') {
+      setSuccess(`Connected${username ? ` @${username}` : ''}! Your bot is live on Instagram.`)
+      // Clean URL params
+      searchParams.delete('connected')
+      searchParams.delete('username')
+      setSearchParams(searchParams, { replace: true })
+    }
+    if (igError) {
+      setError(`Connection failed: ${decodeURIComponent(igError)}`)
+      searchParams.delete('ig_error')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const authedFetch = useCallback(async (path: string, init?: RequestInit): Promise<Response> => {
     const token = await getAccessTokenSilently()
@@ -52,6 +70,7 @@ export default function BotInstagramSettingsTab() {
   }, [getAccessTokenSilently])
 
   const loadConfig = useCallback(async () => {
+    setLoading(true)
     try {
       const resp = await authedFetch(`/v1/org/bots/${botId}/instagram-channel`)
       if (resp.status === 404) {
@@ -64,60 +83,40 @@ export default function BotInstagramSettingsTab() {
       }
       const data = (await resp.json()) as InstagramChannelConfig
       setExisting(data)
-      setIgPageId(data.ig_page_id)
-      setIsActive(data.is_active)
     } catch (err) {
       if ((err as Error).message?.includes('404') || (err as Error).message?.includes('Not Found')) {
         setExisting(null)
       } else {
         setError((err as Error).message)
       }
+    } finally {
+      setLoading(false)
     }
   }, [botId, authedFetch])
 
   useEffect(() => {
     if (!botId) return
     setError(null)
-    setSuccess(null)
     void loadConfig()
   }, [botId, loadConfig])
 
-  async function handleSave() {
+  async function handleConnect() {
     if (!botId) return
-    setSaving(true)
+    setConnecting(true)
     setError(null)
     setSuccess(null)
-    setTestResult(null)
     try {
-      const body: Record<string, unknown> = {
-        ig_page_id: igPageId.trim(),
-        app_secret: appSecret.trim(),
-        page_access_token: pageAccessToken.trim(),
-        is_active: isActive,
-      }
-      if (!body.ig_page_id) {
-        throw new Error('Instagram Page ID is required')
-      }
-      if (!existing && (!body.app_secret || !body.page_access_token)) {
-        throw new Error('App Secret and Page Access Token are required for initial setup')
-      }
-      const resp = await authedFetch(`/v1/org/bots/${botId}/instagram-channel`, {
-        method: 'PUT',
-        body: JSON.stringify(body),
-      })
+      const resp = await authedFetch(`/v1/org/bots/${botId}/instagram/auth-url`)
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         throw new Error((data as { detail?: string }).detail || resp.statusText)
       }
-      const data = (await resp.json()) as InstagramChannelConfig
-      setExisting(data)
-      setAppSecret('')
-      setPageAccessToken('')
-      setSuccess('Connected! Your bot is live on Instagram.')
+      const { auth_url } = (await resp.json()) as { auth_url: string }
+      // Redirect to Instagram OAuth
+      window.location.href = auth_url
     } catch (err) {
       setError((err as Error).message)
-    } finally {
-      setSaving(false)
+      setConnecting(false)
     }
   }
 
@@ -139,45 +138,58 @@ export default function BotInstagramSettingsTab() {
     }
   }
 
-  async function handleDelete() {
+  async function handleDisconnect() {
     if (!botId) return
-    const confirmed = window.confirm('Disconnect Instagram integration?')
+    const confirmed = window.confirm('Disconnect Instagram integration? Your bot will stop responding to DMs.')
     if (!confirmed) return
-    setDeleting(true)
+    setDisconnecting(true)
     setError(null)
     setSuccess(null)
     try {
-      const resp = await authedFetch(`/v1/org/bots/${botId}/instagram-channel`, { method: 'DELETE' })
+      // Try OAuth disconnect endpoint first, fall back to legacy
+      let resp = await authedFetch(`/v1/org/bots/${botId}/instagram/disconnect`, { method: 'POST' })
+      if (resp.status === 404) {
+        resp = await authedFetch(`/v1/org/bots/${botId}/instagram-channel`, { method: 'DELETE' })
+      }
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}))
         throw new Error((data as { detail?: string }).detail || resp.statusText)
       }
       setExisting(null)
-      setIgPageId('')
-      setAppSecret('')
-      setPageAccessToken('')
-      setIsActive(true)
       setTestResult(null)
       setSuccess('Instagram integration disconnected.')
     } catch (err) {
       setError((err as Error).message)
     } finally {
-      setDeleting(false)
+      setDisconnecting(false)
     }
-  }
-
-  function copyWebhookUrl() {
-    navigator.clipboard.writeText(webhookUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   if (!selectedBot || !botId) {
     return <div className="empty-panel">Select a bot to configure Instagram integration.</div>
   }
 
-  /* ─── Already connected view ─────────────────────────────────── */
+  if (loading) {
+    return (
+      <AnimatedPage className="page-body">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '0.75rem', color: 'var(--text-secondary)' }}>
+          <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+          Loading Instagram settings...
+        </div>
+      </AnimatedPage>
+    )
+  }
+
+  /* ─── Connected view ─────────────────────────────────────────── */
   if (existing) {
+    const isOAuth = existing.connection_method === 'oauth'
+    const displayName = existing.ig_username
+      ? `@${existing.ig_username}`
+      : existing.ig_page_id
+    const tokenExpiry = existing.token_expires_at
+      ? new Date(existing.token_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : null
+
     return (
       <AnimatedPage className="page-body">
         <SectionHeader
@@ -236,62 +248,72 @@ export default function BotInstagramSettingsTab() {
                   fontSize: '0.95rem',
                   fontWeight: 500,
                 }}>
-                  Account ID: <code style={{
-                    background: 'rgba(0,0,0,0.2)',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    fontFamily: 'monospace',
-                  }}>{existing.ig_page_id}</code> • {existing.is_active ? 'Active' : 'Paused'}
+                  {displayName && (
+                    <span style={{
+                      background: 'rgba(0,0,0,0.2)',
+                      padding: '2px 10px',
+                      borderRadius: '6px',
+                      fontFamily: existing.ig_username ? 'inherit' : 'monospace',
+                      fontWeight: 600,
+                    }}>{displayName}</span>
+                  )}
+                  {' '}&bull;{' '}
+                  {existing.is_active ? 'Active' : 'Paused'}
+                  {isOAuth && tokenExpiry && (
+                    <> &bull; Token expires {tokenExpiry}</>
+                  )}
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleTestConnection}
-              disabled={testing}
-              style={{
-                background: 'rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(10px)',
-                border: '2px solid rgba(255,255,255,0.3)',
-                borderRadius: '12px',
-                padding: '0.75rem 1.5rem',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '0.95rem',
-                cursor: testing ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                transition: 'all 0.2s',
-                opacity: testing ? 0.7 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!testing) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.3)'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              {testing ? (
-                <>
-                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  Testing...
-                </>
-              ) : (
-                <>
-                  <Zap size={18} />
-                  Test Connection
-                </>
-              )}
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleTestConnection}
+                disabled={testing}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  padding: '0.75rem 1.5rem',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  cursor: testing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  transition: 'all 0.2s',
+                  opacity: testing ? 0.7 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!testing) {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.3)'
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.2)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }}
+              >
+                {testing ? (
+                  <>
+                    <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                    Testing...
+                  </>
+                ) : (
+                  <>
+                    <Zap size={18} />
+                    Test Connection
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Test Result - Clean inline text */}
+        {/* Test Result */}
         {testResult && (
           <div style={{
             marginBottom: '1.5rem',
@@ -310,124 +332,83 @@ export default function BotInstagramSettingsTab() {
         {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
         {success && <div style={{ marginBottom: '1.5rem', color: '#833ab4', fontWeight: 600 }}>{success}</div>}
 
-        {/* Cards Grid */}
+        {/* Info + Actions */}
         <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {/* Webhook URL Card */}
           <GlassCard>
             <div className="card-title" style={{ marginBottom: '1rem' }}>
-              Webhook URL
+              Connection Details
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <code style={{
-                flex: 1,
-                padding: '0.85rem 1rem',
-                background: 'var(--ui-flow-surface)',
-                borderRadius: '10px',
-                fontSize: '0.9rem',
-                wordBreak: 'break-all',
-                border: '1.5px solid var(--ui-flow-border)',
-              }}>
-                {webhookUrl}
-              </code>
-              <UiButton
-                variant={copied ? "primary" : "secondary"}
-                onClick={copyWebhookUrl}
-                style={{ padding: '0.85rem 1.1rem' }}
-              >
-                {copied ? <Check size={18} /> : <Copy size={18} />}
-              </UiButton>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Method</span>
+                <span style={{ fontWeight: 600 }}>
+                  {isOAuth ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#833ab4' }}>
+                      <LogIn size={14} /> OAuth (automatic)
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      Manual credentials
+                    </span>
+                  )}
+                </span>
+              </div>
+              {existing.ig_username && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Account</span>
+                  <span style={{ fontWeight: 600 }}>@{existing.ig_username}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Account ID</span>
+                <code style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{existing.ig_user_id || existing.ig_page_id}</code>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Status</span>
+                <span style={{ fontWeight: 600, color: existing.is_active ? '#27ae60' : '#e74c3c' }}>
+                  {existing.is_active ? 'Active' : 'Paused'}
+                </span>
+              </div>
+              {isOAuth && tokenExpiry && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Token expires</span>
+                  <span style={{ fontWeight: 500 }}>{tokenExpiry}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Connected</span>
+                <span style={{ fontWeight: 500 }}>
+                  {new Date(existing.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
             </div>
           </GlassCard>
 
-          {/* Verify Token Card */}
+          {/* Reconnect / Disconnect */}
           <GlassCard>
-            <div className="card-title" style={{ marginBottom: '0.5rem' }}>
-              Verify Token
+            <div className="card-title" style={{ marginBottom: '1rem' }}>
+              Manage Connection
             </div>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              Copy this token and paste it into Facebook's webhook configuration.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <code style={{
-                flex: 1,
-                padding: '0.85rem 1rem',
-                background: 'var(--ui-flow-surface)',
-                borderRadius: '10px',
-                fontSize: '0.9rem',
-                wordBreak: 'break-all',
-                border: '1.5px solid var(--ui-flow-border)',
-                fontFamily: 'monospace',
-              }}>
-                {existing.verify_token}
-              </code>
+            {isOAuth && (
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                Token auto-refreshes. If you have issues, reconnect by clicking below.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {isOAuth && (
+                <UiButton variant="primary" onClick={handleConnect} disabled={connecting}>
+                  {connecting ? 'Redirecting...' : 'Reconnect'}
+                </UiButton>
+              )}
               <UiButton
-                variant={verifyTokenCopied ? "primary" : "secondary"}
-                onClick={() => {
-                  navigator.clipboard.writeText(existing.verify_token)
-                  setVerifyTokenCopied(true)
-                  setTimeout(() => setVerifyTokenCopied(false), 2000)
-                }}
-                style={{ padding: '0.85rem 1.1rem' }}
+                variant="secondary"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e74c3c', borderColor: '#e74c3c' }}
               >
-                {verifyTokenCopied ? <Check size={18} /> : <Copy size={18} />}
+                <Trash2 size={16} />
+                {disconnecting ? 'Removing...' : 'Disconnect'}
               </UiButton>
-            </div>
-          </GlassCard>
-
-          {/* Update Credentials Card */}
-          <GlassCard>
-            <div className="card-title" style={{ marginBottom: '1.25rem' }}>
-              Update Credentials
-            </div>
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              <GlassField label="Instagram Page ID">
-                <input
-                  type="text"
-                  value={igPageId}
-                  onChange={(e) => setIgPageId(e.target.value)}
-                />
-              </GlassField>
-              <GlassField label="App Secret">
-                <input
-                  type="password"
-                  value={appSecret}
-                  onChange={(e) => setAppSecret(e.target.value)}
-                  placeholder="Leave blank to keep current"
-                />
-              </GlassField>
-              <GlassField label="Page Access Token">
-                <input
-                  type="password"
-                  value={pageAccessToken}
-                  onChange={(e) => setPageAccessToken(e.target.value)}
-                  placeholder="Leave blank to keep current"
-                />
-              </GlassField>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <input
-                  type="checkbox"
-                  id="instagram-active-edit"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                />
-                <label htmlFor="instagram-active-edit" style={{ fontSize: '0.95rem', fontWeight: 500 }}>
-                  Active
-                </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <UiButton variant="primary" onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </UiButton>
-                <UiButton
-                  variant="secondary"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e74c3c', borderColor: '#e74c3c' }}
-                >
-                  <Trash2 size={16} />
-                  {deleting ? 'Removing...' : 'Disconnect'}
-                </UiButton>
-              </div>
             </div>
           </GlassCard>
         </div>
@@ -435,167 +416,178 @@ export default function BotInstagramSettingsTab() {
     )
   }
 
-  /* ─── Setup wizard (not yet connected) ─────────────────────── */
+  /* ─── Not connected - OAuth flow ─────────────────────────────── */
   return (
     <AnimatedPage className="page-body">
       <SectionHeader
         eyebrow="Integrations"
         title="Connect Instagram"
-        subtitle="Step-by-step setup for instant AI responses to Instagram DMs."
+        subtitle="Let your AI bot reply to Instagram DMs automatically."
       />
 
       {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
       {success && <div style={{ marginBottom: '1.5rem', color: '#833ab4', fontWeight: 600 }}>{success}</div>}
 
-      {/* Step Cards */}
-      <div style={{ display: 'grid', gap: '1.5rem' }}>
-        {[
-          {
-            num: 1,
-            title: 'Create or link Instagram Business Account',
-            content: (
+      <GlassCard>
+        {/* Hero section */}
+        <div style={{
+          textAlign: 'center',
+          padding: '2rem 1rem',
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem',
+            boxShadow: '0 12px 40px rgba(131, 58, 180, 0.3)',
+          }}>
+            <Instagram size={40} color="#fff" />
+          </div>
+
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: 700,
+            margin: '0 0 0.5rem 0',
+          }}>
+            Connect your Instagram account
+          </h3>
+          <p style={{
+            margin: '0 0 2rem 0',
+            color: 'var(--text-secondary)',
+            fontSize: '1rem',
+            maxWidth: '420px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            lineHeight: 1.6,
+          }}>
+            Sign in with Instagram, approve permissions, and your bot starts
+            replying to DMs instantly. No developer console needed.
+          </p>
+
+          <button
+            onClick={handleConnect}
+            disabled={connecting}
+            style={{
+              background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)',
+              border: 'none',
+              borderRadius: '14px',
+              padding: '1rem 2.5rem',
+              color: '#fff',
+              fontWeight: 700,
+              fontSize: '1.1rem',
+              cursor: connecting ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              boxShadow: '0 8px 32px rgba(131, 58, 180, 0.35)',
+              transition: 'all 0.25s',
+              opacity: connecting ? 0.75 : 1,
+              transform: connecting ? 'none' : 'translateY(0)',
+            }}
+            onMouseEnter={(e) => {
+              if (!connecting) {
+                e.currentTarget.style.transform = 'translateY(-3px)'
+                e.currentTarget.style.boxShadow = '0 12px 40px rgba(131, 58, 180, 0.5)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 8px 32px rgba(131, 58, 180, 0.35)'
+            }}
+          >
+            {connecting ? (
               <>
-                <p style={{ margin: '0 0 1rem 0' }}>You need an Instagram Business Account linked to a Facebook Page.</p>
-                <ol style={{ margin: 0, paddingLeft: '1.25rem', lineHeight: '1.8' }}>
-                  <li>
-                    Open the{' '}
-                    <a
-                      href="https://developers.facebook.com/apps"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: 'var(--ui-flow-accent)', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      Facebook Developers Console <ExternalLink size={14} />
-                    </a>
-                  </li>
-                  <li>Create a new app or select an existing one</li>
-                  <li>Add the <strong>Instagram</strong> product</li>
-                  <li>Link your Instagram Business Account to your Facebook Page</li>
-                </ol>
+                <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
+                Redirecting to Instagram...
               </>
-            ),
-          },
-          {
-            num: 2,
-            title: 'Get your credentials',
-            content: (
-              <div style={{ display: 'grid', gap: '1.25rem' }}>
-                <p style={{ margin: 0 }}>Find these values in your Facebook App settings:</p>
-                <GlassField
-                  label="Instagram Page ID"
-                  helper="found in Instagram settings"
-                >
-                  <input
-                    type="text"
-                    value={igPageId}
-                    onChange={(e) => setIgPageId(e.target.value)}
-                    placeholder="e.g. 17841400123456789"
-                  />
-                </GlassField>
-                <GlassField
-                  label="App Secret"
-                  helper="from App Dashboard"
-                >
-                  <input
-                    type="password"
-                    value={appSecret}
-                    onChange={(e) => setAppSecret(e.target.value)}
-                    placeholder="Paste your app secret"
-                  />
-                </GlassField>
-                <GlassField
-                  label="Page Access Token"
-                  helper="generate in Messenger settings"
-                >
-                  <input
-                    type="password"
-                    value={pageAccessToken}
-                    onChange={(e) => setPageAccessToken(e.target.value)}
-                    placeholder="Paste your page access token"
-                  />
-                </GlassField>
-              </div>
-            ),
-          },
-          {
-            num: 3,
-            title: 'Configure webhook',
-            content: (
+            ) : (
               <>
-                <p style={{ margin: '0 0 1rem 0' }}>
-                  In your Facebook App, go to <strong>Products → Webhooks</strong> and set up a webhook for Instagram:
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <code
-                    style={{
-                      flex: 1,
-                      padding: '0.85rem 1rem',
-                      background: 'var(--ui-flow-surface)',
-                      borderRadius: '10px',
-                      fontSize: '0.9rem',
-                      wordBreak: 'break-all',
-                      border: '1.5px solid var(--ui-flow-border)',
-                    }}
-                  >
-                    {webhookUrl}
-                  </code>
-                  <UiButton
-                    variant={copied ? "primary" : "secondary"}
-                    onClick={copyWebhookUrl}
-                    style={{ padding: '0.85rem 1.1rem' }}
-                  >
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
-                  </UiButton>
-                </div>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                  Subscribe to <strong>messages</strong> and <strong>messaging_postbacks</strong> events.
-                </p>
+                <Instagram size={22} />
+                Connect with Instagram
               </>
-            ),
-          },
-          {
-            num: 4,
-            title: 'Connect',
-            content: (
-              <>
-                <p style={{ margin: '0 0 1.25rem 0' }}>
-                  Once you've completed steps 1-3, click the button below to connect your Instagram channel.
-                </p>
-                <UiButton variant="primary" onClick={handleSave} disabled={saving} style={{ fontSize: '1rem', padding: '0.85rem 2rem' }}>
-                  {saving ? 'Connecting...' : 'Connect Instagram Channel'}
-                </UiButton>
-              </>
-            ),
-          },
-        ].map((step) => (
-          <GlassCard key={step.num}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-              <div
-                style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
+            )}
+          </button>
+        </div>
+
+        {/* How it works */}
+        <div style={{
+          borderTop: '1px solid var(--ui-flow-border)',
+          padding: '1.5rem 0 0',
+          marginTop: '0.5rem',
+        }}>
+          <div style={{
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: 'var(--text-secondary)',
+            marginBottom: '1.25rem',
+          }}>
+            How it works
+          </div>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {[
+              { num: '1', text: 'Click "Connect with Instagram" above' },
+              { num: '2', text: 'Log in with your Instagram account and approve permissions' },
+              { num: '3', text: 'Done! Your bot starts replying to DMs automatically' },
+            ].map((step) => (
+              <div key={step.num} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
                   background: 'linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.1rem',
+                  fontSize: '0.85rem',
                   fontWeight: 700,
                   color: '#fff',
                   flexShrink: 0,
-                  boxShadow: '0 4px 16px rgba(131, 58, 180, 0.3)',
-                }}
-              >
-                {step.num}
+                }}>
+                  {step.num}
+                </div>
+                <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{step.text}</span>
               </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{step.title}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* Requirements note */}
+        <div style={{
+          borderTop: '1px solid var(--ui-flow-border)',
+          padding: '1.25rem 0 0',
+          marginTop: '1.5rem',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            padding: '1rem',
+            background: 'var(--ui-flow-surface)',
+            borderRadius: '12px',
+            border: '1px solid var(--ui-flow-border)',
+          }}>
+            <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#833ab4' }} />
+            <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--text-primary)' }}>Requirements:</strong> Your Instagram account must be a{' '}
+              <strong>Professional account</strong> (Business or Creator).{' '}
+              <a
+                href="https://help.instagram.com/502981923235522"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#833ab4', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+              >
+                Learn how to switch <ExternalLink size={12} />
+              </a>
             </div>
-            <div style={{ marginLeft: '58px', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.7' }}>
-              {step.content}
-            </div>
-          </GlassCard>
-        ))}
-      </div>
+          </div>
+        </div>
+      </GlassCard>
     </AnimatedPage>
   )
 }

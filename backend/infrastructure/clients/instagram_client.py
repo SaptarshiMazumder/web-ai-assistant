@@ -6,7 +6,8 @@ Uses raw httpx calls -- no facebook-sdk dependency needed.
 import hashlib
 import hmac
 import logging
-from typing import Optional
+import os
+from typing import Optional, Tuple
 
 import httpx
 
@@ -15,6 +16,11 @@ logger = logging.getLogger(__name__)
 GRAPH_API_VERSION = "v21.0"
 GRAPH_API_BASE_FB = f"https://graph.facebook.com/{GRAPH_API_VERSION}"
 GRAPH_API_BASE_IG = f"https://graph.instagram.com/{GRAPH_API_VERSION}"
+
+# ── App-level Instagram credentials (from env) ───────────────────────
+INSTAGRAM_APP_ID = os.environ.get("INSTAGRAM_APP_ID", "").strip()
+INSTAGRAM_APP_SECRET = os.environ.get("INSTAGRAM_APP_SECRET", "").strip()
+INSTAGRAM_REDIRECT_URI = os.environ.get("INSTAGRAM_REDIRECT_URI", "").strip()
 
 
 def _api_base(access_token: str) -> str:
@@ -174,4 +180,176 @@ async def get_page_info(page_access_token: str) -> Optional[dict]:
             return resp.json()
 
     logger.warning("Instagram get_page_info failed: %s %s", resp.status_code, resp.text)
+    return None
+
+
+# ── OAuth helpers (Business Login for Instagram) ─────────────────────
+
+
+def build_instagram_auth_url(state: str) -> str:
+    """Build the Instagram OAuth authorization URL.
+
+    The user will be redirected here to grant permissions.
+    Scopes: instagram_business_basic + instagram_business_manage_messages
+    """
+    return (
+        "https://www.instagram.com/oauth/authorize"
+        f"?client_id={INSTAGRAM_APP_ID}"
+        f"&redirect_uri={INSTAGRAM_REDIRECT_URI}"
+        "&response_type=code"
+        "&scope=instagram_business_basic,instagram_business_manage_messages"
+        f"&state={state}"
+    )
+
+
+async def exchange_code_for_token(code: str) -> Tuple[str, str]:
+    """Exchange authorization code for a short-lived Instagram User access token.
+
+    Returns (access_token, ig_user_id).
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            "https://api.instagram.com/oauth/access_token",
+            data={
+                "client_id": INSTAGRAM_APP_ID,
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "grant_type": "authorization_code",
+                "redirect_uri": INSTAGRAM_REDIRECT_URI,
+                "code": code,
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("exchange_code_for_token failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"Token exchange failed: {resp.text}")
+    data = resp.json()
+    # Response may be {"data": [{"access_token": ..., "user_id": ...}]}
+    # or {"access_token": ..., "user_id": ...}
+    if "data" in data and isinstance(data["data"], list) and data["data"]:
+        entry = data["data"][0]
+    else:
+        entry = data
+    return entry["access_token"], str(entry["user_id"])
+
+
+async def exchange_for_long_lived_token(short_token: str) -> Tuple[str, int]:
+    """Exchange a short-lived token for a 60-day long-lived token.
+
+    Returns (long_lived_token, expires_in_seconds).
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            "https://graph.instagram.com/access_token",
+            params={
+                "grant_type": "ig_exchange_token",
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "access_token": short_token,
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("exchange_for_long_lived_token failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"Long-lived token exchange failed: {resp.text}")
+    data = resp.json()
+    return data["access_token"], int(data.get("expires_in", 5184000))
+
+
+async def refresh_long_lived_token(access_token: str) -> Tuple[str, int]:
+    """Refresh a long-lived token for another 60 days.
+
+    The token must be at least 24 hours old and not yet expired.
+    Returns (new_token, expires_in_seconds).
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            "https://graph.instagram.com/refresh_access_token",
+            params={
+                "grant_type": "ig_refresh_token",
+                "access_token": access_token,
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("refresh_long_lived_token failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"Token refresh failed: {resp.text}")
+    data = resp.json()
+    return data["access_token"], int(data.get("expires_in", 5184000))
+
+
+async def subscribe_webhooks(ig_user_id: str, access_token: str) -> bool:
+    """Programmatically subscribe the app to webhook events for this IG account.
+
+    Calls POST /{ig_user_id}/subscribed_apps with the user's token.
+    """
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{GRAPH_API_BASE_IG}/{ig_user_id}/subscribed_apps",
+            params={
+                "subscribed_fields": "messages,messaging_postbacks",
+                "access_token": access_token,
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("subscribe_webhooks failed: %s %s", resp.status_code, resp.text)
+        return False
+    result = resp.json()
+    ok = result.get("success", False)
+    if ok:
+        logger.info("Webhook subscription successful for ig_user_id=%s", ig_user_id)
+    else:
+        logger.warning("Webhook subscription returned success=false for ig_user_id=%s: %s", ig_user_id, result)
+    return ok
+
+
+async def get_ig_account_info(access_token: str) -> dict:
+    """Get the Instagram professional account info (username, name, etc.)."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"{GRAPH_API_BASE_IG}/me",
+            params={
+                "fields": "user_id,username,name,profile_picture_url,account_type",
+                "access_token": access_token,
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("get_ig_account_info failed: %s %s", resp.status_code, resp.text)
+        return {}
+    return resp.json()
+
+
+async def get_ig_webhook_igsid(access_token: str) -> Optional[str]:
+    """Resolve the IGSID (webhook recipient ID) for an Instagram account.
+
+    The OAuth token exchange returns an app-scoped user ID, but webhooks
+    deliver messages using a different IGSID (the older Instagram-scoped ID).
+
+    We try two strategies:
+    1. Call graph.instagram.com/me with ``id`` field — sometimes returns the IGSID
+    2. Call graph.facebook.com/me — IGAA tokens may work here too
+
+    Returns the IGSID string or None if it cannot be resolved.
+    """
+    async with httpx.AsyncClient(timeout=10) as client:
+        # Strategy 1: graph.instagram.com/me — check if 'id' differs from 'user_id'
+        resp = await client.get(
+            f"{GRAPH_API_BASE_IG}/me",
+            params={"fields": "id,user_id,username", "access_token": access_token},
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            ig_id = str(data.get("id", ""))
+            ig_user_id = str(data.get("user_id", ""))
+            if ig_id and ig_id != ig_user_id:
+                logger.info("get_ig_webhook_igsid: id=%s differs from user_id=%s (IG graph)", ig_id, ig_user_id)
+                return ig_id
+
+        # Strategy 2: graph.facebook.com/me
+        resp2 = await client.get(
+            f"{GRAPH_API_BASE_FB}/me",
+            params={"fields": "id,name", "access_token": access_token},
+        )
+        if resp2.status_code == 200:
+            fb_id = str(resp2.json().get("id", ""))
+            if fb_id:
+                logger.info("get_ig_webhook_igsid: resolved IGSID=%s via FB graph", fb_id)
+                return fb_id
+
+    logger.warning("get_ig_webhook_igsid: could not resolve IGSID")
     return None

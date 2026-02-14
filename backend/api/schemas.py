@@ -224,16 +224,44 @@ class WidgetChatResponse(BaseModel):
     session_id: Optional[str] = None
 
 
+class CustomPersona(BaseModel):
+    id: str
+    name: str
+    emoji: str = ""
+    description: str = ""
+    system_prompt: str = ""
+
+
 class AgentConfigPayload(BaseModel):
     model_id: Optional[str] = None
     instructions: Optional[str] = None
     temperature: Optional[float] = None
+    persona_id: Optional[str] = None
+    custom_personas: Optional[List[CustomPersona]] = None
 
 
 class AgentConfigResponse(BaseModel):
     model_id: Optional[str] = None
     instructions: Optional[str] = None
     temperature: Optional[float] = None
+    persona_id: Optional[str] = None
+    custom_personas: Optional[List[CustomPersona]] = None
+
+
+# ── Personas ──────────────────────────────────────────────────────────────────
+
+class PersonaItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    description: str
+    emoji: str
+    system_prompt: str
+
+
+class PersonaListResponse(BaseModel):
+    personas: List[PersonaItem] = []
+    categories: List[str] = []
 
 
 class TestChatRequest(BaseModel):
@@ -700,12 +728,21 @@ class InstagramChannelResponse(BaseModel):
     is_active: bool
     created_at: str
     updated_at: str
+    # OAuth fields
+    ig_user_id: Optional[str] = None
+    ig_username: Optional[str] = None
+    token_expires_at: Optional[str] = None
+    connection_method: str = "manual"
     # Secrets are NOT returned
 
 
 class InstagramChannelDeleteResponse(BaseModel):
     ok: bool = True
     bot_id: str
+
+
+class InstagramOAuthUrlResponse(BaseModel):
+    auth_url: str
 
 
 # ── Business Assets ─────────────────────────────────────────────────────────

@@ -82,7 +82,9 @@ from api.schemas import (
     WidgetChatRequest,
     WidgetChatResponse,
     WidgetConfigUpdate,
+    PersonaListResponse,
 )
+from domain.personas import list_personas, list_categories, get_persona, get_persona_system_prompt, get_default_persona_id
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
@@ -101,6 +103,29 @@ def _is_real_availability_summary(text: Optional[str]) -> bool:
         return False
     t = text.strip()
     return not any(t.startswith(prefix) for prefix in _AVAILABILITY_ERROR_PREFIXES)
+
+
+def _resolve_system_instruction(agent_config: dict) -> Optional[str]:
+    """Resolve system instruction: prefer explicit instructions, fallback to persona prompt."""
+    instructions = agent_config.get("instructions") if agent_config else None
+    if instructions and instructions.strip():
+        return instructions
+    default_persona_id = get_default_persona_id()
+    persona_id_raw = agent_config.get("persona_id") if agent_config else None
+    persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
+
+    # Check built-in personas first.
+    builtin = get_persona_system_prompt(persona_id)
+    if builtin:
+        return builtin
+
+    # Check custom personas stored in agent_config.
+    for cp in (agent_config.get("custom_personas") or []):
+        if cp.get("id") == persona_id and cp.get("system_prompt"):
+            return cp["system_prompt"]
+
+    # Final fallback is always the Default built-in persona.
+    return get_persona_system_prompt(default_persona_id)
 
 
 def _get_booking_url_for_chat(widget_config: Dict[str, Any]) -> Optional[str]:
@@ -649,7 +674,7 @@ async def v1_widget_chat(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = agent_config.get("instructions") if agent_config else None
+    system_instruction = _resolve_system_instruction(agent_config)
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -720,6 +745,7 @@ async def v1_widget_chat(
         temperature=temperature,
         conversation_context=conversation_context or None,
         extra_evidence=extra_evidence if extra_evidence else None,
+        bot_display_name=getattr(bot, "display_name", None),
     )
     chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
     sources = result.get("sources") or []
@@ -859,7 +885,7 @@ async def v1_widget_chat_stream(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = agent_config.get("instructions") if agent_config else None
+    system_instruction = _resolve_system_instruction(agent_config)
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -933,6 +959,7 @@ async def v1_widget_chat_stream(
                 temperature=temperature,
                 conversation_context=conversation_context or None,
                 extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
+                bot_display_name=getattr(bot, "display_name", None),
             ):
                 if evt.get("type") == "delta":
                     yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
@@ -1302,10 +1329,23 @@ async def v1_org_get_agent_config(bot_id: str, org_id: Optional[str] = None, use
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
+    custom_personas = agent_config.get("custom_personas") or []
+    raw_persona_id = str(agent_config.get("persona_id") or "").strip()
+    custom_ids = {
+        str(cp.get("id") or "").strip()
+        for cp in custom_personas
+        if isinstance(cp, dict) and cp.get("id")
+    }
+    if raw_persona_id and (get_persona_system_prompt(raw_persona_id) or raw_persona_id in custom_ids):
+        effective_persona_id = raw_persona_id
+    else:
+        effective_persona_id = get_default_persona_id()
     return AgentConfigResponse(
         model_id=agent_config.get("model_id"),
         instructions=agent_config.get("instructions"),
         temperature=agent_config.get("temperature"),
+        persona_id=effective_persona_id,
+        custom_personas=custom_personas,
     )
 
 
@@ -1325,9 +1365,99 @@ async def v1_org_update_agent_config(
     if temperature is not None and (temperature < 0 or temperature > 1):
         raise HTTPException(status_code=400, detail="temperature must be between 0 and 1")
     config_dict = payload.model_dump(exclude_none=True)
+    if not config_dict.get("persona_id"):
+        config_dict["persona_id"] = get_default_persona_id()
     config_json = json.dumps(config_dict)
     bot_service().update_agent_config(bot_id, config_json)
     return {"status": "ok", "bot_id": bot_id}
+
+
+# ── Personas ──────────────────────────────────────────────────────────────────
+
+@router.get("/v1/personas", response_model=PersonaListResponse)
+async def v1_list_personas():
+    """List all built-in personas with their categories."""
+    return PersonaListResponse(
+        personas=list_personas(),
+        categories=list_categories(),
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/generate-default-prompt")
+async def v1_generate_default_prompt(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Query the bot's RAG corpus to build a curated, business-aware default system prompt.
+    Returns the generated prompt text — caller saves it.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+
+    business_name = (bot.display_name or "").strip() or "the business"
+
+    try:
+        corpus = ensure_bot_corpus(bot.bot_id)
+        import vertexai
+        from infrastructure.clients.rag_client import retrieve_for_subquery, PROJECT_ID, RAG_LOCATION
+
+        vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
+
+        # Pull overview content from the RAG corpus
+        snippets: list[str] = []
+        for subq in [
+            f"What is {business_name}? What do they do?",
+            f"What products or services does {business_name} offer?",
+            f"About {business_name}",
+        ]:
+            try:
+                results = retrieve_for_subquery(corpus, subq, top_k=3)
+                for r in results:
+                    text = (r.get("snippet") or "").strip()
+                    if text and text not in snippets:
+                        snippets.append(text)
+                        if len(snippets) >= 6:
+                            break
+            except Exception:
+                pass
+            if len(snippets) >= 6:
+                break
+
+        # Build the curated prompt from whatever we retrieved
+        if snippets:
+            context_block = "\n\n".join(snippets[:4])
+            prompt_text = (
+                f"You are a helpful and knowledgeable AI assistant representing {business_name}. "
+                f"You speak on behalf of the business using 'we' and 'our'. "
+                f"Here is some background about the business that defines your context:\n\n"
+                f"{context_block}\n\n"
+                f"Use this context to answer visitor questions accurately and naturally. "
+                f"Be friendly, professional, and always represent {business_name} positively. "
+                f"If you don't have the answer, direct visitors to contact the business directly."
+            )
+        else:
+            # Fallback: no RAG content available yet
+            prompt_text = (
+                f"You are a helpful AI assistant for {business_name}. "
+                f"Speak on behalf of the business using 'we' and 'our'. "
+                f"Be friendly, professional, and helpful. "
+                f"If you don't have specific information, encourage visitors to contact us directly."
+            )
+    except Exception:
+        # If RAG isn't available, return a clean template
+        prompt_text = (
+            f"You are a helpful AI assistant for {business_name}. "
+            f"Speak on behalf of the business using 'we' and 'our'. "
+            f"Be friendly, professional, and helpful. "
+            f"If you don't have specific information, encourage visitors to contact us directly."
+        )
+
+    return {"prompt": prompt_text, "business_name": business_name}
 
 
 @router.get("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
@@ -1417,7 +1547,7 @@ async def v1_org_test_chat(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = agent_config.get("instructions") if agent_config else None
+    system_instruction = _resolve_system_instruction(agent_config)
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
     result = run_vertex_rag(
@@ -1428,6 +1558,7 @@ async def v1_org_test_chat(
         model_name=model_name,
         temperature=temperature,
         conversation_context=conversation_context or None,
+        bot_display_name=getattr(bot, "display_name", None),
     )
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]

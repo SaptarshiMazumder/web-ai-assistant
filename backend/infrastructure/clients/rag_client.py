@@ -763,19 +763,40 @@ GROUNDING_SUFFIX = (
 )
 
 
+def _build_universal_rules(bot_display_name: str) -> str:
+    """
+    Universal rules that are appended to EVERY system prompt, regardless of persona.
+    Enforces first-person 'we' voice and bans robotic evidence-speak.
+    """
+    name = (bot_display_name or "").strip() or "us"
+    return (
+        f"\n\nUNIVERSAL RESPONSE RULES (always follow, override any other style instructions if there is a conflict):\n"
+        f"- Always speak in first person plural on behalf of the business. "
+        f"Say 'We' or 'Our' (e.g. 'We offer...', 'Our team...', 'You can reach us at...'). "
+        f"NEVER refer to {name} in third person (e.g. NEVER say '{name} offers...' — say 'We offer...' instead).\n"
+        f"- NEVER use phrases like 'the evidence provided', 'based on the context', 'according to the documents', "
+        f"'the provided text', 'the context shows', 'from the information given'. These sound robotic and unnatural.\n"
+        f"- If you do not have enough information to answer, say: \"I don't have that information right now — "
+        f"for the most up-to-date details, please check our website or get in touch with us directly.\"\n"
+        f"- Never make up information. If something is not in the evidence, say you don't have it rather than guessing."
+    )
+
+
 def _build_grounded_prompt(
     question: str,
     evidence: List[Dict[str, str]],
     *,
     system_instruction: Optional[str] = None,
     conversation_context: Optional[str] = None,
+    bot_display_name: Optional[str] = None,
 ) -> Dict[str, str]:
+    universal = _build_universal_rules(bot_display_name or "")
     custom = (system_instruction or "").strip()
     if custom:
-        system = custom + GROUNDING_SUFFIX
+        system = custom + GROUNDING_SUFFIX + universal
         task_line = "TASK: Answer using the evidence above. Use the tone, style, and persona from your system instructions."
     else:
-        system = DEFAULT_SYSTEM
+        system = DEFAULT_SYSTEM + universal
         task_line = "TASK: Write the best possible grounded answer."
     question_section = (
         f"RECENT CONVERSATION:\n{conversation_context}\n\nQUESTION:\n{question}\n\n"
@@ -800,9 +821,11 @@ def synthesize_with_evidence(
     temperature: Optional[float] = None,
     debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
     conversation_context: Optional[str] = None,
+    bot_display_name: Optional[str] = None,
 ) -> str:
     prompt = _build_grounded_prompt(
-        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context
+        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context,
+        bot_display_name=bot_display_name,
     )
     system = prompt["system"]
     user_block = prompt["user_block"]
@@ -843,9 +866,11 @@ def synthesize_with_evidence_stream(
     temperature: Optional[float] = None,
     debug_cb: Optional[Callable[[Dict[str, Any]], None]] = None,
     conversation_context: Optional[str] = None,
+    bot_display_name: Optional[str] = None,
 ):
     prompt = _build_grounded_prompt(
-        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context
+        question, evidence, system_instruction=system_instruction, conversation_context=conversation_context,
+        bot_display_name=bot_display_name,
     )
     system = prompt["system"]
     user_block = prompt["user_block"]
@@ -890,6 +915,7 @@ def run_vertex_rag(
     temperature: Optional[float] = None,
     conversation_context: Optional[str] = None,
     extra_evidence: Optional[List[Dict[str, str]]] = None,
+    bot_display_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
@@ -1005,6 +1031,7 @@ def run_vertex_rag(
         temperature=temperature,
         debug_cb=_dbg,
         conversation_context=conversation_context,
+        bot_display_name=bot_display_name,
     )
     answer = sanitize_answer_citations(answer)
     _dbg({"type": "model_answer", "answer": answer})
@@ -1034,6 +1061,7 @@ def run_vertex_rag_stream(
     temperature: Optional[float] = None,
     conversation_context: Optional[str] = None,
     extra_evidence: Optional[List[Dict[str, str]]] = None,
+    bot_display_name: Optional[str] = None,
 ):
     """Stream deltas as they are generated, then emit a final done event with sources."""
     def _dbg(evt: Dict[str, Any]) -> None:
@@ -1139,6 +1167,7 @@ def run_vertex_rag_stream(
         temperature=temperature,
         debug_cb=_dbg,
         conversation_context=conversation_context,
+        bot_display_name=bot_display_name,
     ):
         answer_parts.append(delta)
         yield {"type": "delta", "text": delta}

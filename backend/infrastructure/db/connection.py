@@ -364,6 +364,12 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS instagram_channels_bot_id ON instagram_channels (bot_id)",
     "CREATE INDEX IF NOT EXISTS instagram_channels_ig_page_id ON instagram_channels (ig_page_id)",
+    # ── Instagram OAuth migration ──
+    "ALTER TABLE instagram_channels ADD COLUMN IF NOT EXISTS ig_user_id TEXT",
+    "ALTER TABLE instagram_channels ADD COLUMN IF NOT EXISTS ig_username TEXT",
+    "ALTER TABLE instagram_channels ADD COLUMN IF NOT EXISTS token_expires_at TEXT",
+    "ALTER TABLE instagram_channels ADD COLUMN IF NOT EXISTS connection_method TEXT DEFAULT 'manual'",
+    "CREATE INDEX IF NOT EXISTS instagram_channels_ig_user_id ON instagram_channels (ig_user_id)",
     """
     CREATE TABLE IF NOT EXISTS instagram_user_sessions (
       ig_user_id TEXT NOT NULL,

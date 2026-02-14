@@ -251,6 +251,11 @@ class InstagramChannel:
     is_active: bool
     created_at: str
     updated_at: str
+    # OAuth-flow fields (nullable for backward compat with manual setup)
+    ig_user_id: Optional[str] = None
+    ig_username: Optional[str] = None
+    token_expires_at: Optional[str] = None
+    connection_method: str = "manual"  # "manual" or "oauth"
 
 
 @dataclass

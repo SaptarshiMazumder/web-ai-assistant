@@ -3324,6 +3324,30 @@ def _new_ig_verify_token() -> str:
 class PostgresInstagramChannelRepository:
     """CRUD for Instagram channel credentials linked to a bot."""
 
+    _SELECT_COLS = """channel_id, bot_id, org_id, ig_page_id,
+                      app_secret, page_access_token, verify_token,
+                      is_active, created_at, updated_at,
+                      ig_user_id, ig_username, token_expires_at, connection_method"""
+
+    @staticmethod
+    def _row_to_entity(row) -> InstagramChannel:
+        return InstagramChannel(
+            channel_id=row[0],
+            bot_id=row[1],
+            org_id=row[2],
+            ig_page_id=row[3],
+            app_secret=row[4],
+            page_access_token=row[5],
+            verify_token=row[6],
+            is_active=bool(row[7]),
+            created_at=row[8],
+            updated_at=row[9],
+            ig_user_id=row[10] if len(row) > 10 else None,
+            ig_username=row[11] if len(row) > 11 else None,
+            token_expires_at=row[12] if len(row) > 12 else None,
+            connection_method=row[13] if len(row) > 13 else "manual",
+        )
+
     def upsert(
         self,
         *,
@@ -3390,6 +3414,96 @@ class PostgresInstagramChannelRepository:
         finally:
             con.close()
 
+    def upsert_oauth(
+        self,
+        *,
+        bot_id: str,
+        org_id: str,
+        ig_user_id: str,
+        ig_username: str,
+        access_token: str,
+        token_expires_at: str,
+        ig_webhook_id: str | None = None,
+    ) -> InstagramChannel:
+        """Create or update a channel via OAuth flow (no manual credentials).
+
+        ig_webhook_id: The IGSID used in webhook recipient.id, which may
+        differ from the app-scoped ig_user_id.  Stored in ig_page_id for
+        webhook routing lookups.
+        """
+        bid = (bot_id or "").strip()
+        oid = (org_id or "").strip()
+        if not bid or not oid:
+            raise ValueError("bot_id and org_id are required")
+        now = _utc_now()
+        cid = _new_ig_channel_id()
+        verify_token = _new_ig_verify_token()
+        # For OAuth channels the app_secret is global (from env), stored as placeholder
+        app_secret_placeholder = "__OAUTH__"
+        # ig_page_id stores the webhook IGSID if available, else the app-scoped ID
+        page_id_value = ig_webhook_id or ig_user_id
+        con = _connect()
+        try:
+            row = con.execute(
+                "SELECT channel_id, verify_token FROM instagram_channels WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            if row:
+                cid = row[0]
+                verify_token = row[1]
+                con.execute(
+                    """
+                    UPDATE instagram_channels
+                    SET ig_page_id = %s,
+                        app_secret = %s,
+                        page_access_token = %s,
+                        is_active = TRUE,
+                        updated_at = %s,
+                        ig_user_id = %s,
+                        ig_username = %s,
+                        token_expires_at = %s,
+                        connection_method = 'oauth'
+                    WHERE bot_id = %s
+                    """,
+                    (page_id_value, app_secret_placeholder, access_token, now,
+                     ig_user_id, ig_username, token_expires_at, bid),
+                )
+            else:
+                con.execute(
+                    """
+                    INSERT INTO instagram_channels(
+                      channel_id, bot_id, org_id, ig_page_id,
+                      app_secret, page_access_token, verify_token,
+                      is_active, created_at, updated_at,
+                      ig_user_id, ig_username, token_expires_at, connection_method
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, 'oauth')
+                    """,
+                    (cid, bid, oid, page_id_value,
+                     app_secret_placeholder, access_token, verify_token,
+                     now, now,
+                     ig_user_id, ig_username, token_expires_at),
+                )
+            con.commit()
+            return InstagramChannel(
+                channel_id=cid,
+                bot_id=bid,
+                org_id=oid,
+                ig_page_id=ig_user_id,
+                app_secret=app_secret_placeholder,
+                page_access_token=access_token,
+                verify_token=verify_token,
+                is_active=True,
+                created_at=now,
+                updated_at=now,
+                ig_user_id=ig_user_id,
+                ig_username=ig_username,
+                token_expires_at=token_expires_at,
+                connection_method="oauth",
+            )
+        finally:
+            con.close()
+
     def get_by_bot_id(self, bot_id: str) -> Optional[InstagramChannel]:
         bid = (bot_id or "").strip()
         if not bid:
@@ -3397,29 +3511,12 @@ class PostgresInstagramChannelRepository:
         con = _connect()
         try:
             row = con.execute(
-                """
-                SELECT channel_id, bot_id, org_id, ig_page_id,
-                       app_secret, page_access_token, verify_token,
-                       is_active, created_at, updated_at
-                FROM instagram_channels
-                WHERE bot_id = %s
-                """,
+                f"SELECT {self._SELECT_COLS} FROM instagram_channels WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
             if not row:
                 return None
-            return InstagramChannel(
-                channel_id=row[0],
-                bot_id=row[1],
-                org_id=row[2],
-                ig_page_id=row[3],
-                app_secret=row[4],
-                page_access_token=row[5],
-                verify_token=row[6],
-                is_active=bool(row[7]),
-                created_at=row[8],
-                updated_at=row[9],
-            )
+            return self._row_to_entity(row)
         finally:
             con.close()
 
@@ -3430,29 +3527,140 @@ class PostgresInstagramChannelRepository:
         con = _connect()
         try:
             row = con.execute(
-                """
-                SELECT channel_id, bot_id, org_id, ig_page_id,
-                       app_secret, page_access_token, verify_token,
-                       is_active, created_at, updated_at
-                FROM instagram_channels
-                WHERE ig_page_id = %s
-                """,
+                f"SELECT {self._SELECT_COLS} FROM instagram_channels WHERE ig_page_id = %s",
                 (pid,),
             ).fetchone()
             if not row:
                 return None
-            return InstagramChannel(
-                channel_id=row[0],
-                bot_id=row[1],
-                org_id=row[2],
-                ig_page_id=row[3],
-                app_secret=row[4],
-                page_access_token=row[5],
-                verify_token=row[6],
-                is_active=bool(row[7]),
-                created_at=row[8],
-                updated_at=row[9],
+            return self._row_to_entity(row)
+        finally:
+            con.close()
+
+    def get_by_ig_user_id(self, ig_user_id: str) -> Optional[InstagramChannel]:
+        """Look up channel by Instagram-scoped user ID (for OAuth webhook routing)."""
+        uid = (ig_user_id or "").strip()
+        if not uid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                f"SELECT {self._SELECT_COLS} FROM instagram_channels WHERE ig_user_id = %s",
+                (uid,),
+            ).fetchone()
+            if not row:
+                return None
+            return self._row_to_entity(row)
+        finally:
+            con.close()
+
+    def resolve_by_webhook_id(self, webhook_recipient_id: str) -> Optional[InstagramChannel]:
+        """Try to match a webhook recipient ID to an OAuth channel.
+
+        Instagram webhooks may send an IGSID that differs from the app-scoped
+        user ID stored during OAuth.  This uses each channel's IGAA token to
+        query the webhook recipient ID on graph.instagram.com.  If the token
+        can read that ID, it means the channel owns it.  When a match is found,
+        ``ig_page_id`` is updated so future lookups are instant.
+        """
+        import httpx
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        wid = (webhook_recipient_id or "").strip()
+        if not wid:
+            return None
+        con = _connect()
+        try:
+            rows = con.execute(
+                f"SELECT {self._SELECT_COLS} FROM instagram_channels "
+                "WHERE connection_method = 'oauth' AND is_active = TRUE",
+            ).fetchall()
+        finally:
+            con.close()
+
+        if not rows:
+            return None
+
+        for row in rows:
+            ch = self._row_to_entity(row)
+            token = ch.page_access_token
+            if not token:
+                continue
+            try:
+                # Use the IGAA token to query the webhook recipient ID
+                # on graph.instagram.com.  If this token owns that account,
+                # the API will return data successfully.
+                with httpx.Client(timeout=8) as client:
+                    resp = client.get(
+                        f"https://graph.instagram.com/v21.0/{wid}",
+                        params={"fields": "username", "access_token": token},
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    _logger.info(
+                        "resolve_by_webhook_id: matched IGSID %s -> @%s (bot %s)",
+                        wid, data.get("username", "?"), ch.bot_id,
+                    )
+                    self._update_page_id(ch.bot_id, wid)
+                    ch = InstagramChannel(
+                        channel_id=ch.channel_id, bot_id=ch.bot_id,
+                        org_id=ch.org_id, ig_page_id=wid,
+                        app_secret=ch.app_secret,
+                        page_access_token=ch.page_access_token,
+                        verify_token=ch.verify_token, is_active=ch.is_active,
+                        created_at=ch.created_at, updated_at=ch.updated_at,
+                        ig_user_id=ch.ig_user_id, ig_username=ch.ig_username,
+                        token_expires_at=ch.token_expires_at,
+                        connection_method=ch.connection_method,
+                    )
+                    return ch
+                else:
+                    _logger.debug("resolve_by_webhook_id: %s returned %s for bot %s", wid, resp.status_code, ch.bot_id)
+            except Exception as exc:
+                _logger.warning("resolve_by_webhook_id: error checking bot %s: %s", ch.bot_id, exc)
+                continue
+        return None
+
+    def _update_page_id(self, bot_id: str, new_page_id: str) -> None:
+        """Update ig_page_id for a channel (self-healing webhook ID mapping)."""
+        con = _connect()
+        try:
+            con.execute(
+                "UPDATE instagram_channels SET ig_page_id = %s, updated_at = %s WHERE bot_id = %s",
+                (new_page_id, _utc_now(), bot_id),
             )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_channels_expiring_soon(self, days: int = 7) -> list:
+        """Return OAuth channels whose token expires within `days` days."""
+        from datetime import datetime, timedelta, timezone
+        cutoff = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
+        con = _connect()
+        try:
+            rows = con.execute(
+                f"""SELECT {self._SELECT_COLS} FROM instagram_channels
+                    WHERE connection_method = 'oauth'
+                      AND token_expires_at IS NOT NULL
+                      AND token_expires_at <= %s
+                      AND is_active = TRUE""",
+                (cutoff,),
+            ).fetchall()
+            return [self._row_to_entity(r) for r in rows]
+        finally:
+            con.close()
+
+    def update_token(self, channel_id: str, *, access_token: str, token_expires_at: str) -> None:
+        """Update the access token and expiration (used by token refresh job)."""
+        con = _connect()
+        try:
+            con.execute(
+                """UPDATE instagram_channels
+                   SET page_access_token = %s, token_expires_at = %s, updated_at = %s
+                   WHERE channel_id = %s""",
+                (access_token, token_expires_at, _utc_now(), channel_id),
+            )
+            con.commit()
         finally:
             con.close()
 

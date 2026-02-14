@@ -1,8 +1,10 @@
 """Instagram Messaging API webhook handler and Instagram channel config CRUD.
 
 Endpoints:
-  GET  /webhooks/instagram/{bot_id}               -- Meta verification handshake
-  POST /webhooks/instagram/{bot_id}               -- Receive DMs (public, signature-verified)
+  GET  /webhooks/instagram/{bot_id}               -- Meta verification handshake (legacy per-bot)
+  POST /webhooks/instagram/{bot_id}               -- Receive DMs (legacy per-bot, signature-verified)
+  GET  /webhooks/instagram                        -- Meta verification handshake (global, for OAuth)
+  POST /webhooks/instagram                        -- Receive DMs (global, routes by recipient.id)
   GET  /v1/org/bots/{bot_id}/instagram-channel    -- Get config (authenticated)
   PUT  /v1/org/bots/{bot_id}/instagram-channel    -- Create/update config (authenticated)
   DELETE /v1/org/bots/{bot_id}/instagram-channel   -- Remove integration (authenticated)
@@ -11,6 +13,7 @@ Endpoints:
 
 import json
 import logging
+import os
 import time
 from typing import Any, Dict, Optional
 
@@ -26,6 +29,7 @@ from api.schemas import (
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from common.di.container import bot_service, conversation_service
 from infrastructure.clients.instagram_client import (
+    INSTAGRAM_APP_SECRET,
     verify_signature,
     send_message,
     send_image,
@@ -44,6 +48,9 @@ router = APIRouter()
 
 _ig_channel_repo = PostgresInstagramChannelRepository()
 _ig_user_session_repo = PostgresInstagramUserSessionRepository()
+
+# Global webhook verify token (set in Meta App Dashboard, stored in env)
+_GLOBAL_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN", "").strip()
 
 # ── Rate limiting ─────────────────────────────────────────────────────
 
@@ -125,7 +132,115 @@ def _assert_bot_org(bot_id: str, org_id: str) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════
-# Meta Webhook Verification (GET)
+# Global Webhook (for OAuth-connected channels)
+# ══════════════════════════════════════════════════════════════════════
+
+
+@router.get("/webhooks/instagram")
+async def instagram_webhook_verify_global(request: Request):
+    """Handle Meta's webhook verification challenge for the global (OAuth) endpoint."""
+    mode = request.query_params.get("hub.mode", "")
+    token = request.query_params.get("hub.verify_token", "")
+    challenge = request.query_params.get("hub.challenge", "")
+
+    if mode != "subscribe":
+        raise HTTPException(status_code=403, detail="Invalid hub.mode")
+
+    if not _GLOBAL_WEBHOOK_VERIFY_TOKEN:
+        raise HTTPException(status_code=500, detail="Global webhook verify token not configured")
+
+    if token != _GLOBAL_WEBHOOK_VERIFY_TOKEN:
+        raise HTTPException(status_code=403, detail="Verify token mismatch")
+
+    logger.info("Instagram global webhook verified")
+    return PlainTextResponse(content=challenge)
+
+
+@router.post("/webhooks/instagram")
+async def instagram_webhook_global(request: Request):
+    """Receive Instagram DM webhooks and route to the correct bot by recipient.id.
+
+    This is the global endpoint used by OAuth-connected channels.
+    Meta sends events here for all channels connected via our app.
+    """
+    body = await request.body()
+    signature = request.headers.get("x-hub-signature-256", "")
+
+    # Verify with our app secret (global, not per-client)
+    if not signature:
+        logger.warning("Instagram global webhook: No X-Hub-Signature-256 header")
+        raise HTTPException(status_code=403, detail="Missing signature header")
+
+    app_secret = INSTAGRAM_APP_SECRET
+    if not app_secret:
+        raise HTTPException(status_code=500, detail="Instagram app secret not configured")
+
+    if not verify_signature(body, signature, app_secret):
+        logger.warning("Instagram global webhook: Signature mismatch")
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    entries = payload.get("entry", [])
+    for entry in entries:
+        messaging_events = entry.get("messaging", [])
+        for event in messaging_events:
+            message = event.get("message", {})
+            text = (message.get("text") or "").strip()
+            if not text:
+                continue
+            if message.get("is_echo"):
+                continue
+
+            sender = event.get("sender", {})
+            ig_sender_id = str(sender.get("id", ""))
+            if not ig_sender_id:
+                continue
+
+            # The recipient is the IG professional account that received the DM
+            recipient = event.get("recipient", {})
+            ig_recipient_id = str(recipient.get("id", ""))
+            if not ig_recipient_id:
+                continue
+
+            # Look up which bot owns this IG account
+            channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id)
+            if not channel:
+                # Fallback: try ig_page_id (covers both OAuth and manual)
+                channel = _ig_channel_repo.get_by_page_id(ig_recipient_id)
+            if not channel:
+                # Last resort: the webhook IGSID may differ from the stored
+                # app-scoped ID.  Try all active OAuth channels and resolve.
+                channel = _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
+            if not channel or not channel.is_active:
+                logger.warning("Instagram global webhook: no active channel for recipient %s", ig_recipient_id)
+                continue
+
+            # For OAuth channels, use the global app secret for signature verification
+            # (already verified above), but use the channel's token for sending
+            bot = bot_service().get_bot_record(channel.bot_id)
+            if not bot:
+                logger.warning("Instagram global webhook: unknown bot_id %s", channel.bot_id)
+                continue
+
+            _rate_limit(channel.bot_id)
+
+            await _handle_text_message(
+                bot=bot,
+                channel=channel,
+                ig_user_id=ig_sender_id,
+                text=text,
+                request=request,
+            )
+
+    return {"ok": True}
+
+
+# ══════════════════════════════════════════════════════════════════════
+# Legacy Per-Bot Webhook (for manually-configured channels)
 # ══════════════════════════════════════════════════════════════════════
 
 
@@ -170,13 +285,17 @@ async def instagram_webhook(bot_id: str, request: Request):
     # 2. Read raw body and verify signature
     body = await request.body()
     signature = request.headers.get("x-hub-signature-256", "")
-    logger.info("Instagram webhook: signature=%s, body_len=%d, app_secret_prefix=%s",
+    # For OAuth channels, use the global app secret; for manual channels, use per-channel secret
+    effective_secret = (
+        INSTAGRAM_APP_SECRET if channel.connection_method == "oauth" else channel.app_secret
+    )
+    logger.info("Instagram webhook: signature=%s, body_len=%d, method=%s",
                 signature[:20] if signature else "NONE", len(body),
-                channel.app_secret[:4] + "..." if channel.app_secret else "NONE")
+                channel.connection_method or "manual")
     if not signature:
         logger.warning("Instagram webhook: No X-Hub-Signature-256 header present")
         raise HTTPException(status_code=403, detail="Missing signature header")
-    if not verify_signature(body, signature, channel.app_secret):
+    if not verify_signature(body, signature, effective_secret):
         logger.warning("Instagram webhook: Signature mismatch")
         raise HTTPException(status_code=403, detail="Invalid signature")
 
@@ -436,6 +555,10 @@ async def v1_org_get_instagram_channel(
         is_active=channel.is_active,
         created_at=channel.created_at,
         updated_at=channel.updated_at,
+        ig_user_id=channel.ig_user_id,
+        ig_username=channel.ig_username,
+        token_expires_at=channel.token_expires_at,
+        connection_method=channel.connection_method,
     )
 
 
@@ -481,6 +604,10 @@ async def v1_org_upsert_instagram_channel(
         is_active=channel.is_active,
         created_at=channel.created_at,
         updated_at=channel.updated_at,
+        ig_user_id=channel.ig_user_id,
+        ig_username=channel.ig_username,
+        token_expires_at=channel.token_expires_at,
+        connection_method=channel.connection_method,
     )
 
 
