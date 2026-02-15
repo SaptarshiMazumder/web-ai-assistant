@@ -498,7 +498,12 @@ async def _handle_text_message(
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
             # Match business assets after answer generation
-            answer, asset_cards = process_answer_assets(answer, bot.bot_id, user_query=text)
+            answer, asset_cards = process_answer_assets(
+                answer,
+                bot.bot_id,
+                user_query=text,
+                session_id=session.session_id,
+            )
     except Exception:
         logger.exception("RAG error for Instagram message bot_id=%s", bot.bot_id)
         answer = "I'm sorry, something went wrong. Please try again in a moment."

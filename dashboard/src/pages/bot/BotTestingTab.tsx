@@ -447,7 +447,7 @@ export default function BotTestingTab() {
                 <label className="testing-label">Instructions (Prompt)</label>
                 {personaId && personas.find((p) => p.id === personaId) && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--ui-flow-accent, #e4587a)', fontWeight: 500 }}>
-                    📋 Based on {personas.find((p) => p.id === personaId)?.name}
+                    Based on {personas.find((p) => p.id === personaId)?.name}
                   </span>
                 )}
               </div>

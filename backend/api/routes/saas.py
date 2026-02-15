@@ -788,7 +788,12 @@ async def v1_widget_chat(
     answer = str(result.get("answer") or "")
 
     # Match business assets after answer generation
-    answer, asset_cards = process_answer_assets(answer, bot.bot_id, user_query=msg)
+    answer, asset_cards = process_answer_assets(
+        answer,
+        bot.bot_id,
+        user_query=msg,
+        session_id=session.session_id,
+    )
     assets = [AssetCard(**c) for c in asset_cards]
 
     conversation_service().add_message(
@@ -999,7 +1004,12 @@ async def v1_widget_chat_stream(
                     else:
                         answer = str(evt.get("answer") or "")
                         # Match business assets after answer generation
-                        answer, asset_cards_stream = process_answer_assets(answer, bot.bot_id, user_query=msg)
+                        answer, asset_cards_stream = process_answer_assets(
+                            answer,
+                            bot.bot_id,
+                            user_query=msg,
+                            session_id=session.session_id,
+                        )
                         chat_debug_emit(
                             {
                                 "type": "chat_response",

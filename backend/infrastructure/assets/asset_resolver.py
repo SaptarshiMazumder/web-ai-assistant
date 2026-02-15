@@ -8,18 +8,25 @@ Design:
 """
 
 import logging
+import os
 import re
 from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
+from common.config import config
 from domain.entities import BotAsset
 from infrastructure.db.repositories import PostgresBotAssetRepository
+from redis import Redis
 
 logger = logging.getLogger(__name__)
 
 _ASSET_MARKER_RE = re.compile(r"\{\{asset:([a-zA-Z0-9_]+)\}\}")
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
-_MAX_ASSET_CARDS_PER_ANSWER = 3
+_MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "2")), 5))
+_ASSET_SESSION_DEDUPE_TTL_SECONDS = max(
+    300,
+    min(int(os.environ.get("ASSET_SESSION_DEDUPE_TTL_SECONDS", "43200")), 604800),
+)
 _SPECIAL_SHORT_TOKENS = {"xl", "xxl", "xs"}
 _GENERIC_TOKENS = {
     "about",
@@ -74,6 +81,7 @@ _QUALIFIER_GROUPS = (
 )
 
 _repo: Optional[PostgresBotAssetRepository] = None
+_redis: Optional[Redis] = None
 
 
 def _get_repo() -> PostgresBotAssetRepository:
@@ -83,6 +91,17 @@ def _get_repo() -> PostgresBotAssetRepository:
     return _repo
 
 
+def _get_redis() -> Optional[Redis]:
+    global _redis
+    if _redis is not None:
+        return _redis
+    try:
+        _redis = Redis.from_url(config.CELERY_BROKER_URL, decode_responses=True)
+    except Exception:
+        _redis = None
+    return _redis
+
+
 def _asset_to_card(asset: BotAsset) -> Dict[str, str]:
     return {
         "asset_id": asset.asset_id,
@@ -90,6 +109,27 @@ def _asset_to_card(asset: BotAsset) -> Dict[str, str]:
         "image_url": asset.image_public_url,
         "link_url": asset.link_url or "",
     }
+
+
+def _asset_session_key(bot_id: str, session_id: str) -> str:
+    return f"webai:asset_cards:sent:{bot_id}:{session_id}"
+
+
+def _asset_session_image_key(bot_id: str, session_id: str) -> str:
+    return f"webai:asset_cards:sent_images:{bot_id}:{session_id}"
+
+
+def _normalize_card_image_url(url: str) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return ""
+    # Keep host/path only so query-string variations do not bypass dedupe.
+    lowered = raw.lower()
+    cut = min(
+        (idx for idx in (lowered.find("?"), lowered.find("#")) if idx >= 0),
+        default=len(raw),
+    )
+    return lowered[:cut]
 
 
 def _normalize_text(text: str) -> str:
@@ -240,8 +280,15 @@ def _match_assets_from_answer(
     # Stable deterministic ordering by score desc then asset_id asc.
     scored.sort(key=lambda it: (-it[0], it[1]))
     out: List[Dict[str, str]] = []
+    seen_image_urls: Set[str] = set()
     for _, _, a in scored:
-        out.append(_asset_to_card(a))
+        card = _asset_to_card(a)
+        image_key = _normalize_card_image_url(card.get("image_url", ""))
+        if image_key and image_key in seen_image_urls:
+            continue
+        if image_key:
+            seen_image_urls.add(image_key)
+        out.append(card)
         if len(out) >= max_cards:
             break
     return out
@@ -290,6 +337,7 @@ def process_answer_assets(
     answer: str,
     bot_id: str,
     user_query: Optional[str] = None,
+    session_id: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
     Match assets after answer generation.
@@ -301,5 +349,38 @@ def process_answer_assets(
     if not assets:
         return cleaned, []
     cards = _match_assets_from_answer(cleaned, assets, max_cards=_MAX_ASSET_CARDS_PER_ANSWER)
-    return cleaned, cards
 
+    sid = (session_id or "").strip()
+    if sid and cards:
+        r = _get_redis()
+        if r is not None:
+            key = _asset_session_key(bot_id, sid)
+            image_key = _asset_session_image_key(bot_id, sid)
+            filtered: List[Dict[str, str]] = []
+            for card in cards:
+                aid = (card.get("asset_id") or "").strip()
+                if not aid:
+                    continue
+                img = _normalize_card_image_url(card.get("image_url", ""))
+                try:
+                    already_sent = bool(r.sismember(key, aid)) or (bool(img) and bool(r.sismember(image_key, img)))
+                except Exception:
+                    already_sent = False
+                if already_sent:
+                    continue
+                filtered.append(card)
+            cards = filtered
+            if cards:
+                try:
+                    asset_ids = [(c.get("asset_id") or "").strip() for c in cards if (c.get("asset_id") or "").strip()]
+                    image_urls = [_normalize_card_image_url(c.get("image_url", "")) for c in cards]
+                    image_urls = [u for u in image_urls if u]
+                    if asset_ids:
+                        r.sadd(key, *asset_ids)
+                    if image_urls:
+                        r.sadd(image_key, *image_urls)
+                    r.expire(key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
+                    r.expire(image_key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
+                except Exception:
+                    pass
+    return cleaned, cards
