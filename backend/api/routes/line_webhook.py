@@ -130,8 +130,12 @@ async def line_webhook(bot_id: str, request: Request):
     """Receive and handle LINE webhook events."""
     # 1. Load LINE channel config
     channel = _line_channel_repo.get_by_bot_id(bot_id)
-    if not channel or not channel.is_active:
-        raise HTTPException(status_code=404, detail="LINE channel not configured or inactive")
+    if not channel:
+        logger.warning("LINE webhook 404: no channel for bot_id=%s", bot_id)
+        raise HTTPException(status_code=404, detail="LINE channel not configured for this bot")
+    if not channel.is_active:
+        logger.warning("LINE webhook 404: channel inactive for bot_id=%s", bot_id)
+        raise HTTPException(status_code=404, detail="LINE channel is inactive")
 
     # 2. Read raw body and verify signature
     body = await request.body()
@@ -379,6 +383,11 @@ async def _handle_text_message(
         img = card.get("image_url", "")
         if img and not img.startswith("http"):
             card["image_url"] = f"{base}{img}"
+
+    # Debug logging
+    logger.info(f"LINE bot_id={bot.bot_id} asset_cards count: {len(asset_cards)}")
+    if asset_cards:
+        logger.info(f"LINE bot_id={bot.bot_id} asset_cards: {asset_cards}")
 
     # LINE has a 5000 char limit per message; split if needed
     if len(answer) > 5000:

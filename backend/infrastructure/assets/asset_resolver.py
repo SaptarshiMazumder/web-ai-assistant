@@ -390,8 +390,10 @@ def _asset_answer_score(
 
     # Require strong evidence from answer text.
     if not (url_hit or name_phrase or keyword_phrase or overlap_count >= 2):
+        # logger.debug(f"Asset mismatch {asset.asset_id}: url={url_hit} name={name_phrase} kw={keyword_phrase} overlap={overlap_count}")
         return 0
 
+    # logger.debug(f"Asset match {asset.asset_id}: score={score} (url={url_hit} name={name_phrase} kw={keyword_phrase} overlap={overlap_count})")
     return score
 
 

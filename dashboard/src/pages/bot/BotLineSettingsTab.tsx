@@ -26,8 +26,8 @@ const LINE_GRADIENT = 'linear-gradient(135deg, #06c755 0%, #00b140 100%)'
 const CARD_STEP_LABELS = [
   'Enable API',
   'Auto-reply',
-  'Webhook',
   'Credentials',
+  'Webhook',
   'Connect',
 ]
 
@@ -228,14 +228,45 @@ export default function BotLineSettingsTab() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function handleNext() {
+    if (currentStep === 3 && canAdvance()) {
+      setSaving(true)
+      setError(null)
+      setSuccess(null)
+      try {
+        const body: Record<string, unknown> = {
+          line_channel_id: lineChannelId.trim(),
+          line_channel_secret: lineChannelSecret.trim(),
+          line_channel_access_token: lineAccessToken.trim(),
+          is_active: true,
+        }
+        const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel`, {
+          method: 'PUT',
+          body: JSON.stringify(body),
+        })
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}))
+          throw new Error((data as { detail?: string }).detail || resp.statusText)
+        }
+        setCurrentStep(4)
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+    setCurrentStep(currentStep + 1)
+  }
+
   // Can the user advance to the next step?
   function canAdvance(): boolean {
     switch (currentStep) {
       case 0: return true // just informational
       case 1: return apiEnabled
       case 2: return autoReplyOff
-      case 3: return webhookSet
-      case 4: return !!lineChannelId.trim() && !!lineChannelSecret.trim() && !!lineAccessToken.trim()
+      case 3: return !!lineChannelId.trim() && !!lineChannelSecret.trim() && !!lineAccessToken.trim()
+      case 4: return webhookSet
       default: return false
     }
   }
@@ -500,9 +531,9 @@ export default function BotLineSettingsTab() {
                 {[
                   ['1', 'Enable Messaging API (manager.line.biz)'],
                   ['2', 'Turn off Auto-reply (manager.line.biz)'],
-                  ['3', 'Set your bot\'s address in Developers Console'],
-                  ['4', 'Copy 3 codes (same place — Developers Console)'],
-                  ['5', 'Click "Connect" and you\'re done!'],
+                  ['3', 'Copy 3 codes (Developers Console)'],
+                  ['4', 'Set your bot\'s address — webhook (LINE will verify)'],
+                  ['5', 'Click "Activate" and you\'re done!'],
                 ].map(([num, desc]) => (
                   <div key={num} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
                     <div style={{
@@ -665,7 +696,7 @@ export default function BotLineSettingsTab() {
           </div>
         )}
 
-        {/* ── Step 3: Set Webhook URL (Developers Console) ───────── */}
+        {/* ── Step 3: Copy Credentials (must save before webhook verify) ─ */}
         {currentStep === 3 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -675,16 +706,99 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>3</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Set your bot's address (Webhook URL)</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Copy the 3 codes</h3>
             </div>
 
-            <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              Open{' '}
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              Go to{' '}
               <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer"
                 style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                 developers.line.biz/console <ExternalLink size={13} />
               </a>
-              {' '}→ click your <strong>Provider</strong> → your <strong>channel</strong> → the <strong>"Messaging API"</strong> tab. Then:
+              {' '}and do the following:
+            </p>
+
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem 1.25rem',
+              background: 'var(--ui-flow-surface)',
+              borderRadius: '12px',
+              border: '1px solid var(--ui-flow-border)',
+              fontSize: '0.92rem',
+              lineHeight: 1.7,
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>A. Select or create a Provider</div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                In the left panel, you'll see a list of <strong>Providers</strong> (like folders for organizing your apps). Click your existing Provider, or click <strong>"Create"</strong> to make a new one (you can name it after your company).
+              </div>
+            </div>
+
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem 1.25rem',
+              background: 'var(--ui-flow-surface)',
+              borderRadius: '12px',
+              border: '1px solid var(--ui-flow-border)',
+              fontSize: '0.92rem',
+              lineHeight: 1.7,
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>B. Select your Messaging API channel</div>
+              <div style={{ color: 'var(--text-secondary)' }}>
+                Under your Provider, you'll see your <strong>Messaging API channel</strong> — this is the one you created in Step 1 when you enabled the Messaging API. Click on it to open its settings.
+              </div>
+            </div>
+
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
+              C. Copy these 3 values from the channel page and paste them below:
+            </p>
+
+            <div style={{ display: 'grid', gap: '1.25rem', marginBottom: '0.5rem' }}>
+              <GlassField
+                label="1. Channel ID"
+                helper='Click the "Basic settings" tab at the top → find "Channel ID" (a number like 2009138911) near the top → copy it'
+              >
+                <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} placeholder="Paste Channel ID" />
+              </GlassField>
+              <GlassField
+                label="2. Channel Secret"
+                helper='Stay on the "Basic settings" tab → scroll down to "Channel secret" → click the copy button next to it'
+              >
+                <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder="Paste Channel Secret" />
+              </GlassField>
+              <GlassField
+                label="3. Access Token"
+                helper='Click the "Messaging API" tab at the top → scroll to "Channel access token (long-lived)" → if empty, click "Issue" first → then copy the token'
+              >
+                <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder="Paste Access Token" />
+              </GlassField>
+            </div>
+
+            <p style={{ margin: '1rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              We save these when you click Next — that way LINE's webhook verification will work in the next step.
+            </p>
+          </div>
+        )}
+
+        {/* ── Step 4: Set Webhook URL (channel must exist for LINE verify) ─ */}
+        {currentStep === 4 && (
+          <div style={{ padding: '1.5rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: LINE_GRADIENT,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
+              }}>4</div>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Set your bot's address (Webhook URL)</h3>
+            </div>
+
+            <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              In{' '}
+              <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer"
+                style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                developers.line.biz/console <ExternalLink size={13} />
+              </a>
+              {' '}→ your channel → <strong>"Messaging API"</strong> tab:
             </p>
 
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
@@ -705,7 +819,7 @@ export default function BotLineSettingsTab() {
             </div>
 
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
-              2. In the Console: paste it into <strong>Webhook URL</strong> → click <strong>Update</strong> → turn <strong>Use webhook</strong> ON → click <strong>Verify</strong>.
+              2. Paste into <strong>Webhook URL</strong> → <strong>Update</strong> → turn <strong>Use webhook</strong> ON → <strong>Verify</strong>.
             </p>
 
             <label style={{
@@ -716,48 +830,8 @@ export default function BotLineSettingsTab() {
               marginTop: '1rem',
             }}>
               <input type="checkbox" checked={webhookSet} onChange={(e) => setWebhookSet(e.target.checked)} />
-              ✓ Done — webhook set and Verify passed
+              ✓ Webhook set and Verify passed
             </label>
-          </div>
-        )}
-
-        {/* ── Step 4: Copy Credentials (same place — Console) ───── */}
-        {currentStep === 4 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <div style={{
-                width: '42px', height: '42px', borderRadius: '12px',
-                background: LINE_GRADIENT,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-              }}>4</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Copy the 3 codes</h3>
-            </div>
-
-            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              From the same channel page in the Console, copy these 3 values and paste them below:
-            </p>
-
-            <div style={{ display: 'grid', gap: '1.25rem', marginBottom: '0.5rem' }}>
-              <GlassField
-                label="Channel ID"
-                helper='"Basic settings" tab → copy the Channel ID (number like 2345678901)'
-              >
-                <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} placeholder="Paste here" />
-              </GlassField>
-              <GlassField
-                label="Channel Secret"
-                helper='"Basic settings" tab → scroll down → copy Channel secret'
-              >
-                <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder="Paste here" />
-              </GlassField>
-              <GlassField
-                label="Access Token"
-                helper='"Messaging API" tab → Channel access token → Issue if needed → copy'
-              >
-                <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder="Paste here" />
-              </GlassField>
-            </div>
           </div>
         )}
 
@@ -832,20 +906,24 @@ export default function BotLineSettingsTab() {
             </button>
 
             <button
-              onClick={() => setCurrentStep(currentStep + 1)}
-              disabled={!canAdvance()}
+              onClick={handleNext}
+              disabled={!canAdvance() || saving}
               style={{
-                background: canAdvance() ? LINE_GRADIENT : 'var(--ui-flow-border)',
+                background: canAdvance() && !saving ? LINE_GRADIENT : 'var(--ui-flow-border)',
                 border: 'none', borderRadius: '10px',
                 padding: '0.65rem 1.5rem', color: '#fff',
                 fontWeight: 600, fontSize: '0.95rem',
-                cursor: canAdvance() ? 'pointer' : 'not-allowed',
+                cursor: canAdvance() && !saving ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', gap: '0.4rem',
                 transition: 'all 0.2s',
-                opacity: canAdvance() ? 1 : 0.5,
+                opacity: canAdvance() && !saving ? 1 : 0.5,
               }}
             >
-              Next <ChevronRight size={18} />
+              {currentStep === 3 && saving ? (
+                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Saving...</>
+              ) : (
+                <>Next <ChevronRight size={18} /></>
+              )}
             </button>
           </div>
         )}

@@ -92,14 +92,17 @@ async def reply_message(
     # Append asset flex cards (up to remaining slots; LINE allows max 5 per reply)
     if asset_cards:
         remaining = 5 - len(messages)
+        logger.info(f"LINE reply_message: adding {len(asset_cards[:remaining])} asset cards")
         for card in asset_cards[:remaining]:
-            messages.append(
-                _flex_image_card(
-                    card.get("name", ""),
-                    card.get("image_url", ""),
-                    card.get("link_url") or None,
-                )
+            flex_card = _flex_image_card(
+                card.get("name", ""),
+                card.get("image_url", ""),
+                card.get("link_url") or None,
             )
+            logger.info(f"LINE flex card: {flex_card}")
+            messages.append(flex_card)
+    
+    logger.info(f"LINE reply_message: sending {len(messages)} total messages")
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/reply",
@@ -110,6 +113,7 @@ async def reply_message(
         logger.error("LINE reply_message failed: %s %s", resp.status_code, resp.text)
         return False
     return True
+
 
 
 async def push_message(
