@@ -35,7 +35,7 @@ from infrastructure.clients.instagram_client import (
     send_image,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
-from infrastructure.assets.asset_resolver import process_answer_assets
+from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.db.repositories import (
     PostgresInstagramChannelRepository,
     PostgresInstagramUserSessionRepository,
@@ -481,6 +481,16 @@ async def _handle_text_message(
     temperature = agent_config.get("temperature") if agent_config else None
 
     asset_cards: list = []
+
+    # Inject business assets as evidence and system instruction
+    extra_evidence: list[dict[str, str]] = []
+    asset_evidence = build_asset_evidence(bot.bot_id)
+    if asset_evidence:
+        extra_evidence.extend(asset_evidence)
+    asset_instruction = build_asset_instruction(bot.bot_id)
+    if asset_instruction:
+        system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
         result = run_vertex_rag(
@@ -492,18 +502,24 @@ async def _handle_text_message(
             model_name=model_name,
             temperature=temperature,
             conversation_context=conversation_context or None,
+            extra_evidence=extra_evidence if extra_evidence else None,
         )
         answer = str(result.get("answer") or "").strip()
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
-            # Match business assets after answer generation
-            answer, asset_cards = process_answer_assets(
-                answer,
-                bot.bot_id,
-                user_query=text,
-                session_id=session.session_id,
-            )
+            # Extract {{asset:ID}} markers from the LLM answer first
+            answer, marker_cards = resolve_asset_markers(answer, bot.bot_id)
+            if marker_cards:
+                asset_cards = marker_cards
+            else:
+                # Fallback to keyword-based matching
+                answer, asset_cards = process_answer_assets(
+                    answer,
+                    bot.bot_id,
+                    user_query=text,
+                    session_id=session.session_id,
+                )
     except Exception:
         logger.exception("RAG error for Instagram message bot_id=%s", bot.bot_id)
         answer = "I'm sorry, something went wrong. Please try again in a moment."

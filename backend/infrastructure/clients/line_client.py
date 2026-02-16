@@ -50,7 +50,9 @@ def _flex_image_card(name: str, image_url: str, link_url: Optional[str] = None) 
         "aspectMode": "cover",
     }
     if link_url:
-        hero["action"] = {"type": "uri", "label": name, "uri": link_url}
+        # LINE API requires label <= 40 chars
+        label = (name or "View")[:40]
+        hero["action"] = {"type": "uri", "label": label, "uri": link_url}
     bubble: dict = {
         "type": "bubble",
         "hero": hero,

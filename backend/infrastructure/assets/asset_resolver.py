@@ -20,7 +20,7 @@ from redis import Redis
 
 logger = logging.getLogger(__name__)
 
-_ASSET_MARKER_RE = re.compile(r"\{\{asset:([a-zA-Z0-9_]+)\}\}")
+
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
 _MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "2")), 5))
 _MAX_ASSET_CARDS_EXPLICIT_REQUEST = max(
@@ -436,10 +436,73 @@ def _match_assets_from_answer(
 
 def build_asset_instruction(bot_id: str) -> str:
     """
-    Disabled by design.
-    Assets are intentionally not injected before generation.
+    Build a system instruction block that tells the LLM about available
+    business assets (products, services, images) and how to reference them.
+
+    The LLM should include {{asset:ASSET_ID}} markers in its answer when
+    mentioning a product/service that has an image. These markers are parsed
+    after generation by resolve_asset_markers() to produce image cards.
     """
-    return ""
+    assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
+    if not assets:
+        return ""
+
+    lines: list[str] = []
+    for a in assets:
+        desc = (a.description or "").strip()
+        kw = ", ".join(a.keywords or [])
+        parts = [f"- **{a.name}** (ID: `{a.asset_id}`)"]
+        if desc:
+            parts.append(f"  Description: {desc}")
+        if kw:
+            parts.append(f"  Keywords: {kw}")
+        if a.link_url:
+            parts.append(f"  Link: {a.link_url}")
+        lines.append("\n".join(parts))
+
+    asset_list = "\n".join(lines)
+    return (
+        "\n\nAVAILABLE BUSINESS ASSETS (products/services with images):\n"
+        f"{asset_list}\n\n"
+        "ASSET IMAGE RULES:\n"
+        "- When your answer mentions or discusses any of the above products/services, "
+        "include the marker {{asset:ASSET_ID}} at the end of the relevant sentence or paragraph.\n"
+        "- Example: 'We have a beautiful Deluxe Room with ocean views. {{asset:room_deluxe}}'\n"
+        "- Only include markers for assets that are directly relevant to your answer.\n"
+        "- You may include multiple asset markers if discussing multiple products.\n"
+        "- Do NOT mention the marker syntax to the user; it will be automatically converted to an image card.\n"
+    )
+
+
+def build_asset_evidence(bot_id: str) -> list[dict[str, str]]:
+    """
+    Convert active business assets into evidence snippets that can be
+    injected into the RAG pipeline via extra_evidence.
+
+    Each asset becomes an evidence snippet so the LLM can discover and
+    reference products/services it wouldn't otherwise know about.
+    """
+    assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
+    if not assets:
+        return []
+
+    evidence: list[dict[str, str]] = []
+    for a in assets:
+        desc = (a.description or "").strip()
+        kw = ", ".join(a.keywords or [])
+        snippet_parts = [f"Product/Service: {a.name}."]
+        if desc:
+            snippet_parts.append(f"Description: {desc}.")
+        if kw:
+            snippet_parts.append(f"Related keywords: {kw}.")
+        snippet_parts.append(
+            f"To show this product's image in the response, include {{{{asset:{a.asset_id}}}}} in your answer."
+        )
+        evidence.append({
+            "url": a.link_url or f"asset:{a.asset_id}",
+            "snippet": " ".join(snippet_parts),
+        })
+    return evidence
 
 
 def resolve_asset_markers(
@@ -447,30 +510,43 @@ def resolve_asset_markers(
     bot_id: str,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
-    Parse {{asset:ID}} markers from answer text.
-    Kept for backward compatibility; markers are stripped from final answer.
+    Parse {{asset:ID}} markers from the LLM answer.
+    Returns:
+        - Cleaned answer text (markers removed)
+        - List of asset cards referenced by the markers
     """
-    marker_ids = _ASSET_MARKER_RE.findall(answer)
-    if not marker_ids:
+    # Regex matches {{asset:ID}} and optional preceding whitespace
+    matches = list(re.finditer(r"\s*\{\{asset:([a-zA-Z0-9_\-]+)\}\}", answer))
+    if not matches:
         return answer, []
 
+    cards = []
+    # Fetch all active assets for lookup
+    assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
+    asset_map = {a.asset_id: a for a in assets}
+
+    cleaned_answer = answer
+    # Iterate backwards to replace without shifting indices
+    for m in reversed(matches):
+        start, end = m.span()
+        asset_id = m.group(1)
+        cleaned_answer = cleaned_answer[:start] + cleaned_answer[end:]
+        
+        if asset_id in asset_map:
+            cards.append(_asset_to_card(asset_map[asset_id]))
+
+    # Deduplicate cards while preserving order
+    unique_cards = []
     seen = set()
-    unique_ids = []
-    for mid in marker_ids:
-        if mid not in seen:
-            seen.add(mid)
-            unique_ids.append(mid)
+    # matches were processed backwards (last to first)
+    # so cards are currently in reverse order of appearance
+    for c in reversed(cards):
+        aid = c["asset_id"]
+        if aid not in seen:
+            seen.add(aid)
+            unique_cards.append(c)
 
-    repo = _get_repo()
-    cards: List[Dict[str, str]] = []
-    for aid in unique_ids:
-        asset = repo.get_asset(aid)
-        if asset and asset.bot_id == bot_id and asset.is_active:
-            cards.append(_asset_to_card(asset))
-
-    cleaned = _ASSET_MARKER_RE.sub("", answer).strip()
-    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
-    return cleaned, cards
+    return cleaned_answer.strip(), unique_cards
 
 
 def process_answer_assets(

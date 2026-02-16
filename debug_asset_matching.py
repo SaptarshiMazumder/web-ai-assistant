@@ -241,6 +241,92 @@ def _max_cards_for_query(user_query: Optional[str], cards: List[Dict[str, str]])
 
     return _MAX_ASSET_CARDS_PER_ANSWER
 
+
+# --- NEW FUNCTIONS START ---
+
+def build_asset_instruction(assets: List[BotAsset]) -> str:
+    if not assets:
+        return ""
+
+    lines: list[str] = []
+    for a in assets:
+        desc = (a.description or "").strip()
+        kw = ", ".join(a.keywords or [])
+        parts = [f"- **{a.name}** (ID: `{a.asset_id}`)"]
+        if desc:
+            parts.append(f"  Description: {desc}")
+        if kw:
+            parts.append(f"  Keywords: {kw}")
+        if a.link_url:
+            parts.append(f"  Link: {a.link_url}")
+        lines.append("\n".join(parts))
+
+    asset_list = "\n".join(lines)
+    return (
+        "\n\nAVAILABLE BUSINESS ASSETS (products/services with images):\n"
+        f"{asset_list}\n\n"
+        "ASSET IMAGE RULES:\n"
+        "- When your answer mentions or discusses any of the above products/services, "
+        "include the marker {{asset:ASSET_ID}} at the end of the relevant sentence or paragraph.\n"
+        "- Example: 'We have a beautiful Deluxe Room with ocean views. {{asset:room_deluxe}}'\n"
+        "- Only include markers for assets that are directly relevant to your answer.\n"
+        "- You may include multiple asset markers if discussing multiple products.\n"
+        "- Do NOT mention the marker syntax to the user; it will be automatically converted to an image card.\n"
+    )
+
+def build_asset_evidence(assets: List[BotAsset]) -> list[dict[str, str]]:
+    if not assets:
+        return []
+
+    evidence: list[dict[str, str]] = []
+    for a in assets:
+        desc = (a.description or "").strip()
+        kw = ", ".join(a.keywords or [])
+        snippet_parts = [f"Product/Service: {a.name}."]
+        if desc:
+            snippet_parts.append(f"Description: {desc}.")
+        if kw:
+            snippet_parts.append(f"Related keywords: {kw}.")
+        snippet_parts.append(
+            f"To show this product's image in the response, include {{{{asset:{a.asset_id}}}}} in your answer."
+        )
+        evidence.append({
+            "url": a.link_url or f"asset:{a.asset_id}",
+            "snippet": " ".join(snippet_parts),
+        })
+    return evidence
+
+def resolve_asset_markers(
+    answer: str,
+    assets: List[BotAsset],
+) -> Tuple[str, List[Dict[str, str]]]:
+    matches = list(re.finditer(r"\{\{asset:([a-zA-Z0-9_\-]+)\}\}", answer))
+    if not matches:
+        return answer, []
+
+    cards = []
+    asset_map = {a.asset_id: a for a in assets}
+    cleaned_answer = answer
+    for m in reversed(matches):
+        start, end = m.span()
+        asset_id = m.group(1)
+        cleaned_answer = cleaned_answer[:start] + cleaned_answer[end:]
+        
+        if asset_id in asset_map:
+            cards.append(_asset_to_card(asset_map[asset_id]))
+
+    unique_cards = []
+    seen = set()
+    for c in reversed(cards):
+        aid = c["asset_id"]
+        if aid not in seen:
+            seen.add(aid)
+            unique_cards.append(c)
+
+    return cleaned_answer.strip(), unique_cards
+
+# --- NEW FUNCTIONS END ---
+
 # --- Test Runner ---
 
 def test_matching(query: str, answer: str, assets: List[BotAsset]):
@@ -278,44 +364,20 @@ assets = [
     )
 ]
 
-# Scenario 1: Direct question about a room
-test_matching(
-    query="Show me the deluxe room", 
-    answer="Our Deluxe Room features a king-size bed and a beautiful ocean view. It is perfect for couples.", 
-    assets=assets
-)
+print("--- Testing Asset Injection & Marker Resolution ---")
 
-# Scenario 2: Indirect question
-test_matching(
-    query="What rooms do you have?", 
-    answer="We have several options including our Deluxe Room and Standard Room.", 
-    assets=assets
-)
+print("\n1. Asset Instruction Generation:")
+print(build_asset_instruction(assets))
 
-# Scenario 3: Vague answer
-test_matching(
-    query="Do you have food?", 
-    answer="Yes, we serve delicious Italian dishes like pasta.", 
-    assets=assets
-)
+print("\n2. Asset Evidence Generation:")
+for e in build_asset_evidence(assets):
+    print(f"  - {e}")
 
-# Scenario 4: Matching keywords but not name
-test_matching(
-    query="I want pasta", 
-    answer="You should try our Spaghetti Carbonara, it's delicious.", 
-    assets=assets
-)
-
-# Scenario 5: User asks about price (often generic)
-test_matching(
-    query="What is the price?",
-    answer="The Deluxe Room costs $200 per night.",
-    assets=assets
-)
-
-# Scenario 6: User asks about location (intent term)
-test_matching(
-    query="Where are you located?",
-    answer="We are located near the beach.",
-    assets=assets
-)
+print("\n3. Marker Resolution:")
+raw_answer = "You see, we have a wonderful Deluxe Room {{asset:room_deluxe}} and also delicious pasta {{asset:spaghetti}}."
+clean_answer, cards = resolve_asset_markers(raw_answer, assets)
+print(f"  Raw: '{raw_answer}'")
+print(f"  Clean: '{clean_answer}'")
+print(f"  Cards: {len(cards)}")
+for c in cards:
+    print(f"    - {c['name']} ({c['asset_id']})")

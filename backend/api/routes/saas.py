@@ -176,7 +176,7 @@ def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) ->
 
 
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
-from infrastructure.assets.asset_resolver import process_answer_assets
+from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository
@@ -746,6 +746,14 @@ async def v1_widget_chat(
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
 
+    # Inject business assets as evidence and system instruction
+    asset_evidence = build_asset_evidence(bot.bot_id)
+    if asset_evidence:
+        extra_evidence.extend(asset_evidence)
+    asset_instruction = build_asset_instruction(bot.bot_id)
+    if asset_instruction:
+        system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
@@ -798,13 +806,18 @@ async def v1_widget_chat(
     )
     answer = str(result.get("answer") or "")
 
-    # Match business assets after answer generation
-    answer, asset_cards = process_answer_assets(
-        answer,
-        bot.bot_id,
-        user_query=msg,
-        session_id=session.session_id,
-    )
+    # Extract {{asset:ID}} markers from the LLM answer first
+    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id)
+    if marker_cards:
+        asset_cards = marker_cards
+    else:
+        # Fallback to keyword-based matching
+        answer, asset_cards = process_answer_assets(
+            answer,
+            bot.bot_id,
+            user_query=msg,
+            session_id=session.session_id,
+        )
     assets = [AssetCard(**c) for c in asset_cards]
 
     conversation_service().add_message(
@@ -962,6 +975,14 @@ async def v1_widget_chat_stream(
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
 
+    # Inject business assets as evidence and system instruction
+    asset_evidence_stream = build_asset_evidence(bot.bot_id)
+    if asset_evidence_stream:
+        extra_evidence_stream.extend(asset_evidence_stream)
+    asset_instruction_stream = build_asset_instruction(bot.bot_id)
+    if asset_instruction_stream:
+        system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
+
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
@@ -1014,13 +1035,18 @@ async def v1_widget_chat_stream(
                         ) + "\n"
                     else:
                         answer = str(evt.get("answer") or "")
-                        # Match business assets after answer generation
-                        answer, asset_cards_stream = process_answer_assets(
-                            answer,
-                            bot.bot_id,
-                            user_query=msg,
-                            session_id=session.session_id,
-                        )
+                        # Extract {{asset:ID}} markers from the LLM answer first
+                        answer, marker_cards_stream = resolve_asset_markers(answer, bot.bot_id)
+                        if marker_cards_stream:
+                            asset_cards_stream = marker_cards_stream
+                        else:
+                            # Fallback to keyword-based matching
+                            answer, asset_cards_stream = process_answer_assets(
+                                answer,
+                                bot.bot_id,
+                                user_query=msg,
+                                session_id=session.session_id,
+                            )
                         chat_debug_emit(
                             {
                                 "type": "chat_response",
