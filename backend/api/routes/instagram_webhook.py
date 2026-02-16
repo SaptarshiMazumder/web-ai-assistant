@@ -509,7 +509,7 @@ async def _handle_text_message(
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
             # Extract {{asset:ID}} markers from the LLM answer first
-            answer, marker_cards = resolve_asset_markers(answer, bot.bot_id)
+            answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
             if marker_cards:
                 asset_cards = marker_cards
             else:

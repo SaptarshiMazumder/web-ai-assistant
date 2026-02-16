@@ -464,13 +464,14 @@ def build_asset_instruction(bot_id: str) -> str:
     return (
         "\n\nAVAILABLE BUSINESS ASSETS (products/services with images):\n"
         f"{asset_list}\n\n"
-        "ASSET IMAGE RULES:\n"
-        "- When your answer mentions or discusses any of the above products/services, "
-        "include the marker {{asset:ASSET_ID}} at the end of the relevant sentence or paragraph.\n"
-        "- Example: 'We have a beautiful Deluxe Room with ocean views. {{asset:room_deluxe}}'\n"
-        "- Only include markers for assets that are directly relevant to your answer.\n"
-        "- You may include multiple asset markers if discussing multiple products.\n"
-        "- Do NOT mention the marker syntax to the user; it will be automatically converted to an image card.\n"
+        "ASSET IMAGE RULES (CRITICAL):\n"
+        "- When your answer mentions or discusses any of the above products/services for the first time, "
+        "include the marker {{asset:ASSET_ID}}.\n"
+        "- ONLY show images when the user explicitly asks to see something (e.g., 'show me photos') OR when introducing a specific product/service.\n"
+        "- Do NOT show images for questions about price, availability, or general information unless the user also asked to see it.\n"
+        "- Do NOT show images if you have already shown them in this conversation.\n"
+        "- Example: 'We have a beautiful Deluxe Room. {{asset:room_deluxe}}'\n"
+        "- Do NOT mention the marker syntax to the user.\n"
     )
 
 
@@ -505,15 +506,69 @@ def build_asset_evidence(bot_id: str) -> list[dict[str, str]]:
     return evidence
 
 
+def _filter_and_record_session_assets(
+    cards: List[Dict[str, str]], 
+    bot_id: str, 
+    session_id: Optional[str]
+) -> List[Dict[str, str]]:
+    sid = (session_id or "").strip()
+    if not sid or not cards:
+        return cards
+        
+    r = _get_redis()
+    if r is None:
+        return cards
+
+    key = _asset_session_key(bot_id, sid)
+    image_key = _asset_session_image_key(bot_id, sid)
+    
+    filtered: List[Dict[str, str]] = []
+    for card in cards:
+        aid = (card.get("asset_id") or "").strip()
+        img = _normalize_card_image_url(card.get("image_url", ""))
+        
+        # Check if already sent
+        try:
+            already_sent = False
+            if aid and r.sismember(key, aid):
+                already_sent = True
+            elif img and r.sismember(image_key, img):
+                already_sent = True
+        except Exception:
+            already_sent = False
+            
+        if already_sent:
+            continue
+        filtered.append(card)
+        
+    # Record new
+    try:
+        new_aids = [c.get("asset_id") for c in filtered if c.get("asset_id")]
+        new_imgs = [_normalize_card_image_url(c.get("image_url", "")) for c in filtered]
+        new_imgs = [u for u in new_imgs if u]
+        
+        if new_aids:
+            r.sadd(key, *new_aids)
+            r.expire(key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
+        if new_imgs:
+            r.sadd(image_key, *new_imgs)
+            r.expire(image_key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
+    except Exception:
+        pass
+        
+    return filtered
+
+
 def resolve_asset_markers(
     answer: str,
     bot_id: str,
+    session_id: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
     Parse {{asset:ID}} markers from the LLM answer.
     Returns:
         - Cleaned answer text (markers removed)
-        - List of asset cards referenced by the markers
+        - List of asset cards referenced by the markers (deduplicated per session)
     """
     # Regex matches {{asset:ID}} and optional preceding whitespace
     matches = list(re.finditer(r"\s*\{\{asset:([a-zA-Z0-9_\-]+)\}\}", answer))
@@ -535,18 +590,20 @@ def resolve_asset_markers(
         if asset_id in asset_map:
             cards.append(_asset_to_card(asset_map[asset_id]))
 
-    # Deduplicate cards while preserving order
+    # Deduplicate cards within this single answer first
     unique_cards = []
     seen = set()
-    # matches were processed backwards (last to first)
-    # so cards are currently in reverse order of appearance
+    # matches were processed backwards, so cards are in reverse order
     for c in reversed(cards):
         aid = c["asset_id"]
         if aid not in seen:
             seen.add(aid)
             unique_cards.append(c)
+            
+    # Apply session-based deduplication
+    final_cards = _filter_and_record_session_assets(unique_cards, bot_id, session_id)
 
-    return cleaned_answer.strip(), unique_cards
+    return cleaned_answer.strip(), final_cards
 
 
 def process_answer_assets(
@@ -560,7 +617,9 @@ def process_answer_assets(
     - No pre-generation asset influence.
     - Cards are selected only from answer content matches.
     """
-    cleaned, _ = resolve_asset_markers(answer, bot_id)
+    cleaned, marker_cards = resolve_asset_markers(answer, bot_id, session_id)
+    if marker_cards:
+        return cleaned, marker_cards
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
     if not assets:
         return cleaned, []
@@ -572,35 +631,5 @@ def process_answer_assets(
 
     sid = (session_id or "").strip()
     if sid and cards:
-        r = _get_redis()
-        if r is not None:
-            key = _asset_session_key(bot_id, sid)
-            image_key = _asset_session_image_key(bot_id, sid)
-            filtered: List[Dict[str, str]] = []
-            for card in cards:
-                aid = (card.get("asset_id") or "").strip()
-                if not aid:
-                    continue
-                img = _normalize_card_image_url(card.get("image_url", ""))
-                try:
-                    already_sent = bool(r.sismember(key, aid)) or (bool(img) and bool(r.sismember(image_key, img)))
-                except Exception:
-                    already_sent = False
-                if already_sent:
-                    continue
-                filtered.append(card)
-            cards = filtered
-            if cards:
-                try:
-                    asset_ids = [(c.get("asset_id") or "").strip() for c in cards if (c.get("asset_id") or "").strip()]
-                    image_urls = [_normalize_card_image_url(c.get("image_url", "")) for c in cards]
-                    image_urls = [u for u in image_urls if u]
-                    if asset_ids:
-                        r.sadd(key, *asset_ids)
-                    if image_urls:
-                        r.sadd(image_key, *image_urls)
-                    r.expire(key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
-                    r.expire(image_key, _ASSET_SESSION_DEDUPE_TTL_SECONDS)
-                except Exception:
-                    pass
+        cards = _filter_and_record_session_assets(cards, bot_id, sid)
     return cleaned, cards

@@ -807,7 +807,7 @@ async def v1_widget_chat(
     answer = str(result.get("answer") or "")
 
     # Extract {{asset:ID}} markers from the LLM answer first
-    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id)
+    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
     if marker_cards:
         asset_cards = marker_cards
     else:
@@ -1036,7 +1036,7 @@ async def v1_widget_chat_stream(
                     else:
                         answer = str(evt.get("answer") or "")
                         # Extract {{asset:ID}} markers from the LLM answer first
-                        answer, marker_cards_stream = resolve_asset_markers(answer, bot.bot_id)
+                        answer, marker_cards_stream = resolve_asset_markers(answer, bot.bot_id, session.session_id)
                         if marker_cards_stream:
                             asset_cards_stream = marker_cards_stream
                         else:
