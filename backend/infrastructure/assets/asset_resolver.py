@@ -23,10 +23,93 @@ logger = logging.getLogger(__name__)
 _ASSET_MARKER_RE = re.compile(r"\{\{asset:([a-zA-Z0-9_]+)\}\}")
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
 _MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "2")), 5))
+_MAX_ASSET_CARDS_EXPLICIT_REQUEST = max(
+    _MAX_ASSET_CARDS_PER_ANSWER,
+    min(int(os.environ.get("ASSET_MAX_CARDS_EXPLICIT_REQUEST", "4")), 8),
+)
 _ASSET_SESSION_DEDUPE_TTL_SECONDS = max(
     300,
     min(int(os.environ.get("ASSET_SESSION_DEDUPE_TTL_SECONDS", "43200")), 604800),
 )
+_VISUAL_REQUEST_TERMS = {
+    "photo",
+    "photos",
+    "image",
+    "images",
+    "picture",
+    "pictures",
+    "pic",
+    "pics",
+    "gallery",
+    "show me",
+    "send me",
+    "share",
+    "let me see",
+    "what it looks like",
+}
+_VISUAL_REQUEST_MANY_TERMS = {
+    "all",
+    "more",
+    "many",
+    "several",
+    "multiple",
+    "full menu",
+    "whole menu",
+    "entire menu",
+    "more photos",
+    "more images",
+}
+_VISUAL_SUPPRESS_TERMS = {
+    "no image",
+    "no images",
+    "no photo",
+    "no photos",
+    "no picture",
+    "no pictures",
+    "without image",
+    "without images",
+    "without photo",
+    "without photos",
+}
+_ASSET_INTENT_TERMS = {
+    "menu",
+    "dish",
+    "dishes",
+    "food",
+    "drink",
+    "drinks",
+    "beverage",
+    "beverages",
+    "product",
+    "products",
+    "service",
+    "services",
+    "package",
+    "packages",
+    "plan",
+    "plans",
+    "room",
+    "rooms",
+    "suite",
+    "suites",
+    "facility",
+    "facilities",
+    "amenity",
+    "amenities",
+    "location",
+    "locations",
+    "map",
+    "branch",
+    "branches",
+    "store",
+    "stores",
+    "item",
+    "items",
+    "option",
+    "options",
+    "catalog",
+    "collection",
+}
 _SPECIAL_SHORT_TOKENS = {"xl", "xxl", "xs"}
 _GENERIC_TOKENS = {
     "about",
@@ -130,6 +213,61 @@ def _normalize_card_image_url(url: str) -> str:
         default=len(raw),
     )
     return lowered[:cut]
+
+
+def _contains_any_term(text_norm: str, terms: Set[str]) -> bool:
+    if not text_norm:
+        return False
+    for term in terms:
+        t = (term or "").strip()
+        if not t:
+            continue
+        if " " in t:
+            if t in text_norm:
+                return True
+            continue
+        if re.search(rf"\b{re.escape(t)}\b", text_norm):
+            return True
+    return False
+
+
+def _query_matches_cards(query_norm: str, cards: List[Dict[str, str]]) -> bool:
+    q_tokens = _tokenize(query_norm)
+    if not q_tokens:
+        return False
+    for card in cards:
+        name_tokens = _tokenize(card.get("name", ""))
+        if q_tokens & name_tokens:
+            return True
+    return False
+
+
+def _max_cards_for_query(user_query: Optional[str], cards: List[Dict[str, str]]) -> int:
+    query_norm = _normalize_text(user_query or "")
+    if not query_norm:
+        return 0
+    if _contains_any_term(query_norm, _VISUAL_SUPPRESS_TERMS):
+        return 0
+
+    explicit_visual = _contains_any_term(query_norm, _VISUAL_REQUEST_TERMS) or bool(
+        re.search(
+            r"\b(show|send|share|see|view)\b.*\b(photo|image|picture|pic|gallery|menu|product|service|room|suite|location|map)\b",
+            query_norm,
+        )
+    )
+    intent_query = _contains_any_term(query_norm, _ASSET_INTENT_TERMS)
+    card_match = _query_matches_cards(query_norm, cards)
+
+    if not (explicit_visual or intent_query or card_match):
+        return 0
+
+    explicit_many = explicit_visual and (
+        _contains_any_term(query_norm, _VISUAL_REQUEST_MANY_TERMS)
+        or bool(re.search(r"\b(all|more|many|several|multiple)\b", query_norm))
+    )
+    if explicit_many:
+        return _MAX_ASSET_CARDS_EXPLICIT_REQUEST
+    return _MAX_ASSET_CARDS_PER_ANSWER
 
 
 def _normalize_text(text: str) -> str:
@@ -349,6 +487,10 @@ def process_answer_assets(
     if not assets:
         return cleaned, []
     cards = _match_assets_from_answer(cleaned, assets, max_cards=_MAX_ASSET_CARDS_PER_ANSWER)
+    max_cards_for_query = _max_cards_for_query(user_query, cards)
+    if max_cards_for_query <= 0:
+        return cleaned, []
+    cards = cards[:max_cards_for_query]
 
     sid = (session_id or "").strip()
     if sid and cards:

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
@@ -6,13 +7,20 @@ from infrastructure.db.repositories import PostgresConversationRepository
 from redis import Redis
 from common.config import config
 
-CONVERSATION_HISTORY_MESSAGES = 20
+def _safe_int_env(name: str, default: int) -> int:
+    try:
+        return int((os.environ.get(name) or str(default)).strip())
+    except ValueError:
+        return default
+
+
+CONVERSATION_HISTORY_MESSAGES = max(5, min(_safe_int_env("CONVERSATION_HISTORY_MESSAGES", 20), 100))
 
 
 class ConversationService:
     def __init__(self, repo: Optional[PostgresConversationRepository] = None):
         self._repo = repo or PostgresConversationRepository()
-        self._ttl = timedelta(minutes=30)
+        self._ttl = timedelta(minutes=config.CONVERSATION_SESSION_TTL_MINUTES)
         self._redis = Redis.from_url(config.CELERY_BROKER_URL, decode_responses=True)
 
     def get_or_create_session(

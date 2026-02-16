@@ -187,8 +187,19 @@ from domain.entities import DiscoveryJob
 
 router = APIRouter()
 
+
+def _safe_int_env(name: str, default: int) -> int:
+    try:
+        return int((os.environ.get(name) or str(default)).strip())
+    except ValueError:
+        return default
+
+
 # Per-message truncation for conversation context (keeps prompt size bounded).
-_CONVERSATION_CONTEXT_MAX_CHARS = 500
+_CONVERSATION_CONTEXT_MAX_CHARS = max(
+    300,
+    min(_safe_int_env("CHAT_CONVERSATION_CONTEXT_MAX_CHARS", 1200), 4000),
+)
 
 
 def _format_conversation_context(messages: list) -> str:

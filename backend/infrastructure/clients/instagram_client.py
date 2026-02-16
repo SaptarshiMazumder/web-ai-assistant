@@ -236,20 +236,96 @@ async def exchange_for_long_lived_token(short_token: str) -> Tuple[str, int]:
 
     Returns (long_lived_token, expires_in_seconds).
     """
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
+    exchange_candidates = [
+        (
+            "GET",
             "https://graph.instagram.com/access_token",
-            params={
+            {
                 "grant_type": "ig_exchange_token",
                 "client_secret": INSTAGRAM_APP_SECRET,
                 "access_token": short_token,
             },
-        )
-    if resp.status_code != 200:
-        logger.error("exchange_for_long_lived_token failed: %s %s", resp.status_code, resp.text)
-        raise RuntimeError(f"Long-lived token exchange failed: {resp.text}")
-    data = resp.json()
-    return data["access_token"], int(data.get("expires_in", 5184000))
+        ),
+        # Some app/account combinations return a method error for GET;
+        # retrying as POST keeps the flow resilient.
+        (
+            "POST",
+            "https://graph.instagram.com/access_token",
+            {
+                "grant_type": "ig_exchange_token",
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "access_token": short_token,
+            },
+        ),
+        (
+            "GET",
+            f"{GRAPH_API_BASE_IG}/access_token",
+            {
+                "grant_type": "ig_exchange_token",
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "access_token": short_token,
+            },
+        ),
+        (
+            "GET",
+            "https://graph.instagram.com/v24.0/access_token",
+            {
+                "grant_type": "ig_exchange_token",
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "access_token": short_token,
+            },
+        ),
+        (
+            "POST",
+            "https://graph.instagram.com/v24.0/access_token",
+            {
+                "grant_type": "ig_exchange_token",
+                "client_secret": INSTAGRAM_APP_SECRET,
+                "access_token": short_token,
+            },
+        ),
+    ]
+
+    last_status = None
+    last_body = ""
+    async with httpx.AsyncClient(timeout=15) as client:
+        for method, url, payload in exchange_candidates:
+            if method == "POST":
+                resp = await client.post(url, data=payload)
+            else:
+                resp = await client.get(url, params=payload)
+
+            if resp.status_code == 200:
+                data = resp.json()
+                token = data.get("access_token")
+                if token:
+                    return token, int(data.get("expires_in", 5184000))
+                last_status = resp.status_code
+                last_body = resp.text
+                logger.warning(
+                    "exchange_for_long_lived_token success response without access_token (%s %s): %s",
+                    method,
+                    url,
+                    resp.text,
+                )
+                continue
+
+            last_status = resp.status_code
+            last_body = resp.text
+            logger.warning(
+                "exchange_for_long_lived_token attempt failed (%s %s): %s %s",
+                method,
+                url,
+                resp.status_code,
+                resp.text,
+            )
+
+    logger.error(
+        "exchange_for_long_lived_token failed after fallbacks: %s %s",
+        last_status,
+        last_body,
+    )
+    raise RuntimeError(f"Long-lived token exchange failed: {last_body}")
 
 
 async def refresh_long_lived_token(access_token: str) -> Tuple[str, int]:

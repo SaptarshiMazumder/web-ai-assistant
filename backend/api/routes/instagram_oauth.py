@@ -29,6 +29,7 @@ from infrastructure.clients.instagram_client import (
     build_instagram_auth_url,
     exchange_code_for_token,
     exchange_for_long_lived_token,
+    refresh_long_lived_token,
     subscribe_webhooks,
     get_ig_account_info,
     get_ig_webhook_igsid,
@@ -181,26 +182,52 @@ async def instagram_oauth_callback(
         short_token, ig_user_id = await exchange_code_for_token(clean_code)
         logger.info("Instagram OAuth: got short-lived token for ig_user_id=%s", ig_user_id)
 
-        # Step 2: Exchange for long-lived token (60 days)
-        long_token, expires_in = await exchange_for_long_lived_token(short_token)
-        token_expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
-        logger.info("Instagram OAuth: got long-lived token, expires_in=%d", expires_in)
+        # Step 2: Prefer a long-lived token, but do not fail onboarding if
+        # Meta rejects the exchange for this account/app combination.
+        access_token = short_token
+        expires_in = 3600  # OAuth short-lived token is ~1 hour
+        try:
+            access_token, expires_in = await exchange_for_long_lived_token(short_token)
+            logger.info("Instagram OAuth: got long-lived token via exchange, expires_in=%d", expires_in)
+        except Exception as exc:
+            logger.warning(
+                "Instagram OAuth: long-lived exchange failed for ig_user_id=%s; trying refresh fallback: %s",
+                ig_user_id,
+                exc,
+            )
+            try:
+                access_token, expires_in = await refresh_long_lived_token(short_token)
+                logger.info("Instagram OAuth: got long-lived token via refresh fallback, expires_in=%d", expires_in)
+            except Exception as refresh_exc:
+                logger.warning(
+                    "Instagram OAuth: refresh fallback failed for ig_user_id=%s; using short-lived token (~1h): %s",
+                    ig_user_id,
+                    refresh_exc,
+                )
+
+        token_expires_at = (datetime.now(timezone.utc) + timedelta(seconds=max(300, int(expires_in)))).isoformat()
 
         # Step 3: Get account info
-        account_info = await get_ig_account_info(long_token)
+        account_info = await get_ig_account_info(access_token)
         ig_username = account_info.get("username", "")
+        if not ig_username:
+            raise RuntimeError(
+                "Instagram token not usable for API calls. "
+                "If app is in Development mode, the IG account must be an app role user/tester. "
+                "For client onboarding, switch app to Live mode and complete App Review for required permissions."
+            )
         logger.info("Instagram OAuth: account=%s (@%s)", ig_user_id, ig_username)
 
         # Step 3b: Resolve the IGSID (webhook recipient ID) which differs
         # from the app-scoped user ID returned by the token exchange.
-        ig_webhook_id = await get_ig_webhook_igsid(long_token)
+        ig_webhook_id = await get_ig_webhook_igsid(access_token)
         if ig_webhook_id and ig_webhook_id != ig_user_id:
             logger.info("Instagram OAuth: webhook IGSID=%s (differs from app-scoped %s)", ig_webhook_id, ig_user_id)
         else:
             ig_webhook_id = None  # same or unresolved, no separate storage needed
 
         # Step 4: Subscribe webhooks programmatically
-        webhook_ok = await subscribe_webhooks(ig_user_id, long_token)
+        webhook_ok = await subscribe_webhooks(ig_user_id, access_token)
         if not webhook_ok:
             logger.warning("Instagram OAuth: webhook subscription returned false for %s (may still work)", ig_user_id)
 
@@ -210,7 +237,7 @@ async def instagram_oauth_callback(
             org_id=org_id,
             ig_user_id=ig_user_id,
             ig_username=ig_username,
-            access_token=long_token,
+            access_token=access_token,
             token_expires_at=token_expires_at,
             ig_webhook_id=ig_webhook_id,
         )

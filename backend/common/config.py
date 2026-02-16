@@ -77,6 +77,12 @@ class Config:
     # Conversation stream (Redis Streams)
     CONVERSATION_STREAM_KEY = os.environ.get("CONVERSATION_STREAM_KEY", "webai:conversation_events").strip()
     CONVERSATION_STREAM_MAXLEN = os.environ.get("CONVERSATION_STREAM_MAXLEN", "10000").strip()
+    _CONV_TTL_RAW = (os.environ.get("CONVERSATION_SESSION_TTL_MINUTES") or "240").strip()
+    try:
+        _CONV_TTL = int(_CONV_TTL_RAW)
+    except ValueError:
+        _CONV_TTL = 240
+    CONVERSATION_SESSION_TTL_MINUTES = max(15, min(_CONV_TTL, 10080))
 
 
 config = Config()
