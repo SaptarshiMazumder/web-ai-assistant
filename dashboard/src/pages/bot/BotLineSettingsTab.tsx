@@ -25,9 +25,9 @@ const LINE_GRADIENT = 'linear-gradient(135deg, #06c755 0%, #00b140 100%)'
 
 const CARD_STEP_LABELS = [
   'Enable API',
+  'Auto-reply',
   'Webhook',
   'Credentials',
-  'Settings',
   'Connect',
 ]
 
@@ -89,7 +89,6 @@ export default function BotLineSettingsTab() {
   const [apiEnabled, setApiEnabled] = useState(false)
   const [webhookSet, setWebhookSet] = useState(false)
   const [autoReplyOff, setAutoReplyOff] = useState(false)
-  const [webhookOn, setWebhookOn] = useState(false)
 
   const webhookUrl = botId ? `${API_BASE}/webhooks/line/${botId}` : ''
 
@@ -215,7 +214,6 @@ export default function BotLineSettingsTab() {
       setApiEnabled(false)
       setWebhookSet(false)
       setAutoReplyOff(false)
-      setWebhookOn(false)
       setSuccess('LINE integration disconnected.')
     } catch (err) {
       setError((err as Error).message)
@@ -235,9 +233,9 @@ export default function BotLineSettingsTab() {
     switch (currentStep) {
       case 0: return true // just informational
       case 1: return apiEnabled
-      case 2: return webhookSet
-      case 3: return !!lineChannelId.trim() && !!lineChannelSecret.trim() && !!lineAccessToken.trim()
-      case 4: return autoReplyOff && webhookOn
+      case 2: return autoReplyOff
+      case 3: return webhookSet
+      case 4: return !!lineChannelId.trim() && !!lineChannelSecret.trim() && !!lineAccessToken.trim()
       default: return false
     }
   }
@@ -500,10 +498,10 @@ export default function BotLineSettingsTab() {
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Here's what we'll do in 5 simple steps:</div>
               <div style={{ display: 'grid', gap: '0.5rem', color: 'var(--text-secondary)' }}>
                 {[
-                  ['1', 'Enable Messaging API in your Official LINE account'],
-                  ['2', 'Set your bot\'s address in Developers Console'],
-                  ['3', 'Copy 3 codes (same place — Developers Console)'],
-                  ['4', 'Turn off LINE\'s automatic replies (manager.line.biz)'],
+                  ['1', 'Enable Messaging API (manager.line.biz)'],
+                  ['2', 'Turn off Auto-reply (manager.line.biz)'],
+                  ['3', 'Set your bot\'s address in Developers Console'],
+                  ['4', 'Copy 3 codes (same place — Developers Console)'],
                   ['5', 'Click "Connect" and you\'re done!'],
                 ].map(([num, desc]) => (
                   <div key={num} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
@@ -560,10 +558,9 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>1</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Turn on the Messaging API</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Enable Messaging API</h3>
             </div>
 
-            {/* Why box */}
             <div style={{
               display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
               padding: '0.85rem 1rem', background: 'rgba(6,199,85,0.07)',
@@ -572,20 +569,7 @@ export default function BotLineSettingsTab() {
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: LINE_GREEN }} />
               <span>
-                <strong style={{ color: 'var(--text-primary)' }}>Why do this?</strong> Your LINE business account can send and receive messages, but to let our AI bot reply automatically, we need to turn on a special feature called "Messaging API". Don't worry — it's just clicking a button!
-              </span>
-            </div>
-
-            {/* Browser-only warning */}
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
-              padding: '0.85rem 1rem', background: 'rgba(255, 193, 7, 0.1)',
-              borderRadius: '10px', border: '1px solid rgba(255, 193, 7, 0.3)',
-              marginBottom: '1.5rem', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6,
-            }}>
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#ff9800' }} />
-              <span>
-                <strong style={{ color: 'var(--text-primary)' }}>Important:</strong> The Messaging API option is only available on a computer browser (Chrome, Safari, Firefox, etc.). It won't show up in the LINE mobile app, so please use a computer for these steps.
+                <strong style={{ color: 'var(--text-primary)' }}>Important:</strong> Use a computer browser — the Messaging API option isn\'t available in the LINE mobile app.
               </span>
             </div>
 
@@ -599,22 +583,11 @@ export default function BotLineSettingsTab() {
                   </a>
                   {' '}(the Official Account manager) and sign in
                 </li>
-                <li>Click on your business account name</li>
-                <li>
-                  Find the <strong>⚙️ Settings</strong> button in the <strong>top-right corner</strong> and click it
-                </li>
-                <li>
-                  On the left side menu, scroll down and click <strong>"Messaging API"</strong>
-                </li>
-                <li>
-                  Click the big green <strong>"Enable Messaging API"</strong> button
-                </li>
-                <li>
-                  It'll ask you to pick a <strong>Provider</strong> name (think of it like a folder name for organizing your bots). Just type your company or brand name and click <strong>OK</strong>
-                </li>
-                <li>
-                  Click <strong>OK</strong> one more time to confirm
-                </li>
+                <li>Click your business account name</li>
+                <li>Click <strong>⚙️ Settings</strong> in the top-right corner</li>
+                <li>In the left menu, click <strong>"Messaging API"</strong></li>
+                <li>Click the green <strong>"Enable Messaging API"</strong> button</li>
+                <li>Enter a Provider name (company/brand) and click <strong>OK</strong></li>
               </ol>
 
               <div style={{
@@ -625,7 +598,7 @@ export default function BotLineSettingsTab() {
                 border: '1px solid var(--ui-flow-border)',
                 fontSize: '0.88rem',
               }}>
-                ✅ <strong>You're done with this step when:</strong> You see a page with some numbers and codes labeled <strong>"Channel ID"</strong> and <strong>"Channel Secret"</strong>. That means it worked!
+                ✅ <strong>Done when:</strong> You see a page with <strong>Channel ID</strong> and <strong>Channel Secret</strong>.
               </div>
             </div>
 
@@ -636,12 +609,12 @@ export default function BotLineSettingsTab() {
               cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500,
             }}>
               <input type="checkbox" checked={apiEnabled} onChange={(e) => setApiEnabled(e.target.checked)} />
-              ✓ Done! I can see the Channel ID and Channel Secret
+              ✓ Messaging API enabled — I can see Channel ID and Channel Secret
             </label>
           </div>
         )}
 
-        {/* ── Step 2: Set Webhook URL (Developers Console) ───────── */}
+        {/* ── Step 2: Turn off Auto-reply ────────────────────────── */}
         {currentStep === 2 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -651,6 +624,57 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>2</div>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Turn off Auto-reply messages</h3>
+            </div>
+
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
+              padding: '0.85rem 1rem', background: 'rgba(6,199,85,0.07)',
+              borderRadius: '10px', border: '1px solid rgba(6,199,85,0.25)',
+              marginBottom: '1.5rem', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6,
+            }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: LINE_GREEN }} />
+              <span>
+                <strong style={{ color: 'var(--text-primary)' }}>Why?</strong> LINE sends a default "Thanks for your message!" when someone messages you. Turn it off so only your bot replies — otherwise customers get two replies.
+              </span>
+            </div>
+
+            <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              Still in{' '}
+              <a href="https://manager.line.biz/" target="_blank" rel="noopener noreferrer"
+                style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                manager.line.biz <ExternalLink size={13} />
+              </a>
+              :
+            </p>
+            <ol style={{ margin: 0, paddingLeft: '1.4rem', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 2 }}>
+              <li>Click <strong>⚙️ Settings</strong> → <strong>"Response settings"</strong> in the left menu</li>
+              <li>Find <strong>"Auto-response messages"</strong> and turn it <strong>OFF</strong></li>
+            </ol>
+
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: '0.6rem',
+              padding: '0.85rem 1rem', background: 'var(--ui-flow-surface)',
+              borderRadius: '10px', border: '1px solid var(--ui-flow-border)',
+              cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500,
+              marginTop: '1rem',
+            }}>
+              <input type="checkbox" checked={autoReplyOff} onChange={(e) => setAutoReplyOff(e.target.checked)} />
+              ✓ Auto-response messages is OFF
+            </label>
+          </div>
+        )}
+
+        {/* ── Step 3: Set Webhook URL (Developers Console) ───────── */}
+        {currentStep === 3 && (
+          <div style={{ padding: '1.5rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: LINE_GRADIENT,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
+              }}>3</div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Set your bot's address (Webhook URL)</h3>
             </div>
 
@@ -697,8 +721,8 @@ export default function BotLineSettingsTab() {
           </div>
         )}
 
-        {/* ── Step 3: Copy Credentials (same place — Console) ───── */}
-        {currentStep === 3 && (
+        {/* ── Step 4: Copy Credentials (same place — Console) ───── */}
+        {currentStep === 4 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
@@ -706,7 +730,7 @@ export default function BotLineSettingsTab() {
                 background: LINE_GRADIENT,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-              }}>3</div>
+              }}>4</div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Copy the 3 codes</h3>
             </div>
 
@@ -733,100 +757,6 @@ export default function BotLineSettingsTab() {
               >
                 <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder="Paste here" />
               </GlassField>
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 4: Disable Auto-Reply (manager.line.biz) ─────── */}
-        {currentStep === 4 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <div style={{
-                width: '42px', height: '42px', borderRadius: '12px',
-                background: LINE_GRADIENT,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-              }}>4</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Turn off LINE's automatic replies</h3>
-            </div>
-
-            {/* Why box */}
-            <div style={{
-              display: 'flex', alignItems: 'flex-start', gap: '0.6rem',
-              padding: '0.85rem 1rem', background: 'rgba(6,199,85,0.07)',
-              borderRadius: '10px', border: '1px solid rgba(6,199,85,0.25)',
-              marginBottom: '1.5rem', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6,
-            }}>
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: LINE_GREEN }} />
-              <span>
-                <strong style={{ color: 'var(--text-primary)' }}>Why do this?</strong> Right now, when someone messages your LINE account, LINE automatically sends a generic reply like "Thanks for your message!" But if we leave that on, customers will get TWO replies — one from LINE and one from your bot. That's confusing! So we need to turn off LINE's automatic message, so only your smart AI bot replies.
-              </span>
-            </div>
-
-            <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              In manager.line.biz:
-            </p>
-
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 2, marginBottom: '1.5rem' }}>
-              <ol style={{ margin: 0, paddingLeft: '1.4rem' }}>
-                <li>Click your business account name</li>
-                <li>
-                  Click the <strong>⚙️ Settings</strong> button in the <strong>top-right corner</strong>
-                </li>
-                <li>
-                  On the left menu, click <strong>"Response settings"</strong>
-                </li>
-                <li>
-                  Find <strong>"Auto-response messages"</strong> and turn it <strong>OFF</strong> (this stops LINE's automatic greeting)
-                </li>
-                <li>
-                  In the same area, make sure <strong>"Webhook"</strong> is turned <strong>ON</strong> (this sends messages to your bot)
-                </li>
-              </ol>
-
-              <div style={{
-                margin: '1rem 0 0 0',
-                padding: '0.85rem 1rem',
-                background: 'var(--ui-flow-surface)',
-                borderRadius: '10px',
-                border: '1px solid var(--ui-flow-border)',
-                fontSize: '0.88rem',
-              }}>
-                💡 <strong>Optional:</strong> If you see a <strong>"Chat"</strong> option, you can leave that ON. It lets your staff manually reply through LINE if they want to jump in and help.
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <label style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.85rem 1rem', background: 'var(--ui-flow-surface)',
-                borderRadius: '10px', border: `1px solid ${autoReplyOff ? LINE_GREEN : 'var(--ui-flow-border)'}`,
-                cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500,
-                transition: 'border-color 0.2s',
-              }}>
-                <input type="checkbox" checked={autoReplyOff} onChange={(e) => setAutoReplyOff(e.target.checked)} />
-                <span>
-                  ✓ I turned <strong>Auto-response messages</strong> <strong style={{ color: autoReplyOff ? '#e74c3c' : 'var(--text-secondary)' }}>OFF</strong>
-                  <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                    (LINE won't send generic greetings anymore)
-                  </span>
-                </span>
-              </label>
-              <label style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                padding: '0.85rem 1rem', background: 'var(--ui-flow-surface)',
-                borderRadius: '10px', border: `1px solid ${webhookOn ? LINE_GREEN : 'var(--ui-flow-border)'}`,
-                cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500,
-                transition: 'border-color 0.2s',
-              }}>
-                <input type="checkbox" checked={webhookOn} onChange={(e) => setWebhookOn(e.target.checked)} />
-                <span>
-                  ✓ I turned <strong>Webhook</strong> <strong style={{ color: webhookOn ? LINE_GREEN : 'var(--text-secondary)' }}>ON</strong>
-                  <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
-                    (Messages will go to your bot now)
-                  </span>
-                </span>
-              </label>
             </div>
           </div>
         )}
