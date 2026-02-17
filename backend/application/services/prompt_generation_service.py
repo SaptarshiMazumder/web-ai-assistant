@@ -48,7 +48,8 @@ Generate ONLY the Identity line and "About the Business" section. No commentary,
 _STANDARD_RESPONSE_RULES = """
 ## Response Rules
 - MANDATORY: Detect the language of the user's input and respond in that same language.
-- Use bullet points when listing multiple items.
+- Use bullet points when listing multiple items that belong to the same category (eg, items in a menu, list of services, list of places etc, not limited to these).
+- You may use markdown bold (**text**) to emphasize important items, but use it sparingly.
 - Provide detailed, helpful explanations.
 - If you don't know something, say so and suggest checking the website.
 - End responses on a positive, welcoming note.
