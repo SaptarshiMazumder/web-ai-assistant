@@ -37,49 +37,61 @@ def _text_message(text: str) -> dict:
     return {"type": "text", "text": text}
 
 
-def _flex_image_card(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
-    """Build a LINE Flex Message bubble with a hero image and title."""
-    body_contents: List[dict] = [
-        {"type": "text", "text": name, "weight": "bold", "size": "md", "wrap": True},
-    ]
+def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
+    """Build a LINE Flex Message bubble with a hero image."""
+    # User requested:
+    # 1. "nano is too small, revert to older sze" -> size="micro"
+    # 2. "img should fill the carousel card completely" -> use 'hero' block (full bleed)
+    # 3. "truncate the text size so that its not more than 2 lines max" -> maxLines=2, text size small
+    
     hero: dict = {
         "type": "image",
         "url": image_url,
         "size": "full",
-        "aspectRatio": "20:13",
+        "aspectRatio": "4:3",
         "aspectMode": "cover",
     }
+    
+    # Action on the bubble container so the whole card is clickable
+    bubble_action = None
     if link_url:
-        # LINE API requires label <= 40 chars
         label = (name or "View")[:40]
-        hero["action"] = {"type": "uri", "label": label, "uri": link_url}
+        bubble_action = {"type": "uri", "label": label, "uri": link_url}
+
+    body_contents: List[dict] = []
+    if name:
+        body_contents.append(
+            {
+                "type": "text", 
+                "text": name, 
+                "weight": "bold", 
+                "size": "xs", # Keep text small
+                "wrap": True,
+                "maxLines": 2, # Truncate to 2 lines max
+                "color": "#ffffff", # White text
+            }
+        )
+    
     bubble: dict = {
         "type": "bubble",
+        "size": "micro", # Reverted to micro (larger than nano)
         "hero": hero,
-        "body": {
+    }
+    
+    if bubble_action:
+        bubble["action"] = bubble_action
+
+    if body_contents:
+        bubble["body"] = {
             "type": "box",
             "layout": "vertical",
             "contents": body_contents,
-        },
-    }
-    if link_url:
-        bubble["footer"] = {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "button",
-                    "action": {"type": "uri", "label": "View", "uri": link_url},
-                    "style": "primary",
-                    "height": "sm",
-                }
-            ],
+            "paddingAll": "sm", # Standard padding for text area
+            "justifyContent": "center",
+            "backgroundColor": "#333333", # Dark background
         }
-    return {
-        "type": "flex",
-        "altText": name,
-        "contents": bubble,
-    }
+
+    return bubble
 
 
 async def reply_message(
@@ -90,21 +102,38 @@ async def reply_message(
     asset_cards: Optional[List[dict]] = None,
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
-    messages: List[dict] = [_text_message(t) for t in texts[:5]]
-    # Append asset flex cards (up to remaining slots; LINE allows max 5 per reply)
-    if asset_cards:
-        remaining = 5 - len(messages)
-        logger.info(f"LINE reply_message: adding {len(asset_cards[:remaining])} asset cards")
-        for card in asset_cards[:remaining]:
-            flex_card = _flex_image_card(
-                card.get("name", ""),
-                card.get("image_url", ""),
-                card.get("link_url") or None,
-            )
-            logger.info(f"LINE flex card: {flex_card}")
-            messages.append(flex_card)
     
-    logger.info(f"LINE reply_message: sending {len(messages)} total messages")
+    # 1. Text messages first
+    messages: List[dict] = [_text_message(t) for t in texts[:4]] # Leave room for 1 carousel if needed
+    
+    # 2. Asset Carousel
+    if asset_cards:
+        bubbles = []
+        # Max bubbles in a carousel is 12
+        for card in asset_cards[:12]: 
+            bubbles.append(
+                _create_image_bubble(
+                    card.get("name", ""),
+                    card.get("image_url", ""),
+                    card.get("link_url") or None,
+                )
+            )
+        
+        if bubbles:
+            carousel_message = {
+                "type": "flex",
+                "altText": "Images sent",
+                "contents": {
+                    "type": "carousel",
+                    "contents": bubbles
+                }
+            }
+            # Ensure we don't exceed 5 messages total
+            if len(messages) >= 5:
+                messages = messages[:4]
+            messages.append(carousel_message)
+    
+    logger.info(f"LINE reply_message: sending {len(messages)} messages (text + carousel)")
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/reply",
@@ -126,17 +155,33 @@ async def push_message(
     asset_cards: Optional[List[dict]] = None,
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
-    messages: List[dict] = [_text_message(t) for t in texts[:5]]
+    
+    messages: List[dict] = [_text_message(t) for t in texts[:4]]
+    
     if asset_cards:
-        remaining = 5 - len(messages)
-        for card in asset_cards[:remaining]:
-            messages.append(
-                _flex_image_card(
+        bubbles = []
+        for card in asset_cards[:12]:
+            bubbles.append(
+                _create_image_bubble(
                     card.get("name", ""),
                     card.get("image_url", ""),
                     card.get("link_url") or None,
                 )
             )
+            
+        if bubbles:
+            carousel_message = {
+                "type": "flex",
+                "altText": "Images sent",
+                "contents": {
+                    "type": "carousel",
+                    "contents": bubbles
+                }
+            }
+            if len(messages) >= 5:
+                messages = messages[:4]
+            messages.append(carousel_message)
+
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/push",
