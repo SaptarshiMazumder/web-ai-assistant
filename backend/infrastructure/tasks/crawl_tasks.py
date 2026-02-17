@@ -320,6 +320,28 @@ def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) ->
     repo.update(job)
 
 
+def _start_prompt_generation(bot_id: str, gcs_prefix: str, root_url: str) -> None:
+    """Queue prompt generation from crawled content (non-blocking)."""
+    if not bot_id or not gcs_prefix:
+        return
+    auto = (os.environ.get("PROMPT_GEN_AUTO") or "true").strip().lower()
+    if auto not in ("1", "true", "yes", "on"):
+        return
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            return
+        prompt_generation_task.delay(
+            bot_id=bot_id,
+            org_id=bot.org_id,
+            gcs_prefix=gcs_prefix,
+            root_url=root_url or "",
+        )
+    except Exception as e:
+        logger.warning(f"Failed to queue prompt generation for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+
+
 def _extract_topics_from_docs(bot_id: str, docs: List[Any]) -> None:
     """Extract topics from crawled documents and save them for the bot."""
     if not docs:
@@ -491,6 +513,83 @@ def asset_extraction_task(
         return {"status": "error", "error": str(e)[:200]}
 
 
+@celery_app.task(
+    name="infrastructure.tasks.crawl_tasks.prompt_generation_task",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_kwargs={"max_retries": 3},
+)
+def prompt_generation_task(
+    self: Task,
+    bot_id: str,
+    org_id: str,
+    gcs_prefix: str,
+    root_url: str = "",
+) -> Dict[str, Any]:
+    """Generate a system prompt from crawled homepage content using LLM."""
+    try:
+        # 1. Check if bot already has custom instructions
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            return {"status": "skipped", "reason": "bot not found"}
+
+        existing_config = {}
+        if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+            try:
+                existing_config = json.loads(bot.agent_config)
+            except (TypeError, ValueError):
+                pass
+
+        existing_instructions = (existing_config.get("instructions") or "").strip()
+        if existing_instructions:
+            logger.info(f"[PromptGen] Bot {bot_id} already has custom instructions, skipping auto-generation")
+            return {"status": "skipped", "reason": "custom instructions exist"}
+
+        # 2. Load homepage content from GCS
+        # 2. Load homepage content from GCS
+        documents = _load_docs_from_gcs_prefix(gcs_prefix)
+        if not documents:
+            return {"status": "skipped", "reason": "no documents found"}
+
+        # Filter for homepage document (matching root_url)
+        homepage_doc = None
+        clean_root = root_url.strip().rstrip("/")
+        if clean_root:
+            for doc in documents:
+                durl = (doc.get("url") or "").strip().rstrip("/")
+                if durl and (durl == clean_root):
+                    homepage_doc = doc
+                    break
+        
+        if not homepage_doc:
+            homepage_doc = documents[0] # Fallback to first doc
+
+        homepage_content = homepage_doc.get("content", "")
+        if not homepage_content:
+            return {"status": "skipped", "reason": "homepage content empty"}
+
+        # 3. Generate the prompt
+        from application.services.prompt_generation_service import generate_prompt_from_content
+        business_name = bot.display_name if bot else ""
+        generated_prompt = generate_prompt_from_content(homepage_content, root_url, business_name=business_name)
+        if not generated_prompt:
+            return {"status": "error", "reason": "LLM returned no prompt"}
+
+        # 4. Save to agent_config.instructions
+        existing_config["instructions"] = generated_prompt
+        config_json = json.dumps(existing_config, ensure_ascii=False)
+        bot_repo.update_agent_config(bot_id, config_json)
+
+        logger.info(f"[PromptGen] Auto-generated prompt for bot {bot_id} ({len(generated_prompt)} chars)")
+        return {"status": "done", "prompt_length": len(generated_prompt)}
+
+    except Exception as e:
+        logger.warning(f"[PromptGen] Failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+        return {"status": "error", "error": str(e)[:200]}
+
+
 async def _execute_crawl(
     job_id: str,
     bot_id: str,
@@ -509,6 +608,9 @@ async def _execute_crawl(
     """
     if start_time is None:
         start_time = time.monotonic()
+
+    # Capture the original input URL before 'url' gets reassigned in preview loops
+    _original_input_url = (url or (urls[0] if urls else "") or "").strip()
         
     job_repo = PostgresIndexJobRepository()
     job = job_repo.get_job(bot_id, job_id)
@@ -668,6 +770,12 @@ async def _execute_crawl(
                 _start_asset_extraction(bot_id, gcs_prefix)
             except Exception as asset_error:
                 logger.warning(f"Asset extraction queue failed: {type(asset_error).__name__}: {str(asset_error)[:200]}")
+
+            # Auto-generate system prompt from homepage content
+            try:
+                _start_prompt_generation(bot_id, gcs_prefix, _original_input_url)
+            except Exception as prompt_error:
+                logger.warning(f"Prompt generation queue failed: {type(prompt_error).__name__}: {str(prompt_error)[:200]}")
 
         # Import to RAG with error handling
         job.stage = "importing"

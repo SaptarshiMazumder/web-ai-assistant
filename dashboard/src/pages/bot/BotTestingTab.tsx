@@ -131,7 +131,9 @@ export default function BotTestingTab() {
   const [rawAvailabilityFormat, setRawAvailabilityFormat] = useState<'text' | 'html' | 'debug'>('text')
   const [rawAvailabilityContent, setRawAvailabilityContent] = useState<string | null>(null)
   const [rawAvailabilityLoading, setRawAvailabilityLoading] = useState(false)
+
   const [escalationsEnabled, setEscalationsEnabled] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const { siteUrl, siteTitle } = useMemo(() => {
     const primaryDomain = pickPrimaryDomain(domains, selectedBot?.bot_id)
@@ -306,6 +308,31 @@ export default function BotTestingTab() {
     setPersonaId((agentConfig.persona_id || DEFAULT_PERSONA_ID).trim())
   }
 
+  const handleGeneratePrompt = async () => {
+    if (!botId || !activeOrgId || activeOrgId === '__all__') return
+    setIsGenerating(true)
+    try {
+      const token = await getAccessTokenSilently()
+      const path = withOrg(`/v1/org/bots/${botId}/generate-prompt`, activeOrgId)
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || res.statusText)
+      }
+      const data = await res.json() as { prompt: string }
+      if (data.prompt) {
+        setInstructions(data.prompt)
+      }
+    } catch (e) {
+      alert("Failed to generate prompt: " + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const loadAvailabilityJobs = useCallback(async () => {
     if (!selectedBot) return
     const jobs = await listAvailabilityJobs(selectedBot.bot_id)
@@ -445,7 +472,17 @@ export default function BotTestingTab() {
             <div className="testing-field">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <label className="testing-label">Instructions (Prompt)</label>
-                {personaId && personas.find((p) => p.id === personaId) && (
+                {personaId === DEFAULT_PERSONA_ID && (
+                  <UiButton
+                    variant="ghost"
+                    onClick={() => void handleGeneratePrompt()}
+                    disabled={isGenerating || configLoading}
+                    style={{ fontSize: '0.75rem', padding: '2px 8px', height: 'auto', minHeight: 'unset' }}
+                  >
+                    {isGenerating ? 'Generating...' : '⚡ Generate from website'}
+                  </UiButton>
+                )}
+                {personaId && personas.find((p) => p.id === personaId) && personaId !== DEFAULT_PERSONA_ID && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--ui-flow-accent, #e4587a)', fontWeight: 500 }}>
                     Based on {personas.find((p) => p.id === personaId)?.name}
                   </span>

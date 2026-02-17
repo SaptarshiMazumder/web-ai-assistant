@@ -179,11 +179,12 @@ from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_str
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
-from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository
+from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository, PostgresIndexJobRepository, PostgresBotRepository
 from infrastructure.db.connection import get_connection
 from infrastructure.celery_app import celery_app
 from infrastructure.tasks.discovery_tasks import discovery_job_task
 from domain.entities import DiscoveryJob
+from application.services.prompt_generation_service import generate_prompt_from_content
 
 router = APIRouter()
 
@@ -2934,6 +2935,68 @@ async def v1_org_cancel_discovery_job(
     job.status = "cancelled"
     repo.update(job)
     return {"status": "cancelled", "job_id": job_id}
+
+
+@router.post("/v1/org/bots/{bot_id}/generate-prompt")
+async def v1_org_generate_prompt(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Generate a system prompt from the bot's crawled homepage content.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+
+    # 1. Find last crawl job with GCS prefix
+    repo = PostgresIndexJobRepository()
+    jobs = repo.list_jobs_for_bot(bot_id)
+    valid_job = next((j for j in jobs if j.gcs_prefix), None)
+    if not valid_job:
+        raise HTTPException(status_code=400, detail="No crawled content found. Please train first.")
+
+    # 2. Load homepage from GCS (reuse the same helper used by topic/asset extraction)
+    from infrastructure.tasks.crawl_tasks import _load_docs_from_gcs_prefix
+    all_documents = _load_docs_from_gcs_prefix(valid_job.gcs_prefix)
+    if not all_documents:
+        raise HTTPException(status_code=400, detail="No documents found in crawl data.")
+
+    # Pick only the homepage document (matching root URL), not all crawled pages
+    root_url = (valid_job.url or (valid_job.crawled_urls[0] if valid_job.crawled_urls else "")).strip().rstrip("/")
+    homepage_doc = None
+    for doc in all_documents:
+        doc_url = (doc.get("url") or "").strip().rstrip("/")
+        if doc_url and root_url and (doc_url == root_url or doc_url.rstrip("/") == root_url.rstrip("/")):
+            homepage_doc = doc
+            break
+    if not homepage_doc:
+        homepage_doc = all_documents[0]  # fallback to first doc
+
+    homepage_content = homepage_doc.get("content", "")
+    if not homepage_content:
+        raise HTTPException(status_code=400, detail="Homepage content is empty.")
+
+    # 3. Generate prompt
+    try:
+        # Fetch bot name to ensure accurate identity
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        business_name = bot.display_name if bot else ""
+
+        url = valid_job.url or (valid_job.crawled_urls[0] if valid_job.crawled_urls else "")
+        prompt = generate_prompt_from_content(homepage_content, root_url=url, business_name=business_name)
+        if not prompt:
+            raise HTTPException(status_code=500, detail="LLM failed to generate prompt.")
+        return {"prompt": prompt}
+    except HTTPException:
+        raise
+    except Exception as e:
+        if "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(status_code=429, detail="AI quota exhausted. Please try again later.")
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+
+
 
 
 @router.get("/v1/org/bots/{bot_id}/index/status")
