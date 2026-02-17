@@ -11,6 +11,8 @@ from typing import Optional, Tuple
 
 import httpx
 
+from application.utils.text_formatter import format_for_messaging
+
 logger = logging.getLogger(__name__)
 
 GRAPH_API_VERSION = "v21.0"
@@ -63,10 +65,11 @@ async def send_message(
     page_access_token: str,
 ) -> bool:
     """Send a text DM to an Instagram user via the Graph API."""
+    formatted_text = format_for_messaging(text)
     base = _api_base(page_access_token)
     payload = {
         "recipient": {"id": recipient_id},
-        "message": {"text": text},
+        "message": {"text": formatted_text},
     }
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(

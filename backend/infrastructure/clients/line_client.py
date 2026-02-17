@@ -11,6 +11,8 @@ from typing import List, Optional
 
 import httpx
 
+from application.utils.text_formatter import format_for_messaging
+
 logger = logging.getLogger(__name__)
 
 LINE_API_BASE = "https://api.line.me/v2/bot"
@@ -34,7 +36,8 @@ def verify_signature(body: bytes, signature: str, channel_secret: str) -> bool:
 
 
 def _text_message(text: str) -> dict:
-    return {"type": "text", "text": text}
+    formatted_text = format_for_messaging(text)
+    return {"type": "text", "text": formatted_text}
 
 
 def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:

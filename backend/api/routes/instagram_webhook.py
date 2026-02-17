@@ -33,6 +33,7 @@ from infrastructure.clients.instagram_client import (
     verify_signature,
     send_message,
     send_image,
+    send_generic_template,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
@@ -539,16 +540,37 @@ async def _handle_text_message(
     else:
         await send_message(ig_user_id, answer, access_token)
 
-    # Send asset images as separate messages (Instagram doesn't support inline images in text)
-    for card in asset_cards:
-        img_url = card.get("image_url", "")
-        if img_url:
-            # Build absolute URL for the public image proxy
+    # Send asset images as a Generic Template carousel (clickable cards)
+    if asset_cards:
+        elements = []
+        for card in asset_cards[:10]:  # Instagram limit: max 10 elements
+            img_url = card.get("image_url", "")
+            if not img_url:
+                continue
             abs_url = img_url if img_url.startswith("http") else f"https://{request.headers.get('host', 'localhost')}{img_url}"
+            element: dict = {
+                "title": (card.get("name") or "Image")[:80],  # IG title limit: 80 chars
+                "image_url": abs_url,
+            }
+            link_url = card.get("link_url")
+            if link_url:
+                element["default_action"] = {
+                    "type": "web_url",
+                    "url": link_url,
+                }
+                element["buttons"] = [
+                    {
+                        "type": "web_url",
+                        "url": link_url,
+                        "title": "View",
+                    }
+                ]
+            elements.append(element)
+        if elements:
             try:
-                await send_image(ig_user_id, abs_url, access_token)
+                await send_generic_template(ig_user_id, elements, access_token)
             except Exception:
-                logger.warning("Failed to send asset image %s to Instagram user", card.get("asset_id", ""))
+                logger.warning("Failed to send asset carousel to Instagram user %s", ig_user_id)
 
 
 # ══════════════════════════════════════════════════════════════════════
