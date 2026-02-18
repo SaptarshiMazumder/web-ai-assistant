@@ -63,6 +63,9 @@ export default function AddSourcePage() {
   const [discoveryTimedOutMessage, setDiscoveryTimedOutMessage] = useState<string | null>(null)
   const [showPdfFallback, setShowPdfFallback] = useState(false)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [singlePageUrl, setSinglePageUrl] = useState('')
+  const [singlePageError, setSinglePageError] = useState<string | null>(null)
+  const [addingSinglePage, setAddingSinglePage] = useState(false)
   const [pdfFiles, setPdfFiles] = useState<File[]>([])
   const [textDocFiles, setTextDocFiles] = useState<File[]>([])
   const [textContent, setTextContent] = useState('')
@@ -224,6 +227,39 @@ export default function AddSourcePage() {
     abortRef.current?.abort()
     setIsDiscovering(false)
   }, [])
+
+  const handleAddSinglePage = useCallback(async () => {
+    if (!selectedBot) return
+    setSinglePageError(null)
+    const trimmed = singlePageUrl.trim()
+    if (!trimmed) {
+      setSinglePageError('Enter a URL to add')
+      return
+    }
+
+    let withProtocol: string
+    try {
+      withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+      new URL(withProtocol)
+    } catch {
+      setSinglePageError('Enter a valid URL')
+      return
+    }
+
+    setAddingSinglePage(true)
+    try {
+      const jobId = await queueCrawlUrls(selectedBot.bot_id, [withProtocol])
+      if (jobId) {
+        setSinglePageUrl('')
+        setSinglePageError(null)
+        await loadJobs(selectedBot.bot_id)
+      }
+    } catch (err) {
+      setSinglePageError((err as Error).message || 'Failed to add page')
+    } finally {
+      setAddingSinglePage(false)
+    }
+  }, [singlePageUrl, selectedBot, queueCrawlUrls, loadJobs])
 
   const handleToggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
@@ -455,75 +491,119 @@ export default function AddSourcePage() {
           </div>
 
           {activeTab === 'website' && (
-            <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>Discover pages</div>
+            <>
+              {/* Add Single Page Section */}
+              <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Add Single Page</div>
+                <div className="flow-hint-text" style={{ marginBottom: '1.25rem' }}>
+                  Add a specific page URL to your knowledge base.
+                </div>
 
-              {!isDiscovering && discoveredUrls.length > 0 && discoveryDurationLabel != null && (
-                <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
-                  Discovered {discoveredUrls.length} page{discoveredUrls.length !== 1 ? 's' : ''} in {discoveryDurationLabel}.
+                <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                  <GlassField label="Page URL" style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      type="url"
+                      value={singlePageUrl}
+                      onChange={(e) => setSinglePageUrl(e.target.value)}
+                      placeholder="https://example.com/page"
+                      disabled={addingSinglePage}
+                      onKeyDown={(e) => e.key === 'Enter' && !addingSinglePage && void handleAddSinglePage()}
+                    />
+                  </GlassField>
+                  <div className="add-source-discovery-action" style={{ paddingTop: '0.2rem' }}>
+                    <UiButton
+                      variant="primary"
+                      onClick={() => void handleAddSinglePage()}
+                      disabled={!singlePageUrl.trim() || addingSinglePage}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {addingSinglePage ? 'Adding…' : 'Add'}
+                    </UiButton>
+                  </div>
                 </div>
-              )}
-              {isDiscovering && (
-                <div className="flow-hint-text discovery-loading" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
-                  <span className="discovery-loading-dots" aria-hidden>
-                    <span /><span /><span />
-                  </span>
-                  Discovering pages... {discoveredUrls.length} found so far
-                </div>
-              )}
-              {!isDiscovering && discoveredUrls.length === 0 && (
-                <div className="flow-hint-text" style={{ marginBottom: '0.75rem' }}>
-                  Enter your website (or a section) to find related pages automatically.
-                </div>
-              )}
-              {discoveryTimedOutMessage && !isDiscovering && (
-                <div className="alert info" style={{ marginBottom: '0.75rem' }}>
-                  {discoveryTimedOutMessage}
-                </div>
-              )}
 
-              <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
-                <GlassField label="Website URL" style={{ flex: 1, minWidth: 0 }}>
-                  <input
-                    type="url"
-                    value={discoveryUrl}
-                    onChange={(e) => setDiscoveryUrl(e.target.value)}
-                    placeholder="https://example.com/your-section/"
-                    disabled={isDiscovering}
-                    onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
-                  />
-                </GlassField>
-                <div className="add-source-discovery-action" style={{ paddingTop: '0.2rem' }}>
-                  {!isDiscovering ? (
-                    <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <ScanSearch size={16} />
-                      Scan
-                    </UiButton>
-                  ) : (
-                    <UiButton variant="secondary" onClick={handleStopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <StopIcon />
-                      Stop
-                    </UiButton>
-                  )}
-                </div>
+                {singlePageError && (
+                  <div className="alert error" style={{ marginBottom: '0.75rem' }}>
+                    {singlePageError}
+                  </div>
+                )}
+              </GlassCard>
+
+              {/* OR Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0', opacity: 0.6 }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ui-flow-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Or</div>
+                <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />
               </div>
 
-              {discoveryError && (
-                <div className={`alert ${discoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
-                  {discoveryError}
+              {/* Scan Entire Website Section */}
+              <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Scan Entire Website</div>
+                <div className="flow-hint-text" style={{ marginBottom: '1.25rem' }}>
+                  Enter your website (or a section) to find related pages automatically.
                 </div>
-              )}
 
-              {showPdfFallback && !isDiscovering && (
-                <div
-                  style={{
-                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                    border: '2px solid #0ea5e9',
-                    borderRadius: '16px',
-                    padding: '2rem',
-                    marginBottom: '1.5rem',
-                  }}
-                >
+                {!isDiscovering && discoveredUrls.length > 0 && discoveryDurationLabel != null && (
+                  <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
+                    Discovered {discoveredUrls.length} page{discoveredUrls.length !== 1 ? 's' : ''} in {discoveryDurationLabel}.
+                  </div>
+                )}
+                {isDiscovering && (
+                  <div className="flow-hint-text discovery-loading" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
+                    <span className="discovery-loading-dots" aria-hidden>
+                      <span /><span /><span />
+                    </span>
+                    Discovering pages... {discoveredUrls.length} found so far
+                  </div>
+                )}
+                {discoveryTimedOutMessage && !isDiscovering && (
+                  <div className="alert info" style={{ marginBottom: '0.75rem' }}>
+                    {discoveryTimedOutMessage}
+                  </div>
+                )}
+
+                <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                  <GlassField label="Website URL" style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      type="url"
+                      value={discoveryUrl}
+                      onChange={(e) => setDiscoveryUrl(e.target.value)}
+                      placeholder="https://example.com/your-section/"
+                      disabled={isDiscovering}
+                      onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
+                    />
+                  </GlassField>
+                  <div className="add-source-discovery-action" style={{ paddingTop: '0.2rem' }}>
+                    {!isDiscovering ? (
+                      <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <ScanSearch size={16} />
+                        Scan
+                      </UiButton>
+                    ) : (
+                      <UiButton variant="secondary" onClick={handleStopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <StopIcon />
+                        Stop
+                      </UiButton>
+                    )}
+                  </div>
+                </div>
+
+                {discoveryError && (
+                  <div className={`alert ${discoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
+                    {discoveryError}
+                  </div>
+                )}
+
+                {showPdfFallback && !isDiscovering && (
+                  <div
+                    style={{
+                      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                      border: '2px solid #0ea5e9',
+                      borderRadius: '16px',
+                      padding: '2rem',
+                      marginBottom: '1.5rem',
+                    }}
+                  >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                     <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <AlertCircle size={28} color="white" strokeWidth={2.5} />
@@ -569,80 +649,81 @@ export default function AddSourcePage() {
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.</p>
                       </div>
                     </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {(isDiscovering || discoveredUrls.length > 0) && (
-                <>
-                  <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
-                    <UiButton
-                      variant={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
-                      onClick={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? handleDeselectAll : handleSelectAll}
+                {(isDiscovering || discoveredUrls.length > 0) && (
+                  <>
+                    <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
+                      <UiButton
+                        variant={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
+                        onClick={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? handleDeselectAll : handleSelectAll}
+                      >
+                        {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+                      </UiButton>
+                      <UiButton
+                        variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
+                        onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
+                        disabled={!urlCategories}
+                      >
+                        {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                      </UiButton>
+                      <span className="muted" style={{ marginLeft: 'auto' }}>
+                        {selectedDiscoveredUrls.size} of {discoveredUrls.length} selected
+                      </span>
+                    </div>
+
+                    <div
+                      className="url-list"
+                      style={{
+                        maxHeight: '320px',
+                        overflowY: 'auto',
+                        border: '1px solid var(--flow-border)',
+                        borderRadius: 'var(--flow-radius)',
+                        padding: '1rem 1.25rem',
+                        background: 'var(--flow-bg)',
+                        marginBottom: '0.75rem',
+                      }}
                     >
-                      {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
-                    </UiButton>
-                    <UiButton
-                      variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
-                      onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
-                      disabled={!urlCategories}
-                    >
-                      {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
-                    </UiButton>
-                    <span className="muted" style={{ marginLeft: 'auto' }}>
-                      {selectedDiscoveredUrls.size} of {discoveredUrls.length} selected
-                    </span>
-                  </div>
+                      {isDiscovering && (
+                        <div style={{ marginBottom: 12, color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
+                          Scanning... ({discoveredUrls.length} found so far)
+                        </div>
+                      )}
+                      {urlCategories ? (
+                        <div>
+                          {Array.from(urlCategories.children.values())
+                            .sort((a, b) => getCategoryUrlCount(b) - getCategoryUrlCount(a))
+                            .map((cat) => renderCategory(cat))}
+                          {urlCategories.urls.length > 0 && (
+                            <div style={{ marginLeft: 0 }}>
+                              {urlCategories.urls.map((url) => (
+                                <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedDiscoveredUrls.has(url)}
+                                    onChange={() => handleToggleUrl(url)}
+                                    style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
+                                  />
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'No discovered pages yet.'}</div>
+                      )}
+                    </div>
 
-                  <div
-                    className="url-list"
-                    style={{
-                      maxHeight: '320px',
-                      overflowY: 'auto',
-                      border: '1px solid var(--flow-border)',
-                      borderRadius: 'var(--flow-radius)',
-                      padding: '1rem 1.25rem',
-                      background: 'var(--flow-bg)',
-                      marginBottom: '0.75rem',
-                    }}
-                  >
-                    {isDiscovering && (
-                      <div style={{ marginBottom: 12, color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
-                        Scanning... ({discoveredUrls.length} found so far)
-                      </div>
-                    )}
-                    {urlCategories ? (
-                      <div>
-                        {Array.from(urlCategories.children.values())
-                          .sort((a, b) => getCategoryUrlCount(b) - getCategoryUrlCount(a))
-                          .map((cat) => renderCategory(cat))}
-                        {urlCategories.urls.length > 0 && (
-                          <div style={{ marginLeft: 0 }}>
-                            {urlCategories.urls.map((url) => (
-                              <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedDiscoveredUrls.has(url)}
-                                  onChange={() => handleToggleUrl(url)}
-                                  style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
-                                />
-                                <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'No discovered pages yet.'}</div>
-                    )}
-                  </div>
-
-                  <UiButton variant="secondary" onClick={() => { setDiscoveredUrls([]); setSelectedDiscoveredUrls(new Set()); setDiscoveryUrl(''); setDiscoveryDurationMs(null); setDiscoveryTimedOutMessage(null); setDiscoveryError(null); }} disabled={isDiscovering}>
-                    Clear
-                  </UiButton>
-                </>
-              )}
-            </GlassCard>
+                    <UiButton variant="secondary" onClick={() => { setDiscoveredUrls([]); setSelectedDiscoveredUrls(new Set()); setDiscoveryUrl(''); setDiscoveryDurationMs(null); setDiscoveryTimedOutMessage(null); setDiscoveryError(null); }} disabled={isDiscovering}>
+                      Clear
+                    </UiButton>
+                  </>
+                )}
+              </GlassCard>
+            </>
           )}
 
           {activeTab === 'pdf' && (
