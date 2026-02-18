@@ -62,11 +62,18 @@ export function WidgetPreview({
 
   return (
     <div className="widget-preview-wrap">
-      <div className="widget-preview-stage" style={{ width: `${width}px` }}>
+      <div
+        className="widget-preview-stage"
+        style={{
+          width: '100%',
+          maxWidth: `${width}px`,
+        }}
+      >
         <div
           className="widget-preview-window"
           style={{
-            width: `${width}px`,
+            width: '100%',
+            maxWidth: `${width}px`,
             height: `${height}px`,
             maxHeight: `${maxHeight}px`,
             borderRadius: '16px',

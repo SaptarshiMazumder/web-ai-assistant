@@ -242,7 +242,7 @@ export function WidgetDesignForm({
                 </div>
                 <div className="design-form-field">
                   <label className="design-form-label">Accent color</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="design-form-color-row">
                     <input
                       type="color"
                       value={widgetPrimaryColor}
@@ -254,14 +254,13 @@ export function WidgetDesignForm({
                       value={widgetPrimaryColor}
                       onChange={(e) => update('widgetPrimaryColor', e.target.value)}
                       placeholder="#e4587a"
-                      className="design-form-input"
-                      style={{ width: '120px', minWidth: 0 }}
+                      className="design-form-input design-color-hex-input"
                     />
                   </div>
                 </div>
                 <div className="design-form-field">
                   <label className="design-form-label">Text color</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="design-form-color-row">
                     <input
                       type="color"
                       value={textColor}
@@ -273,8 +272,7 @@ export function WidgetDesignForm({
                       value={textColor}
                       onChange={(e) => update('textColor', e.target.value)}
                       placeholder="#ffffff"
-                      className="design-form-input"
-                      style={{ width: '120px', minWidth: 0 }}
+                      className="design-form-input design-color-hex-input"
                     />
                   </div>
                 </div>

@@ -8882,6 +8882,68 @@ select:hover {
   /* Widget design grid: single column on mobile */
   .widget-design-grid {
     grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Widget design form on mobile - constrain width and make compact */
+  .flow-panel-body--wide,
+  .flow-panel-body:has(.widget-design-grid) {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .widget-design-grid {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .design-form {
+    gap: 2rem !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .design-form .ui-glass-card {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .design-form-section {
+    gap: 1.5rem !important;
+  }
+
+  .design-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+  }
+
+  .design-form-field {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .design-form-input {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .design-form-label {
+    font-size: 0.9rem !important;
+  }
+
+  .design-form-hint {
+    font-size: 0.8rem !important;
+  }
+
+  .design-form-color-swatch {
+    width: 44px !important;
+    height: 44px !important;
+    flex-shrink: 0 !important;
   }
 
   /* Source cards, knowledge cards etc */
@@ -8906,5 +8968,58 @@ select:hover {
   .section-header h2,
   .section-header-title {
     font-size: 1.15rem !important;
+  }
+}
+
+/* Design color controls: keep swatch + hex input on one line without overflow */
+.design-form-color-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.design-form-color-row .design-form-color-swatch {
+  flex-shrink: 0;
+}
+
+.design-form-color-row .design-color-hex-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Design preview overflow guard (keep this at end so it wins cascade) */
+@media (max-width: 1100px) {
+  .widget-design-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: 1fr !important;
+    overflow-x: hidden !important;
+  }
+
+  .widget-preview-wrap {
+    position: static !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .widget-preview-stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .widget-preview-window {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
