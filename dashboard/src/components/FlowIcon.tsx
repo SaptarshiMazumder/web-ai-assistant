@@ -10,6 +10,7 @@ import {
   Files,
   Globe,
   Link,
+  Menu,
   MousePointerClick,
   Palette,
   PartyPopper,
@@ -43,6 +44,7 @@ const ICONS: Record<string, LucideIcon> = {
   source: Files,
   stop: SquareStop,
   arrow_back: ArrowLeft,
+  menu: Menu,
 }
 
 export type FlowIconName = keyof typeof ICONS

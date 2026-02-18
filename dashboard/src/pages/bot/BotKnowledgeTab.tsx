@@ -995,17 +995,10 @@ export default function BotKnowledgeTab() {
                       <td>
                         <button
                           type="button"
+                          className="delete-btn"
                           onClick={() => handleDeleteSource(s.source_id)}
                           disabled={deletingSourceId === s.source_id}
                           aria-label={`Delete ${sourceDisplayName(s)}`}
-                          style={{
-                            padding: '0.25rem',
-                            background: 'none',
-                            border: 'none',
-                            cursor: deletingSourceId === s.source_id ? 'not-allowed' : 'pointer',
-                            color: deletingSourceId === s.source_id ? '#94a3b8' : '#dc2626',
-                            opacity: deletingSourceId === s.source_id ? 0.7 : 1,
-                          }}
                         >
                           {deletingSourceId === s.source_id ? (
                             <span style={{ fontSize: '0.875rem' }}>…</span>

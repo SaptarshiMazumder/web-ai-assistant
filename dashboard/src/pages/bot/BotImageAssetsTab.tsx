@@ -525,20 +525,7 @@ export default function BotImageAssetsTab() {
                 }}
               >
                 <Sparkles size={16} />
-                {showExtractSettings ? 'Hide Page Selection' : 'Select Pages'}
-              </UiButton>
-              <UiButton
-                variant="secondary"
-                onClick={() => void handleAutoExtract()}
-                disabled={extracting || hasReachedAssetLimit || (extractPages.length > 0 && selectedExtractPages.size === 0)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {extracting ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-                {extracting ? 'Extracting...' : 'Auto-extract from URLs'}
+                {showExtractSettings ? 'Hide Page Selection' : 'Auto extract from Pages'}
               </UiButton>
             </div>
           </>
@@ -671,6 +658,25 @@ export default function BotImageAssetsTab() {
                       </label>
                     )
                   })}
+              </div>
+            )}
+
+            {/* Extract button at bottom of modal */}
+            {extractPages.length > 0 && (
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                <UiButton
+                  variant="primary"
+                  onClick={() => void handleAutoExtract()}
+                  disabled={extracting || hasReachedAssetLimit || selectedExtractPages.size === 0}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  {extracting ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
+                  {extracting ? 'Extracting...' : 'Extract Images'}
+                </UiButton>
               </div>
             )}
           </GlassCard>
@@ -989,36 +995,36 @@ export default function BotImageAssetsTab() {
 
                   if (isEditing) {
                     return (
-                      <GlassCard key={a.asset_id} style={{ padding: '1rem' }}>
-                        <div style={{ display: 'grid', gap: '0.75rem' }}>
-                          {/* Image preview */}
-                          {a.image_url ? (
-                            <img
-                              src={`${API_BASE}${a.image_url}`}
-                              alt={a.name}
-                              style={{
-                                width: '100%',
-                                height: 160,
-                                objectFit: 'cover',
-                                borderRadius: 8,
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                width: '100%',
-                                height: 100,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: '#f1f5f9',
-                                borderRadius: 8,
-                                color: '#94a3b8',
-                              }}
-                            >
-                              <Image size={32} />
-                            </div>
-                          )}
+                      <GlassCard key={a.asset_id} style={{ padding: 0, overflow: 'hidden' }}>
+                        {/* Image fills top without padding */}
+                        {a.image_url ? (
+                          <img
+                            src={`${API_BASE}${a.image_url}`}
+                            alt={a.name}
+                            style={{
+                              width: '100%',
+                              height: 160,
+                              objectFit: 'cover',
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: 160,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#f1f5f9',
+                              color: '#94a3b8',
+                            }}
+                          >
+                            <Image size={32} />
+                          </div>
+                        )}
+
+                        {/* Content with padding */}
+                        <div style={{ padding: '1rem', display: 'grid', gap: '0.75rem' }}>
                           <label
                             style={{
                               display: 'flex',

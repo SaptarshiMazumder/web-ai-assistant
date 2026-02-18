@@ -440,7 +440,7 @@ export default function AddSourcePage() {
   return (
     <AnimatedPage>
       <div className="flow-shell">
-        <div className="flow-panel-body">
+        <div className="flow-panel-body add-source-page-body">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
             <Link to={`/bots/${botId}/knowledge`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
               <UiButton variant="ghost" style={{ padding: '0.4rem' }}>
@@ -450,7 +450,7 @@ export default function AddSourcePage() {
             <h2 className="ui-section-header-title" style={{ margin: 0 }}>Add source</h2>
           </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
+          <div className="add-source-tabs-wrap" style={{ marginBottom: '1.5rem' }}>
             <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabs} ariaLabel="Source type tabs" />
           </div>
 
@@ -482,8 +482,8 @@ export default function AddSourcePage() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
-                <GlassField label="Website URL" style={{ flex: 1 }}>
+              <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                <GlassField label="Website URL" style={{ flex: 1, minWidth: 0 }}>
                   <input
                     type="url"
                     value={discoveryUrl}
@@ -493,7 +493,7 @@ export default function AddSourcePage() {
                     onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
                   />
                 </GlassField>
-                <div style={{ paddingTop: '0.2rem' }}>
+                <div className="add-source-discovery-action" style={{ paddingTop: '0.2rem' }}>
                   {!isDiscovering ? (
                     <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <ScanSearch size={16} />
@@ -828,9 +828,9 @@ export default function AddSourcePage() {
             </div>
           )}
 
-          <div className="flow-actions">
+          <div className="flow-actions add-source-actions">
             <UiButton variant="secondary" onClick={() => navigate(`/bots/${botId}/knowledge`)}>Back</UiButton>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
+            <div className="add-source-actions-right" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
               <UiButton variant="ghost" onClick={() => navigate(`/bots/${botId}/knowledge`)}>Cancel</UiButton>
               <UiButton variant="primary" onClick={() => void handleSubmit()} disabled={!canSubmit}>
                 {submitting ? 'Adding…' : 'Add sources'}

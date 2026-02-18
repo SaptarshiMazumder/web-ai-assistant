@@ -39,6 +39,86 @@
   --ui-flow-font-body: 'Google Sans', sans-serif;
 }
 
+/* ===== Add Source page overflow fixes ===== */
+.add-source-page-body {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.add-source-page-body > * {
+  min-width: 0;
+}
+
+.add-source-tabs-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.add-source-discovery-row {
+  min-width: 0;
+}
+
+.add-source-discovery-row .ui-glass-field {
+  min-width: 0;
+  max-width: none;
+}
+
+@media (max-width: 768px) {
+  .add-source-page-body {
+    overflow-x: hidden;
+  }
+
+  .add-source-tabs-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .add-source-tabs-wrap .ui-segmented-tabs {
+    display: inline-flex !important;
+    width: max-content;
+    min-width: max-content;
+  }
+
+  .add-source-tabs-wrap .ui-segmented-tab {
+    flex: 0 0 auto;
+  }
+
+  .add-source-discovery-row {
+    flex-wrap: wrap;
+  }
+
+  .add-source-discovery-action {
+    width: 100%;
+    padding-top: 0 !important;
+  }
+
+  .add-source-discovery-action .ui-flow-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .add-source-actions {
+    width: 100%;
+  }
+
+  .add-source-actions .add-source-actions-right {
+    width: 100% !important;
+    margin-left: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .add-source-actions .add-source-actions-right .ui-flow-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -172,6 +252,40 @@ a.primary:hover {
 .ghost:hover:not(:disabled) {
   background: var(--ui-flow-accent-soft);
   color: var(--ui-flow-accent);
+}
+
+/* ===== Delete button styling (trash icons) ===== */
+button.delete-btn {
+  padding: 0.25rem 0.5rem !important;
+  background: none !important;
+  border: none !important;
+  color: #dc2626 !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease !important;
+}
+
+button.delete-btn svg {
+  stroke: #dc2626 !important;
+  color: #dc2626 !important;
+}
+
+button.delete-btn:hover:not(:disabled) {
+  color: #b91c1c !important;
+  background: none !important;
+}
+
+button.delete-btn:hover:not(:disabled) svg {
+  stroke: #b91c1c !important;
+}
+
+button.delete-btn:disabled {
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+}
+
+button.delete-btn:disabled svg {
+  stroke: #94a3b8 !important;
 }
 
 .url-list {
@@ -7640,10 +7754,6 @@ select:hover {
   transition: all 0.3s ease;
 }
 
-.widget-preview-typing-bubble {
-  /* Inherit flex behaviors if needed */
-}
-
 .widget-preview-typing-dot {
   width: 4px;
   height: 4px;
@@ -8371,4 +8481,430 @@ select:hover {
 .persona-selector-dropdown:focus {
   border-color: var(--ui-flow-accent, #e4587a);
   box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.1);
+}
+
+/* ============================================================
+   DASHBOARD MOBILE RESPONSIVE — max-width: 768px
+   - Primary sidebar → bottom navbar
+   - Secondary sidebar → hamburger overlay
+   - Content width fixes
+   ============================================================ */
+
+/* --- Hamburger menu button (hidden on desktop) --- */
+.mobile-menu-btn {
+  display: none;
+}
+
+/* --- Mobile page nav pill button (hidden on desktop) --- */
+.mobile-page-nav {
+  display: none;
+  position: relative;
+}
+
+.mobile-page-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.5rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(246, 180, 109, 0.24);
+  color: var(--ui-flow-accent);
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.mobile-page-btn .nav-icon {
+  color: var(--ui-flow-accent);
+  flex-shrink: 0;
+}
+
+.mobile-page-btn-label {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-page-chevron {
+  color: var(--ui-flow-accent);
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.mobile-page-chevron.open {
+  transform: rotate(180deg);
+}
+
+.mobile-page-dropdown {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  z-index: 300;
+  background: var(--ui-flow-surface);
+  border: 1px solid var(--ui-flow-border);
+  border-radius: 14px;
+  padding: 0.4rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow-y: auto;
+}
+
+.mobile-dropdown-backdrop {
+  position: fixed;
+  inset: 0;
+  bottom: 60px;
+  z-index: 199;
+}
+
+/* --- Sidebar overlay backdrop (hidden on desktop) --- */
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+
+  /* ---- App shell: single column, bottom padding for navbar ---- */
+  .app-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    min-height: 100dvh !important;
+    height: 100dvh !important;
+    padding-bottom: 60px !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell.app-shell--secondary-visible {
+    grid-template-columns: none !important;
+  }
+
+  /* ---- Primary sidebar → Bottom navbar ---- */
+  .sidebar-primary {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: 60px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    padding: 0 0.5rem !important;
+    gap: 0 !important;
+    z-index: 200 !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.1) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .sidebar-primary-brand {
+    display: none !important;
+  }
+
+  .sidebar-primary-nav {
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    gap: 0 !important;
+    flex: none !important;
+  }
+
+  .sidebar-primary-link {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+  }
+
+  .sidebar-primary-link.active {
+    border-radius: 12px !important;
+  }
+
+  /* ---- Secondary sidebar → Hamburger overlay ---- */
+  .sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 60px !important;
+    width: 280px !important;
+    z-index: 150 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-right: 1px solid var(--ui-flow-border) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .sidebar.mobile-sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Hamburger menu button — hidden on mobile (replaced by page pill) */
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  /* Mobile page nav pill button — in page flow, no fixed positioning */
+  .mobile-page-nav {
+    display: block !important;
+  }
+
+  /* Overlay backdrop */
+  .sidebar-overlay {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    bottom: 60px;
+    z-index: 145;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+
+  .sidebar-overlay.mobile-sidebar-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ---- Content area: fill width ---- */
+  .content {
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .content-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* When secondary sidebar is present, add left padding for hamburger button */
+  .app-shell--secondary-visible .content-shell {
+    padding-top: 60px !important;
+  }
+
+  /* Page containers */
+  .page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .page-body,
+  .page-body-centered {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Flow panel body should be full width on mobile */
+  .flow-panel-body {
+    max-width: 100% !important;
+    gap: 1.5rem !important;
+    padding: 0 !important;
+  }
+
+  /* Glass cards: full width, reduced padding, no overflow */
+  .ui-glass-card {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+    padding: 0.875rem !important;
+  }
+
+  /* Form fields in cards should wrap on mobile */
+  .ui-glass-card input,
+  .ui-glass-card textarea,
+  .ui-glass-card select {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+
+  /* Tables — generic fallback */
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+  }
+
+  /* ===== Info Links: Topic and Link fields in column on left, delete btn on right ===== */
+  .info-links-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    gap: 1rem !important;
+    align-items: flex-start !important;
+  }
+
+  .info-links-row > div:nth-child(1) {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .info-links-row > div:nth-child(2) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    min-width: 0 !important;
+  }
+
+  .info-links-row > button {
+    grid-column: 2 !important;
+    grid-row: 1 / 3 !important;
+  }
+
+  /* ===== Sources table: card-row layout on mobile ===== */
+  .knowledge-table-wrap-scroll {
+    max-height: 55dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .knowledge-table thead {
+    display: none !important;
+  }
+
+  .knowledge-table tbody {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .knowledge-table tr {
+    display: grid !important;
+    grid-template-columns: 28px auto 1fr auto 34px !important;
+    grid-template-rows: auto auto auto !important;
+    row-gap: 0.18rem !important;
+    column-gap: 0.45rem !important;
+    align-items: center !important;
+    padding: 0.65rem 0 !important;
+    border-bottom: 1px solid var(--ui-flow-border) !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  .knowledge-table th,
+  .knowledge-table td {
+    padding: 0 !important;
+    border: none !important;
+    display: block !important;
+  }
+
+  /* Checkbox — spans all 3 rows */
+  .knowledge-table td:nth-child(1) {
+    grid-column: 1 !important;
+    grid-row: 1 / 4 !important;
+    align-self: center !important;
+  }
+
+  /* Type badge */
+  .knowledge-table td:nth-child(2) {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  /* Name — fills remaining width, truncated */
+  .knowledge-table td:nth-child(3) {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    font-weight: 500 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Status pill */
+  .knowledge-table td:nth-child(5) {
+    grid-column: 4 !important;
+    grid-row: 1 !important;
+  }
+
+  /* Delete btn */
+  .knowledge-table td:nth-child(7) {
+    grid-column: 5 !important;
+    grid-row: 1 !important;
+  }
+
+  /* Source URL — second row, spans cols 2–end, truncated */
+  .knowledge-table td:nth-child(4) {
+    grid-column: 2 / 6 !important;
+    grid-row: 2 !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    font-size: 0.78rem !important;
+    color: var(--ui-flow-muted) !important;
+    word-break: normal !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Added date — third row */
+  .knowledge-table td:nth-child(6) {
+    grid-column: 2 / 6 !important;
+    grid-row: 3 !important;
+    font-size: 0.75rem !important;
+    color: var(--ui-flow-muted) !important;
+  }
+
+  /* Forms */
+  .design-form,
+  .form-grid,
+  .members-form,
+  .settings-form {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Page header squeeze */
+  .page-header {
+    padding: 0.75rem 0 !important;
+  }
+
+  .page-header h1,
+  .page-header-title {
+    font-size: 1.25rem !important;
+  }
+
+  /* Widget design grid: single column on mobile */
+  .widget-design-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Source cards, knowledge cards etc */
+  .source-card,
+  .knowledge-card,
+  .lead-card {
+    max-width: 100% !important;
+  }
+
+  /* Bots grid: single column */
+  .bots-grid,
+  .bot-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Section header */
+  .section-header {
+    padding: 0 !important;
+  }
+
+  .section-header h1,
+  .section-header h2,
+  .section-header-title {
+    font-size: 1.15rem !important;
+  }
 }

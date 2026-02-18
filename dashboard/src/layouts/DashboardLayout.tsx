@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+
 import { useDashboardData } from '../hooks/useDashboardData'
 import ironManIcon from '../assets/icons8/iron-man.png'
 import {
@@ -22,6 +23,7 @@ function getActivePrimaryId(pathname: string): string {
 export default function DashboardLayout() {
   const { loading, error } = useDashboardData()
   const location = useLocation()
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const botMatch = useMatch('/bots/:botId')
   const botMatchNested = useMatch('/bots/:botId/*')
@@ -35,6 +37,11 @@ export default function DashboardLayout() {
   )
 
   const showSecondaryPanel = activePrimaryId === 'bots' && !!botId
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [location.pathname])
 
   return (
     <div className={`app-shell ${showSecondaryPanel ? 'app-shell--secondary-visible' : ''}`}>
@@ -62,10 +69,18 @@ export default function DashboardLayout() {
         </nav>
       </aside>
 
+      {/* Backdrop overlay for mobile sidebar */}
+      {showSecondaryPanel && (
+        <div
+          className={`sidebar-overlay ${mobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       <AnimatePresence>
         {showSecondaryPanel && (
           <motion.aside
-            className="sidebar"
+            className={`sidebar ${mobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}
             initial={{ opacity: 0, x: -14 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -14 }}
@@ -108,6 +123,7 @@ export default function DashboardLayout() {
                                   className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                                   to={item.to}
                                   end={item.to === '/' || item.id === 'overview'}
+                                  onClick={() => setMobileSidebarOpen(false)}
                                 >
                                   <span className="nav-link-content">
                                     <Icon className="nav-icon" aria-hidden="true" />
@@ -138,6 +154,7 @@ export default function DashboardLayout() {
                           <NavLink
                             className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                             to={item.to}
+                            onClick={() => setMobileSidebarOpen(false)}
                           >
                             <span className="nav-link-content">
                               <Icon className="nav-icon" aria-hidden="true" />

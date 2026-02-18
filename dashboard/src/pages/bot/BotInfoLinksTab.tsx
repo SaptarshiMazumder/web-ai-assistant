@@ -214,7 +214,7 @@ export default function BotInfoLinksTab() {
 
         <div style={{ display: 'grid', gap: '1.25rem', marginTop: '1.5rem' }}>
           {urlBankRows.map((row, idx) => (
-            <div key={`urlbank-${idx}`} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <div key={`urlbank-${idx}`} className="info-links-row" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
               <GlassField label="Topic" style={{ flex: 1, minWidth: '160px' }}>
                 <input
                   type="text"
@@ -244,7 +244,7 @@ export default function BotInfoLinksTab() {
               </GlassField>
               <button
                 type="button"
-                className="ghost"
+                className="delete-btn"
                 onClick={() => {
                   const next = urlBankRows.filter((_, i) => i !== idx)
                   setUrlBankRows(next.length ? next : [{ label: '', url: '' }])
@@ -252,7 +252,6 @@ export default function BotInfoLinksTab() {
                 disabled={urlBankRows.length <= 1}
                 aria-label="Remove link"
                 title="Remove"
-                style={{ color: '#dc2626', background: 'transparent', padding: '0.8rem 0.5rem', marginTop: '0.2rem' }}
               >
                 <Trash2 size={18} aria-hidden />
               </button>
