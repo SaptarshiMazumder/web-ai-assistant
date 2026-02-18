@@ -34,7 +34,7 @@ import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
 import BotPersonaTab from './pages/bot/BotPersonaTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
 import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
-import BotBusinessAssetsTab from './pages/bot/BotBusinessAssetsTab'
+import BotImageAssetsTab from './pages/bot/BotImageAssetsTab'
 import BotNotificationsTab from './pages/bot/BotNotificationsTab'
 
 function mostRecentBotId(bots: { bot_id: string; created_at: string }[]): string | null {
@@ -107,7 +107,7 @@ export default function App() {
               <Route path="notifications" element={<BotNotificationsTab />} />
               <Route path="knowledge" element={<BotKnowledgeTab />} />
               <Route path="info-links" element={<BotInfoLinksTab />} />
-              <Route path="business-assets" element={<BotBusinessAssetsTab />} />
+              <Route path="image-assets" element={<BotImageAssetsTab />} />
               <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />

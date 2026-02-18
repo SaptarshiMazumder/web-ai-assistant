@@ -38,11 +38,11 @@ _MAX_CRAWL_DURATION_SEC = 600  # HARD 10-MINUTE LIMIT for training/crawl to GCS/
 
 
 def _asset_limit() -> int:
-    raw = (os.environ.get("ASSET_MAX_PER_BOT") or "50").strip()
+    raw = (os.environ.get("ASSET_MAX_PER_BOT") or "15").strip()
     try:
         return max(1, min(int(raw), 1000))
     except ValueError:
-        return 50
+        return 15
 
 
 def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
@@ -236,27 +236,6 @@ def _repair_docs_for_language(docs: List[Document], *, lang: str) -> List[Docume
             except Exception:
                 continue
     return docs
-
-
-def _start_asset_extraction(bot_id: str, gcs_prefix: str) -> None:
-    """Queue asset extraction from crawled content (non-blocking)."""
-    if not bot_id or not gcs_prefix:
-        return
-    auto = (os.environ.get("ASSET_AUTO_EXTRACT") or "true").strip().lower()
-    if auto not in ("1", "true", "yes", "on"):
-        return
-    try:
-        bot_repo = PostgresBotRepository()
-        bot = bot_repo.get_bot(bot_id)
-        if not bot:
-            return
-        asset_extraction_task.delay(
-            bot_id=bot_id,
-            org_id=bot.org_id,
-            gcs_prefix=gcs_prefix,
-        )
-    except Exception as e:
-        logger.warning(f"Failed to queue asset extraction for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
 
 
 def _start_topic_extraction_job(bot_id: str, gcs_prefix: str) -> None:
@@ -477,14 +456,32 @@ def asset_extraction_task(
     bot_id: str,
     org_id: str,
     gcs_prefix: str,
+    job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Extract business assets from crawled documents using LLM."""
+    # update job status to running
+    job_repo = None
+    current_job = None
+    if job_id:
+        try:
+            from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
+            job_repo = PostgresAssetExtractionJobRepository()
+            current_job = job_repo.get_job(job_id)
+            if current_job:
+                current_job.status = "running"
+                job_repo.update_job(current_job)
+        except Exception as e:
+            logger.warning(f"Failed to update job status to running: {e}")
+
     try:
         limit = _asset_limit()
         repo = PostgresBotAssetRepository()
         existing_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
         remaining = max(0, limit - existing_count)
         if remaining <= 0:
+            if job_repo and current_job:
+                current_job.status = "done"
+                job_repo.update_job(current_job)
             return {
                 "status": "done",
                 "assets_count": 0,
@@ -499,8 +496,14 @@ def asset_extraction_task(
             bot_id=bot_id,
             gcs_prefix=gcs_prefix,
             max_assets=remaining,
+            job_id=job_id,
         )
         total_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
+        
+        if job_repo and current_job:
+            current_job.status = "done"
+            job_repo.update_job(current_job)
+
         logger.info(f"Asset extraction completed for bot {bot_id}: {count} assets created")
         return {
             "status": "done",
@@ -509,6 +512,14 @@ def asset_extraction_task(
             "assets_limit": limit,
         }
     except Exception as e:
+        if job_repo and current_job:
+            current_job.status = "error"
+            current_job.error = str(e)[:200]
+            try:
+                job_repo.update_job(current_job)
+            except Exception:
+                pass
+
         logger.warning(f"Asset extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
         return {"status": "error", "error": str(e)[:200]}
 
@@ -765,11 +776,7 @@ async def _execute_crawl(
             except Exception as topic_error:
                 logger.warning(f"Topic extraction queue failed: {type(topic_error).__name__}: {str(topic_error)[:200]}")
 
-            # Auto-extract business assets from crawled content
-            try:
-                _start_asset_extraction(bot_id, gcs_prefix)
-            except Exception as asset_error:
-                logger.warning(f"Asset extraction queue failed: {type(asset_error).__name__}: {str(asset_error)[:200]}")
+
 
             # Auto-generate system prompt from homepage content
             try:

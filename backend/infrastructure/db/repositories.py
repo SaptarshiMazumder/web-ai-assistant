@@ -3845,6 +3845,159 @@ class PostgresInstagramUserSessionRepository:
 # ── Bot Assets ──────────────────────────────────────────────────────────────
 
 
+
+@dataclass
+class AssetExtractionJob:
+    job_id: str
+    bot_id: str
+    org_id: str
+    status: str
+    created_at: str
+    updated_at: str
+    gcs_prefix: Optional[str] = None
+    page_urls: Optional[List[str]] = None
+    assets_discovered: int = 0
+    assets_downloaded: int = 0
+    assets_created: int = 0
+    error: Optional[str] = None
+    celery_task_id: Optional[str] = None
+
+
+class PostgresAssetExtractionJobRepository:
+    def create_job(self, job: AssetExtractionJob) -> None:
+        if not job.job_id or not job.bot_id or not job.org_id:
+            raise ValueError("job_id, bot_id, and org_id are required")
+        
+        con = _connect()
+        try:
+            urls_json = json.dumps(job.page_urls or [])
+            con.execute(
+                """
+                INSERT INTO asset_extraction_jobs (
+                    job_id, bot_id, org_id, status, gcs_prefix, page_urls,
+                    assets_discovered, assets_downloaded, assets_created,
+                    error, celery_task_id, created_at, updated_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    job.job_id, job.bot_id, job.org_id, job.status, job.gcs_prefix, urls_json,
+                    job.assets_discovered, job.assets_downloaded, job.assets_created,
+                    job.error, job.celery_task_id, job.created_at, job.updated_at
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_job(self, job: AssetExtractionJob) -> None:
+        job.updated_at = _utc_now()
+        con = _connect()
+        try:
+            urls_json = json.dumps(job.page_urls or [])
+            con.execute(
+                """
+                UPDATE asset_extraction_jobs
+                SET status=%s, gcs_prefix=%s, page_urls=%s,
+                    assets_discovered=%s, assets_downloaded=%s, assets_created=%s,
+                    error=%s, celery_task_id=%s, updated_at=%s
+                WHERE job_id=%s
+                """,
+                (
+                    job.status, job.gcs_prefix, urls_json,
+                    job.assets_discovered, job.assets_downloaded, job.assets_created,
+                    job.error, job.celery_task_id, job.updated_at,
+                    job.job_id
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_job(self, job_id: str) -> Optional[AssetExtractionJob]:
+        if not job_id:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, org_id, status, gcs_prefix, page_urls,
+                       assets_discovered, assets_downloaded, assets_created,
+                       error, celery_task_id, created_at, updated_at
+                FROM asset_extraction_jobs
+                WHERE job_id = %s
+                """,
+                (job_id,),
+            ).fetchone()
+            if not row:
+                return None
+            
+            try:
+                page_urls = json.loads(row[5]) if row[5] else []
+            except Exception:
+                page_urls = []
+
+            return AssetExtractionJob(
+                job_id=row[0],
+                bot_id=row[1],
+                org_id=row[2],
+                status=row[3],
+                gcs_prefix=row[4],
+                page_urls=page_urls,
+                assets_discovered=row[6],
+                assets_downloaded=row[7],
+                assets_created=row[8],
+                error=row[9],
+                celery_task_id=row[10],
+                created_at=row[11],
+                updated_at=row[12],
+            )
+        finally:
+            con.close()
+
+    def get_latest_job_for_bot(self, bot_id: str) -> Optional[AssetExtractionJob]:
+        if not bot_id:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT job_id, bot_id, org_id, status, gcs_prefix, page_urls,
+                       assets_discovered, assets_downloaded, assets_created,
+                       error, celery_task_id, created_at, updated_at
+                FROM asset_extraction_jobs
+                WHERE bot_id = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (bot_id,),
+            ).fetchone()
+            if not row:
+                return None
+            
+            try:
+                page_urls = json.loads(row[5]) if row[5] else []
+            except Exception:
+                page_urls = []
+
+            return AssetExtractionJob(
+                job_id=row[0],
+                bot_id=row[1],
+                org_id=row[2],
+                status=row[3],
+                gcs_prefix=row[4],
+                page_urls=page_urls,
+                assets_discovered=row[6],
+                assets_downloaded=row[7],
+                assets_created=row[8],
+                error=row[9],
+                celery_task_id=row[10],
+                created_at=row[11],
+                updated_at=row[12],
+            )
+        finally:
+            con.close()
+
+
 class PostgresBotAssetRepository:
     """CRUD for bot_assets (business image cards)."""
 

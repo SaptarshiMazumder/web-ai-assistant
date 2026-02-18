@@ -421,6 +421,24 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS bot_assets_bot_id ON bot_assets (bot_id)",
     "CREATE INDEX IF NOT EXISTS bot_assets_org_bot ON bot_assets (org_id, bot_id)",
+    """
+    CREATE TABLE IF NOT EXISTS asset_extraction_jobs (
+      job_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      gcs_prefix TEXT,
+      page_urls TEXT DEFAULT '[]',
+      assets_discovered INTEGER DEFAULT 0,
+      assets_downloaded INTEGER DEFAULT 0,
+      assets_created INTEGER DEFAULT 0,
+      error TEXT,
+      celery_task_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS asset_extraction_jobs_bot_updated ON asset_extraction_jobs (bot_id, updated_at DESC)",
 )
 
 _SCHEMA_INITIALIZED = False

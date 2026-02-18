@@ -171,7 +171,7 @@ def _scrape_image_urls(page_url: str) -> List[str]:
                 seen.add(absolute)
                 img_urls.append(absolute)
 
-    return img_urls[:_ASSET_IMAGE_CANDIDATE_LIMIT]
+    return img_urls
 
 
 def _download_and_store_image(
@@ -879,22 +879,19 @@ class AssetExtractionService:
         documents: List[Dict[str, Any]],
         max_assets: int = 50,
         page_urls: Optional[List[str]] = None,
+        job_id: Optional[str] = None,
     ) -> List[BotAsset]:
-        """
-        Analyze crawled documents and extract business assets.
-
-        Args:
-            org_id: Organization ID
-            bot_id: Bot ID
-            documents: List of {"content": str, "url": str} dicts
-            max_assets: Maximum number of new assets to create
-            page_urls: Optional page URL allow-list
-
-        Returns:
-            List of created BotAsset entities
-        """
-        if not documents or max_assets <= 0:
-            return []
+        """Core logic: parse docs -> extract candidates -> download images -> save."""
+        # Setup job repo if needed
+        job_repo = None
+        current_job = None
+        if job_id:
+            try:
+                from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
+                job_repo = PostgresAssetExtractionJobRepository()
+                current_job = job_repo.get_job(job_id)
+            except Exception as e:
+                logger.warning(f"Failed to load job {job_id}: {e}")
 
         # Get existing assets to avoid duplicates
         existing = self._repo.list_assets_for_bot(bot_id, active_only=False)
@@ -950,7 +947,8 @@ class AssetExtractionService:
                 extraction_mode = "deterministic"
 
             if extraction_mode in ("llm", "hybrid") and len(all_extracted) < max_assets:
-                for chunk in chunks:
+                # Limit to first 2 chunks per page to avoid excessive LLM calls
+                for chunk in chunks[:2]:
                     if len(all_extracted) >= max_assets:
                         break
                     page_assets = _extract_assets_from_page(url, chunk, image_urls)
@@ -967,11 +965,32 @@ class AssetExtractionService:
                 )
                 _append_page_assets(filtered_assets)
 
+        # Update job with discovered count
+        if job_repo and current_job:
+            current_job.assets_discovered = len(all_extracted)
+            # We treat 'discovered' as the total candidates we will try to download
+            try:
+                job_repo.update_job(current_job)
+            except Exception as e:
+                logger.warning(f"Failed to update job progress: {e}")
+
         # Save to database
         created: List[BotAsset] = []
         now = datetime.now(timezone.utc).isoformat()
+        limit = int((os.environ.get("ASSET_MAX_PER_BOT") or "15").strip() or 15)
 
         for item in all_extracted:
+            # ── Re-check limit before EACH insert ──
+            current_count = len(self._repo.list_assets_for_bot(bot_id, active_only=False))
+            if current_count >= limit:
+                logger.info(
+                    "Skipping remaining assets for bot %s: limit reached (%d/%d)",
+                    bot_id,
+                    current_count,
+                    limit,
+                )
+                break
+
             asset_id = "asset_" + uuid.uuid4().hex[:16]
             keywords = item.get("keywords", [])
             if not isinstance(keywords, list):
@@ -981,29 +1000,38 @@ class AssetExtractionService:
             link_url = (item.get("link_url") or item.get("source_url") or "").strip() or None
             description = (item.get("description") or "").strip()
 
-            # Try to download and store image from extracted URL
+            # Must have valid image URL to be worth saving
+            image_url = item.get("image_url")
+            if not image_url:
+                continue
+            
+            # Download and store image
             image_gcs_uri = ""
             image_public_url = ""
-            image_url = (item.get("image_url") or "").strip()
-            if image_url and image_url.startswith("http"):
-                try:
-                    image_gcs_uri, image_public_url = _download_and_store_image(
-                        image_url, bot_id, asset_id
-                    )
-                    if image_gcs_uri:
-                        logger.info("[AssetExtraction] Downloaded image for '%s': %s", item["name"].strip(), image_url)
-                except Exception as e:
-                    logger.warning(
-                        "[AssetExtraction] Image download failed for '%s': %s",
-                        item["name"].strip(),
-                        str(e)[:200],
-                    )
+            try:
+                # Use helper in this file if available or import
+                # The file has local _download_and_store_image helper? 
+                # Checking file content... yes, lines 1120+ typically.
+                # But wait, looking at line 1007 of previous file content, it seemed to call _download_and_store_image.
+                # I'll check if I need to use self or global. 
+                # It seems to be a standalone function at bottom of file usually.
+                # Assuming `_download_and_store_image(image_url, bot_id, asset_id)` signature based on previous code.
+                image_gcs_uri, image_public_url = _download_and_store_image(
+                     image_url, bot_id, asset_id
+                )
+            except Exception as e:
+                logger.warning(f"Download failed for {image_url}: {e}")
+
+            # Skip if image download failed
+            if not image_gcs_uri:
+                logger.debug("[AssetExtraction] Skipping '%s': image download failed", item.get("name", ""))
+                continue
 
             asset = BotAsset(
                 asset_id=asset_id,
                 bot_id=bot_id,
                 org_id=org_id,
-                name=item["name"].strip(),
+                name=item.get("name") or "Untitled",
                 description=description,
                 image_gcs_uri=image_gcs_uri,
                 image_public_url=image_public_url,
@@ -1013,9 +1041,20 @@ class AssetExtractionService:
                 created_at=now,
                 updated_at=now,
             )
+            
             try:
                 self._repo.create_asset(asset)
                 created.append(asset)
+                
+                # Update job progress
+                if job_repo and current_job:
+                    current_job.assets_downloaded += 1
+                    current_job.assets_created += 1
+                    try:
+                        job_repo.update_job(current_job)
+                    except Exception as e:
+                        logger.warning(f"Failed to update job progress: {e}")
+
             except Exception as e:
                 logger.warning(
                     "[AssetExtraction] Failed to save asset '%s': %s",
@@ -1024,7 +1063,7 @@ class AssetExtractionService:
                 )
 
         logger.info(
-            "[AssetExtraction] Extracted %d assets for bot %s from %d documents",
+            "Extracted %d assets for bot %s from %d documents",
             len(created),
             bot_id,
             len(documents),
@@ -1039,6 +1078,7 @@ class AssetExtractionService:
         gcs_prefix: str,
         max_assets: int = 50,
         page_urls: Optional[List[str]] = None,
+        job_id: Optional[str] = None,
     ) -> int:
         """Load documents from GCS and extract assets. Returns count of created assets."""
         documents = _load_docs_from_gcs(gcs_prefix)
@@ -1050,6 +1090,7 @@ class AssetExtractionService:
             documents=documents,
             max_assets=max_assets,
             page_urls=page_urls,
+            job_id=job_id,
         )
         return len(assets)
 

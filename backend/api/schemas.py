@@ -745,7 +745,7 @@ class InstagramOAuthUrlResponse(BaseModel):
     auth_url: str
 
 
-# ── Business Assets ─────────────────────────────────────────────────────────
+# ── Image Assets ─────────────────────────────────────────────────────────
 
 
 class AssetCard(BaseModel):
@@ -774,7 +774,7 @@ class BotAssetListResponse(BaseModel):
     bot_id: str
     assets: List[BotAssetResponse] = []
     count: int = 0
-    limit: int = 50
+    limit: int = 15
 
 
 class BotAssetAutoExtractRequest(BaseModel):
@@ -783,10 +783,22 @@ class BotAssetAutoExtractRequest(BaseModel):
 
 class BotAssetAutoExtractResponse(BaseModel):
     ok: bool = True
+    job_id: Optional[str] = None
     assets_extracted: int = 0
     assets_count: int = 0
-    assets_limit: int = 50
+    assets_limit: int = 15
     pages_considered: int = 0
+
+
+class AssetExtractionStatusResponse(BaseModel):
+    job_id: str
+    status: str  # queued, running, done, error
+    assets_discovered: int = 0
+    assets_downloaded: int = 0
+    assets_created: int = 0
+    assets_total: int = 0
+    limit: int = 15
+    error: Optional[str] = None
 
 
 class BotAssetDeleteResponse(BaseModel):

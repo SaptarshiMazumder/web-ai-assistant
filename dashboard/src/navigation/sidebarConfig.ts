@@ -80,7 +80,7 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
   { id: 'knowledge', label: 'Sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'Agent Knowledge' },
   { id: 'info-links', label: 'Info Links', to: `/bots/${botId}/info-links`, icon: Link2, header: 'Agent Knowledge' },
 
-  { id: 'business-assets', label: 'Business Assets', to: `/bots/${botId}/business-assets`, icon: Briefcase, header: 'Agent Knowledge' },
+  { id: 'image-assets', label: 'Image Assets', to: `/bots/${botId}/image-assets`, icon: Briefcase, header: 'Agent Knowledge' },
 
   // Appearance section (was Design)
   { id: 'design', label: 'Appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'Agent Design' },
