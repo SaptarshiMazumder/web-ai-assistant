@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  ArrowLeft,
   Badge,
   Brain,
   Check,
@@ -41,6 +42,7 @@ const ICONS: Record<string, LucideIcon> = {
   print: Printer,
   source: Files,
   stop: SquareStop,
+  arrow_back: ArrowLeft,
 }
 
 export type FlowIconName = keyof typeof ICONS

@@ -3,7 +3,7 @@ import { WidgetPreview } from '../pages/createBot/WidgetPreview'
 import { WIDGET_SIZE_DIMENSIONS } from '../constants/widgetSizes'
 import { FlowIcon } from './FlowIcon'
 import { FlowSelect } from './FlowSelect'
-import { SuggestedMessagesEditor } from './SuggestedMessagesEditor'
+
 
 const FOOTER_MAX_LENGTH = 200
 
@@ -150,7 +150,7 @@ export type WidgetDesignFormProps = {
   onChange: <K extends keyof WidgetDesignState>(key: K, value: WidgetDesignState[K]) => void
   banner?: React.ReactNode
   actions?: React.ReactNode
-  showSuggestedMessages?: boolean
+
 }
 
 export function WidgetDesignForm({
@@ -158,7 +158,7 @@ export function WidgetDesignForm({
   onChange,
   banner,
   actions,
-  showSuggestedMessages = true,
+
 }: WidgetDesignFormProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const headerInputRef = useRef<HTMLInputElement>(null)
@@ -206,7 +206,7 @@ export function WidgetDesignForm({
     autoScrollNewMessages,
     displaySourcesInMessages,
     sourcesLabel,
-    suggestedMessages,
+
   } = value
 
   const maxHeightLimit = WIDGET_SIZE_DIMENSIONS[widgetSize]?.height ?? 560
@@ -342,12 +342,7 @@ export function WidgetDesignForm({
                         </span>
                       </div>
                     </div>
-                    {showSuggestedMessages && (
-                      <SuggestedMessagesEditor
-                        suggestedMessages={suggestedMessages}
-                        onChange={(next) => update('suggestedMessages', next)}
-                      />
-                    )}
+
                   </div>
                 </section>
 
@@ -555,7 +550,7 @@ export function WidgetDesignForm({
           maxHeight={maxHeight}
           fontSize={fontSize}
           headerSize={headerSize}
-          suggestedMessages={suggestedMessages.map((msg) => ({ id: msg.id, label: msg.label }))}
+
         />
       </div>
 

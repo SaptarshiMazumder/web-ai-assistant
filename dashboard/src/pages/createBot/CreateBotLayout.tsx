@@ -2,8 +2,9 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
-import { getCreateBotStepIndex, getCreateBotSteps } from './flowConfig'
+import { getCreateBotStepIndex, getCreateBotSteps, getCreateBotPrevPath } from './flowConfig'
 import { TrainingProgressCircle } from './TrainingProgressCircle'
+
 
 function FlowStepsWithProgress() {
   const location = useLocation()
@@ -88,6 +89,19 @@ export default function CreateBotLayout() {
           <FlowStepsWithProgress />
           <section className="flow-panel">
             {error && <div className="alert error">{error}</div>}
+            {(() => {
+              const prevPath = getCreateBotPrevPath(location.pathname)
+              return prevPath ? (
+                <button
+                  type="button"
+                  className="flow-mobile-back"
+                  onClick={() => navigate(prevPath)}
+                  aria-label="Go back"
+                >
+                  <FlowIcon name="arrow_back" size="md" />
+                </button>
+              ) : null
+            })()}
             <div key={location.pathname} className="flow-panel-animate">
               <Outlet />
             </div>

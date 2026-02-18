@@ -23,7 +23,7 @@ type WidgetPreviewProps = {
   maxHeight?: number
   fontSize?: 'small' | 'medium' | 'large'
   headerSize?: 'small' | 'medium' | 'large'
-  suggestedMessages?: { id: string; label: string }[]
+
 }
 
 const FONT_SIZE_MAP = { small: 12, medium: 14, large: 16 } as const
@@ -46,7 +46,7 @@ export function WidgetPreview({
   maxHeight = 560,
   fontSize = 'medium',
   headerSize = 'small',
-  suggestedMessages = [],
+
 }: WidgetPreviewProps) {
   const { width, height: baseHeight } = WIDGET_SIZE_DIMENSIONS[size]
   const height = Math.min(baseHeight, maxHeight)
@@ -200,27 +200,7 @@ export function WidgetPreview({
                 </div>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
-                {(suggestedMessages.length ? suggestedMessages : [
-                  { id: 'default_1', label: 'What can you do?' },
-                  { id: 'default_2', label: 'Ask a question' },
-                  { id: 'default_3', label: 'Get help' },
-                ]).map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '20px',
-                      border: `1px solid ${borderColor}`,
-                      background: contentBg,
-                      fontSize: `${Math.max(11, msgFontSize - 2)}px`,
-                      color: contentColor,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {q.label}
-                  </button>
-                ))}
+
               </div>
               {/* Typing bubble – matches live widget (avatar + grey bubble with three dots) */}
               <div

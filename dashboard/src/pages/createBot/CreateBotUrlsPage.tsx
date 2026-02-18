@@ -990,6 +990,7 @@ export default function CreateBotUrlsPage() {
           )}
           <input
             type="checkbox"
+            className="url-checkbox"
             checked={isSelected}
             onChange={(e) => {
               e.stopPropagation()
@@ -1039,7 +1040,7 @@ export default function CreateBotUrlsPage() {
               })
               .map(child => renderCategory(child))}
             {category.urls.length > 0 && (
-              <div style={{ marginLeft: '20px', paddingLeft: '20px' }}>
+              <div className="url-list-nested" style={{ marginLeft: '20px', paddingLeft: '20px' }}>
                 {category.urls.map(url => (
                   <label
                     key={url}
@@ -1052,6 +1053,7 @@ export default function CreateBotUrlsPage() {
                   >
                     <input
                       type="checkbox"
+                      className="url-checkbox"
                       checked={selectedUrls.includes(url)}
                       onChange={() => toggleUrl(url)}
                       style={{ marginRight: '8px', cursor: 'pointer' }}

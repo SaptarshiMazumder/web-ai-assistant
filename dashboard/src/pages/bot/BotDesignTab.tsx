@@ -204,7 +204,7 @@ export default function BotDesignTab() {
       <WidgetDesignForm
         value={state}
         onChange={update}
-        showSuggestedMessages={false}
+
         actions={
           <UiButton
             variant="primary"

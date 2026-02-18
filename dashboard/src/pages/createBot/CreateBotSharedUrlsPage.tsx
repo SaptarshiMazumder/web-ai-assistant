@@ -162,6 +162,7 @@ export default function CreateBotSharedUrlsPage() {
 
       {/* URL rows */}
       <div
+        className="flow-url-container"
         style={{
           border: '1px solid var(--flow-border)',
           borderRadius: 'var(--flow-radius)',
@@ -178,7 +179,7 @@ export default function CreateBotSharedUrlsPage() {
         </div>
         <div style={{ overflowY: 'auto', minHeight: 0, paddingRight: '0.2rem' }}>
           {sharedUrlRows.map((row, idx) => (
-            <div key={`row-${idx}`} style={{
+            <div key={`row-${idx}`} className="flow-shared-url-row" style={{
               display: 'flex',
               gap: '10px',
               alignItems: 'flex-start',

@@ -3581,6 +3581,410 @@ select.design-form-input:focus {
   font-family: var(--flow-font-body);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   FLOW ACTIONS & TOOLBAR — default layout
+   ═══════════════════════════════════════════════════════════════ */
+
+.flow-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Mobile back button — hidden on desktop */
+.flow-mobile-back {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS — Create-bot flow
+   Collapse sidebar to horizontal stepper, single-column layout,
+   touch-friendly sizing.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* --- Mobile back arrow at top of panel ----------------------------- */
+  .flow-mobile-back {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 50%;
+    background: var(--flow-accent-soft, #fff1ef) !important;
+    color: var(--flow-accent, #e4587a) !important;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    /* ensure icon is centered */
+  }
+
+  /* Force SVG to be visible and colored */
+  .flow-mobile-back svg {
+    display: block;
+    pointer-events: none;
+    /* let clicks go to button */
+  }
+
+  .flow-mobile-back:active {
+    transform: scale(0.92);
+    /* when active, keep the pink color or go white? 
+       Previous was white text on pink bg. Let's stick to that. */
+    background: var(--flow-accent, #e4587a) !important;
+    color: #fff !important;
+  }
+
+  /* Hide the "Back" button in the bottom flow-actions on mobile */
+  /* Only hide if it's secondary (Back), not primary (Continue on step 1) */
+  .flow-actions>button.ui-flow-btn--secondary:first-child,
+  .flow-actions>.ui-flow-btn--secondary:first-child {
+    display: none !important;
+  }
+
+  /* --- Shell: scrollable container ----------------------------------- */
+  .flow-shell {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  /* --- Header: compact ------------------------------------------------ */
+  .flow-header {
+    padding: 0.75rem 1rem !important;
+    gap: 0.75rem;
+  }
+
+  .flow-title {
+    font-size: 1.15rem !important;
+  }
+
+  .flow-eyebrow {
+    font-size: 0.6rem !important;
+    margin-bottom: 0.05rem;
+  }
+
+  .flow-close {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* --- Grid: single column, sidebar on top --------------------------- */
+  .flow-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+
+  /* --- Sidebar → horizontal icon stepper ----------------------------- */
+  .flow-steps {
+    display: flex !important;
+    /* override the 900px breakpoint display:none */
+    padding: 0.6rem 0.75rem !important;
+    flex-direction: row !important;
+    gap: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    min-height: auto !important;
+  }
+
+  .flow-steps-list {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.15rem !important;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .flow-step {
+    grid-template-columns: auto !important;
+    gap: 0 !important;
+    padding: 0.35rem !important;
+    justify-items: center;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
+  .flow-step-title,
+  .flow-step-desc {
+    display: none !important;
+  }
+
+  .flow-step-number {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .flow-step-icon {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .flow-step.active .flow-step-number {
+    width: 38px !important;
+    height: 38px !important;
+    transform: scale(1) !important;
+  }
+
+  .flow-step.active .flow-step-icon {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Hide training progress in sidebar on mobile */
+  .flow-steps-progress {
+    display: none !important;
+  }
+
+  /* --- Panel: reduced padding, constrain width ----------------------- */
+  .flow-panel {
+    padding: 1.25rem 1rem !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* --- Panel body: fill width, prevent overflow ----------------------- */
+  .flow-panel-body {
+    max-width: none !important;
+    gap: 1.25rem !important;
+    overflow-x: hidden !important;
+    word-break: break-word;
+    min-width: 0 !important;
+  }
+
+  /* Prevent any child from blowing past the screen */
+  .flow-panel * {
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* But let flex/grid children shrink properly */
+  .flow-panel input,
+  .flow-panel button,
+  .flow-panel select,
+  .flow-panel textarea {
+    min-width: 0 !important;
+  }
+
+  /* --- Typography: slightly smaller ---------------------------------- */
+  .flow-shell .card-title {
+    font-size: 1.2rem !important;
+  }
+
+  .flow-shell .card-subtitle {
+    font-size: 0.85rem !important;
+  }
+
+  /* --- Inputs: remove max-width, full width -------------------------- */
+  .flow-shell .flow-field,
+  .ui-glass-field {
+    max-width: none !important;
+  }
+
+  .flow-shell input[type="text"],
+  .flow-shell input[type="url"],
+  .flow-shell input[type="email"],
+  .flow-shell select,
+  .flow-shell textarea {
+    font-size: 16px !important;
+    /* prevents iOS zoom on focus */
+  }
+
+  /* --- Buttons: flow-actions ----------------------------------------- */
+  .flow-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+    width: 100% !important;
+  }
+
+  /* On mobile, flatten nested button wrappers inside flow-actions */
+  .flow-actions>div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Make all buttons inside flow-actions fill available width */
+  .flow-actions>button,
+  .flow-actions>div>button,
+  .flow-actions .ui-flow-btn,
+  .flow-actions .star-border-container {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  /* --- Toolbar: wrap on mobile --------------------------------------- */
+  .flow-toolbar {
+    flex-wrap: wrap !important;
+    gap: 0.4rem !important;
+  }
+
+  .flow-toolbar .muted {
+    width: 100%;
+    text-align: right;
+  }
+
+  /* --- Hosting cards: full width ------------------------------------- */
+  .flow-hosting-card {
+    padding: 1rem !important;
+  }
+
+  /* --- URL container: flexible height instead of fixed ---------------- */
+  .flow-url-container {
+    height: auto !important;
+    max-height: 50vh;
+  }
+
+  /* Also target .url-list with inline maxHeight */
+  .url-list {
+    max-height: 50vh !important;
+  }
+
+  /* --- Shared URL rows: stack vertically ------------------------------ */
+  .flow-shared-url-row {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .flow-shared-url-row>div {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  /* --- Snippet: smaller text ----------------------------------------- */
+  .flow-shell .snippet {
+    font-size: 0.78rem !important;
+    padding: 0.9rem 1rem !important;
+    word-break: break-all;
+  }
+
+  /* --- Glass card: reduced padding ----------------------------------- */
+  .flow-shell .ui-glass-card {
+    padding: 1rem !important;
+  }
+
+  /* --- Segmented tabs: scrollable ------------------------------------ */
+  .ui-segmented-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+  }
+
+  .ui-segmented-tabs button {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.65rem !important;
+  }
+
+  /* --- Widget design grid: single column on mobile ------------------- */
+  .flow-shell .widget-design-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  .widget-preview-wrap {
+    position: static !important;
+  }
+
+  /* --- Design form rows: single column ------------------------------- */
+  .design-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  .design-form {
+    gap: 2.5rem !important;
+  }
+
+  .design-form-section {
+    gap: 1.5rem !important;
+  }
+
+  .design-form textarea {
+    min-width: 0 !important;
+  }
+
+  .design-form-input,
+  .design-form input[type="text"],
+  .design-form textarea,
+  .design-form select {
+    min-width: 0 !important;
+    font-size: 16px !important;
+    /* prevents iOS zoom */
+  }
+
+  .design-form-card-icons .design-form-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Training progress page cards: full width ---------------------- */
+  .flow-shell .ui-flow-card {
+    padding: 1rem !important;
+  }
+
+  /* --- Star border button: allow wrapping text ----------------------- */
+  .star-border-inner {
+    font-size: 0.88rem !important;
+    padding: 0.55rem 1rem !important;
+  }
+
+  /* --- Instruction cards: reduced padding ---------------------------- */
+  .flow-instruction-card {
+    padding: 0.85rem !important;
+  }
+
+  /* --- PDF fallback step cards: single column on mobile --------------- */
+  .flow-shell [style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Discovery URL input row: stack if needed ---------------------- */
+  .flow-shell [style*="display: flex"][style*="gap: 8px"] {
+    flex-wrap: wrap;
+  }
+
+  /* --- URL Checkboxes: larger on mobile ------------------------------ */
+  .url-checkbox {
+    width: 24px !important;
+    height: 24px !important;
+    margin-right: 12px !important;
+    accent-color: var(--flow-accent, #e4587a);
+  }
+
+  /* --- Nested URL list: reduce indentation --------------------------- */
+  .url-list-nested {
+    margin-left: 12px !important;
+    padding-left: 12px !important;
+    /* reduce from 20px+20px to 12px+12px */
+  }
+}
+
 /* Design widget page: form + preview, use more of full width (rem-based) */
 .widget-design-grid {
   display: grid;
@@ -5933,10 +6337,25 @@ body {
 }
 
 @keyframes sidebar-orb {
-  0% { transform: translate(-6px, -6px) scale(0.8); opacity: 0.6; }
-  33% { transform: translate(6px, -4px) scale(1.1); opacity: 0.9; }
-  66% { transform: translate(4px, 6px) scale(0.9); opacity: 0.7; }
-  100% { transform: translate(-6px, -6px) scale(0.8); opacity: 0.6; }
+  0% {
+    transform: translate(-6px, -6px) scale(0.8);
+    opacity: 0.6;
+  }
+
+  33% {
+    transform: translate(6px, -4px) scale(1.1);
+    opacity: 0.9;
+  }
+
+  66% {
+    transform: translate(4px, 6px) scale(0.9);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translate(-6px, -6px) scale(0.8);
+    opacity: 0.6;
+  }
 }
 
 .sidebar {
@@ -7303,16 +7722,19 @@ select:hover {
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
 }
+
 .persona-active-info {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
 }
+
 .persona-active-emoji {
   font-size: 2rem;
   flex-shrink: 0;
 }
+
 .persona-active-name {
   font-weight: 600;
   font-size: 1rem;
@@ -7321,6 +7743,7 @@ select:hover {
   align-items: center;
   gap: 0.5rem;
 }
+
 .persona-active-badge {
   display: inline-flex;
   align-items: center;
@@ -7333,15 +7756,18 @@ select:hover {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
 .persona-active-badge--unsaved {
   background: rgba(245, 158, 11, 0.15);
   color: #d97706;
 }
+
 .persona-active-desc {
   font-size: 0.85rem;
   color: var(--ui-flow-muted, #64748b);
   margin-top: 2px;
 }
+
 .persona-active-actions {
   display: flex;
   align-items: center;
@@ -7354,6 +7780,7 @@ select:hover {
   position: relative;
   margin-bottom: 1rem;
 }
+
 .persona-search-icon {
   position: absolute;
   left: 0.85rem;
@@ -7362,6 +7789,7 @@ select:hover {
   color: var(--ui-flow-muted, #94a3b8);
   pointer-events: none;
 }
+
 .persona-search-input {
   width: 100%;
   padding: 0.65rem 2.5rem 0.65rem 2.5rem;
@@ -7374,10 +7802,12 @@ select:hover {
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
+
 .persona-search-input:focus {
   border-color: var(--ui-flow-accent, #e4587a);
   box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.1);
 }
+
 .persona-search-clear {
   position: absolute;
   right: 0.75rem;
@@ -7393,6 +7823,7 @@ select:hover {
   align-items: center;
   justify-content: center;
 }
+
 .persona-search-clear:hover {
   color: var(--ui-text-primary, #1a1a2e);
   background: rgba(0, 0, 0, 0.05);
@@ -7409,9 +7840,11 @@ select:hover {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+
 .persona-category-tabs::-webkit-scrollbar {
   display: none;
 }
+
 .persona-category-tab {
   display: inline-flex;
   align-items: center;
@@ -7427,16 +7860,19 @@ select:hover {
   white-space: nowrap;
   transition: all 0.2s;
 }
+
 .persona-category-tab:hover {
   border-color: rgba(228, 88, 122, 0.3);
   color: var(--ui-flow-accent, #e4587a);
   background: rgba(228, 88, 122, 0.04);
 }
+
 .persona-category-tab.is-active {
   background: var(--ui-flow-accent, #e4587a);
   color: #fff;
   border-color: var(--ui-flow-accent, #e4587a);
 }
+
 .persona-category-count {
   display: inline-flex;
   align-items: center;
@@ -7450,6 +7886,7 @@ select:hover {
   background: rgba(0, 0, 0, 0.06);
   color: inherit;
 }
+
 .persona-category-tab.is-active .persona-category-count {
   background: rgba(255, 255, 255, 0.25);
 }
@@ -7473,19 +7910,23 @@ select:hover {
   display: flex;
   flex-direction: column;
 }
+
 .persona-card:hover {
   border-color: rgba(228, 88, 122, 0.3);
   box-shadow: 0 4px 16px rgba(228, 88, 122, 0.08);
   transform: translateY(-1px);
 }
+
 .persona-card--selected {
   border-color: var(--ui-flow-accent, #e4587a);
   background: linear-gradient(135deg, rgba(228, 88, 122, 0.05), rgba(240, 149, 87, 0.03));
   box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.12);
 }
+
 .persona-card--saved {
   border-color: var(--ui-flow-accent, #e4587a);
 }
+
 .persona-card--saved::after {
   content: '';
   position: absolute;
@@ -7498,21 +7939,25 @@ select:hover {
   border-color: transparent var(--ui-flow-accent, #e4587a) transparent transparent;
   border-radius: 0 14px 0 0;
 }
+
 .persona-card-header {
   display: flex;
   align-items: flex-start;
   gap: 0.65rem;
   margin-bottom: 0.6rem;
 }
+
 .persona-card-emoji {
   font-size: 1.75rem;
   line-height: 1;
   flex-shrink: 0;
 }
+
 .persona-card-meta {
   flex: 1;
   min-width: 0;
 }
+
 .persona-card-name {
   font-size: 0.95rem;
   font-weight: 600;
@@ -7520,6 +7965,7 @@ select:hover {
   margin: 0;
   line-height: 1.3;
 }
+
 .persona-card-category {
   font-size: 0.72rem;
   color: var(--ui-flow-muted, #94a3b8);
@@ -7527,6 +7973,7 @@ select:hover {
   letter-spacing: 0.04em;
   font-weight: 500;
 }
+
 .persona-card-check {
   display: flex;
   align-items: center;
@@ -7538,6 +7985,7 @@ select:hover {
   color: #fff;
   flex-shrink: 0;
 }
+
 .persona-card-desc {
   font-size: 0.83rem;
   color: var(--ui-flow-muted, #64748b);
@@ -7545,6 +7993,7 @@ select:hover {
   margin: 0 0 0.6rem 0;
   flex: 1;
 }
+
 .persona-card-footer {
   display: flex;
   align-items: center;
@@ -7553,11 +8002,13 @@ select:hover {
   padding-top: 0.4rem;
   gap: 0.5rem;
 }
+
 .persona-card-footer-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
 }
+
 .persona-card-preview-btn {
   display: inline-block;
   font-size: 0.75rem;
@@ -7570,9 +8021,11 @@ select:hover {
   text-align: left;
   transition: opacity 0.15s;
 }
+
 .persona-card-preview-btn:hover {
   text-decoration: underline;
 }
+
 .persona-card-apply-btn {
   border: 1px solid rgba(228, 88, 122, 0.35);
   background: rgba(228, 88, 122, 0.08);
@@ -7584,19 +8037,23 @@ select:hover {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+
 .persona-card-apply-btn:hover {
   background: rgba(228, 88, 122, 0.14);
   border-color: rgba(228, 88, 122, 0.55);
 }
+
 .persona-card-apply-btn.is-active {
   background: rgba(22, 163, 74, 0.12);
   border-color: rgba(22, 163, 74, 0.4);
   color: #15803d;
 }
+
 .persona-card-apply-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
 .persona-card-delete-btn {
   display: flex;
   align-items: center;
@@ -7610,9 +8067,11 @@ select:hover {
   cursor: pointer;
   transition: all 0.15s;
 }
+
 .persona-card-delete-btn:hover {
   background: rgba(239, 68, 68, 0.18);
 }
+
 .persona-custom-badge {
   display: inline-block;
   margin-left: 0.3rem;
@@ -7634,6 +8093,7 @@ select:hover {
   color: var(--ui-flow-muted, #94a3b8);
   font-size: 0.9rem;
 }
+
 .persona-empty {
   text-align: center;
   padding: 3rem;
@@ -7657,10 +8117,17 @@ select:hover {
   padding: 2rem;
   animation: persona-overlay-in 0.18s ease-out;
 }
+
 @keyframes persona-overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
+
 .persona-modal {
   width: min(560px, 100%);
   max-height: calc(100vh - 4rem);
@@ -7672,45 +8139,55 @@ select:hover {
   padding: 1.5rem;
   animation: persona-modal-in 0.22s ease-out;
 }
+
 .persona-modal--create {
   width: min(620px, 100%);
 }
+
 .persona-modal--create .persona-preview-header {
   margin-bottom: 1rem;
 }
+
 .persona-create-form {
   display: grid;
   gap: 1.1rem;
   margin-top: 0.6rem;
 }
+
 .persona-modal--create .persona-create-field {
   max-width: 100%;
 }
+
 @keyframes persona-modal-in {
   from {
     transform: translateY(16px) scale(0.97);
     opacity: 0;
   }
+
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
+
 .persona-preview-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
+
 .persona-preview-emoji {
   font-size: 2rem;
 }
+
 .persona-preview-name {
   font-size: 1.05rem;
   font-weight: 600;
   margin: 0;
   color: var(--ui-text-primary, #1a1a2e);
 }
+
 .persona-preview-cat {
   font-size: 0.75rem;
   color: var(--ui-flow-muted, #94a3b8);
@@ -7718,6 +8195,7 @@ select:hover {
   letter-spacing: 0.04em;
   font-weight: 500;
 }
+
 .persona-preview-close {
   margin-left: auto;
   border: none;
@@ -7734,16 +8212,19 @@ select:hover {
   transition: all 0.15s;
   flex-shrink: 0;
 }
+
 .persona-preview-close:hover {
   background: rgba(0, 0, 0, 0.14);
   color: var(--ui-text-primary, #1a1a2e);
 }
+
 .persona-preview-desc {
   font-size: 0.88rem;
   color: var(--ui-flow-muted, #64748b);
   line-height: 1.5;
   margin: 0 0 0.75rem 0;
 }
+
 .persona-preview-prompt-label {
   font-size: 0.72rem;
   font-weight: 600;
@@ -7752,6 +8233,7 @@ select:hover {
   color: var(--ui-flow-muted, #94a3b8);
   margin-bottom: 0.35rem;
 }
+
 .persona-preview-prompt {
   font-size: 0.82rem;
   line-height: 1.6;
@@ -7764,6 +8246,7 @@ select:hover {
   overflow-y: auto;
   white-space: pre-wrap;
 }
+
 .persona-preview-actions {
   margin-top: 1.25rem;
   display: flex;
@@ -7777,11 +8260,13 @@ select:hover {
   gap: 1rem;
   margin: 1rem 0;
 }
+
 .persona-create-field {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
+
 .persona-create-label {
   font-size: 0.82rem;
   font-weight: 600;
@@ -7789,6 +8274,7 @@ select:hover {
   letter-spacing: 0.04em;
   color: var(--ui-flow-muted, #94a3b8);
 }
+
 .persona-create-input,
 .persona-create-textarea {
   padding: 0.65rem 0.85rem;
@@ -7800,12 +8286,14 @@ select:hover {
   background: var(--ui-bg, #fff);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+
 .persona-create-input:focus,
 .persona-create-textarea:focus {
   outline: none;
   border-color: var(--ui-flow-accent, #e4587a);
   box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.1);
 }
+
 .persona-create-textarea {
   resize: vertical;
   line-height: 1.5;
@@ -7817,6 +8305,7 @@ select:hover {
   grid-template-columns: repeat(auto-fit, minmax(36px, 1fr));
   gap: 0.4rem;
 }
+
 .persona-emoji-option {
   display: flex;
   align-items: center;
@@ -7830,10 +8319,12 @@ select:hover {
   cursor: pointer;
   transition: all 0.15s;
 }
+
 .persona-emoji-option:hover {
   border-color: var(--ui-flow-accent, #e4587a);
   background: rgba(228, 88, 122, 0.05);
 }
+
 .persona-emoji-option.is-active {
   border-color: var(--ui-flow-accent, #e4587a);
   background: linear-gradient(135deg, rgba(228, 88, 122, 0.08), rgba(240, 149, 87, 0.05));
@@ -7847,6 +8338,7 @@ select:hover {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
 .persona-selector-current {
   display: inline-flex;
   align-items: center;
@@ -7859,9 +8351,11 @@ select:hover {
   color: var(--ui-flow-accent, #e4587a);
   font-weight: 500;
 }
+
 .persona-selector-current-emoji {
   font-size: 1.1rem;
 }
+
 .persona-selector-dropdown {
   padding: 0.4rem 0.75rem;
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -7873,6 +8367,7 @@ select:hover {
   outline: none;
   min-width: 180px;
 }
+
 .persona-selector-dropdown:focus {
   border-color: var(--ui-flow-accent, #e4587a);
   box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.1);
