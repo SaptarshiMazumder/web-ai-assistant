@@ -10,7 +10,9 @@
       "Bash(docker exec:*)",
       "WebFetch(domain:developers.chatwoot.com)",
       "WebFetch(domain:developers.facebook.com)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git -C \"/c/Users/googler/OneDrive/Desktop/Projects/web-ai\" ls-files)",
+      "Bash(dir:*)"
     ]
   }
 }

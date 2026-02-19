@@ -35,9 +35,40 @@ def verify_signature(body: bytes, signature: str, channel_secret: str) -> bool:
 # ── Sending messages ──────────────────────────────────────────────────
 
 
-def _text_message(text: str) -> dict:
+def _text_message(text: str, *, quick_reply: Optional[dict] = None) -> dict:
     formatted_text = format_for_messaging(text)
-    return {"type": "text", "text": formatted_text}
+    msg: dict = {"type": "text", "text": formatted_text}
+    if quick_reply:
+        msg["quickReply"] = quick_reply
+    return msg
+
+
+def build_quick_reply(suggested_messages: list) -> Optional[dict]:
+    """Convert widget suggestedMessages config into a LINE quickReply object.
+
+    Each suggested message becomes a quick reply button that sends
+    the label text back as a user message.
+    """
+    if not suggested_messages:
+        return None
+    items = []
+    for sm in suggested_messages[:13]:  # LINE allows max 13 quick reply items
+        label = (sm.get("label") or "").strip()
+        if not label:
+            continue
+        # LINE quick reply labels max 20 chars
+        display_label = label[:20]
+        items.append({
+            "type": "action",
+            "action": {
+                "type": "message",
+                "label": display_label,
+                "text": label,  # full label sent as user message
+            },
+        })
+    if not items:
+        return None
+    return {"items": items}
 
 
 def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
@@ -103,10 +134,11 @@ async def reply_message(
     access_token: str,
     *,
     asset_cards: Optional[List[dict]] = None,
+    quick_reply: Optional[dict] = None,
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
-    
-    # 1. Text messages first
+
+    # 1. Text messages first (quick reply goes on the LAST text message)
     messages: List[dict] = [_text_message(t) for t in texts[:4]] # Leave room for 1 carousel if needed
     
     # 2. Asset Carousel
@@ -136,6 +168,10 @@ async def reply_message(
                 messages = messages[:4]
             messages.append(carousel_message)
     
+    # Attach quick reply buttons to the last message
+    if quick_reply and messages:
+        messages[-1]["quickReply"] = quick_reply
+
     logger.info(f"LINE reply_message: sending {len(messages)} messages (text + carousel)")
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
@@ -156,9 +192,10 @@ async def push_message(
     access_token: str,
     *,
     asset_cards: Optional[List[dict]] = None,
+    quick_reply: Optional[dict] = None,
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
-    
+
     messages: List[dict] = [_text_message(t) for t in texts[:4]]
     
     if asset_cards:
@@ -184,6 +221,10 @@ async def push_message(
             if len(messages) >= 5:
                 messages = messages[:4]
             messages.append(carousel_message)
+
+    # Attach quick reply buttons to the last message
+    if quick_reply and messages:
+        messages[-1]["quickReply"] = quick_reply
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
