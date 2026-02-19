@@ -35,6 +35,7 @@ from infrastructure.clients.instagram_client import (
     send_image,
     send_generic_template,
     build_ig_quick_replies,
+    show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
@@ -357,6 +358,9 @@ async def _handle_text_message(
     """Core handler for a single text DM from Instagram."""
     access_token = channel.page_access_token
 
+    # Show typing indicator immediately while processing
+    await ig_show_typing(ig_user_id, access_token)
+
     # Load suggested messages from widget config for Instagram quick replies
     ig_quick_replies = None
     widget_config: Dict[str, Any] = {}
@@ -546,7 +550,6 @@ async def _handle_text_message(
     )
 
     # Instagram text limit is 1000 chars; split if needed
-    # Attach quick replies to the last text message
     if len(answer) > 1000:
         chunks = [answer[i:i + 1000] for i in range(0, len(answer), 1000)]
         for i, chunk in enumerate(chunks):
@@ -586,6 +589,7 @@ async def _handle_text_message(
                 await send_generic_template(ig_user_id, elements, access_token)
             except Exception:
                 logger.warning("Failed to send asset carousel to Instagram user %s", ig_user_id)
+
 
 
 # ══════════════════════════════════════════════════════════════════════

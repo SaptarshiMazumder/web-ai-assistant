@@ -1508,6 +1508,167 @@ async def v1_generate_default_prompt(
     return {"prompt": prompt_text, "business_name": business_name}
 
 
+@router.post("/v1/org/bots/{bot_id}/generate-suggested-messages")
+async def v1_generate_suggested_messages(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """
+    Auto-generate up to 3 suggested messages from the bot's trained content.
+    Uses the RAG corpus to understand what the business offers, then asks
+    an LLM to produce short, natural quick-reply labels.
+    Saves directly to widget_config.suggestedMessages and returns them.
+    """
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+
+    business_name = (bot.display_name or "").strip() or "this business"
+
+    # Gather context from RAG corpus
+    snippets: list[str] = []
+    try:
+        corpus = ensure_bot_corpus(bot.bot_id)
+        import vertexai
+        from infrastructure.clients.rag_client import retrieve_for_subquery, PROJECT_ID, RAG_LOCATION
+
+        vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
+
+        queries = [
+            f"What products or services does {business_name} offer?",
+            f"What is {business_name}? What do they do?",
+            f"Menu, pricing, or packages at {business_name}",
+            f"How to book, order, or get started with {business_name}",
+            f"Contact information, hours, or location of {business_name}",
+        ]
+        for subq in queries:
+            try:
+                results = retrieve_for_subquery(corpus, subq, top_k=3)
+                for r in results:
+                    text = (r.get("snippet") or "").strip()
+                    if text and text not in snippets:
+                        snippets.append(text)
+                        if len(snippets) >= 10:
+                            break
+            except Exception:
+                pass
+            if len(snippets) >= 10:
+                break
+    except Exception:
+        logger.exception("generate-suggested-messages: RAG retrieval failed for bot_id=%s", bot_id)
+
+    # Also pull extracted topics if available
+    topic_labels: list[str] = []
+    try:
+        from infrastructure.db.repositories import PostgresExtractedTopicRepository
+        topic_repo = PostgresExtractedTopicRepository()
+        topics = topic_repo.get_extracted_topics(org_id=resolved_org, bot_id=bot_id, active_only=True, limit=20)
+        topic_labels = [t.topic for t in topics if t.topic]
+    except Exception:
+        pass
+
+    if not snippets and not topic_labels:
+        return {"suggestedMessages": [], "message": "No trained content found. Add sources first."}
+
+    # Build LLM prompt
+    context_parts = []
+    if snippets:
+        context_parts.append("=== Business Content ===\n" + "\n\n".join(snippets[:8]))
+    if topic_labels:
+        context_parts.append("=== Topics Covered ===\n" + ", ".join(topic_labels[:15]))
+
+    context_block = "\n\n".join(context_parts)
+
+    generation_prompt = f"""You are analysing a business called "{business_name}".
+Based on the content below, generate exactly 3 suggested quick-reply messages that a first-time visitor would likely want to ask.
+
+Rules:
+- CRITICAL: Each message must be MAX 20 characters including spaces and punctuation
+- Write them as short natural phrases a real customer would tap
+- They should cover the most important/popular topics for THIS specific business
+- Think about what a customer would ACTUALLY tap: services, pricing, hours, menu, booking, etc.
+- Do NOT be generic. Tailor to what this business specifically offers
+- Do NOT use quotes or numbering
+- Return ONLY a JSON array of 3 strings, nothing else
+
+Examples of good suggested messages (all under 20 chars):
+- Restaurant: ["View the menu", "Make a reservation", "Today's specials"]
+- Hotel: ["Room availability", "Amenities offered", "Book a room"]
+- Salon: ["Services & prices", "Book appointment", "Opening hours"]
+- Software: ["See features", "Pricing plans", "Get a demo"]
+
+{context_block}
+
+Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 characters):"""
+
+    # Call Gemini to generate
+    try:
+        from google import genai
+        from google.genai import types as genai_types
+        from infrastructure.clients.rag_client import PROJECT_ID, GENAI_LOCATION
+
+        client = genai.Client(project=PROJECT_ID, location=GENAI_LOCATION)
+        cfg = genai_types.GenerateContentConfig(
+            temperature=0.7,
+            top_p=0.9,
+            max_output_tokens=256,
+        )
+        resp = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=[genai_types.Content(role="user", parts=[genai_types.Part.from_text(text=generation_prompt)])],
+            config=cfg,
+        )
+        raw = (resp.text or "").strip()
+
+        # Parse JSON array from response
+        # Strip markdown code fences if present
+        cleaned = raw
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned.rsplit("```", 1)[0]
+        cleaned = cleaned.strip()
+
+        labels = json.loads(cleaned)
+        if not isinstance(labels, list):
+            raise ValueError("Expected JSON array")
+        labels = [str(l).strip() for l in labels if str(l).strip()][:3]
+    except Exception:
+        logger.exception("generate-suggested-messages: LLM generation failed for bot_id=%s", bot_id)
+        return {"suggestedMessages": [], "message": "Failed to generate messages. Try again."}
+
+    if not labels:
+        return {"suggestedMessages": [], "message": "Could not generate messages from content."}
+
+    # Build suggestedMessages config
+    import uuid
+    suggested_messages = []
+    for label in labels:
+        suggested_messages.append({
+            "id": str(uuid.uuid4())[:8],
+            "label": label,
+            "type": "ai_response",
+        })
+
+    # Save to widget_config
+    existing_config: dict = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            existing_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+    # Preserve any existing escalate-type messages (e.g. "Request human support")
+    prev_messages = existing_config.get("suggestedMessages") or []
+    escalate_messages = [m for m in prev_messages if isinstance(m, dict) and m.get("type") == "escalate"]
+    existing_config["suggestedMessages"] = suggested_messages + escalate_messages
+    bot_service().update_widget_config(bot_id, json.dumps(existing_config))
+
+    return {"suggestedMessages": suggested_messages + escalate_messages}
+
+
 @router.get("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
 async def v1_org_get_escalation_config(
     bot_id: str,

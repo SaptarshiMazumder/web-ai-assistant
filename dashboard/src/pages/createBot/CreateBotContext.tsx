@@ -191,6 +191,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     orgs,
     activeOrgId,
     isSuperAdmin,
+    generateSuggestedMessages,
   } = useDashboardData()
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -215,6 +216,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const discoveryAbortRef = useRef<AbortController | null>(null)
   const discovery60sTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const discoveryTimedOutByTimerRef = useRef(false)
+  const suggestionsGenTriggeredRef = useRef(false)
   const [trainingStage, setTrainingStage] = useState<TrainingStage>('idle')
   const [trainingProgress, setTrainingProgress] = useState(0)
   const [trainingPagesCrawled, setTrainingPagesCrawled] = useState(0)
@@ -812,6 +814,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       if ((urlTerminal || !jobId) && pdfTerminal && extraTerminal) {
         setTrainingStage('complete')
         setTrainingProgress(100)
+        // Auto-generate suggested messages from trained content (once)
+        if (botId && !suggestionsGenTriggeredRef.current) {
+          suggestionsGenTriggeredRef.current = true
+          void generateSuggestedMessages(botId)
+        }
         if (urlStage === 'error') setLocalError(urlStatus?.last_error || 'Training failed')
         const pdfError = Object.values(pdfStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
         if (pdfError) setLocalError((pdfError as any).last_error || 'PDF processing failed')
@@ -822,7 +829,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length])
+  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length, generateSuggestedMessages])
 
   const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)

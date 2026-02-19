@@ -32,43 +32,90 @@ def verify_signature(body: bytes, signature: str, channel_secret: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
+# ── Typing indicator ──────────────────────────────────────────────────
+
+
+async def show_typing(user_id: str, access_token: str) -> None:
+    """Show a loading animation (typing dots) in the LINE chat.
+
+    Uses the /chat/loading/start endpoint. The animation automatically
+    disappears when the bot sends a reply or after loadingSeconds elapses.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(
+                f"{LINE_API_BASE}/chat/loading/start",
+                json={"chatId": user_id, "loadingSeconds": 60},
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+            )
+    except Exception:
+        pass  # Non-critical, don't block message handling
+
+
 # ── Sending messages ──────────────────────────────────────────────────
 
 
-def _text_message(text: str, *, quick_reply: Optional[dict] = None) -> dict:
+def _text_message(text: str) -> dict:
     formatted_text = format_for_messaging(text)
-    msg: dict = {"type": "text", "text": formatted_text}
-    if quick_reply:
-        msg["quickReply"] = quick_reply
-    return msg
+    return {"type": "text", "text": formatted_text}
 
 
-def build_quick_reply(suggested_messages: list) -> Optional[dict]:
-    """Convert widget suggestedMessages config into a LINE quickReply object.
+def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
+    """Build a LINE Flex Message with vertically stacked tappable rows.
 
-    Each suggested message becomes a quick reply button that sends
-    the label text back as a user message.
+    Uses box components with text inside (no char limit on display) and
+    a message action on the box (label is just for accessibility, not shown).
+    Tapping a row sends the full label text as a user message.
     """
     if not suggested_messages:
         return None
-    items = []
-    for sm in suggested_messages[:13]:  # LINE allows max 13 quick reply items
+    rows = []
+    for sm in suggested_messages[:10]:
         label = (sm.get("label") or "").strip()
         if not label:
             continue
-        # LINE quick reply labels max 20 chars
-        display_label = label[:20]
-        items.append({
-            "type": "action",
+        rows.append({
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": label,
+                    "size": "sm",
+                    "color": "#555555",
+                    "align": "center",
+                    "wrap": True,
+                },
+            ],
             "action": {
                 "type": "message",
-                "label": display_label,
-                "text": label,  # full label sent as user message
+                "label": label[:20],
+                "text": label,
             },
+            "paddingAll": "md",
+            "cornerRadius": "md",
+            "backgroundColor": "#F0F0F0",
+            "margin": "sm",
         })
-    if not items:
+    if not rows:
         return None
-    return {"items": items}
+    return {
+        "type": "flex",
+        "altText": "Suggested messages",
+        "contents": {
+            "type": "bubble",
+            "size": "mega",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": rows,
+                "paddingAll": "lg",
+            },
+        },
+    }
 
 
 def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
@@ -134,18 +181,18 @@ async def reply_message(
     access_token: str,
     *,
     asset_cards: Optional[List[dict]] = None,
-    quick_reply: Optional[dict] = None,
+    suggested_flex: Optional[dict] = None,
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
 
-    # 1. Text messages first (quick reply goes on the LAST text message)
-    messages: List[dict] = [_text_message(t) for t in texts[:4]] # Leave room for 1 carousel if needed
-    
+    # 1. Text messages first
+    messages: List[dict] = [_text_message(t) for t in texts[:4]] # Leave room for carousel + suggested
+
     # 2. Asset Carousel
     if asset_cards:
         bubbles = []
         # Max bubbles in a carousel is 12
-        for card in asset_cards[:12]: 
+        for card in asset_cards[:12]:
             bubbles.append(
                 _create_image_bubble(
                     card.get("name", ""),
@@ -153,7 +200,7 @@ async def reply_message(
                     card.get("link_url") or None,
                 )
             )
-        
+
         if bubbles:
             carousel_message = {
                 "type": "flex",
@@ -167,10 +214,10 @@ async def reply_message(
             if len(messages) >= 5:
                 messages = messages[:4]
             messages.append(carousel_message)
-    
-    # Attach quick reply buttons to the last message
-    if quick_reply and messages:
-        messages[-1]["quickReply"] = quick_reply
+
+    # 3. Suggested messages as a separate flex message with vertical buttons
+    if suggested_flex and len(messages) < 5:
+        messages.append(suggested_flex)
 
     logger.info(f"LINE reply_message: sending {len(messages)} messages (text + carousel)")
     async with httpx.AsyncClient(timeout=10) as client:
@@ -192,12 +239,12 @@ async def push_message(
     access_token: str,
     *,
     asset_cards: Optional[List[dict]] = None,
-    quick_reply: Optional[dict] = None,
+    suggested_flex: Optional[dict] = None,
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
 
     messages: List[dict] = [_text_message(t) for t in texts[:4]]
-    
+
     if asset_cards:
         bubbles = []
         for card in asset_cards[:12]:
@@ -208,7 +255,7 @@ async def push_message(
                     card.get("link_url") or None,
                 )
             )
-            
+
         if bubbles:
             carousel_message = {
                 "type": "flex",
@@ -222,9 +269,9 @@ async def push_message(
                 messages = messages[:4]
             messages.append(carousel_message)
 
-    # Attach quick reply buttons to the last message
-    if quick_reply and messages:
-        messages[-1]["quickReply"] = quick_reply
+    # Suggested messages as a separate flex with vertical buttons
+    if suggested_flex and len(messages) < 5:
+        messages.append(suggested_flex)
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(

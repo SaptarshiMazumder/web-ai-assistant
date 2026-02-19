@@ -62,8 +62,8 @@ def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
 def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
     """Convert widget suggestedMessages config into Instagram quick_replies format.
 
-    Each suggested message becomes a quick reply button.
-    Instagram allows max 13 quick reply items, labels max 20 chars.
+    Labels are generated to fit within 20 chars. The payload carries the
+    full label so tapping sends the correct message even if truncated.
     """
     if not suggested_messages:
         return None
@@ -78,6 +78,28 @@ def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
             "payload": label,
         })
     return items if items else None
+
+
+
+
+# ── Typing indicator ──────────────────────────────────────────────────
+
+
+async def show_typing(recipient_id: str, page_access_token: str) -> None:
+    """Send a typing_on sender action to an Instagram user."""
+    try:
+        base = _api_base(page_access_token)
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(
+                f"{base}/me/messages",
+                json={
+                    "recipient": {"id": recipient_id},
+                    "sender_action": "typing_on",
+                },
+                params={"access_token": page_access_token},
+            )
+    except Exception:
+        pass  # Non-critical, don't block message handling
 
 
 # ── Sending messages ──────────────────────────────────────────────────

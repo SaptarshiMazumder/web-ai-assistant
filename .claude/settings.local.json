@@ -12,7 +12,8 @@
       "WebFetch(domain:developers.facebook.com)",
       "Bash(npm run build:*)",
       "Bash(git -C \"/c/Users/googler/OneDrive/Desktop/Projects/web-ai\" ls-files)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "WebFetch(domain:developers.line.biz)"
     ]
   }
 }

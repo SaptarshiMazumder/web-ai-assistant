@@ -25,7 +25,8 @@ from common.di.container import bot_service, conversation_service
 from infrastructure.clients.line_client import (
     verify_signature,
     reply_message,
-    build_quick_reply,
+    build_suggested_flex,
+    show_typing as line_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
@@ -203,8 +204,11 @@ async def _handle_text_message(
     """Core handler for a single text message from LINE."""
     access_token = channel.line_channel_access_token
 
-    # Load suggested messages from widget config for LINE quick replies
-    quick_reply = None
+    # Show typing indicator immediately while processing
+    await line_show_typing(line_user_id, access_token)
+
+    # Load suggested messages from widget config for LINE flex buttons
+    suggested_flex = None
     widget_config: Dict[str, Any] = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
         try:
@@ -213,7 +217,7 @@ async def _handle_text_message(
             pass
     suggested_messages = widget_config.get("suggestedMessages") if isinstance(widget_config, dict) else None
     if suggested_messages:
-        quick_reply = build_quick_reply(suggested_messages)
+        suggested_flex = build_suggested_flex(suggested_messages)
 
     # Get or create session mapping
     # First check if mapping exists
@@ -274,7 +278,7 @@ async def _handle_text_message(
             reply_token,
             ["You're now back with our AI assistant. How can I help you?"],
             access_token,
-            quick_reply=quick_reply,
+            suggested_flex=suggested_flex,
         )
         conversation_service().add_message(
             session_id=session.session_id,
@@ -319,7 +323,7 @@ async def _handle_text_message(
             "I'm connecting you with our staff. They'll reply to you shortly here in LINE.\n\n"
             "When you're done, just say \"back to bot\" to return to the AI assistant."
         )
-        await reply_message(reply_token, [escalation_msg], access_token, quick_reply=quick_reply)
+        await reply_message(reply_token, [escalation_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -422,9 +426,9 @@ async def _handle_text_message(
     # LINE has a 5000 char limit per message; split if needed
     if len(answer) > 5000:
         chunks = [answer[i:i + 5000] for i in range(0, len(answer), 5000)]
-        await reply_message(reply_token, chunks[:5], access_token, asset_cards=asset_cards, quick_reply=quick_reply)
+        await reply_message(reply_token, chunks[:5], access_token, asset_cards=asset_cards, suggested_flex=suggested_flex)
     else:
-        await reply_message(reply_token, [answer], access_token, asset_cards=asset_cards, quick_reply=quick_reply)
+        await reply_message(reply_token, [answer], access_token, asset_cards=asset_cards, suggested_flex=suggested_flex)
 
 
 # ══════════════════════════════════════════════════════════════════════
