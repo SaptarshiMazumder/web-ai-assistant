@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import logging
 import os
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import httpx
 
@@ -56,6 +56,30 @@ def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
     return match
 
 
+# ── Quick replies ─────────────────────────────────────────────────────
+
+
+def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
+    """Convert widget suggestedMessages config into Instagram quick_replies format.
+
+    Each suggested message becomes a quick reply button.
+    Instagram allows max 13 quick reply items, labels max 20 chars.
+    """
+    if not suggested_messages:
+        return None
+    items = []
+    for sm in suggested_messages[:13]:
+        label = (sm.get("label") or "").strip()
+        if not label:
+            continue
+        items.append({
+            "content_type": "text",
+            "title": label[:20],
+            "payload": label,
+        })
+    return items if items else None
+
+
 # ── Sending messages ──────────────────────────────────────────────────
 
 
@@ -63,13 +87,18 @@ async def send_message(
     recipient_id: str,
     text: str,
     page_access_token: str,
+    *,
+    quick_replies: Optional[List[dict]] = None,
 ) -> bool:
     """Send a text DM to an Instagram user via the Graph API."""
     formatted_text = format_for_messaging(text)
     base = _api_base(page_access_token)
+    message_obj: dict = {"text": formatted_text}
+    if quick_replies:
+        message_obj["quick_replies"] = quick_replies
     payload = {
         "recipient": {"id": recipient_id},
-        "message": {"text": formatted_text},
+        "message": message_obj,
     }
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(

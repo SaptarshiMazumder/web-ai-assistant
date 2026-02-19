@@ -34,6 +34,7 @@ from infrastructure.clients.instagram_client import (
     send_message,
     send_image,
     send_generic_template,
+    build_ig_quick_replies,
 )
 from infrastructure.clients.rag_client import run_vertex_rag
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
@@ -356,6 +357,18 @@ async def _handle_text_message(
     """Core handler for a single text DM from Instagram."""
     access_token = channel.page_access_token
 
+    # Load suggested messages from widget config for Instagram quick replies
+    ig_quick_replies = None
+    widget_config: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+    suggested_messages = widget_config.get("suggestedMessages") if isinstance(widget_config, dict) else None
+    if suggested_messages:
+        ig_quick_replies = build_ig_quick_replies(suggested_messages)
+
     # Get or create session mapping
     mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
 
@@ -407,7 +420,7 @@ async def _handle_text_message(
             escalated=False,
         )
         de_esc_msg = "You're now back with our AI assistant. How can I help you?"
-        await send_message(ig_user_id, de_esc_msg, access_token)
+        await send_message(ig_user_id, de_esc_msg, access_token, quick_replies=ig_quick_replies)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -449,7 +462,7 @@ async def _handle_text_message(
             "I'm connecting you with our staff. They'll reply to you shortly.\n\n"
             'When you\'re done, just say "back to bot" to return to the AI assistant.'
         )
-        await send_message(ig_user_id, escalation_msg, access_token)
+        await send_message(ig_user_id, escalation_msg, access_token, quick_replies=ig_quick_replies)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -533,12 +546,14 @@ async def _handle_text_message(
     )
 
     # Instagram text limit is 1000 chars; split if needed
+    # Attach quick replies to the last text message
     if len(answer) > 1000:
         chunks = [answer[i:i + 1000] for i in range(0, len(answer), 1000)]
-        for chunk in chunks:
-            await send_message(ig_user_id, chunk, access_token)
+        for i, chunk in enumerate(chunks):
+            is_last = i == len(chunks) - 1
+            await send_message(ig_user_id, chunk, access_token, quick_replies=ig_quick_replies if is_last else None)
     else:
-        await send_message(ig_user_id, answer, access_token)
+        await send_message(ig_user_id, answer, access_token, quick_replies=ig_quick_replies)
 
     # Send asset images as a Generic Template carousel (clickable cards)
     if asset_cards:
