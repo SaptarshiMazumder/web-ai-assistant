@@ -707,12 +707,12 @@ export default function BotTestingTab() {
                 src={widgetIframeSrc}
                 title="Chat widget"
                 className="testing-widget-iframe"
-                style={{ width: widgetDims.width, height: widgetDims.height }}
+                style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
               />
             ) : (
               <div
                 className="testing-widget-placeholder"
-                style={{ width: widgetDims.width, height: widgetDims.height }}
+                style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
               >
                 No publishable key for this bot.
               </div>

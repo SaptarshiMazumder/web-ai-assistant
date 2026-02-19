@@ -18,6 +18,7 @@ export default function BotConversationsTab() {
   const [escalatedSessionIds, setEscalatedSessionIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
 
@@ -28,6 +29,7 @@ export default function BotConversationsTab() {
     setEscalation(null)
     setEscalatedSessionIds(new Set())
     setSelectedSession(null)
+    setMobileView('list')
     void loadSessions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBot?.bot_id])
@@ -95,6 +97,7 @@ export default function BotConversationsTab() {
   async function openSession(sessionId: string) {
     if (!selectedBot) return
     setSelectedSession(sessionId)
+    setMobileView('detail')
     setLoading(true)
     try {
       const [data, escalationInfo] = await Promise.all([
@@ -135,6 +138,7 @@ export default function BotConversationsTab() {
     if (!selectedBot || !selectedSession) return
     await endConversation(selectedBot.bot_id, selectedSession)
     setSelectedSession(null)
+    setMobileView('list')
     setMessages([])
     await loadSessions()
   }
@@ -164,7 +168,7 @@ export default function BotConversationsTab() {
         title="Live inbox and replay"
         subtitle="Track active chats, escalations, and message timelines in one place."
       />
-      <div className="card-grid conversation-grid">
+      <div className={`card-grid conversation-grid${mobileView === 'detail' ? ' conversation-grid--mobile-detail' : ''}`}>
         <GlassCard className="conversation-panel conversation-panel--list">
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <MessagesSquare size={16} style={{ color: 'var(--ui-flow-accent)' }} />
@@ -290,7 +294,7 @@ export default function BotConversationsTab() {
                 </div>
               )}
               <div className="conversation-actions">
-                <UiButton variant="secondary" onClick={() => setSelectedSession(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <UiButton variant="secondary" onClick={() => { setSelectedSession(null); setMobileView('list') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <ArrowLeft size={14} />
                   Back to list
                 </UiButton>

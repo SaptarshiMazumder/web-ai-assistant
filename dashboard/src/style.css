@@ -1203,6 +1203,32 @@ button.delete-btn:disabled svg {
   font-size: 0.95rem;
 }
 
+@media (max-width: 1100px) {
+  .testing-page {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .testing-left,
+  .testing-right,
+  .testing-widget-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .testing-widget-wrap {
+    align-items: center;
+  }
+
+  .testing-widget-iframe,
+  .testing-widget-placeholder {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
 .testing-config-card {
   border: 1.5px solid transparent;
   border-radius: 18px;
@@ -8944,6 +8970,31 @@ select:hover {
     width: 44px !important;
     height: 44px !important;
     flex-shrink: 0 !important;
+  }
+
+  /* ---- Conversations: sliding master/detail on mobile ---- */
+  .conversation-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0 !important;
+    height: calc(100dvh - 250px) !important;
+    overflow: hidden !important;
+  }
+
+  .conversation-panel--list,
+  .conversation-panel--detail {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    height: 100% !important;
+    transform: translateX(0) !important;
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* When detail is active, slide both panels left — list exits, detail enters */
+  .conversation-grid--mobile-detail .conversation-panel--list,
+  .conversation-grid--mobile-detail .conversation-panel--detail {
+    transform: translateX(-100%) !important;
   }
 
   /* Source cards, knowledge cards etc */

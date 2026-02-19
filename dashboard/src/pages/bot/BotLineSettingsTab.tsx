@@ -877,7 +877,7 @@ export default function BotLineSettingsTab() {
               {saving ? (
                 <><Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} /> Connecting...</>
               ) : (
-                <><MessageCircle size={22} /> Activate My Bot</>
+                <><MessageCircle size={22} /> Activate Agent</>
               )}
             </button>
           </div>
