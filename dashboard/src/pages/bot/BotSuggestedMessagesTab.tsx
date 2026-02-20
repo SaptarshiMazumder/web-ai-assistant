@@ -35,6 +35,19 @@ export default function BotSuggestedMessagesTab() {
     setState((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  const handleToggleEnabled = async (enabled: boolean) => {
+    if (!botId) return
+    update('suggestedMessagesEnabled', enabled)
+    // Auto-save the toggle immediately
+    setSaving(true)
+    try {
+      const newState = { ...state, suggestedMessagesEnabled: enabled }
+      await saveWidgetConfig(botId, stateToWidgetConfig(newState))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!botId || saving || savedJustNow) return
     setSaving(true)
@@ -58,13 +71,14 @@ export default function BotSuggestedMessagesTab() {
   if (selectedBot?.bot_id !== botId) return <div className="empty-panel">Loading...</div>
 
   const isGenerating = generatingSuggestions
+  const isEnabled = state.suggestedMessagesEnabled
 
   const saveAction = (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
       <UiButton
         variant="secondary"
         onClick={() => void handleAutoGenerate()}
-        disabled={isGenerating || saving}
+        disabled={isGenerating || saving || !isEnabled}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
       >
         {isGenerating ? (
@@ -82,7 +96,7 @@ export default function BotSuggestedMessagesTab() {
       <UiButton
         variant="primary"
         onClick={() => void handleSave()}
-        disabled={saving || savedJustNow || isGenerating}
+        disabled={saving || savedJustNow || isGenerating || !isEnabled}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
       >
         {saving ? (
@@ -109,6 +123,25 @@ export default function BotSuggestedMessagesTab() {
         subtitle="Quick actions shown when the chat opens. Auto-generate from your trained content or add manually."
       />
 
+      {/* Enable/Disable toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+        <div>
+          <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Suggested messages</div>
+          <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
+            Quick actions shown when the chat opens.
+          </p>
+        </div>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={isEnabled}
+            onChange={(e) => void handleToggleEnabled(e.target.checked)}
+            disabled={saving}
+          />
+          <span className="toggle-slider" />
+        </label>
+      </div>
+
       {isGenerating && (
         <div
           style={{
@@ -129,17 +162,19 @@ export default function BotSuggestedMessagesTab() {
         </div>
       )}
 
-      <GlassCard style={{ marginTop: '1rem' }}>
-        <SuggestedMessagesEditor
-          suggestedMessages={state.suggestedMessages}
-          onChange={(next) => update('suggestedMessages', next)}
-          title=""
-          subtitle=""
-          addButtonPlacement="bottom"
-          maxItems={10}
-          actions={saveAction}
-        />
-      </GlassCard>
+      <div style={{ marginTop: '1rem', opacity: isEnabled ? 1 : 0.45, pointerEvents: isEnabled ? 'auto' : 'none' }}>
+        <GlassCard>
+          <SuggestedMessagesEditor
+            suggestedMessages={state.suggestedMessages}
+            onChange={(next) => update('suggestedMessages', next)}
+            title=""
+            subtitle=""
+            addButtonPlacement="bottom"
+            maxItems={10}
+            actions={saveAction}
+          />
+        </GlassCard>
+      </div>
     </AnimatedPage>
   )
 }

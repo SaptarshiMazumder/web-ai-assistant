@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { Check, Search, X, Plus, Trash2, Globe } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { useBackgroundTasks } from '../../contexts/BackgroundTaskContext'
 import { AnimatedPage, GlassField, SectionHeader, UiButton } from '../../components/ui'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
@@ -40,6 +41,7 @@ export default function BotPersonaTab() {
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
   const { selectedBot, activeOrgId } = useDashboardData()
+  const { addTask, updateTask } = useBackgroundTasks()
 
   const [builtinPersonas, setBuiltinPersonas] = useState<Persona[]>([])
   const [customPersonas, setCustomPersonas] = useState<Persona[]>([])
@@ -222,6 +224,8 @@ export default function BotPersonaTab() {
   const handleGenerateFromWebsite = async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
     setGeneratingPrompt(true)
+    const taskId = addTask(botId, 'persona', 'Generating from website...')
+
     try {
       const token = await getAccessTokenSilently()
       const path = withOrg(`/v1/org/bots/${botId}/generate-default-prompt`, activeOrgId)
@@ -268,8 +272,11 @@ export default function BotPersonaTab() {
       // Pre-fill modal fields too in case user wants to edit before creating another
       setNewSystemPrompt(data.prompt)
       if (!newName.trim()) setNewName(personaName)
-    } catch {
-      // ignore
+
+      updateTask(taskId, 'done', 'Persona generated!')
+    } catch (error) {
+      updateTask(taskId, 'error', 'Failed to generate persona')
+      console.error('Generate persona error:', error)
     } finally {
       setGeneratingPrompt(false)
     }

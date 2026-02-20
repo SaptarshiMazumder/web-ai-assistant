@@ -369,7 +369,8 @@ async def _handle_text_message(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    suggested_messages = widget_config.get("suggestedMessages") if isinstance(widget_config, dict) else None
+    suggested_messages_enabled = widget_config.get("suggestedMessagesEnabled", False) if isinstance(widget_config, dict) else False
+    suggested_messages = widget_config.get("suggestedMessages") if isinstance(widget_config, dict) and suggested_messages_enabled else None
     if suggested_messages:
         ig_quick_replies = build_ig_quick_replies(suggested_messages)
 

@@ -468,6 +468,7 @@ class WidgetConfigUpdate(BaseModel):
     displaySources: Optional[bool] = None
     sourcesLabel: Optional[str] = None
     suggestedMessages: Optional[List[Dict[str, Any]]] = None
+    suggestedMessagesEnabled: Optional[bool] = None
 
 
 # ===========================

@@ -143,6 +143,8 @@ export type CreateBotStep4Slice = {
   setSourcesLabel: (value: string) => void
   suggestedMessages: SuggestedMessageConfig[]
   setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
+  suggestedMessagesEnabled: boolean
+  setSuggestedMessagesEnabled: (value: boolean) => void
 }
 
 /** Flow navigation. Derived from flowConfig; add/remove steps there. */
@@ -253,6 +255,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
     DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages
   )
+  const [suggestedMessagesEnabled, setSuggestedMessagesEnabled] = useState(
+    DEFAULT_WIDGET_DESIGN_STATE.suggestedMessagesEnabled
+  )
   const resetFlow = useCallback(() => {
     setBotName('')
     setWebsiteUrl('')
@@ -305,6 +310,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDisplaySourcesInMessages(false)
     setSourcesLabel('Sources')
     setSuggestedMessages(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
+    setSuggestedMessagesEnabled(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessagesEnabled)
   }, [])
 
   const discoverUrls = useCallback(async () => {
@@ -950,6 +956,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setSourcesLabel,
         suggestedMessages,
         setSuggestedMessages,
+        suggestedMessagesEnabled,
+        setSuggestedMessagesEnabled,
       },
       flow: {
         nextPath,
@@ -1039,6 +1047,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setSourcesLabel,
       suggestedMessages,
       setSuggestedMessages,
+      suggestedMessagesEnabled,
+      setSuggestedMessagesEnabled,
       continueWithoutSources,
       discoverUrls,
       stopDiscovery,

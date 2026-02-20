@@ -14,7 +14,8 @@
   const footerMessage = params.get("footer") || params.get("footerMessage") || "Powered by WebAI";
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
-  const suggestedMessagesParam = params.get("suggestedMessages");
+  const suggestedMessagesEnabled = parseBool(params.get("suggestedMessagesEnabled"), false);
+  const suggestedMessagesParam = suggestedMessagesEnabled ? params.get("suggestedMessages") : null;
   const escalationsEnabled = parseBool(params.get("escalationsEnabled"), false);
   const availabilityCheckEnabled = parseBool(params.get("availabilityCheckEnabled"), false);
   const sessionKey = pk ? `webai_session_${pk}` : null;

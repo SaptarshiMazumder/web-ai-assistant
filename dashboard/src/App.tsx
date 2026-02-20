@@ -1,6 +1,8 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DashboardDataProvider, useDashboardData } from './hooks/useDashboardData'
+import { BackgroundTaskProvider } from './contexts/BackgroundTaskContext'
+import { BackgroundTaskIndicator } from './components/BackgroundTaskIndicator'
 import DashboardLayout from './layouts/DashboardLayout'
 import AccountPage from './pages/AccountPage'
 import BillingPage from './pages/BillingPage'
@@ -81,9 +83,11 @@ export default function App() {
   }
 
   return (
-    <DashboardDataProvider>
-      <BrowserRouter>
-        <Routes>
+    <BackgroundTaskProvider>
+      <DashboardDataProvider>
+        <BrowserRouter>
+          <BackgroundTaskIndicator />
+          <Routes>
           {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
           <Route path="/create-bot" element={<CreateBotLayout />}>
             <Route index element={<CreateBotDetailsPage />} />
@@ -131,7 +135,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
-      </BrowserRouter>
-    </DashboardDataProvider>
+        </BrowserRouter>
+      </DashboardDataProvider>
+    </BackgroundTaskProvider>
   )
 }
