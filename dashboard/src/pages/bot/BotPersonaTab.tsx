@@ -218,7 +218,7 @@ export default function BotPersonaTab() {
     }
   }
 
-  // Generate system prompt from website using RAG
+  // Generate system prompt from website using RAG, then auto-create + auto-apply the persona
   const handleGenerateFromWebsite = async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
     setGeneratingPrompt(true)
@@ -231,12 +231,43 @@ export default function BotPersonaTab() {
       })
       if (!res.ok) throw new Error('Failed to generate')
       const data = await res.json() as { prompt: string; business_name: string }
-      if (data.prompt) {
-        setNewSystemPrompt(data.prompt)
-        if (!newName.trim() && data.business_name) {
-          setNewName(`${data.business_name} Assistant`)
-        }
+      if (!data.prompt) return
+
+      // Auto-create custom persona (fixed ID so re-generating replaces it)
+      const customId = `custom-website-${botId}`
+      const personaName = data.business_name ? `${data.business_name} Assistant` : 'Website Assistant'
+      const newPersona: Persona = {
+        id: customId,
+        name: personaName,
+        emoji: CUSTOM_PERSONA_EMOJI,
+        description: `Auto-generated from ${data.business_name || 'website'} trained content.`,
+        system_prompt: data.prompt,
+        category: CUSTOM_CATEGORY,
       }
+
+      // Replace any previous auto-generated website persona, keep other custom ones
+      const updatedCustom = [newPersona, ...customPersonas.filter((p) => p.id !== customId)]
+
+      // Save custom personas + apply the new one in a single agent-config update
+      const configPath = withOrg(`/v1/org/bots/${botId}/agent-config`, activeOrgId)
+      const getRes = await fetch(`${API_BASE}${configPath}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const existing = getRes.ok ? (await getRes.json() as AgentConfig) : {}
+
+      await fetch(`${API_BASE}${configPath}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...existing, custom_personas: updatedCustom, persona_id: customId }),
+      })
+
+      setCustomPersonas(updatedCustom)
+      setSelectedPersonaId(customId)
+      setSavedPersonaId(customId)
+
+      // Pre-fill modal fields too in case user wants to edit before creating another
+      setNewSystemPrompt(data.prompt)
+      if (!newName.trim()) setNewName(personaName)
     } catch {
       // ignore
     } finally {
@@ -299,7 +330,7 @@ export default function BotPersonaTab() {
         subtitle="Select a personality that defines how your agent communicates. This shapes the tone, style, and character of every response."
       />
 
-      {/* Search + Create row */}
+      {/* Search + Actions row */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'stretch' }}>
         <div className="persona-search-bar" style={{ flex: 1, marginBottom: 0 }}>
           <Search size={16} className="persona-search-icon" />
@@ -316,6 +347,15 @@ export default function BotPersonaTab() {
             </button>
           )}
         </div>
+        <UiButton
+          variant="ghost"
+          onClick={() => void handleGenerateFromWebsite()}
+          disabled={generatingPrompt}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap', flexShrink: 0 }}
+        >
+          <Globe size={16} />
+          {generatingPrompt ? 'Generating...' : 'Generate from website'}
+        </UiButton>
         <UiButton
           variant="primary"
           onClick={() => setShowCreateModal(true)}
@@ -491,17 +531,6 @@ export default function BotPersonaTab() {
               </GlassField>
 
               <GlassField label="System Prompt" className="persona-create-field" style={{ maxWidth: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.4rem' }}>
-                  <UiButton
-                    variant="ghost"
-                    onClick={() => void handleGenerateFromWebsite()}
-                    disabled={generatingPrompt}
-                    style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.6rem' }}
-                  >
-                    <Globe size={13} />
-                    {generatingPrompt ? 'Generating...' : 'Generate from website'}
-                  </UiButton>
-                </div>
                 <textarea
                   placeholder="Write the system prompt that defines this persona's behavior, tone, and style..."
                   value={newSystemPrompt}

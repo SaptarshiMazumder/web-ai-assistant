@@ -1431,6 +1431,18 @@ async def v1_list_personas():
     )
 
 
+def _default_prompt_fallback(business_name: str) -> str:
+    """Fallback 3-part prompt when LLM or RAG is unavailable."""
+    from application.services.prompt_generation_service import _STANDARD_RESPONSE_RULES
+    return (
+        f"## Personality\n"
+        f"You are {business_name}'s AI assistant, a helpful and friendly guide.\n\n"
+        f"## About the Business\n"
+        f"{business_name} is dedicated to providing excellent service to its customers."
+        + _STANDARD_RESPONSE_RULES
+    )
+
+
 @router.post("/v1/org/bots/{bot_id}/generate-default-prompt")
 async def v1_generate_default_prompt(
     bot_id: str,
@@ -1476,34 +1488,19 @@ async def v1_generate_default_prompt(
             if len(snippets) >= 6:
                 break
 
-        # Build the curated prompt from whatever we retrieved
+        # Use LLM to generate structured prompt from RAG snippets
         if snippets:
-            context_block = "\n\n".join(snippets[:4])
-            prompt_text = (
-                f"You are a helpful and knowledgeable AI assistant representing {business_name}. "
-                f"You speak on behalf of the business using 'we' and 'our'. "
-                f"Here is some background about the business that defines your context:\n\n"
-                f"{context_block}\n\n"
-                f"Use this context to answer visitor questions accurately and naturally. "
-                f"Be friendly, professional, and always represent {business_name} positively. "
-                f"If you don't have the answer, direct visitors to contact the business directly."
-            )
+            from application.services.prompt_generation_service import generate_prompt_from_rag_content
+            generated = generate_prompt_from_rag_content(snippets, business_name)
+            if generated:
+                prompt_text = generated
+            else:
+                # LLM failed, use fallback template
+                prompt_text = _default_prompt_fallback(business_name)
         else:
-            # Fallback: no RAG content available yet
-            prompt_text = (
-                f"You are a helpful AI assistant for {business_name}. "
-                f"Speak on behalf of the business using 'we' and 'our'. "
-                f"Be friendly, professional, and helpful. "
-                f"If you don't have specific information, encourage visitors to contact us directly."
-            )
+            prompt_text = _default_prompt_fallback(business_name)
     except Exception:
-        # If RAG isn't available, return a clean template
-        prompt_text = (
-            f"You are a helpful AI assistant for {business_name}. "
-            f"Speak on behalf of the business using 'we' and 'our'. "
-            f"Be friendly, professional, and helpful. "
-            f"If you don't have specific information, encourage visitors to contact us directly."
-        )
+        prompt_text = _default_prompt_fallback(business_name)
 
     return {"prompt": prompt_text, "business_name": business_name}
 
