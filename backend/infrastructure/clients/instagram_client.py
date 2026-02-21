@@ -74,7 +74,7 @@ def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
             continue
         items.append({
             "content_type": "text",
-            "title": label[:20],
+            "title": label[:20] if len(label) <= 20 else label[:17] + "...",
             "payload": label,
         })
     return items if items else None

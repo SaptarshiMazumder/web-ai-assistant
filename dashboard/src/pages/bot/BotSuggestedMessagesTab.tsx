@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Bell, BellRing, Check, Loader2, Mail, MessageSquare, Save, Sparkles } from 'lucide-react'
+import { Bell, BellRing, Check, Loader2, MessageSquare, Save, Sparkles } from 'lucide-react'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
   widgetConfigToState,
@@ -10,7 +10,7 @@ import {
 } from '../../components/WidgetDesignForm'
 import { SuggestedMessagesEditor } from '../../components/SuggestedMessagesEditor'
 import { useDashboardData, type EscalationConfig } from '../../hooks/useDashboardData'
-import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import { AnimatedPage, GlassCard, GlassField, SectionHeader, UiButton } from '../../components/ui'
 
 const SAVED_FEEDBACK_MS = 2000
 const DEFAULT_ESCALATION_BTN_LABEL = 'Request human support'
@@ -306,20 +306,18 @@ export default function BotSuggestedMessagesTab() {
                   <div>
                     <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Escalation button</div>
                     <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                      A button shown in the chat that lets visitors request human support. They'll be prompted for their email before escalating.
+                      A button shown in the chat that lets visitors request human support.
                     </p>
                   </div>
                 </div>
-                <label style={{ display: 'block', fontWeight: 500, fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--ui-flow-text)' }}>
-                  Button label
-                </label>
-                <input
-                  type="text"
-                  placeholder="Request human support"
-                  value={escalationBtnLabel}
-                  onChange={(e) => setEscalationBtnLabel(e.target.value)}
-                  style={{ width: '100%' }}
-                />
+                <GlassField label="Button label" style={{ marginTop: '1rem' }}>
+                  <input
+                    type="text"
+                    placeholder="Request human support"
+                    value={escalationBtnLabel}
+                    onChange={(e) => setEscalationBtnLabel(e.target.value)}
+                  />
+                </GlassField>
               </div>
 
               {/* Email notifications toggle */}
@@ -345,11 +343,7 @@ export default function BotSuggestedMessagesTab() {
                 </label>
               </div>
 
-              <div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 500, fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--ui-flow-text)' }}>
-                  <Mail size={15} style={{ color: 'var(--ui-flow-accent)' }} />
-                  Notification email(s)
-                </label>
+              <GlassField label="Notification email(s)" helper="Separate multiple emails with semicolons (;).">
                 <input
                   type="text"
                   placeholder="team@company.com; support@company.com"
@@ -357,12 +351,8 @@ export default function BotSuggestedMessagesTab() {
                   onChange={(e) =>
                     setEscalationConfig((prev) => ({ ...prev, notification_emails: e.target.value }))
                   }
-                  style={{ width: '100%' }}
                 />
-                <span className="muted" style={{ fontSize: '0.82rem', display: 'block', marginTop: '0.3rem' }}>
-                  Separate multiple emails with semicolons (;).
-                </span>
-              </div>
+              </GlassField>
             </>
           )}
 

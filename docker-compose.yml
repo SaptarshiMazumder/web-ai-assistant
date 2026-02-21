@@ -17,6 +17,7 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
       CELERY_BROKER_URL: "redis://redis:6379/0"
       CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      PYTHONPATH: "/app/backend"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
     dns:
@@ -37,6 +38,7 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: "/app/creds.json"
       CELERY_BROKER_URL: "redis://redis:6379/0"
       CELERY_RESULT_BACKEND: "redis://redis:6379/0"
+      PYTHONPATH: "/app/backend"
     volumes:
       - ${HOST_GCP_CREDS:-./backend/creds/gen-lang-client-0545494042-b36c2aa59869.json}:/app/creds.json:ro
     dns:
