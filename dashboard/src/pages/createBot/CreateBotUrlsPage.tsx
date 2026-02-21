@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
@@ -10,6 +11,7 @@ import { useDashboardData } from '../../hooks/useDashboardData'
 
 export default function CreateBotUrlsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { discoverUrls: discoverUrlsFromHook } = useDashboardData()
   const { step2, flow } = useCreateBotFlow()
   const {
@@ -510,9 +512,9 @@ export default function CreateBotUrlsPage() {
     return (
       <div className="flow-panel-body">
         <div>
-          <div className="card-title">Add website pages and files</div>
+          <div className="card-title">{t('createBot.addWebsitePages', 'Add website pages and files')}</div>
           <div className="card-subtitle">
-            Find pages from your website and upload PDFs to teach your assistant.
+            {t('createBot.addWebsitePagesSubtitle', 'Find pages from your website and upload PDFs to teach your assistant.')}
           </div>
         </div>
 
@@ -525,7 +527,7 @@ export default function CreateBotUrlsPage() {
             marginBottom: '0.5rem',
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>Discover pages</div>
+          <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>{t('createBot.discoverPages', 'Discover pages')}</div>
 
           {!isSharedDiscovering && sharedDiscoveredUrls.length > 0 && sharedDiscoveryDurationLabel != null ? (
             <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
@@ -542,7 +544,7 @@ export default function CreateBotUrlsPage() {
             </div>
           ) : (
             <div className="flow-hint-text" style={{ marginBottom: '0.75rem' }}>
-              Enter your website (or a section of it) to find related pages automatically.
+              {t('createBot.discoverHint', 'Enter your website (or a section of it) to find related pages automatically.')}
             </div>
           )}
           {sharedDiscoveryTimedOutMessage && !isSharedDiscovering && (
@@ -575,7 +577,7 @@ export default function CreateBotUrlsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <ScanSearch size={16} />
-                Scan
+                {t('createBot.scan', 'Scan')}
               </UiButton>
             ) : (
               <UiButton
@@ -584,7 +586,7 @@ export default function CreateBotUrlsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <StopIcon />
-                Stop
+                {t('createBot.stop', 'Stop')}
               </UiButton>
             )}
           </div>
@@ -798,20 +800,15 @@ export default function CreateBotUrlsPage() {
               <div className="flow-toolbar" style={{ marginBottom: '0.75rem' }}>
                 <UiButton
                   variant={sharedSelectedDiscoveredUrls.size === sharedDiscoveredUrls.length && sharedDiscoveredUrls.length > 0 ? 'ghost' : 'secondary'}
-                  onClick={
-                    sharedSelectedDiscoveredUrls.size === sharedDiscoveredUrls.length && sharedDiscoveredUrls.length > 0
-                      ? handleDeselectAllSharedDiscovered
-                      : handleSelectAllSharedDiscovered
-                  }
+                  onClick={sharedSelectedDiscoveredUrls.size === sharedDiscoveredUrls.length ? handleDeselectAllSharedDiscovered : handleSelectAllSharedDiscovered}
                 >
-                  {sharedSelectedDiscoveredUrls.size === sharedDiscoveredUrls.length && sharedDiscoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+                  {sharedSelectedDiscoveredUrls.size === sharedDiscoveredUrls.length && sharedDiscoveredUrls.length > 0 ? t('common.deselectAll', 'Deselect All') : t('common.selectAll', 'Select All')}
                 </UiButton>
                 <UiButton
                   variant={expandedSharedCategories.size > 0 ? 'ghost' : 'secondary'}
                   onClick={expandedSharedCategories.size > 0 ? collapseAllShared : expandAllShared}
-                  disabled={!sharedUrlCategories}
                 >
-                  {expandedSharedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                  {expandedSharedCategories.size > 0 ? t('common.collapseAll', 'Collapse All') : t('common.expandAll', 'Expand All')}
                 </UiButton>
                 <span className="muted" style={{ marginLeft: 'auto' }}>
                   {sharedSelectedDiscoveredUrls.size} of {sharedDiscoveredUrls.length} selected
@@ -906,10 +903,14 @@ export default function CreateBotUrlsPage() {
           </UiButton>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
             <UiButton variant="ghost" onClick={() => void handleSkip()}>
-              Skip for now
+              {t('createBot.skip', 'Skip for now')}
             </UiButton>
-            <UiButton variant="primary" onClick={handleContinue} disabled={isSharedDiscovering}>
-              Continue
+            <UiButton
+              variant="primary"
+              onClick={() => void handleContinue()}
+              disabled={isSharedDiscovering && sharedDiscoveredUrls.length === 0}
+            >
+              {t('createBot.startTraining', 'Start training')}
             </UiButton>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useAuth0 } from '@auth0/auth0-react'
 import { useCallback, useMemo, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
 import { useDashboardData, type SourceRecord, type DomainRecord, type AvailabilityJobRecord } from '../../hooks/useDashboardData'
 import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
@@ -92,6 +93,7 @@ function pickSourceOrigin(sources: SourceRecord[], botId?: string | null): { ori
 }
 
 export default function BotTestingTab() {
+  const { t } = useTranslation()
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
   const {
@@ -412,7 +414,7 @@ export default function BotTestingTab() {
   }
 
   if (!selectedBot) {
-    return <div className="empty-panel">Select a bot to test.</div>
+    return <div className="empty-panel">{t('botTesting.selectBotToTest', 'Select a bot to test.')}</div>
   }
 
   return (
@@ -420,17 +422,17 @@ export default function BotTestingTab() {
       <div className="testing-page">
         <div style={{ gridColumn: '1 / -1' }}>
           <SectionHeader
-            eyebrow="Testing Lab"
-            title="Configure and test your AI runtime"
-            subtitle="Tune model behavior and validate hotel availability flows in one polished workspace."
+            eyebrow={t('botTesting.title', 'Testing Lab')}
+            title={t('botTesting.subtitle', 'Configure and test your AI runtime')}
+            subtitle={t('botTesting.description', 'Tune model behavior and validate hotel availability flows in one polished workspace.')}
           />
         </div>
         <div className="testing-left">
           <div className="testing-config-card ui-glass-card">
-            <h3 className="testing-config-title">Agent configuration</h3>
+            <h3 className="testing-config-title">{t('botTesting.agentConfiguration', 'Agent configuration')}</h3>
 
             <div className="testing-field">
-              <label className="testing-label">AI Model</label>
+              <label className="testing-label">{t('botTesting.aiModel', 'AI Model')}</label>
               <select
                 className="testing-select"
                 value={modelId}
@@ -444,12 +446,12 @@ export default function BotTestingTab() {
                 ))}
               </select>
               <p className="testing-hint">
-                This AI model will be used to generate answers and perform actions by your agent.
+                {t('botTesting.aiModelHint', 'This AI model will be used to generate answers and perform actions by your agent.')}
               </p>
             </div>
 
             <div className="testing-field">
-              <label className="testing-label">Active Persona</label>
+              <label className="testing-label">{t('botTesting.activePersona', 'Active Persona')}</label>
               <div className="persona-selector-compact">
                 <select
                   className="persona-selector-dropdown"
@@ -465,13 +467,13 @@ export default function BotTestingTab() {
                 </select>
               </div>
               <p className="testing-hint">
-                Select a persona to shape the AI's tone and personality.
+                {t('botTesting.activePersonaHint', 'Select a persona to shape the AI\'s tone and personality.')}
               </p>
             </div>
 
             <div className="testing-field">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <label className="testing-label">Instructions (Prompt)</label>
+                <label className="testing-label">{t('botTesting.instructions', 'Instructions (Prompt)')}</label>
                 {personaId === DEFAULT_PERSONA_ID && (
                   <UiButton
                     variant="ghost"
@@ -479,12 +481,12 @@ export default function BotTestingTab() {
                     disabled={isGenerating || configLoading}
                     style={{ fontSize: '0.75rem', padding: '2px 8px', height: 'auto', minHeight: 'unset' }}
                   >
-                    {isGenerating ? 'Generating...' : '⚡ Generate from website'}
+                    {isGenerating ? t('botTesting.generating', 'Generating...') : t('botTesting.generateFromWebsite', '⚡ Generate from website')}
                   </UiButton>
                 )}
                 {personaId && personas.find((p) => p.id === personaId) && personaId !== DEFAULT_PERSONA_ID && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--ui-flow-accent, #e4587a)', fontWeight: 500 }}>
-                    Based on {personas.find((p) => p.id === personaId)?.name}
+                    {t('botTesting.basedOn', 'Based on {{name}}', { name: personas.find((p) => p.id === personaId)?.name })}
                   </span>
                 )}
               </div>
@@ -492,12 +494,12 @@ export default function BotTestingTab() {
                 className="testing-textarea"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
-                placeholder="System prompt / instructions for the agent..."
+                placeholder={t('botTesting.instructionsPlaceholder', 'System prompt / instructions for the agent...')}
                 disabled={configLoading}
                 rows={10}
               />
               <p className="testing-hint">
-                The above starts from your selected persona. Edit it to customize further.
+                {t('botTesting.instructionsHint', 'The above starts from your selected persona. Edit it to customize further.')}
               </p>
             </div>
 
@@ -517,15 +519,14 @@ export default function BotTestingTab() {
                 <span className="testing-temperature-value">{temperature}</span>
               </div>
               <p className="testing-hint">
-                Control the randomness of the agent response. Lower values are more predictable,
-                higher values more random.
+                {t('botTesting.temperatureHint', 'Control the randomness of the agent response. Lower values are more predictable, higher values more random.')}
               </p>
             </div>
 
             <div className="testing-actions">
-              <UiButton variant="ghost" onClick={handleReset} disabled={configLoading}>Reset</UiButton>
+              <UiButton variant="ghost" onClick={handleReset} disabled={configLoading}>{t('botTesting.reset', 'Reset')}</UiButton>
               <UiButton variant="primary" onClick={() => void handleSave()} disabled={configLoading}>
-                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
+                {saveStatus === 'saving' ? t('botTesting.saving', 'Saving...') : saveStatus === 'saved' ? t('botTesting.saved', 'Saved') : t('botTesting.save', 'Save')}
               </UiButton>
             </div>
           </div>
@@ -714,7 +715,7 @@ export default function BotTestingTab() {
                 className="testing-widget-placeholder"
                 style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
               >
-                No publishable key for this bot.
+                {t('botTesting.noPublishableKey', 'No publishable key for this bot.')}
               </div>
             )}
           </div>

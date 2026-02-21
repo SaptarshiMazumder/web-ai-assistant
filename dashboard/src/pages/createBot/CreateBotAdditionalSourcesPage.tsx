@@ -1,22 +1,24 @@
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Upload, Plus, X, FileIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { FileText, Plus, X, FileIcon } from 'lucide-react'
 import { SegmentedTabs, UiButton, type SegmentedTabOption } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { FileDropzone } from '../../components/FileDropzone'
 
-type TabId = 'pdfs' | 'text-docs' | 'drive' | 'custom-text'
+type TabId = 'pdfs' | 'text-docs' | 'custom-text'
 
 export default function CreateBotAdditionalSourcesPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { flow, step2 } = useCreateBotFlow()
   const { pdfFiles, setPdfFiles, textDocFiles, setTextDocFiles, customTextEntries, setCustomTextEntries } = step2
-  
+
   const [activeTab, setActiveTab] = useState<TabId>('pdfs')
 
-  const hasAnySources = 
-    pdfFiles.length > 0 || 
-    textDocFiles.length > 0 || 
+  const hasAnySources =
+    pdfFiles.length > 0 ||
+    textDocFiles.length > 0 ||
     customTextEntries.some(f => f.title.trim() || f.content.trim())
 
   const handleAddTextField = () => {
@@ -52,18 +54,17 @@ export default function CreateBotAdditionalSourcesPage() {
   }, [flow.nextPath, navigate])
 
   const tabs: SegmentedTabOption<TabId>[] = [
-    { id: 'pdfs', label: 'PDF Sources', icon: <FileText size={16} /> },
-    { id: 'text-docs', label: 'Text Docs', icon: <FileIcon size={16} /> },
-    { id: 'drive', label: 'Drive', icon: <Upload size={16} /> },
-    { id: 'custom-text', label: 'Custom Text', icon: <Plus size={16} /> },
+    { id: 'pdfs', label: t('createBot.pdfSources', 'PDF Sources'), icon: <FileText size={16} /> },
+    { id: 'text-docs', label: t('createBot.textDocs', 'Text Docs'), icon: <FileIcon size={16} /> },
+    { id: 'custom-text', label: t('createBot.customText', 'Custom Text'), icon: <Plus size={16} /> },
   ]
 
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Add additional sources (optional)</div>
+        <div className="card-title">{t('createBot.addAdditionalSources', 'Add additional sources (optional)')}</div>
         <div className="card-subtitle">
-          Upload more files or add custom content to expand your assistant's knowledge.
+          {t('createBot.addAdditionalSourcesSubtitle', 'Upload more files or add custom content to expand your assistant\'s knowledge.')}
         </div>
       </div>
 
@@ -82,10 +83,10 @@ export default function CreateBotAdditionalSourcesPage() {
           <div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.5rem' }}>
-                Upload Additional PDFs
+                {t('createBot.uploadAdditionalPdfs', 'Upload Additional PDFs')}
               </div>
               <div style={{ fontSize: '0.875rem', color: 'var(--flow-muted)', marginBottom: '1rem' }}>
-                Add more PDF documents to expand your assistant's knowledge base.
+                {t('createBot.uploadPdfsSubtitle', 'Add more PDF documents to expand your assistant\'s knowledge base.')}
               </div>
             </div>
             <FileDropzone
@@ -104,10 +105,10 @@ export default function CreateBotAdditionalSourcesPage() {
           <div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.5rem' }}>
-                Upload Text Documents
+                {t('createBot.uploadTextDocs', 'Upload Text Documents')}
               </div>
               <div style={{ fontSize: '0.875rem', color: 'var(--flow-muted)', marginBottom: '1rem' }}>
-                Upload .txt, .md, or other text files for your assistant to learn from.
+                {t('createBot.uploadTextDocsSubtitle', 'Upload .txt, .md, or other text files for your assistant to learn from.')}
               </div>
             </div>
             <FileDropzone
@@ -122,52 +123,24 @@ export default function CreateBotAdditionalSourcesPage() {
           </div>
         )}
 
-        {activeTab === 'drive' && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '4rem 2rem',
-            background: 'var(--flow-surface)',
-            borderRadius: 'var(--flow-radius)',
-            border: '1px dashed var(--flow-border)'
-          }}>
-            <Upload size={48} color="var(--flow-muted)" style={{ marginBottom: '1rem' }} />
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.5rem' }}>
-              Google Drive Integration
-            </div>
-            <div style={{ fontSize: '0.95rem', color: 'var(--flow-muted)', marginBottom: '1.5rem' }}>
-              Coming soon! You'll be able to sync files directly from your Google Drive.
-            </div>
-            <div style={{ 
-              display: 'inline-block',
-              padding: '0.5rem 1rem',
-              background: 'var(--flow-accent)',
-              color: 'white',
-              borderRadius: '6px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              letterSpacing: '0.05em'
-            }}>
-              COMING SOON
-            </div>
-          </div>
-        )}
+
 
         {activeTab === 'custom-text' && (
           <div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.5rem' }}>
-                Add Custom Text
+                {t('createBot.addCustomText', 'Add Custom Text')}
               </div>
               <div style={{ fontSize: '0.875rem', color: 'var(--flow-muted)', marginBottom: '1rem' }}>
-                Create custom text entries for FAQs, policies, or any other important information.
+                {t('createBot.addCustomTextSubtitle', 'Create custom text entries for FAQs, policies, or any other important information.')}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {customTextEntries.map((field, index) => (
-                <div 
+                <div
                   key={field.id}
-                  style={{ 
+                  style={{
                     background: 'var(--flow-surface)',
                     border: '1px solid var(--flow-border)',
                     borderRadius: 'var(--flow-radius)',
@@ -176,7 +149,7 @@ export default function CreateBotAdditionalSourcesPage() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--flow-heading)' }}>
-                      Entry #{index + 1}
+                      {t('createBot.entryNumber', 'Entry #{{count}}', { count: index + 1 })}
                     </div>
                     {customTextEntries.length > 1 && (
                       <button
@@ -197,30 +170,30 @@ export default function CreateBotAdditionalSourcesPage() {
                       </button>
                     )}
                   </div>
-                  
+
                   <div style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-                      Title
+                      {t('createBot.title', 'Title')}
                     </label>
                     <input
                       type="text"
                       value={field.title}
                       onChange={(e) => handleUpdateTextField(field.id, 'title', e.target.value)}
-                      placeholder="e.g., Return Policy, Office Hours, etc."
+                      placeholder={t('createBot.titlePlaceholder', 'e.g., Return Policy, Office Hours, etc.')}
                       style={{ width: '100%' }}
                     />
                   </div>
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-                      Content
+                      {t('createBot.content', 'Content')}
                     </label>
                     <textarea
                       value={field.content}
                       onChange={(e) => handleUpdateTextField(field.id, 'content', e.target.value)}
-                      placeholder="Enter the full text content here..."
+                      placeholder={t('createBot.contentPlaceholder', 'Enter the full text content here...')}
                       rows={6}
-                      style={{ 
+                      style={{
                         width: '100%',
                         fontFamily: 'inherit',
                         resize: 'vertical'
@@ -237,7 +210,7 @@ export default function CreateBotAdditionalSourcesPage() {
               style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
               <Plus size={16} />
-              Add Another Entry
+              {t('createBot.addAnotherEntry', 'Add Another Entry')}
             </UiButton>
           </div>
         )}
@@ -245,14 +218,14 @@ export default function CreateBotAdditionalSourcesPage() {
 
       <div className="flow-actions" style={{ marginTop: '2rem' }}>
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-          Back
+          {t('common.back', 'Back')}
         </UiButton>
         <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
           <UiButton variant="ghost" onClick={handleSkip}>
-            Skip for now
+            {t('createBot.skip', 'Skip for now')}
           </UiButton>
           <UiButton variant="primary" onClick={handleContinue} disabled={!hasAnySources}>
-            Continue
+            {t('common.continue', 'Continue')}
           </UiButton>
         </div>
       </div>

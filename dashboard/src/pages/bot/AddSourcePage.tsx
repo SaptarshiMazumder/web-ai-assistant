@@ -12,7 +12,6 @@ import {
   Plus,
   X,
   FileIcon,
-  Upload,
   Globe,
   Type,
 } from 'lucide-react'
@@ -20,6 +19,7 @@ import { UiButton } from '../../components/ui'
 import { FileDropzone } from '../../components/FileDropzone'
 import { SegmentedTabs, type SegmentedTabOption } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { useTranslation } from 'react-i18next'
 import { StopIcon } from '../createBot/DiscoveryIcons'
 import {
   categorizeUrls,
@@ -31,11 +31,12 @@ import {
 } from '../createBot/urlCategorizer'
 import { AnimatedPage, GlassCard, GlassField } from '../../components/ui'
 
-type TabId = 'website' | 'pdf' | 'docs' | 'drive' | 'text' | 'custom'
+type TabId = 'website' | 'pdf' | 'docs' | 'text' | 'custom'
 
 type CustomTextEntry = { id: string; title: string; content: string }
 
 export default function AddSourcePage() {
+  const { t } = useTranslation()
   const { botId } = useParams()
   const navigate = useNavigate()
   const {
@@ -461,12 +462,11 @@ export default function AddSourcePage() {
   }
 
   const tabs: SegmentedTabOption<TabId>[] = [
-    { id: 'website', label: 'Website', icon: <Globe size={16} /> },
-    { id: 'pdf', label: 'PDF', icon: <FileText size={16} /> },
-    { id: 'docs', label: 'Docs', icon: <FileIcon size={16} /> },
-    { id: 'drive', label: 'Drive', icon: <Upload size={16} /> },
-    { id: 'text', label: 'Text', icon: <Type size={16} /> },
-    { id: 'custom', label: 'Custom', icon: <Plus size={16} /> },
+    { id: 'website', label: t('addSource.tabs.website', 'Website'), icon: <Globe size={16} /> },
+    { id: 'pdf', label: t('addSource.tabs.pdf', 'PDF'), icon: <FileText size={16} /> },
+    { id: 'docs', label: t('addSource.tabs.docs', 'Docs'), icon: <FileIcon size={16} /> },
+    { id: 'text', label: t('addSource.tabs.text', 'Text'), icon: <Type size={16} /> },
+    { id: 'custom', label: t('addSource.tabs.custom', 'Custom'), icon: <Plus size={16} /> },
   ]
 
   if (!botId || !selectedBot || selectedBot.bot_id !== botId) {
@@ -483,7 +483,7 @@ export default function AddSourcePage() {
                 <ArrowLeft size={20} strokeWidth={2} />
               </UiButton>
             </Link>
-            <h2 className="ui-section-header-title" style={{ margin: 0 }}>Add source</h2>
+            <h2 className="ui-section-header-title" style={{ margin: 0 }}>{t('addSource.title', 'Add source')}</h2>
           </div>
 
           <div className="add-source-tabs-wrap" style={{ marginBottom: '1.5rem' }}>
@@ -494,18 +494,18 @@ export default function AddSourcePage() {
             <>
               {/* Add Single Page Section */}
               <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Add Single Page</div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('addSource.addSinglePage', 'Add Single Page')}</div>
                 <div className="flow-hint-text" style={{ marginBottom: '1.25rem' }}>
-                  Add a specific page URL to your knowledge base.
+                  {t('addSource.addSinglePageSubtitle', 'Add a specific page URL to your knowledge base.')}
                 </div>
 
                 <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
-                  <GlassField label="Page URL" style={{ flex: 1, minWidth: 0 }}>
+                  <GlassField label={t('addSource.pageUrlLabel', 'Page URL')} style={{ flex: 1, minWidth: 0 }}>
                     <input
                       type="url"
                       value={singlePageUrl}
                       onChange={(e) => setSinglePageUrl(e.target.value)}
-                      placeholder="https://example.com/page"
+                      placeholder={t('addSource.pageUrlPlaceholder', 'https://example.com/page')}
                       disabled={addingSinglePage}
                       onKeyDown={(e) => e.key === 'Enter' && !addingSinglePage && void handleAddSinglePage()}
                     />
@@ -517,7 +517,7 @@ export default function AddSourcePage() {
                       disabled={!singlePageUrl.trim() || addingSinglePage}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     >
-                      {addingSinglePage ? 'Adding…' : 'Add'}
+                      {addingSinglePage ? t('addSource.adding', 'Adding...') : t('addSource.add', 'Add')}
                     </UiButton>
                   </div>
                 </div>
@@ -532,15 +532,15 @@ export default function AddSourcePage() {
               {/* OR Divider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0', opacity: 0.6 }}>
                 <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ui-flow-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Or</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ui-flow-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('addSource.or', 'Or')}</div>
                 <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />
               </div>
 
               {/* Scan Entire Website Section */}
               <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Scan Entire Website</div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('addSource.scanEntireWebsite', 'Scan Entire Website')}</div>
                 <div className="flow-hint-text" style={{ marginBottom: '1.25rem' }}>
-                  Enter your website (or a section) to find related pages automatically.
+                  {t('addSource.scanEntireWebsiteSubtitle', 'Enter your website (or a section) to find related pages automatically.')}
                 </div>
 
                 {!isDiscovering && discoveredUrls.length > 0 && discoveryDurationLabel != null && (
@@ -563,12 +563,12 @@ export default function AddSourcePage() {
                 )}
 
                 <div className="add-source-discovery-row" style={{ display: 'flex', gap: '12px', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
-                  <GlassField label="Website URL" style={{ flex: 1, minWidth: 0 }}>
+                  <GlassField label={t('addSource.websiteUrlLabel', 'Website URL')} style={{ flex: 1, minWidth: 0 }}>
                     <input
                       type="url"
                       value={discoveryUrl}
                       onChange={(e) => setDiscoveryUrl(e.target.value)}
-                      placeholder="https://example.com/your-section/"
+                      placeholder={t('addSource.websiteUrlPlaceholder', 'https://example.com/your-section/')}
                       disabled={isDiscovering}
                       onKeyDown={(e) => e.key === 'Enter' && !isDiscovering && void handleDiscover()}
                     />
@@ -577,12 +577,12 @@ export default function AddSourcePage() {
                     {!isDiscovering ? (
                       <UiButton variant="primary" onClick={() => void handleDiscover()} disabled={!discoveryUrl.trim()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <ScanSearch size={16} />
-                        Scan
+                        {t('addSource.scan', 'Scan')}
                       </UiButton>
                     ) : (
                       <UiButton variant="secondary" onClick={handleStopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <StopIcon />
-                        Stop
+                        {t('addSource.stop', 'Stop')}
                       </UiButton>
                     )}
                   </div>
@@ -604,51 +604,51 @@ export default function AddSourcePage() {
                       marginBottom: '1.5rem',
                     }}
                   >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <AlertCircle size={28} color="white" strokeWidth={2.5} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>No problem! We have an easy solution</h3>
-                      <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>Follow these 3 simple steps to add your website pages</p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                        <MousePointerClick size={22} color="white" strokeWidth={2.5} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <AlertCircle size={28} color="white" strokeWidth={2.5} />
                       </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 1</div>
-                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Open your webpage</h4>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Go to the important pages on your website (like Services, Prices, or Contact).</p>
-                    </div>
-                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                        <Printer size={22} color="white" strokeWidth={2.5} />
-                      </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 2</div>
-                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Save as PDF</h4>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Right-click the page → <strong>Print</strong> → Choose <strong>&quot;Save as PDF&quot;</strong>.</p>
-                    </div>
-                    <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                        <UploadCloud size={22} color="white" strokeWidth={2.5} />
-                      </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>STEP 3</div>
-                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Upload here</h4>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>Drop your PDF in the box below. Your AI will learn from it!</p>
-                    </div>
-                  </div>
-
-                  <div style={{ background: 'rgba(14, 165, 233, 0.1)', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                      <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
                       <div>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>Tip: Do this for every important page</p>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.</p>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.noProblemSolution', 'No problem! We have an easy solution')}</h3>
+                        <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>{t('addSource.threeSimpleSteps', 'Follow these 3 simple steps to add your website pages')}</p>
                       </div>
                     </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                          <MousePointerClick size={22} color="white" strokeWidth={2.5} />
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step1', 'STEP 1')}</div>
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.openWebpage', 'Open your webpage')}</h4>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>{t('addSource.openWebpageDesc', 'Go to the important pages on your website (like Services, Prices, or Contact).')}</p>
+                      </div>
+                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                          <Printer size={22} color="white" strokeWidth={2.5} />
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step2', 'STEP 2')}</div>
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.saveAsPdf', 'Save as PDF')}</h4>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: t('addSource.saveAsPdfDesc', 'Right-click the page → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.') }} />
+                      </div>
+                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                          <UploadCloud size={22} color="white" strokeWidth={2.5} />
+                        </div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step3', 'STEP 3')}</div>
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.uploadHere', 'Upload here')}</h4>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>{t('addSource.uploadHereDesc', 'Drop your PDF in the box below. Your AI will learn from it!')}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'rgba(14, 165, 233, 0.1)', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                          <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>{t('addSource.tipTitle', 'Tip: Do this for every important page')}</p>
+                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>{t('addSource.tipDesc', 'Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.')}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -660,17 +660,17 @@ export default function AddSourcePage() {
                         variant={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
                         onClick={selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? handleDeselectAll : handleSelectAll}
                       >
-                        {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+                        {selectedDiscoveredUrls.size === discoveredUrls.length && discoveredUrls.length > 0 ? t('addSource.deselectAll', 'Deselect all') : t('addSource.selectAll', 'Select all')}
                       </UiButton>
                       <UiButton
                         variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
                         onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
                         disabled={!urlCategories}
                       >
-                        {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                        {expandedCategories.size > 0 ? t('addSource.collapseAll', 'Collapse all') : t('addSource.expandAll', 'Expand all')}
                       </UiButton>
                       <span className="muted" style={{ marginLeft: 'auto' }}>
-                        {selectedDiscoveredUrls.size} of {discoveredUrls.length} selected
+                        {t('addSource.selectedCount', '{{selected}} of {{total}} selected', { selected: selectedDiscoveredUrls.size, total: discoveredUrls.length })}
                       </span>
                     </div>
 
@@ -688,7 +688,7 @@ export default function AddSourcePage() {
                     >
                       {isDiscovering && (
                         <div style={{ marginBottom: 12, color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
-                          Scanning... ({discoveredUrls.length} found so far)
+                          {t('addSource.scanningSoFar', 'Scanning... ({{count}} found so far)', { count: discoveredUrls.length })}
                         </div>
                       )}
                       {urlCategories ? (
@@ -713,12 +713,12 @@ export default function AddSourcePage() {
                           )}
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'No discovered pages yet.'}</div>
+                        <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? t('addSource.discovering', 'Discovering...') : t('addSource.noDiscoveredPagesYet', 'No discovered pages yet.')}</div>
                       )}
                     </div>
 
                     <UiButton variant="secondary" onClick={() => { setDiscoveredUrls([]); setSelectedDiscoveredUrls(new Set()); setDiscoveryUrl(''); setDiscoveryDurationMs(null); setDiscoveryTimedOutMessage(null); setDiscoveryError(null); }} disabled={isDiscovering}>
-                      Clear
+                      {t('addSource.clear', 'Clear')}
                     </UiButton>
                   </>
                 )}
@@ -744,10 +744,10 @@ export default function AddSourcePage() {
                   <CheckCircle2 size={24} color="var(--flow-accent)" strokeWidth={2.5} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: 'var(--flow-heading)', fontSize: '1rem' }}>
-                      {pdfFiles.length} PDF{pdfFiles.length !== 1 ? 's' : ''} ready
+                      {t('addSource.pdfsReady', '{{count}} PDF(s) ready', { count: pdfFiles.length })}
                     </p>
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--flow-muted)' }}>
-                      These will be added to your knowledge base
+                      {t('addSource.addedToKnowledgeBase', 'These will be added to your knowledge base')}
                     </p>
                   </div>
                 </div>
@@ -757,8 +757,8 @@ export default function AddSourcePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
 
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>Add Website Pages as PDFs</h3>
-                    <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>Follow these 3 easy steps</p>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>{t('addSource.addWebsitePagesAsPdfs', 'Add Website Pages as PDFs')}</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>{t('addSource.followThreeEasySteps', 'Follow these 3 easy steps')}</p>
                   </div>
                 </div>
               </div>
@@ -771,8 +771,8 @@ export default function AddSourcePage() {
                     </div>
                     <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>1</span>
                   </div>
-                  <div className="flow-instruction-card-heading">Open the page</div>
-                  <div className="flow-instruction-card-body">Open important pages (services, prices, hours, booking, contact).</div>
+                  <div className="flow-instruction-card-heading">{t('addSource.openWebpage', 'Open the page')}</div>
+                  <div className="flow-instruction-card-body">{t('addSource.openWebpageDesc', 'Open important pages (services, prices, hours, booking, contact).')}</div>
                 </div>
                 <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -781,8 +781,8 @@ export default function AddSourcePage() {
                     </div>
                     <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>2</span>
                   </div>
-                  <div className="flow-instruction-card-heading">Save as PDF</div>
-                  <div className="flow-instruction-card-body">Right-click → Print → &quot;Save as PDF&quot;</div>
+                  <div className="flow-instruction-card-heading">{t('addSource.saveAsPdf', 'Save as PDF')}</div>
+                  <div className="flow-instruction-card-body" dangerouslySetInnerHTML={{ __html: t('addSource.saveAsPdfDesc', 'Right-click → Print → &quot;Save as PDF&quot;') }} />
                 </div>
                 <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -791,14 +791,14 @@ export default function AddSourcePage() {
                     </div>
                     <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>3</span>
                   </div>
-                  <div className="flow-instruction-card-heading">Upload here</div>
-                  <div className="flow-instruction-card-body">Drop your PDFs below. Your AI will learn from them!</div>
+                  <div className="flow-instruction-card-heading">{t('addSource.uploadHere', 'Upload here')}</div>
+                  <div className="flow-instruction-card-body">{t('addSource.uploadHereDesc', 'Drop your PDFs below. Your AI will learn from them!')}</div>
                 </div>
               </div>
 
               <FileDropzone
-                label="Drop your PDFs here"
-                helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
+                label={t('addSource.dropPdfsHere', 'Drop your PDFs here')}
+                helperText={t('addSource.dropPdfsHelper', 'Each PDF teaches your AI about that page. Upload up to 20 files.')}
                 files={pdfFiles}
                 setFiles={setPdfFiles}
                 accept="application/pdf"
@@ -811,12 +811,12 @@ export default function AddSourcePage() {
           {activeTab === 'docs' && (
             <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Text documents</div>
-                <div className="card-subtitle">Upload .txt, .md, .doc, .docx for your assistant to learn from.</div>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>{t('addSource.textDocuments', 'Text documents')}</div>
+                <div className="card-subtitle">{t('addSource.textDocumentsSubtitle', 'Upload .txt, .md, .doc, .docx for your assistant to learn from.')}</div>
               </div>
               <FileDropzone
-                label="Drop text files here"
-                helperText="Upload .txt, .md, .doc, .docx (up to 20 files)"
+                label={t('addSource.dropTextFilesHere', 'Drop text files here')}
+                helperText={t('addSource.dropTextFilesHelper', 'Upload .txt, .md, .doc, .docx (up to 20 files)')}
                 files={textDocFiles}
                 setFiles={setTextDocFiles}
                 accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -826,24 +826,18 @@ export default function AddSourcePage() {
             </GlassCard>
           )}
 
-          {activeTab === 'drive' && (
-            <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--flow-surface)', borderRadius: 'var(--flow-radius)', border: '1px dashed var(--flow-border)', marginBottom: '1.5rem' }}>
-              <Upload size={48} color="var(--flow-muted)" style={{ marginBottom: '1rem' }} />
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.5rem' }}>Google Drive</div>
-              <div style={{ fontSize: '0.95rem', color: 'var(--flow-muted)', marginBottom: '1.5rem' }}>Coming soon! Sync files from Google Drive.</div>
-            </div>
-          )}
+
 
           {activeTab === 'text' && (
             <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Plain text</div>
-                <div className="card-subtitle">Paste or type text for your assistant to learn from.</div>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>{t('addSource.plainText', 'Plain text')}</div>
+                <div className="card-subtitle">{t('addSource.plainTextSubtitle', 'Paste or type text for your assistant to learn from.')}</div>
               </div>
               <textarea
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
-                placeholder="Paste or type your content here..."
+                placeholder={t('addSource.pasteOrTypePlaceholder', 'Paste or type your content here...')}
                 rows={10}
                 style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', padding: '0.75rem', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', background: 'var(--flow-surface)' }}
               />
@@ -853,8 +847,8 @@ export default function AddSourcePage() {
           {activeTab === 'custom' && (
             <GlassCard className="ui-glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <div className="card-title" style={{ marginBottom: '0.5rem' }}>Custom text entries</div>
-                <div className="card-subtitle">Create structured entries (FAQs, policies, hours, etc.).</div>
+                <div className="card-title" style={{ marginBottom: '0.5rem' }}>{t('addSource.customTextEntries', 'Custom text entries')}</div>
+                <div className="card-subtitle">{t('addSource.customTextEntriesSubtitle', 'Create structured entries (FAQs, policies, hours, etc.).')}</div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {customTextEntries.map((field, idx) => (
@@ -863,7 +857,7 @@ export default function AddSourcePage() {
                     style={{ background: 'var(--flow-surface)', border: '1px solid var(--flow-border)', borderRadius: 'var(--flow-radius)', padding: '1rem' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--flow-heading)' }}>Entry #{idx + 1}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--flow-heading)' }}>{t('addSource.entryNumber', 'Entry #{{count}}', { count: idx + 1 })}</div>
                       {customTextEntries.length > 1 && (
                         <button
                           type="button"
@@ -875,19 +869,19 @@ export default function AddSourcePage() {
                       )}
                     </div>
                     <div style={{ display: 'grid', gap: '1.25rem' }}>
-                      <GlassField label="Title">
+                      <GlassField label={t('addSource.entryTitleLabel', 'Title')}>
                         <input
                           type="text"
                           value={field.title}
                           onChange={(e) => handleUpdateTextField(field.id, 'title', e.target.value)}
-                          placeholder="Entry title (optional)"
+                          placeholder={t('addSource.entryTitlePlaceholder', 'Entry title (optional)')}
                         />
                       </GlassField>
-                      <GlassField label="Content">
+                      <GlassField label={t('addSource.entryContentLabel', 'Content')}>
                         <textarea
                           value={field.content}
                           onChange={(e) => handleUpdateTextField(field.id, 'content', e.target.value)}
-                          placeholder="Type or paste content here..."
+                          placeholder={t('addSource.entryContentPlaceholder', 'Type or paste content here...')}
                           rows={6}
                           style={{ minHeight: '120px' }}
                         />
@@ -898,7 +892,7 @@ export default function AddSourcePage() {
               </div>
               <UiButton variant="secondary" onClick={handleAddTextField} style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Plus size={16} />
-                Add Another Entry
+                {t('addSource.addAnotherEntry', 'Add Another Entry')}
               </UiButton>
             </GlassCard>
           )}
@@ -910,11 +904,11 @@ export default function AddSourcePage() {
           )}
 
           <div className="flow-actions add-source-actions">
-            <UiButton variant="secondary" onClick={() => navigate(`/bots/${botId}/knowledge`)}>Back</UiButton>
+            <UiButton variant="secondary" onClick={() => navigate(`/bots/${botId}/knowledge`)}>{t('addSource.back', 'Back')}</UiButton>
             <div className="add-source-actions-right" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-              <UiButton variant="ghost" onClick={() => navigate(`/bots/${botId}/knowledge`)}>Cancel</UiButton>
+              <UiButton variant="ghost" onClick={() => navigate(`/bots/${botId}/knowledge`)}>{t('addSource.cancel', 'Cancel')}</UiButton>
               <UiButton variant="primary" onClick={() => void handleSubmit()} disabled={!canSubmit}>
-                {submitting ? 'Adding…' : 'Add sources'}
+                {submitting ? t('addSource.addingSources', 'Adding...') : t('addSource.addSources', 'Add sources')}
               </UiButton>
             </div>
           </div>

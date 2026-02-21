@@ -42,64 +42,64 @@ export type SecondaryNavItem = {
 }
 
 export const primaryNavConfig: PrimaryNavItem[] = [
-  { id: 'home', label: 'Home', path: '/', icon: Home },
-  { id: 'bots', label: 'Bots', path: '/bots', icon: Bot },
-  { id: 'account', label: 'Account', path: '/account', icon: User },
-  { id: 'team', label: 'Team', path: '/org', icon: Users },
-  { id: 'billing', label: 'Billing and subscriptions', path: '/billing', icon: CreditCard },
-  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
+  { id: 'home', label: 'nav.home', path: '/', icon: Home },
+  { id: 'bots', label: 'nav.bots', path: '/bots', icon: Bot },
+  { id: 'account', label: 'nav.account', path: '/account', icon: User },
+  { id: 'team', label: 'nav.team', path: '/org', icon: Users },
+  { id: 'billing', label: 'nav.billing', path: '/billing', icon: CreditCard },
+  { id: 'settings', label: 'nav.settings', path: '/settings', icon: Settings },
 ]
 
 export const homeSecondaryItems: SecondaryNavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'nav.dashboard', to: '/', icon: LayoutDashboard },
 ]
 
 export const accountSecondaryItems: SecondaryNavItem[] = [
-  { id: 'profile', label: 'Profile', to: '/account', icon: User },
+  { id: 'profile', label: 'nav.profile', to: '/account', icon: User },
 ]
 
 export const teamSecondaryItems: SecondaryNavItem[] = [
-  { id: 'team', label: 'Team', to: '/org', icon: Users },
+  { id: 'team', label: 'nav.team', to: '/org', icon: Users },
 ]
 
 export const billingSecondaryItems: SecondaryNavItem[] = [
-  { id: 'billing', label: 'Billing and subscriptions', to: '/billing', icon: CreditCard },
+  { id: 'billing', label: 'nav.billing', to: '/billing', icon: CreditCard },
 ]
 
 export const botsSecondaryItemsBase: SecondaryNavItem[] = [
-  { id: 'all', label: 'All agents', to: '/bots', icon: Bot },
-  { id: 'create', label: 'Create AI Agent', to: '/create-bot', icon: Plus },
+  { id: 'all', label: 'nav.allAgents', to: '/bots', icon: Bot },
+  { id: 'create', label: 'nav.createAgent', to: '/create-bot', icon: Plus },
 ]
 
 export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
   // Top-level (no header)
-  { id: 'overview', label: 'Overview', to: `/bots/${botId}/overview`, icon: LayoutDashboard },
-  { id: 'notifications', label: 'Notifications', to: `/bots/${botId}/notifications`, icon: Bell },
+  { id: 'overview', label: 'nav.overview', to: `/bots/${botId}/overview`, icon: LayoutDashboard },
+  { id: 'notifications', label: 'nav.notifications', to: `/bots/${botId}/notifications`, icon: Bell },
 
   // Sources section (was Knowledge)
-  { id: 'knowledge', label: 'Sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'Agent Knowledge' },
-  { id: 'info-links', label: 'Info Links', to: `/bots/${botId}/info-links`, icon: Link2, header: 'Agent Knowledge' },
+  { id: 'knowledge', label: 'nav.sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'nav.agentKnowledge' },
+  { id: 'info-links', label: 'nav.infoLinks', to: `/bots/${botId}/info-links`, icon: Link2, header: 'nav.agentKnowledge' },
 
-  { id: 'image-assets', label: 'Image Assets', to: `/bots/${botId}/image-assets`, icon: Briefcase, header: 'Agent Knowledge' },
+  { id: 'image-assets', label: 'nav.imageAssets', to: `/bots/${botId}/image-assets`, icon: Briefcase, header: 'nav.agentKnowledge' },
 
   // Appearance section (was Design)
-  { id: 'design', label: 'Appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'Agent Design' },
-  { id: 'suggested-messages', label: 'Suggested Messages', to: `/bots/${botId}/suggested-messages`, icon: MessageSquare, header: 'Agent Design' },
-  { id: 'persona', label: 'Personas', to: `/bots/${botId}/persona`, icon: UserCircle, header: 'Agent Design' },
-  { id: 'testing', label: 'Testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'Agent Design' },
+  { id: 'design', label: 'nav.appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'nav.agentDesign' },
+  { id: 'suggested-messages', label: 'nav.suggestedMessages', to: `/bots/${botId}/suggested-messages`, icon: MessageSquare, header: 'nav.agentDesign' },
+  { id: 'persona', label: 'nav.personas', to: `/bots/${botId}/persona`, icon: UserCircle, header: 'nav.agentDesign' },
+  { id: 'testing', label: 'nav.testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'nav.agentDesign' },
 
   // Install section
-  { id: 'website', label: 'Website', to: `/bots/${botId}/website`, icon: Globe, header: 'Install' },
-  { id: 'instagram', label: 'Instagram', to: `/bots/${botId}/instagram`, icon: Instagram, header: 'Install' },
-  { id: 'line', label: 'LINE', to: `/bots/${botId}/line`, icon: LineIcon, header: 'Install' },
+  { id: 'website', label: 'nav.website', to: `/bots/${botId}/website`, icon: Globe, header: 'nav.install' },
+  { id: 'instagram', label: 'nav.instagram', to: `/bots/${botId}/instagram`, icon: Instagram, header: 'nav.install' },
+  { id: 'line', label: 'nav.line', to: `/bots/${botId}/line`, icon: LineIcon, header: 'nav.install' },
 
   // Contacts section
-  { id: 'conversations', label: 'Conversations History', to: `/bots/${botId}/conversations`, icon: History, header: 'Contacts' },
-  { id: 'escalations', label: 'Escalated Conversations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'Contacts' },
-  { id: 'leads', label: 'Leads', to: `/bots/${botId}/leads`, icon: UsersRound, header: 'Contacts' },
+  { id: 'conversations', label: 'nav.conversationsHistory', to: `/bots/${botId}/conversations`, icon: History, header: 'nav.contacts' },
+  { id: 'escalations', label: 'nav.escalatedConversations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'nav.contacts' },
+  { id: 'leads', label: 'nav.leads', to: `/bots/${botId}/leads`, icon: UsersRound, header: 'nav.contacts' },
 
   // Settings (standalone with separator)
-  { id: 'settings', label: 'Settings', to: `/bots/${botId}/settings`, icon: Settings, separator: true },
+  { id: 'settings', label: 'nav.settings', to: `/bots/${botId}/settings`, icon: Settings, separator: true },
 ]
 
 export type SidebarItem = {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
+import { useTranslation } from 'react-i18next'
 import {
   Plus,
   Trash2,
@@ -66,6 +67,7 @@ type ExtractionStatusResponse = {
 }
 
 export default function BotImageAssetsTab() {
+  const { t } = useTranslation()
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
 
@@ -455,8 +457,8 @@ export default function BotImageAssetsTab() {
     <AnimatedPage>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
         <SectionHeader
-          title="Image Assets"
-          subtitle="Products, services, and offerings your AI agent can show in conversations. Auto-extracted from training data or uploaded manually."
+          title={t('botImageAssets.title', 'Image Assets')}
+          subtitle={t('botImageAssets.subtitle', 'Products, services, and offerings your AI agent can show in conversations. Auto-extracted from training data or uploaded manually.')}
         />
 
         {error && (
@@ -494,9 +496,9 @@ export default function BotImageAssetsTab() {
               <strong>
                 {assetCount}/{assetLimit}
               </strong>
-              <span>assets used</span>
+              <span>{t('botImageAssets.assetsUsed', 'assets used')}</span>
               <span style={{ color: hasReachedAssetLimit ? '#c2410c' : '#64748b' }}>
-                {hasReachedAssetLimit ? 'Limit reached' : `${assetLimit - assetCount} slots left`}
+                {hasReachedAssetLimit ? t('botImageAssets.limitReached', 'Limit reached') : t('botImageAssets.slotsLeft', '{{slots}} slots left', { slots: assetLimit - assetCount })}
               </span>
             </div>
 
@@ -513,7 +515,7 @@ export default function BotImageAssetsTab() {
                 }}
               >
                 <Plus size={16} />
-                Add Asset
+                {t('botImageAssets.addAsset', 'Add Asset')}
               </UiButton>
               <UiButton
                 variant="secondary"
@@ -525,7 +527,7 @@ export default function BotImageAssetsTab() {
                 }}
               >
                 <Sparkles size={16} />
-                {showExtractSettings ? 'Hide Page Selection' : 'Auto extract from Pages'}
+                {showExtractSettings ? t('botImageAssets.hidePageSelection', 'Hide Page Selection') : t('botImageAssets.autoExtractFromPages', 'Auto extract from Pages')}
               </UiButton>
             </div>
           </>
@@ -534,7 +536,7 @@ export default function BotImageAssetsTab() {
         {showExtractSettings && (
           <GlassCard style={{ marginBottom: '1rem', padding: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              <strong style={{ fontSize: '0.95rem' }}>Extraction Source Pages</strong>
+              <strong style={{ fontSize: '0.95rem' }}>{t('botImageAssets.extractionSourcePages', 'Extraction Source Pages')}</strong>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
@@ -550,7 +552,7 @@ export default function BotImageAssetsTab() {
                     cursor: loadingExtractPages ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {loadingExtractPages ? 'Refreshing...' : 'Refresh Pages'}
+                  {loadingExtractPages ? t('botImageAssets.refreshing', 'Refreshing...') : t('botImageAssets.refreshPages', 'Refresh Pages')}
                 </button>
                 <button
                   type="button"
@@ -566,7 +568,7 @@ export default function BotImageAssetsTab() {
                     cursor: extractPages.length === 0 ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  Select All
+                  {t('botImageAssets.selectAll', 'Select All')}
                 </button>
                 <button
                   type="button"
@@ -582,7 +584,7 @@ export default function BotImageAssetsTab() {
                     cursor: extractPages.length === 0 ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  Clear
+                  {t('botImageAssets.clear', 'Clear')}
                 </button>
               </div>
             </div>
@@ -591,7 +593,7 @@ export default function BotImageAssetsTab() {
               type="text"
               value={extractPageFilter}
               onChange={(e) => setExtractPageFilter(e.target.value)}
-              placeholder="Filter pages..."
+              placeholder={t('botImageAssets.filterPages', 'Filter pages...')}
               style={{
                 width: '100%',
                 marginBottom: '0.75rem',
@@ -603,10 +605,10 @@ export default function BotImageAssetsTab() {
             />
 
             {loadingExtractPages ? (
-              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '0.35rem 0' }}>Loading pages...</div>
+              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '0.35rem 0' }}>{t('botImageAssets.loadingPages', 'Loading pages...')}</div>
             ) : extractPages.length === 0 ? (
               <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '0.35rem 0' }}>
-                No crawled pages found yet. Train URLs first to target specific pages.
+                {t('botImageAssets.noCrawledPages', 'No crawled pages found yet. Train URLs first to target specific pages.')}
               </div>
             ) : (
               <div
@@ -675,7 +677,7 @@ export default function BotImageAssetsTab() {
                   }}
                 >
                   {extracting ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />}
-                  {extracting ? 'Extracting...' : 'Extract Images'}
+                  {extracting ? t('botImageAssets.extractingImages', 'Extracting...') : t('botImageAssets.extractImages', 'Extract Images')}
                 </UiButton>
               </div>
             )}
@@ -688,7 +690,7 @@ export default function BotImageAssetsTab() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <Loader2 size={16} className="spin" />
               <strong style={{ fontSize: '0.9rem' }}>
-                {extractStats.status === 'queued' ? 'Extraction Queued...' : 'Extracting Assets...'}
+                {extractStats.status === 'queued' ? t('botImageAssets.extractionQueued', 'Extraction Queued...') : t('botImageAssets.extractingAssets', 'Extracting Assets...')}
               </strong>
             </div>
             <div style={{ background: '#e2e8f0', borderRadius: 4, height: 8, width: '100%', overflow: 'hidden' }}>
@@ -700,9 +702,9 @@ export default function BotImageAssetsTab() {
               }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: '0.8rem', color: '#64748b' }}>
-              <span>Found: {extractStats.assets_discovered}</span>
-              <span>Downloaded: {extractStats.assets_downloaded} / {extractStats.assets_discovered}</span>
-              <span>Limit: {extractStats.limit}</span>
+              <span>{t('botImageAssets.found', 'Found: {{count}}', { count: extractStats.assets_discovered })}</span>
+              <span>{t('botImageAssets.downloaded', 'Downloaded: {{downloaded}} / {{total}}', { downloaded: extractStats.assets_downloaded, total: extractStats.assets_discovered })}</span>
+              <span>{t('botImageAssets.limit', 'Limit: {{limit}}', { limit: extractStats.limit })}</span>
             </div>
           </GlassCard>
         )}
@@ -775,13 +777,13 @@ export default function BotImageAssetsTab() {
                 ) : (
                   <Square size={16} />
                 )}
-                {selectedIds.size === assets.length && assets.length > 0 ? 'Deselect All' : 'Select All'}
+                {selectedIds.size === assets.length && assets.length > 0 ? t('botImageAssets.deselectAll', 'Deselect All') : t('botImageAssets.selectAll', 'Select All')}
               </button>
 
               {selectedIds.size > 0 && (
                 <>
                   <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                    {selectedIds.size} selected
+                    {t('botImageAssets.selectedCount', '{{count}} selected', { count: selectedIds.size })}
                   </span>
                   <button
                     onClick={() => void handleDeleteSelected()}
@@ -804,11 +806,11 @@ export default function BotImageAssetsTab() {
                     }}
                   >
                     {bulkDeleting ? <Loader2 size={15} className="spin" /> : <Trash2 size={15} />}
-                    {bulkDeleting ? 'Deleting...' : `Delete Selected (${selectedIds.size})`}
+                    {bulkDeleting ? t('botImageAssets.deleting', 'Deleting...') : t('botImageAssets.deleteSelected', 'Delete Selected ({{count}})', { count: selectedIds.size })}
                   </button>
                   <button
                     onClick={() => setSelectedIds(new Set())}
-                    title="Clear selection"
+                    title={t('botImageAssets.clearSelection', 'Clear selection')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -830,7 +832,7 @@ export default function BotImageAssetsTab() {
           showAdd && (
             <GlassCard style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>New Asset</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>{t('botImageAssets.newAsset', 'New Asset')}</h3>
                 <button
                   onClick={() => {
                     setShowAdd(false)
@@ -872,10 +874,10 @@ export default function BotImageAssetsTab() {
                       <>
                         <Upload size={28} color="#94a3b8" />
                         <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
-                          Click or drag to upload image
+                          {t('botImageAssets.uploadImagePrompt', 'Click or drag to upload image')}
                         </span>
                         <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                          JPEG, PNG, GIF, WebP, SVG
+                          {t('botImageAssets.supportedFormats', 'JPEG, PNG, GIF, WebP, SVG')}
                         </span>
                       </>
                     )}
@@ -894,40 +896,40 @@ export default function BotImageAssetsTab() {
                   </label>
                 </div>
 
-                <GlassField label="Name">
+                <GlassField label={t('botImageAssets.nameLabel', 'Name')}>
                   <input
                     type="text"
                     value={addName}
                     onChange={(e) => setAddName(e.target.value)}
-                    placeholder="e.g. Deluxe Ocean Room"
+                    placeholder={t('botImageAssets.namePlaceholder', 'e.g. Deluxe Ocean Room')}
                   />
                 </GlassField>
 
-                <GlassField label="Description (for AI context)">
+                <GlassField label={t('botImageAssets.descriptionLabel', 'Description (for AI context)')}>
                   <textarea
                     value={addDescription}
                     onChange={(e) => setAddDescription(e.target.value)}
-                    placeholder="Describe this asset so the AI knows when to show it..."
+                    placeholder={t('botImageAssets.descriptionPlaceholder', 'Describe this asset so the AI knows when to show it...')}
                     rows={3}
                     style={{ fontFamily: 'inherit' }}
                   />
                 </GlassField>
 
-                <GlassField label="Link URL (optional)">
+                <GlassField label={t('botImageAssets.linkUrlLabel', 'Link URL (optional)')}>
                   <input
                     type="url"
                     value={addLinkUrl}
                     onChange={(e) => setAddLinkUrl(e.target.value)}
-                    placeholder="https://example.com/booking"
+                    placeholder={t('botImageAssets.linkUrlPlaceholder', 'https://example.com/booking')}
                   />
                 </GlassField>
 
-                <GlassField label="Keywords (optional, comma-separated)">
+                <GlassField label={t('botImageAssets.keywordsLabel', 'Keywords (optional, comma-separated)')}>
                   <input
                     type="text"
                     value={addKeywords}
                     onChange={(e) => setAddKeywords(e.target.value)}
-                    placeholder="e.g. ocean, room, luxury"
+                    placeholder={t('botImageAssets.keywordsPlaceholder', 'e.g. ocean, room, luxury')}
                   />
                 </GlassField>
 
@@ -940,7 +942,7 @@ export default function BotImageAssetsTab() {
                       setAddPreview(null)
                     }}
                   >
-                    Cancel
+                    {t('botImageAssets.cancel', 'Cancel')}
                   </UiButton>
                   <UiButton
                     variant="primary"
@@ -949,7 +951,7 @@ export default function BotImageAssetsTab() {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                   >
                     {saving ? <Loader2 size={16} className="spin" /> : <Check size={16} />}
-                    {saving ? 'Uploading...' : 'Save Asset'}
+                    {saving ? t('botImageAssets.uploading', 'Uploading...') : t('botImageAssets.saveAsset', 'Save Asset')}
                   </UiButton>
                 </div>
               </div>
@@ -962,7 +964,7 @@ export default function BotImageAssetsTab() {
           loading && (
             <div style={{ textAlign: 'center', padding: '3rem 0', color: '#94a3b8' }}>
               <Loader2 size={28} className="spin" />
-              <p style={{ marginTop: '0.5rem' }}>Loading assets...</p>
+              <p style={{ marginTop: '0.5rem' }}>{t('botImageAssets.loadingAssets', 'Loading assets...')}</p>
             </div>
           )
         }
@@ -973,12 +975,9 @@ export default function BotImageAssetsTab() {
             <GlassCard style={{ padding: '3rem', textAlign: 'center' }}>
               <Image size={48} color="#cbd5e1" style={{ marginBottom: '1rem' }} />
               <h3 style={{ margin: '0 0 0.5rem', fontWeight: 600, color: '#334155' }}>
-                No assets yet
+                {t('botImageAssets.noAssetsYet', 'No assets yet')}
               </h3>
-              <p style={{ margin: 0, color: '#94a3b8', maxWidth: 440, marginInline: 'auto' }}>
-                Click <strong>Auto-extract from URLs</strong> to automatically detect products, services,
-                and offerings from your training data. You can also upload assets manually.
-              </p>
+              <p style={{ margin: 0, color: '#94a3b8', maxWidth: 440, marginInline: 'auto' }} dangerouslySetInnerHTML={{ __html: t('botImageAssets.noAssetsDescription', 'Click <strong>Auto-extract from URLs</strong> to automatically detect products, services, and offerings from your training data. You can also upload assets manually.') }} />
             </GlassCard>
           )
         }
@@ -1036,7 +1035,7 @@ export default function BotImageAssetsTab() {
                             }}
                           >
                             <Upload size={14} />
-                            Replace image
+                            {t('botImageAssets.replaceImage', 'Replace image')}
                             <input
                               type="file"
                               accept="image/*"
@@ -1045,7 +1044,7 @@ export default function BotImageAssetsTab() {
                             />
                           </label>
 
-                          <GlassField label="Name">
+                          <GlassField label={t('botImageAssets.nameLabel', 'Name')}>
                             <input
                               type="text"
                               value={editName}
@@ -1053,7 +1052,7 @@ export default function BotImageAssetsTab() {
                             />
                           </GlassField>
 
-                          <GlassField label="Description">
+                          <GlassField label={t('botImageAssets.descriptionLabel', 'Description (for AI context)')}>
                             <textarea
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
@@ -1062,7 +1061,7 @@ export default function BotImageAssetsTab() {
                             />
                           </GlassField>
 
-                          <GlassField label="Link URL">
+                          <GlassField label={t('botImageAssets.linkUrlLabel', 'Link URL (optional)')}>
                             <input
                               type="url"
                               value={editLinkUrl}
@@ -1070,7 +1069,7 @@ export default function BotImageAssetsTab() {
                             />
                           </GlassField>
 
-                          <GlassField label="Keywords">
+                          <GlassField label={t('botImageAssets.keywordsLabel', 'Keywords (optional, comma-separated)')}>
                             <input
                               type="text"
                               value={editKeywords}
@@ -1080,7 +1079,7 @@ export default function BotImageAssetsTab() {
 
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                             <UiButton variant="secondary" onClick={() => setEditingId(null)}>
-                              Cancel
+                              {t('botImageAssets.cancel', 'Cancel')}
                             </UiButton>
                             <UiButton
                               variant="primary"
@@ -1089,7 +1088,7 @@ export default function BotImageAssetsTab() {
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                             >
                               {editSaving ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-                              Save
+                              {t('botImageAssets.save', 'Save')}
                             </UiButton>
                           </div>
                         </div>

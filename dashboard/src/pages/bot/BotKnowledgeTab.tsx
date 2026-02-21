@@ -14,6 +14,7 @@ import {
   AnimatedPage,
   GlassCard,
 } from '../../components/ui'
+import { useTranslation } from 'react-i18next'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
@@ -109,6 +110,7 @@ type BookingLinkEntry = {
 }
 
 export default function BotKnowledgeTab() {
+  const { t } = useTranslation()
   const { botId } = useParams()
   const {
     selectedBot,
@@ -704,7 +706,7 @@ export default function BotKnowledgeTab() {
   ])
 
   if (!selectedBot) {
-    return <div className="empty-panel">Select a bot to manage knowledge.</div>
+    return <div className="empty-panel">{t('botKnowledge.selectBotToManage', 'Select a bot to manage knowledge.')}</div>
   }
 
   const handleDeleteSource = useCallback(
@@ -834,7 +836,7 @@ export default function BotKnowledgeTab() {
 
       {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
       <GlassCard style={{ gridColumn: '1 / -1' }}>
-        <div className="card-title">Sources ({sources.length})</div>
+        <div className="card-title">{t('botKnowledge.title', 'Sources')} ({sources.length})</div>
         {sourcesTrainingJobId && sourcesTrainingStatus ? (
           (() => {
             const totalUrls = sources.length
@@ -854,7 +856,7 @@ export default function BotKnowledgeTab() {
                   </span>
                   {sourcesTrainingStatus.pages_crawled != null && sourcesTrainingStatus.pages_crawled > 0 && (
                     <span className="muted" style={{ fontSize: '0.875rem' }}>
-                      · {sourcesTrainingStatus.pages_crawled} pages · {sourcesTrainingStatus.docs_count ?? 0} docs
+                      · {t('botKnowledge.pagesAndDocs', '{{pages}} pages · {{docs}} docs', { pages: sourcesTrainingStatus.pages_crawled, docs: sourcesTrainingStatus.docs_count ?? 0 })}
                     </span>
                   )}
                   <button
@@ -865,7 +867,7 @@ export default function BotKnowledgeTab() {
                     style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   >
                     <span aria-hidden style={{ display: 'inline-block', width: 12, height: 12, backgroundColor: 'currentColor', borderRadius: 2 }} />
-                    {stoppingTraining ? 'Stopping…' : 'Stop training'}
+                    {stoppingTraining ? t('botKnowledge.stopping', 'Stopping...') : t('botKnowledge.stopTraining', 'Stop training')}
                   </button>
                 </div>
                 <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
@@ -889,17 +891,17 @@ export default function BotKnowledgeTab() {
           })()
         ) : (
           <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
-            Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.
+            {t('botKnowledge.subtitle', 'Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.')}
           </p>
         )}
         <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           {sourcesTrainingJobId && sourcesTrainingStatus ? (
             <span className="primary" style={{ opacity: 0.6, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', padding: '0.6rem 1.1rem', borderRadius: '10px', border: '1px solid transparent', fontWeight: 500, fontSize: '1rem' }} aria-disabled>
-              + Add source
+              {t('botKnowledge.addSource', '+ Add source')}
             </span>
           ) : (
             <Link to={botId ? `/bots/${botId}/sources/new` : '#'} className="primary">
-              + Add source
+              {t('botKnowledge.addSource', '+ Add source')}
             </Link>
           )}
           {sources.length > 0 && (
@@ -910,7 +912,7 @@ export default function BotKnowledgeTab() {
                 onClick={selectAllSources}
                 disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
               >
-                {sourcesSelected.size === sources.length ? 'Deselect all' : 'Select all'}
+                {sourcesSelected.size === sources.length ? t('botKnowledge.deselectAll', 'Deselect all') : t('botKnowledge.selectAll', 'Select all')}
               </button>
               {sourcesSelected.size > 0 && (
                 <button
@@ -920,10 +922,10 @@ export default function BotKnowledgeTab() {
                   disabled={deletingSelectedSources || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
                   style={{ color: '#dc2626' }}
                 >
-                  {deletingSelectedSources ? 'Deleting…' : `Delete selected (${sourcesSelected.size})`}
+                  {deletingSelectedSources ? t('botKnowledge.deleting', 'Deleting...') : t('botKnowledge.deleteSelected', 'Delete selected ({{count}})', { count: sourcesSelected.size })}
                 </button>
               )}
-              {sourcesSelected.size > 0 && <span className="muted">{sourcesSelected.size} selected</span>}
+              {sourcesSelected.size > 0 && <span className="muted">{t('botKnowledge.selectedCount', '{{count}} selected', { count: sourcesSelected.size })}</span>}
             </>
           )}
         </div>
@@ -932,22 +934,22 @@ export default function BotKnowledgeTab() {
             <table className="knowledge-table">
               <thead>
                 <tr>
-                  <th style={{ width: '44px' }} aria-label="Select">
+                  <th style={{ width: '44px' }} aria-label={t('botKnowledge.selectAll', 'Select all')}>
                     <input
                       type="checkbox"
                       checked={sources.length > 0 && sourcesSelected.size === sources.length}
                       ref={(el) => { if (el) el.indeterminate = sourcesSelected.size > 0 && sourcesSelected.size < sources.length }}
                       onChange={() => sourcesSelected.size === sources.length ? deselectAllSources() : selectAllSources()}
                       disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                      aria-label="Select all sources"
+                      aria-label={t('botKnowledge.selectAll', 'Select all')}
                       style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                     />
                   </th>
-                  <th style={{ width: '120px' }}>Type</th>
-                  <th style={{ width: '160px' }}>Name</th>
-                  <th>Source</th>
-                  <th style={{ width: '100px' }}>Status</th>
-                  <th>Added</th>
+                  <th style={{ width: '120px' }}>{t('botKnowledge.type', 'Type')}</th>
+                  <th style={{ width: '160px' }}>{t('botKnowledge.name', 'Name')}</th>
+                  <th>{t('botKnowledge.source', 'Source')}</th>
+                  <th style={{ width: '100px' }}>{t('botKnowledge.status', 'Status')}</th>
+                  <th>{t('botKnowledge.added', 'Added')}</th>
                   <th style={{ width: '80px' }}></th>
                 </tr>
               </thead>
@@ -988,7 +990,7 @@ export default function BotKnowledgeTab() {
                               : { background: 'rgba(246, 180, 109, 0.2)', color: '#d97706' }),
                           }}
                         >
-                          {training ? 'Training' : 'Trained'}
+                          {training ? t('botKnowledge.training', 'Training') : t('botKnowledge.trained', 'Trained')}
                         </span>
                       </td>
                       <td className="muted">{formatRelativeTime(s.updated_at)}</td>
@@ -1015,11 +1017,11 @@ export default function BotKnowledgeTab() {
           </div>
         ) : sourcesTrainingJobId && sourcesTrainingStatus ? (
           <div className="empty muted" style={{ padding: '1.5rem' }}>
-            Training your selected URLs… Check progress above.
+            {t('botKnowledge.trainingSelectedUrls', 'Training your selected URLs... Check progress above.')}
           </div>
         ) : (
           <div className="empty muted" style={{ padding: '1.5rem' }}>
-            No sources yet. Add a URL or PDF to train this bot.
+            {t('botKnowledge.noSourcesYet', 'No sources yet. Add a URL or PDF to train this bot.')}
           </div>
         )}
       </GlassCard>
@@ -1027,7 +1029,7 @@ export default function BotKnowledgeTab() {
       {/* Booking links - hotel bots only */}
       {selectedBotWidgetConfig?.businessType === 'hotel' && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">Booking links</div>
+          <div className="card-title">{t('botKnowledge.bookingLinksTitle', 'Booking links')}</div>
           {bookingLinkJob ? (
             (() => {
               const status = (bookingLinkJob.status || '').toLowerCase()
@@ -1071,7 +1073,7 @@ export default function BotKnowledgeTab() {
                                 {url}
                               </a>
                               <span className="muted" style={{ fontSize: '0.85rem' }}>
-                                · Confidence {confidencePct}%
+                                · {t('botKnowledge.confidence', 'Confidence {{percent}}%', { percent: confidencePct })}
                               </span>
                             </div>
                             {reason && (
@@ -1084,14 +1086,14 @@ export default function BotKnowledgeTab() {
                       })}
                     </div>
                   ) : (
-                    <div className="muted">No booking links found yet.</div>
+                    <div className="muted">{t('botKnowledge.noBookingLinksYet', 'No booking links found yet.')}</div>
                   )}
                 </>
               )
             })()
           ) : (
             <p className="card-subtitle" style={{ marginTop: 0 }}>
-              Booking links are extracted from your trained knowledge after import completes.
+              {t('botKnowledge.bookingLinksSubtitle', 'Booking links are extracted from your trained knowledge after import completes.')}
             </p>
           )}
         </GlassCard>
@@ -1100,9 +1102,9 @@ export default function BotKnowledgeTab() {
       {/* Realtime availability (hotel bots only) */}
       {selectedBotWidgetConfig?.businessType === 'hotel' && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">Realtime availability</div>
+          <div className="card-title">{t('botKnowledge.realtimeAvailabilityTitle', 'Realtime availability')}</div>
           <p className="card-subtitle" style={{ marginTop: 0 }}>
-            Optional: allow the agent to check real-time room availability/pricing using a booking URL pattern.
+            {t('botKnowledge.realtimeAvailabilitySubtitle', 'Optional: allow the agent to check real-time room availability/pricing using a booking URL pattern.')}
           </p>
 
           <div className="design-form stack" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -1117,28 +1119,27 @@ export default function BotKnowledgeTab() {
                   onChange={(e) => setAllowRealtimeAvailability(e.target.checked)}
                   style={{ accentColor: 'var(--ui-flow-accent-secondary)' }}
                 />
-                <span>Allow agent to check real-time room availability and answer user queries</span>
+                <span>{t('botKnowledge.allowRealtimeAvailability', 'Allow agent to check real-time room availability and answer user queries')}</span>
               </label>
               <button type="button" className="secondary" onClick={() => void handleSaveAvailabilitySettings()}>
-                Save
+                {t('botKnowledge.save', 'Save')}
               </button>
             </div>
 
             {allowRealtimeAvailability && (
               <div style={{ marginTop: '0.75rem' }}>
                 <div className="testing-field">
-                  <label className="testing-label">Booking test URL</label>
+                  <label className="testing-label">{t('botKnowledge.bookingTestUrl', 'Booking test URL')}</label>
                   <input
                     type="url"
                     className="design-form-input"
                     value={bookingTestUrl}
                     onChange={(e) => setBookingTestUrl(e.target.value)}
-                    placeholder="https://www.booking.com/hotel/... or Agoda, Expedia, etc."
+                    placeholder={t('botKnowledge.bookingTestUrlPlaceholder', 'https://www.booking.com/hotel/... or Agoda, Expedia, etc.')}
                     style={{ width: '100%', maxWidth: '700px' }}
                   />
                   <p className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                    Paste a booking URL (Agoda, Expedia, Booking.com, hotel site) with your dates and guests selected.
-                    The agent will learn the URL pattern for future checks.
+                    {t('botKnowledge.bookingTestUrlHint', 'Paste a booking URL (Agoda, Expedia, Booking.com, hotel site) with your dates and guests selected. The agent will learn the URL pattern for future checks.')}
                   </p>
                 </div>
 
@@ -1149,7 +1150,7 @@ export default function BotKnowledgeTab() {
                     onClick={() => void handleRunAvailabilityTest()}
                     disabled={!bookingTestUrl.trim() || availabilityTestRunning}
                   >
-                    {availabilityTestRunning ? 'Agent testing…' : 'Run availability test'}
+                    {availabilityTestRunning ? t('botKnowledge.agentTesting', 'Agent testing...') : t('botKnowledge.runAvailabilityTest', 'Run availability test')}
                   </button>
                 </div>
 
@@ -1166,13 +1167,13 @@ export default function BotKnowledgeTab() {
                   >
                     {availabilityTestRunning ? (
                       <div className="muted" style={{ fontSize: '0.875rem' }}>
-                        Agent testing… Status: <strong>{availabilityTestJob.status}</strong>
+                        {t('botKnowledge.agentTesting', 'Agent testing...')} {t('botKnowledge.statusLabel', 'Status: ')}<strong>{availabilityTestJob.status}</strong>
                       </div>
                     ) : (
                       <>
-                        <div style={{ fontWeight: 500, marginBottom: '0.35rem' }}>Agent test results</div>
+                        <div style={{ fontWeight: 500, marginBottom: '0.35rem' }}>{t('botKnowledge.agentTestResults', 'Agent test results')}</div>
                         <div className="muted" style={{ fontSize: '0.875rem' }}>
-                          Status: <strong>{availabilityTestJob.status}</strong>
+                          {t('botKnowledge.statusLabel', 'Status: ')}<strong>{availabilityTestJob.status}</strong>
                         </div>
                         {availabilityTestJob.summary && (
                           <div
@@ -1195,7 +1196,7 @@ export default function BotKnowledgeTab() {
                           className="secondary"
                           style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.875rem' }}
                         >
-                          View in Testing tab
+                          {t('botKnowledge.viewInTestingTab', 'View in Testing tab')}
                         </Link>
                       </>
                     )}
@@ -1211,7 +1212,7 @@ export default function BotKnowledgeTab() {
       {/* Add more pages — own-website bots only */}
       {allowKnowledgeDiscovery && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">Add more pages</div>
+          <div className="card-title">{t('botKnowledge.addMorePagesTitle', 'Add more pages')}</div>
           <p className="card-subtitle" style={{ marginTop: 0 }}>
             {isDiscovering ? (
               <span className="discovery-loading" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1221,15 +1222,15 @@ export default function BotKnowledgeTab() {
                   <span />
                 </span>
                 <span style={{ color: 'var(--ui-flow-accent-secondary)', fontWeight: 500 }}>
-                  Discovering pages… {discoveredUrls.length} found so far
+                  {t('botKnowledge.discoveringPages', 'Discovering pages... {{count}} found so far', { count: discoveredUrls.length })}
                 </span>
               </span>
             ) : (
               <>
-                Enter a website URL to discover pages. Choose the ones your bot should learn from.
+                {t('botKnowledge.addMorePagesSubtitle', 'Enter a website URL to discover pages. Choose the ones your bot should learn from.')}
                 {discoveredUrls.length > 0 && (
                   <span style={{ marginLeft: '8px', color: 'var(--ui-flow-accent-secondary)', fontWeight: 500 }}>
-                    {discoveredUrls.length} page{discoveredUrls.length === 1 ? '' : 's'} found.
+                    {t('botKnowledge.pagesFound', '{{count}} page(s) found.', { count: discoveredUrls.length })}
                   </span>
                 )}
               </>
@@ -1241,7 +1242,7 @@ export default function BotKnowledgeTab() {
                 type="url"
                 value={discoverInputUrl}
                 onChange={(e) => setDiscoverInputUrl(e.target.value)}
-                placeholder="https://example.com"
+                placeholder={t('botKnowledge.discoverUrlPlaceholder', 'https://example.com')}
                 className="design-form-input"
                 style={{ flex: 1, minWidth: '200px' }}
                 disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
@@ -1252,7 +1253,7 @@ export default function BotKnowledgeTab() {
                 onClick={handleDiscover}
                 disabled={!discoverInputUrl.trim() || loading || isDiscovering || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
               >
-                {isDiscovering ? 'Discovering…' : 'Discover'}
+                {isDiscovering ? t('botKnowledge.discovering', 'Discovering...') : t('botKnowledge.discover', 'Discover')}
               </button>
             </div>
             {discoveryError && (
@@ -1267,12 +1268,12 @@ export default function BotKnowledgeTab() {
               {discoverTrainingSuccess ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 500 }}>
                   <span aria-hidden style={{ fontSize: '1.25rem' }}>✓</span>
-                  <span>Added to bot knowledge</span>
+                  <span>{t('botKnowledge.addedToBotKnowledge', 'Added to bot knowledge')}</span>
                 </div>
               ) : (
                 <>
                   <div className="progress-label" style={{ color: '#334155' }}>
-                    Training in progress… {discoverTrainingUrlCount} page{discoverTrainingUrlCount === 1 ? '' : 's'}
+                    {t('botKnowledge.trainingInProgress', 'Training in progress... {{count}} page(s)', { count: discoverTrainingUrlCount })}
                   </div>
                   <div className="progress-track" style={{ marginTop: '0.5rem' }}>
                     <div
@@ -1281,7 +1282,7 @@ export default function BotKnowledgeTab() {
                     />
                   </div>
                   <div className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                    {discoverTrainingStatus?.stage ? statusLabel(discoverTrainingStatus.stage) : 'Starting…'}
+                    {discoverTrainingStatus?.stage ? statusLabel(discoverTrainingStatus.stage) : t('botKnowledge.starting', 'Starting...')}
                     {discoverTrainingStatus?.docs_count != null && discoverTrainingStatus.docs_count > 0 && (
                       <> · {discoverTrainingStatus.docs_count} doc{discoverTrainingStatus.docs_count === 1 ? '' : 's'}</>
                     )}
@@ -1305,7 +1306,7 @@ export default function BotKnowledgeTab() {
                   onClick={toggleAllDiscovered}
                   disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
                 >
-                  {allDiscoveredSelected ? 'Deselect all' : 'Select all'}
+                  {allDiscoveredSelected ? t('botKnowledge.deselectAll', 'Deselect all') : t('botKnowledge.selectAll', 'Select all')}
                 </button>
                 <button
                   type="button"
@@ -1313,9 +1314,9 @@ export default function BotKnowledgeTab() {
                   onClick={expandedCategories.size > 0 ? collapseAllCategories : expandAllCategories}
                   disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
                 >
-                  {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+                  {expandedCategories.size > 0 ? t('botKnowledge.collapseAll', 'Collapse all') : t('botKnowledge.expandAll', 'Expand all')}
                 </button>
-                <div className="muted">{selectedDiscovered.size} selected</div>
+                <div className="muted">{t('botKnowledge.selectedCount', '{{count}} selected', { count: selectedDiscovered.size })}</div>
               </div>
               <div className="url-list" style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '4px', padding: '12px' }}>
                 {urlCategories ? (
@@ -1349,7 +1350,7 @@ export default function BotKnowledgeTab() {
                     )}
                   </div>
                 ) : (
-                  <div className="muted">Loading categories…</div>
+                  <div className="muted">{t('botKnowledge.loadingCategories', 'Loading categories...')}</div>
                 )}
               </div>
               <div className="flow-actions" style={{ marginTop: '1rem' }}>
@@ -1360,7 +1361,7 @@ export default function BotKnowledgeTab() {
                   disabled={selectedDiscovered.size === 0 || loading || trainingDiscovered || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 >
-                  {trainingDiscovered ? 'Starting…' : '▷ Start training'}
+                  {trainingDiscovered ? t('botKnowledge.starting', 'Starting...') : t('botKnowledge.startTraining', '▷ Start training')}
                 </button>
               </div>
             </>

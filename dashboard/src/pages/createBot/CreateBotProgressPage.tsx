@@ -1,11 +1,13 @@
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { UiButton, UiCard } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { getTrainingStageLabel, TRAINING_STAGE_LABELS } from './trainingProgressLabels'
 
 export default function CreateBotProgressPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { step2, step3, flow } = useCreateBotFlow()
   const {
     trainingStage,
@@ -49,7 +51,7 @@ export default function CreateBotProgressPage() {
 
   const currentStageLabel =
     !jobId && pdfJobs.length > 0
-      ? 'Preparing your PDF files...'
+      ? t('createBot.preparingPdfFiles', 'Preparing your PDF files...')
       : getTrainingStageLabel(jobId, trainingStage, trainingStageName)
 
   const isComplete = trainingStage === 'complete'
@@ -68,17 +70,17 @@ export default function CreateBotProgressPage() {
       <div>
         <div className="card-title">
           {trainingStageName === 'skipped'
-            ? 'No sources added yet'
+            ? t('createBot.noSourcesAdded', 'No sources added yet')
             : isComplete
-            ? 'Your agent is ready'
-            : 'Training your agent'}
+              ? t('createBot.agentReady', 'Your agent is ready')
+              : t('createBot.trainingAgent', 'Training your agent')}
         </div>
         <div className="card-subtitle">
           {trainingStageName === 'skipped'
-            ? 'You can add pages and PDFs later from your bot settings.'
+            ? t('createBot.youCanAddPagesLater', 'You can add pages and PDFs later from your bot settings.')
             : isComplete
-            ? 'All sources have been processed. Your agent is ready to chat.'
-            : 'We\'re reading your content and teaching your agent. This won\'t take long.'}
+              ? t('createBot.allSourcesProcessed', 'All sources have been processed. Your agent is ready to chat.')
+              : t('createBot.wereReadingYourContent', 'We\'re reading your content and teaching your agent. This won\'t take long.')}
         </div>
       </div>
 
@@ -88,28 +90,28 @@ export default function CreateBotProgressPage() {
         <>
           <UiCard style={{ padding: '1.25rem', boxShadow: 'none' }}>
             <div style={{ fontWeight: 700, color: 'var(--flow-heading)', marginBottom: '0.75rem' }}>
-              Sources ready for training
+              {t('createBot.sourcesReadyForTraining', 'Sources ready for training')}
             </div>
             {hasAnySources ? (
               <div style={{ display: 'grid', gap: '0.6rem' }}>
                 {sourceUrls.length > 0 && (
                   <div className="muted" style={{ fontSize: '0.9rem' }}>
-                    Website pages: <b>{sourceUrls.length}</b>
+                    {t('createBot.websitePages', 'Website pages:')} <b>{sourceUrls.length}</b>
                   </div>
                 )}
                 {pdfFiles.length > 0 && (
                   <div className="muted" style={{ fontSize: '0.9rem' }}>
-                    PDF files: <b>{pdfFiles.length}</b>
+                    {t('createBot.pdfFiles', 'PDF files:')} <b>{pdfFiles.length}</b>
                   </div>
                 )}
                 {textDocFiles.length > 0 && (
                   <div className="muted" style={{ fontSize: '0.9rem' }}>
-                    Text docs: <b>{textDocFiles.length}</b>
+                    {t('createBot.textDocs', 'Text docs:')} <b>{textDocFiles.length}</b>
                   </div>
                 )}
                 {usedCustomEntries.length > 0 && (
                   <div className="muted" style={{ fontSize: '0.9rem' }}>
-                    Custom text entries: <b>{usedCustomEntries.length}</b>
+                    {t('createBot.customTextEntries', 'Custom text entries:')} <b>{usedCustomEntries.length}</b>
                   </div>
                 )}
                 <div style={{ marginTop: '0.35rem', maxHeight: 180, overflow: 'auto' }}>
@@ -137,23 +139,23 @@ export default function CreateBotProgressPage() {
               </div>
             ) : (
               <div className="muted" style={{ fontSize: '0.9rem' }}>
-                No sources added yet.
+                {t('createBot.noSourcesAddedYet', 'No sources added yet.')}
               </div>
             )}
           </UiCard>
 
           <div className="flow-actions">
             <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)} disabled={isStartingTraining}>
-              Back
+              {t('common.back', 'Back')}
             </UiButton>
             <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
               {hasAnySources ? (
                 <UiButton variant="primary" onClick={() => void handleStartTraining()} disabled={isStartingTraining}>
-                  {isStartingTraining ? 'Starting...' : 'Start training'}
+                  {isStartingTraining ? t('createBot.starting', 'Starting...') : t('createBot.startTraining', 'Start training')}
                 </UiButton>
               ) : (
                 <UiButton variant="ghost" onClick={() => void handleSkipTraining()} disabled={isStartingTraining}>
-                  {isStartingTraining ? 'Skipping...' : 'Skip training for now'}
+                  {isStartingTraining ? t('createBot.skipping', 'Skipping...') : t('createBot.skipTrainingForNow', 'Skip training for now')}
                 </UiButton>
               )}
             </div>
@@ -161,99 +163,99 @@ export default function CreateBotProgressPage() {
         </>
       ) : (
         <>
-      {/* Progress visualization */}
-      <div className="progress-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="progress-label">{currentStageLabel}</div>
-          <span style={{
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            color: 'var(--flow-accent)',
-          }}>
-            {trainingProgress}%
-          </span>
-        </div>
-        <div className="progress-track">
-          <div className="progress-fill" style={{ width: `${trainingProgress}%` }} />
-        </div>
-        {(trainingPagesCrawled > 0 || trainingDocsCount > 0) && (
-          <div className="muted" style={{ fontSize: '0.8rem', display: 'flex', gap: '1rem' }}>
-            {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages read</span>}
-            {trainingDocsCount > 0 && <span>{trainingDocsCount} documents</span>}
-          </div>
-        )}
-      </div>
-
-      {/* PDF job statuses */}
-      {pdfJobs.length > 0 && (
-        <UiCard style={{ padding: '1.25rem', boxShadow: 'none' }}>
-          <div style={{ fontWeight: 600, color: 'var(--flow-text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-            PDF files
-          </div>
-          <div style={{ display: 'grid', gap: '0.5rem' }}>
-            {pdfJobs.map((j) => (
-              <div key={j.job_id} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem 0',
-                borderBottom: '1px solid var(--flow-border)',
+          {/* Progress visualization */}
+          <div className="progress-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="progress-label">{currentStageLabel}</div>
+              <span style={{
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                color: 'var(--flow-accent)',
               }}>
-                <div className="muted" style={{ fontSize: '0.8rem' }}>{j.job_id}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: 999,
-                    background: 'var(--flow-accent-soft)',
-                    color: 'var(--flow-accent)',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                  }}>
-                    {TRAINING_STAGE_LABELS[(j.stage || 'queued').toString()] || (j.stage || 'queued').toString()}
-                  </span>
-                  {typeof j.docs_count === 'number' && (
-                    <span className="muted" style={{ fontSize: '0.8rem' }}>{j.docs_count} docs</span>
-                  )}
-                </div>
+                {trainingProgress}%
+              </span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${trainingProgress}%` }} />
+            </div>
+            {(trainingPagesCrawled > 0 || trainingDocsCount > 0) && (
+              <div className="muted" style={{ fontSize: '0.8rem', display: 'flex', gap: '1rem' }}>
+                {trainingPagesCrawled > 0 && <span>{t('createBot.pagesRead', '{{count}} pages read', { count: trainingPagesCrawled })}</span>}
+                {trainingDocsCount > 0 && <span>{t('createBot.documents', '{{count}} documents', { count: trainingDocsCount })}</span>}
               </div>
-            ))}
-          </div>
-        </UiCard>
-      )}
-
-      {trainingStageName === 'skipped' && botId && (
-        <div className="alert info">
-          You can add pages and PDFs later from <b>Bot &rarr; Knowledge</b>.
-        </div>
-      )}
-
-      <div className="flow-actions">
-        {isComplete ? (
-          <>
-            {flow.nextPath && (
-              <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
-                Continue
-              </UiButton>
             )}
-            {botId ? (
-              <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}
-                style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
-                Go to bot overview
-              </Link>
+          </div>
+
+          {/* PDF job statuses */}
+          {pdfJobs.length > 0 && (
+            <UiCard style={{ padding: '1.25rem', boxShadow: 'none' }}>
+              <div style={{ fontWeight: 600, color: 'var(--flow-text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                {t('createBot.pdfFilesLabel', 'PDF files')}
+              </div>
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {pdfJobs.map((j) => (
+                  <div key={j.job_id} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.5rem 0',
+                    borderBottom: '1px solid var(--flow-border)',
+                  }}>
+                    <div className="muted" style={{ fontSize: '0.8rem' }}>{j.job_id}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: 999,
+                        background: 'var(--flow-accent-soft)',
+                        color: 'var(--flow-accent)',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                      }}>
+                        {TRAINING_STAGE_LABELS[(j.stage || 'queued').toString()] || (j.stage || 'queued').toString()}
+                      </span>
+                      {typeof j.docs_count === 'number' && (
+                        <span className="muted" style={{ fontSize: '0.8rem' }}>{t('createBot.docsCount', '{{count}} docs', { count: j.docs_count })}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </UiCard>
+          )}
+
+          {trainingStageName === 'skipped' && botId && (
+            <div className="alert info">
+              You can add pages and PDFs later from <b>Bot &rarr; Knowledge</b>.
+            </div>
+          )}
+
+          <div className="flow-actions">
+            {isComplete ? (
+              <>
+                {flow.nextPath && (
+                  <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
+                    {t('common.continue', 'Continue')}
+                  </UiButton>
+                )}
+                {botId ? (
+                  <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
+                    {t('createBot.goToBotOverview', 'Go to bot overview')}
+                  </Link>
+                ) : (
+                  <Link className="secondary" to="/bots" onClick={handleFinish}
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
+                    {t('createBot.goToBots', 'Go to bots')}
+                  </Link>
+                )}
+              </>
             ) : (
-              <Link className="secondary" to="/bots" onClick={handleFinish}
-                style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
-                Go to bots
-              </Link>
+              <div className="muted" style={{ fontSize: '0.85rem' }}>
+                {t('createBot.thisRunsInBackground', 'This runs in the background. We\'ll take you to the design step shortly.')}
+              </div>
             )}
-          </>
-        ) : (
-          <div className="muted" style={{ fontSize: '0.85rem' }}>
-            This runs in the background. We&apos;ll take you to the design step shortly.
           </div>
-        )}
-      </div>
         </>
       )}
     </div>

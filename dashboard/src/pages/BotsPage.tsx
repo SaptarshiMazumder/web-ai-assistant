@@ -4,15 +4,17 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
 import { AnimatedPage, EmptyState, GlassCard, SectionHeader, StatusDot, UiButton } from '../components/ui'
+import { useTranslation } from 'react-i18next'
 
 export default function BotsPage() {
   const { bots, loading, isSuperAdmin, activeOrgId, deleteBot, renameBot } = useDashboardData()
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [selectedBotIds, setSelectedBotIds] = useState<Set<string>>(new Set())
   const [openMenuBotId, setOpenMenuBotId] = useState<string | null>(null)
 
   if (isSuperAdmin && !activeOrgId) {
-    return <div className="empty-panel">Select an organization to view bots.</div>
+    return <div className="empty-panel">{t('botsPage.selectOrgPrompt', 'Select an organization to view bots.')}</div>
   }
 
   if (!loading && bots.length === 0) {
@@ -45,7 +47,7 @@ export default function BotsPage() {
 
   const handleDeleteSelected = async () => {
     if (!selectedCount) return
-    const ok = window.confirm(`Delete ${selectedCount} selected bot${selectedCount > 1 ? 's' : ''}? This cannot be undone.`)
+    const ok = window.confirm(t('botsPage.deleteMultipleConfirm', 'Delete {{count}} selected bot(s)? This cannot be undone.', { count: selectedCount }))
     if (!ok) return
     const ids = Array.from(selectedBotIds)
     for (const botId of ids) {
@@ -55,14 +57,14 @@ export default function BotsPage() {
   }
 
   const handleRenameBot = async (botId: string, currentName: string) => {
-    const nextName = window.prompt('Enter new bot name:', currentName)?.trim()
+    const nextName = window.prompt(t('botsPage.enterNewBotName', 'Enter new bot name:'), currentName)?.trim()
     if (!nextName || nextName === currentName) return
     await renameBot(botId, nextName)
     setOpenMenuBotId(null)
   }
 
   const handleDeleteOne = async (botId: string, name: string) => {
-    const ok = window.confirm(`Delete "${name}"? This cannot be undone.`)
+    const ok = window.confirm(t('botsPage.deleteOneConfirm', 'Delete "{{name}}"? This cannot be undone.', { name }))
     if (!ok) return
     await deleteBot(botId)
     setSelectedBotIds((prev) => {
@@ -75,22 +77,22 @@ export default function BotsPage() {
 
   return (
     <AnimatedPage className="page">
-      <PageHeader title="Bots" />
+      <PageHeader title={t('botsPage.title', 'Bots')} />
       <div className="page-body page-body-narrow">
         <SectionHeader
-          eyebrow="Agents"
-          title="Build, launch, and scale your bot fleet"
-          subtitle="Every card is a live workspace with direct access to settings, analytics, and training."
+          eyebrow={t('botsPage.agentsTab', 'Agents')}
+          title={t('botsPage.buildScale', 'Build, launch, and scale your bot fleet')}
+          subtitle={t('botsPage.buildScaleSubtitle', 'Every card is a live workspace with direct access to settings, analytics, and training.')}
         />
 
         {bots.length === 0 ? (
           <GlassCard>
             <EmptyState
-              title="No bots yet"
-              description="Start with one beautiful assistant and expand into a full AI team."
+              title={t('botsPage.noBotsYet', 'No bots yet')}
+              description={t('botsPage.startWithOne', 'Start with one beautiful assistant and expand into a full AI team.')}
               action={
                 <UiButton variant="primary" onClick={() => navigate('/create-bot')} disabled={!canCreateBot || loading}>
-                  Create your first bot
+                  {t('botsPage.createFirstBot', 'Create your first bot')}
                 </UiButton>
               }
             />
@@ -108,12 +110,12 @@ export default function BotsPage() {
             >
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--flow-muted)' }}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                Select all
+                {t('botsPage.selectAll', 'Select all')}
               </label>
               {selectedCount > 0 && (
                 <UiButton variant="ghost" onClick={() => void handleDeleteSelected()} style={{ display: 'inline-flex', gap: '0.4rem' }}>
                   <Trash2 size={16} />
-                  Delete selected ({selectedCount})
+                  {t('botsPage.deleteSelected', 'Delete selected ({{count}})', { count: selectedCount })}
                 </UiButton>
               )}
             </div>
@@ -124,8 +126,8 @@ export default function BotsPage() {
                   <Plus size={24} />
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>Add Bot</div>
-                  <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '2px' }}>Build a new AI agent</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>{t('botsPage.addBot', 'Add Bot')}</div>
+                  <div style={{ fontSize: '0.85rem', opacity: 0.9, marginTop: '2px' }}>{t('botsPage.buildNewAgent', 'Build a new AI agent')}</div>
                 </div>
               </button>
 
@@ -190,7 +192,7 @@ export default function BotsPage() {
                         }}
                       >
                         <Pencil size={14} />
-                        Rename
+                        {t('botsPage.rename', 'Rename')}
                       </button>
                       <button
                         type="button"
@@ -210,7 +212,7 @@ export default function BotsPage() {
                         }}
                       >
                         <Trash2 size={14} />
-                        Delete
+                        {t('botsPage.delete', 'Delete')}
                       </button>
                     </div>
                   )}

@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FlowSelect } from '../../components/FlowSelect'
 import { GlassField, UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotDetailsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { step1, flow } = useCreateBotFlow()
   const {
     botName,
@@ -21,32 +23,32 @@ export default function CreateBotDetailsPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Name your agent</div>
+        <div className="card-title">{t('createBot.nameAgent', 'Name your agent')}</div>
         <div className="card-subtitle">
-          Choose a name your customers will see when they open the chat.
+          {t('createBot.nameAgentSubtitle', 'Choose a name your customers will see when they open the chat.')}
         </div>
       </div>
 
-      <GlassField label="Agent name">
+      <GlassField label={t('createBot.agentName', 'Agent name')}>
         <input
           type="text"
           value={botName}
           onChange={(event) => setBotName(event.target.value)}
-          placeholder="e.g. Concierge, Support, Luna..."
+          placeholder={t('createBot.agentNamePlaceholder', 'e.g. Concierge, Support, Luna...')}
         />
       </GlassField>
 
       <GlassField
-        label="Business type (optional)"
-        helper="Helps us tailor suggestions for your industry."
+        label={t('createBot.businessType', 'Business type (optional)')}
+        helper={t('createBot.businessTypeHelper', 'Helps us tailor suggestions for your industry.')}
       >
         <FlowSelect
           value={businessType}
           onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'other')}
           options={[
-            { value: '', label: '--' },
-            { value: 'hotel', label: 'Hotel' },
-            { value: 'other', label: 'Other' },
+            { value: '', label: t('common.blank', '--') },
+            { value: 'hotel', label: t('createBot.hotel', 'Hotel') },
+            { value: 'other', label: t('createBot.other', 'Other') },
           ]}
         />
       </GlassField>
@@ -63,7 +65,7 @@ export default function CreateBotDetailsPage() {
           onClick={() => void handleContinue()}
           disabled={!botName.trim()}
         >
-          Continue
+          {t('common.continue', 'Continue')}
         </UiButton>
       </div>
     </div>

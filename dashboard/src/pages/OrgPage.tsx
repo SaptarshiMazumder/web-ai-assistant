@@ -1,9 +1,11 @@
 import { Building2, Users, UserPlus, Edit3, Plus, Shield, Power } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../components/ui'
 
 export default function OrgPage() {
+  const { t } = useTranslation()
   const {
     isSuperAdmin,
     activeOrgId,
@@ -28,8 +30,8 @@ export default function OrgPage() {
   } = useDashboardData()
 
   const activeOrg = orgs.find((org) => org.org_id === activeOrgId)
-  const currentOrgName = activeOrg?.name || orgDisplayNameInput || activeOrgId || 'No org selected'
-  const botCountLabel = `${bots.length} Bots`
+  const currentOrgName = activeOrg?.name || orgDisplayNameInput || activeOrgId || t('org.noOrgSelected', 'No org selected')
+  const botCountLabel = t('org.botCount', '{{count}} Bots', { count: bots.length })
   const currentRole = orgMembers.find((member) => member.email?.toLowerCase() === user?.email?.toLowerCase())?.role || ''
   const isAllOrgsSelected = activeOrgId === '__all__'
 
@@ -58,9 +60,9 @@ export default function OrgPage() {
   }
 
   const displayRole = (role: string) => {
-    if (role === 'owner') return 'Owner'
-    if (role === 'org_admin') return 'Admin'
-    if (role === 'org_member') return 'User'
+    if (role === 'owner') return t('org.roleOwner', 'Owner')
+    if (role === 'org_admin') return t('org.roleAdmin', 'Admin')
+    if (role === 'org_member') return t('org.roleUser', 'User')
     return role
   }
 
@@ -70,25 +72,25 @@ export default function OrgPage() {
   }
 
   if (!activeOrgId && !isSuperAdmin) {
-    return <div className="empty-panel">No organization assigned yet.</div>
+    return <div className="empty-panel">{t('org.noOrgAssigned', 'No organization assigned yet.')}</div>
   }
 
   return (
     <AnimatedPage className="page narrow">
-      <PageHeader title="Organization" />
+      <PageHeader title={t('org.title', 'Organization')} />
       <div className="page-body page-body-narrow">
         <SectionHeader
-          eyebrow="Workspace"
-          title="Organization control panel"
-          subtitle="Manage teams, members, and roles from one central hub."
+          eyebrow={t('org.controlPanelEyebrow', 'Workspace')}
+          title={t('org.controlPanelTitle', 'Organization control panel')}
+          subtitle={t('org.controlPanelSubtitle', 'Manage teams, members, and roles from one central hub.')}
         />
         <div className="org-grid">
           <GlassCard>
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Building2 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-              Current Team
+              {t('org.currentTeam', 'Current Team')}
             </div>
-            <div className="card-subtitle">Switch between different team dashboards that you have access to.</div>
+            <div className="card-subtitle">{t('org.currentTeamSubtitle', 'Switch between different team dashboards that you have access to.')}</div>
             <div className="org-select-row">
               <div className="org-select">
                 {isSuperAdmin ? (
@@ -98,8 +100,8 @@ export default function OrgPage() {
                       value={activeOrgId || ''}
                       onChange={(event) => setActiveOrgId(event.target.value)}
                     >
-                      <option value="" disabled>Select org</option>
-                      <option value="__all__">All orgs</option>
+                      <option value="" disabled>{t('org.selectOrg', 'Select org')}</option>
+                      <option value="__all__">{t('org.allOrgs', 'All orgs')}</option>
                       {orgs.map((org) => (
                         <option key={org.org_id} value={org.org_id}>
                           {org.name} ({org.org_id})
@@ -122,12 +124,12 @@ export default function OrgPage() {
               <div className="org-admin-block">
                 <div style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', color: 'var(--ui-flow-text)' }}>
                   <Plus size={15} style={{ color: 'var(--ui-flow-accent)' }} />
-                  Create org
+                  {t('org.createOrg', 'Create org')}
                 </div>
                 <div className="stack">
-                  <input value={newOrgName} onChange={(event) => setNewOrgName(event.target.value)} placeholder="Org name" />
+                  <input value={newOrgName} onChange={(event) => setNewOrgName(event.target.value)} placeholder={t('org.orgNamePlaceholder', 'Org name')} />
                   <UiButton variant="primary" onClick={createOrg} disabled={loading || !newOrgName.trim()}>
-                    Create org
+                    {t('org.createOrg', 'Create org')}
                   </UiButton>
                 </div>
               </div>
@@ -137,20 +139,20 @@ export default function OrgPage() {
           <GlassCard>
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Edit3 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-              Rename Team
+              {t('org.renameTeam', 'Rename Team')}
             </div>
             <div className="card-subtitle">
-              {isAllOrgsSelected ? 'Select a single org to rename it.' : `Enter a new team name for ${currentOrgName}.`}
+              {isAllOrgsSelected ? t('org.renameTeamSubtitle', 'Select a single org to rename it.') : t('org.renameTeamSubtitleSpecific', 'Enter a new team name for {{name}}.', { name: currentOrgName })}
             </div>
             <div className="org-rename-row">
               <input
                 value={orgDisplayNameInput}
                 onChange={(event) => setOrgDisplayNameInput(event.target.value)}
-                placeholder="Organization name"
+                placeholder={t('org.orgNameInputPlaceholder', 'Organization name')}
                 disabled={isAllOrgsSelected}
               />
               <UiButton variant="secondary" onClick={saveOrgName} disabled={isAllOrgsSelected || loading || !orgDisplayNameInput.trim()}>
-                Update
+                {t('org.update', 'Update')}
               </UiButton>
             </div>
           </GlassCard>
@@ -163,19 +165,19 @@ export default function OrgPage() {
                 <div>
                   <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Users size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-                    Members
+                    {t('org.members', 'Members')}
                   </div>
                   <div className="card-subtitle">
-                    {isAllOrgsSelected ? 'View members across all orgs.' : 'View and manage the members of this team.'}
+                    {isAllOrgsSelected ? t('org.membersSubtitleAll', 'View members across all orgs.') : t('org.membersSubtitleSpecific', 'View and manage the members of this team.')}
                   </div>
                 </div>
               </div>
 
               <div className={`members-header-row members-columns ${isSuperAdmin ? 'members-columns-admin' : ''}`}>
-                <div className="muted">Name</div>
-                <div className="muted">Email</div>
-                <div className="muted">Role</div>
-                {isSuperAdmin && <div className="muted">Org</div>}
+                <div className="muted">{t('org.nameCol', 'Name')}</div>
+                <div className="muted">{t('org.emailCol', 'Email')}</div>
+                <div className="muted">{t('org.roleCol', 'Role')}</div>
+                {isSuperAdmin && <div className="muted">{t('org.orgCol', 'Org')}</div>}
               </div>
               <div className="list">
                 {orgMembers.map((member) => {
@@ -209,7 +211,7 @@ export default function OrgPage() {
                         </div>
                         <div>
                           <div className="list-title">{name}</div>
-                          {isCurrentUser && <div className="muted">You</div>}
+                          {isCurrentUser && <div className="muted">{t('org.youLabel', 'You')}</div>}
                         </div>
                       </div>
                       <div className="muted">{member.email}</div>
@@ -218,7 +220,7 @@ export default function OrgPage() {
                     </div>
                   )
                 })}
-                {!orgMembers.length && <div className="empty">No members yet.</div>}
+                {!orgMembers.length && <div className="empty">{t('org.noMembersYet', 'No members yet.')}</div>}
               </div>
             </GlassCard>
 
@@ -227,24 +229,24 @@ export default function OrgPage() {
                 <div>
                   <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <UserPlus size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-                    Add member
+                    {t('org.addMember', 'Add member')}
                   </div>
-                  <div className="card-subtitle">Invite a new member to collaborate with this team.</div>
+                  <div className="card-subtitle">{t('org.addMemberSubtitle', 'Invite a new member to collaborate with this team.')}</div>
                 </div>
                 <UiButton variant="secondary" onClick={addOrgMember} disabled={isAllOrgsSelected || loading || !newMemberEmail.trim()}>
-                  Add member
+                  {t('org.addMember', 'Add member')}
                 </UiButton>
               </div>
               <div className="members-form">
                 <input
                   value={newMemberEmail}
                   onChange={(event) => setNewMemberEmail(event.target.value)}
-                  placeholder="user@company.com"
+                  placeholder={t('org.emailPlaceholder', 'user@company.com')}
                   disabled={isAllOrgsSelected}
                 />
                 <select value={newMemberRole} onChange={(event) => setNewMemberRole(event.target.value)} disabled={isAllOrgsSelected}>
-                  <option value="org_admin">Admin</option>
-                  <option value="org_member">Member</option>
+                  <option value="org_admin">{t('org.roleAdmin', 'Admin')}</option>
+                  <option value="org_member">{t('org.roleMember', 'Member')}</option>
                 </select>
               </div>
             </GlassCard>
@@ -255,7 +257,7 @@ export default function OrgPage() {
           <GlassCard>
             <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Shield size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-              Organizations
+              {t('org.organizations', 'Organizations')}
             </div>
             <div className="list">
               {orgs.map((org) => (
@@ -267,12 +269,12 @@ export default function OrgPage() {
                   <div className="row">
                     <UiButton variant="ghost" onClick={() => setOrgStatus(org.org_id, org.status === 'active' ? 'disabled' : 'active')} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                       <Power size={14} />
-                      {org.status === 'active' ? 'Disable' : 'Enable'}
+                      {org.status === 'active' ? t('org.disable', 'Disable') : t('org.enable', 'Enable')}
                     </UiButton>
                   </div>
                 </div>
               ))}
-              {!orgs.length && <div className="empty">No orgs yet</div>}
+              {!orgs.length && <div className="empty">{t('org.noOrgsYet', 'No orgs yet')}</div>}
             </div>
           </GlassCard>
         )}

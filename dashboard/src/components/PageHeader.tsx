@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { LogOut, Settings } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 
+import { useTranslation } from 'react-i18next'
+
 type PageHeaderProps = {
   title: string
   subtitle?: string
@@ -13,6 +15,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
   const { user, logout } = useDashboardData()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
 
   const profileName = useMemo(() => {
     const given = (user as { given_name?: string | null } | undefined)?.given_name?.trim()
@@ -58,7 +61,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
     <>
       <div className="page-header">
         <div>
-          <span className="page-eyebrow">Dashboard workspace</span>
+          <span className="page-eyebrow">{t('nav.dashboardWorkspace', 'Dashboard workspace')}</span>
           <div className="page-title">
             <span className="page-title-row">
               <span className="page-title-text">{title}</span>
@@ -110,7 +113,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
                     role="menuitem"
                   >
                     <Settings className="page-header-profile-icon" aria-hidden="true" />
-                    Settings
+                    {t('nav.settings', 'Settings')}
                   </Link>
                   <button
                     type="button"
@@ -122,7 +125,7 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
                     role="menuitem"
                   >
                     <LogOut className="page-header-profile-icon" aria-hidden="true" />
-                    Sign out
+                    {t('nav.logout', 'Sign out')}
                   </button>
                 </div>
               </div>

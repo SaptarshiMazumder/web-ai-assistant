@@ -1,14 +1,16 @@
-
+import { useTranslation } from 'react-i18next'
 
 export default function BotNotificationsTab() {
+    const { t } = useTranslation()
+
     return (
         <div className="ui-glass-card">
-            <h3>Notifications</h3>
+            <h3>{t('botNotifications.title', 'Notifications')}</h3>
             <p className="muted">
-                View your agent notifications and alerts here.
+                {t('botNotifications.subtitle', 'View your agent notifications and alerts here.')}
             </p>
             <p className="muted" style={{ marginTop: '1rem' }}>
-                No new notifications.
+                {t('botNotifications.noNewNotifications', 'No new notifications.')}
             </p>
         </div>
     )

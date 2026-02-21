@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 
 import { useDashboardData } from '../hooks/useDashboardData'
 import ironManIcon from '../assets/icons8/iron-man.png'
@@ -24,6 +25,7 @@ export default function DashboardLayout() {
   const { loading, error } = useDashboardData()
   const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const { t } = useTranslation()
 
   const botMatch = useMatch('/bots/:botId')
   const botMatchNested = useMatch('/bots/:botId/*')
@@ -45,7 +47,7 @@ export default function DashboardLayout() {
 
   return (
     <div className={`app-shell ${showSecondaryPanel ? 'app-shell--secondary-visible' : ''}`}>
-      <aside className="sidebar-primary" aria-label="Main navigation">
+      <aside className="sidebar-primary" aria-label={t('nav.mainNavigation', 'Main navigation')}>
         <div className="sidebar-primary-brand" aria-hidden="true">
           <img src={ironManIcon} alt="" className="sidebar-brand-icon" />
         </div>
@@ -59,7 +61,7 @@ export default function DashboardLayout() {
                 key={item.id}
                 to={to}
                 className={`sidebar-primary-link ${isActive ? 'active' : ''}`}
-                title={item.label}
+                title={t(item.label)}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon className="sidebar-primary-icon" aria-hidden="true" />
@@ -88,7 +90,7 @@ export default function DashboardLayout() {
           >
             <Link to="/bots" className="sidebar-back-link">
               <span className="sidebar-back-arrow" aria-hidden="true">←</span>
-              All bots
+              {t('nav.allAgentsBack', 'All bots')}
             </Link>
 
             <div className="sidebar-content" style={{ flex: 1, overflowY: 'auto', marginRight: '-1rem', paddingRight: '1rem' }}>
@@ -111,7 +113,7 @@ export default function DashboardLayout() {
 
                   return groups.map((group, groupIndex) => (
                     <div key={groupIndex} className={group.header ? 'nav-category' : 'nav-group-container'}>
-                      {group.header && <div className="nav-category-header">{group.header}</div>}
+                      {group.header && <div className="nav-category-header">{t(group.header)}</div>}
                       {group.items.map((item) => {
                         const Icon = item.icon
                         return (
@@ -127,7 +129,7 @@ export default function DashboardLayout() {
                                 >
                                   <span className="nav-link-content">
                                     <Icon className="nav-icon" aria-hidden="true" />
-                                    {item.label}
+                                    {t(item.label)}
                                   </span>
                                 </NavLink>
                               </div>
@@ -139,6 +141,7 @@ export default function DashboardLayout() {
                   ))
                 })()}
               </nav>
+
             </div>
 
             {/* Fixed Settings Footer */}
@@ -158,7 +161,7 @@ export default function DashboardLayout() {
                           >
                             <span className="nav-link-content">
                               <Icon className="nav-icon" aria-hidden="true" />
-                              {item.label}
+                              {t(item.label)}
                             </span>
                           </NavLink>
                         </div>
@@ -175,7 +178,7 @@ export default function DashboardLayout() {
       <main className="content">
         <div className="content-shell">
           {error && <div className="alert error">{error}</div>}
-          {loading && <div className="alert">Working...</div>}
+          {loading && <div className="alert">{t('common.working', 'Working...')}</div>}
           <Outlet />
         </div>
       </main>
