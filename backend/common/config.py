@@ -48,6 +48,7 @@ class Config:
     AUTH_ISSUER = os.environ.get("AUTH_ISSUER", "")
     AUTH_AUDIENCE = os.environ.get("AUTH_AUDIENCE", "")
     AUTH_JWKS_URL = os.environ.get("AUTH_JWKS_URL", "")
+    AUTH_JWKS_JSON = os.environ.get("AUTH_JWKS_JSON", "")
     AUTH_ROLES_CLAIM = os.environ.get("AUTH_ROLES_CLAIM", "")
     AUTH_ORG_CLAIM = os.environ.get("AUTH_ORG_CLAIM", "")
     SUPER_ADMIN_EMAILS = os.environ.get("SUPER_ADMIN_EMAILS", "")

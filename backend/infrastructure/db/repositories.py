@@ -3138,7 +3138,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
                 FROM line_user_sessions
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
@@ -3152,11 +3152,12 @@ class PostgresLineUserSessionRepository:
                     is_escalated=bool(row[3]),
                     created_at=row[4],
                     updated_at=row[5],
+                    awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
                 )
             con.execute(
                 """
-                INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, created_at, updated_at)
-                VALUES (%s, %s, %s, FALSE, %s, %s)
+                INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, created_at, updated_at)
+                VALUES (%s, %s, %s, FALSE, FALSE, %s, %s)
                 """,
                 (uid, bid, session_id, now, now),
             )
@@ -3166,6 +3167,7 @@ class PostgresLineUserSessionRepository:
                 bot_id=bid,
                 session_id=session_id,
                 is_escalated=False,
+                awaiting_escalation_msg=False,
                 created_at=now,
                 updated_at=now,
             )
@@ -3181,7 +3183,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
                 FROM line_user_sessions
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
@@ -3196,6 +3198,7 @@ class PostgresLineUserSessionRepository:
                 is_escalated=bool(row[3]),
                 created_at=row[4],
                 updated_at=row[5],
+                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
             )
         finally:
             con.close()
@@ -3208,7 +3211,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
                 FROM line_user_sessions
                 WHERE session_id = %s
                 """,
@@ -3223,6 +3226,7 @@ class PostgresLineUserSessionRepository:
                 is_escalated=bool(row[3]),
                 created_at=row[4],
                 updated_at=row[5],
+                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
             )
         finally:
             con.close()
@@ -3242,6 +3246,27 @@ class PostgresLineUserSessionRepository:
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
                 (escalated, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def set_awaiting_escalation_msg(self, *, line_user_id: str, bot_id: str, awaiting: bool) -> bool:
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE line_user_sessions
+                SET awaiting_escalation_msg = %s, updated_at = %s
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (awaiting, now, uid, bid),
             )
             con.commit()
             return result.rowcount > 0
@@ -3699,7 +3724,7 @@ class PostgresInstagramUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
                 FROM instagram_user_sessions
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
@@ -3713,11 +3738,12 @@ class PostgresInstagramUserSessionRepository:
                     is_escalated=bool(row[3]),
                     created_at=row[4],
                     updated_at=row[5],
+                    awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
                 )
             con.execute(
                 """
-                INSERT INTO instagram_user_sessions(ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at)
-                VALUES (%s, %s, %s, FALSE, %s, %s)
+                INSERT INTO instagram_user_sessions(ig_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, created_at, updated_at)
+                VALUES (%s, %s, %s, FALSE, FALSE, %s, %s)
                 """,
                 (uid, bid, session_id, now, now),
             )
@@ -3727,6 +3753,7 @@ class PostgresInstagramUserSessionRepository:
                 bot_id=bid,
                 session_id=session_id,
                 is_escalated=False,
+                awaiting_escalation_msg=False,
                 created_at=now,
                 updated_at=now,
             )
@@ -3742,7 +3769,7 @@ class PostgresInstagramUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
                 FROM instagram_user_sessions
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
@@ -3757,6 +3784,7 @@ class PostgresInstagramUserSessionRepository:
                 is_escalated=bool(row[3]),
                 created_at=row[4],
                 updated_at=row[5],
+                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
             )
         finally:
             con.close()
@@ -3776,6 +3804,27 @@ class PostgresInstagramUserSessionRepository:
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
                 (escalated, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def set_awaiting_escalation_msg(self, *, ig_user_id: str, bot_id: str, awaiting: bool) -> bool:
+        uid = (ig_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE instagram_user_sessions
+                SET awaiting_escalation_msg = %s, updated_at = %s
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (awaiting, now, uid, bid),
             )
             con.commit()
             return result.rowcount > 0

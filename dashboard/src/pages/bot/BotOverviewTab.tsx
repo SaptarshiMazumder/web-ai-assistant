@@ -47,9 +47,9 @@ export default function BotOverviewTab() {
   const setupIndicators: SetupIndicator[] = [
     { id: 'sources', label: 'Knowledge and Training', done: hasSources, to: `/bots/${botId}/knowledge` },
     { id: 'design', label: 'Design', done: hasDesign, to: `/bots/${botId}/design` },
-    { id: 'suggestions', label: 'Suggested messages', done: hasSuggestedMessages, to: `/bots/${botId}/design` },
+    { id: 'suggestions', label: 'Suggested messages', done: hasSuggestedMessages, to: `/bots/${botId}/suggested-messages` },
     { id: 'deployment', label: 'Installation', done: hasVerifiedDomain, to: `/bots/${botId}/overview` },
-    { id: 'escalation', label: 'Escalations', done: escalationSetUp, to: `/bots/${botId}/escalations` },
+    { id: 'escalation', label: 'Escalations', done: escalationSetUp, to: `/bots/${botId}/suggested-messages` },
   ]
 
   return (

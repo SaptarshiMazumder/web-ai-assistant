@@ -439,6 +439,9 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "CREATE INDEX IF NOT EXISTS asset_extraction_jobs_bot_updated ON asset_extraction_jobs (bot_id, updated_at DESC)",
+    # ── Escalation optional-message flow ──
+    "ALTER TABLE instagram_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
 )
 
 _SCHEMA_INITIALIZED = False

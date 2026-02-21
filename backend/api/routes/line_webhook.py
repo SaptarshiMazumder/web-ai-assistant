@@ -9,6 +9,7 @@ Endpoints:
 
 import json
 import logging
+import re
 import time
 from typing import Any, Dict, Optional
 
@@ -68,9 +69,18 @@ ESCALATION_KEYWORDS = {
     "talk to someone", "スタッフ", "人間", "担当者",
 }
 
-DE_ESCALATION_KEYWORDS = {
-    "back to bot", "bot", "ai", "ボット", "戻る",
+SKIP_KEYWORDS = {
+    "skip", "s", "/skip", "no", "nope", "never mind", "cancel",
 }
+
+# Matches any intent to return to the AI/bot, case-insensitive
+_DE_ESCALATION_PATTERN = re.compile(
+    r"\b(back|return|switch|go back|exit|leave|end|stop|quit)\b.{0,20}\b(bot|ai|assistant|robot|auto)\b"
+    r"|\b(bot|ai|assistant|robot)\b.{0,20}\b(mode|again|please|now)\b"
+    r"|\b(back to (bot|ai|assistant|auto|robot))\b"
+    r"|\b(ボット|戻る|ai に戻る|botに戻る)\b",
+    re.IGNORECASE,
+)
 
 
 def _wants_escalation(text: str) -> bool:
@@ -79,8 +89,12 @@ def _wants_escalation(text: str) -> bool:
 
 
 def _wants_de_escalation(text: str) -> bool:
+    return bool(_DE_ESCALATION_PATTERN.search(text))
+
+
+def _wants_skip_message(text: str) -> bool:
     lower = text.lower().strip()
-    return any(kw in lower for kw in DE_ESCALATION_KEYWORDS)
+    return any(lower == kw or lower.startswith(kw) for kw in SKIP_KEYWORDS)
 
 
 # ── Helper: format conversation context ──────────────────────────────
@@ -266,6 +280,11 @@ async def _handle_text_message(
                 bot_id=bot.bot_id,
                 escalated=False,
             )
+            _line_user_session_repo.set_awaiting_escalation_msg(
+                line_user_id=line_user_id,
+                bot_id=bot.bot_id,
+                awaiting=False,
+            )
             mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
 
     # ── De-escalation check ──────────────────────────────────────────
@@ -289,19 +308,45 @@ async def _handle_text_message(
         )
         return
 
-    # ── Escalated: log message but don't auto-reply ──────────────────
+    # ── Escalated: log message + throttled acknowledgment ────────────
     if mapping and mapping.is_escalated:
-        # Save user message for history/analytics, but don't reply -- staff handles it in LINE OA Manager
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
         )
+        # Only send the full ack once; after that send a brief "✓ Sent." to
+        # avoid spamming the user with the same long message on every reply.
+        recent = conversation_service().list_recent_messages(session.session_id, limit=20)
+        already_acked = any(
+            (m.role or "").lower() == "bot" and "back to bot" in (m.content or "")
+            for m in recent
+        )
+        if already_acked:
+            ack = "✓ Sent. (Say \"back to bot\" to return to the AI assistant.)"
+        else:
+            ack = (
+                "✓ Message received by our team. They'll reply here shortly.\n\n"
+                "To return to the AI assistant, just say \"back to bot\"."
+            )
+        await reply_message(reply_token, [ack], access_token)
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=ack,
+        )
         return
 
-    # ── Escalation request ───────────────────────────────────────────
-    if _wants_escalation(text):
+    # ── Awaiting optional escalation message ─────────────────────────
+    if mapping and mapping.awaiting_escalation_msg:
+        user_msg = None if _wants_skip_message(text) else text.strip()
+        _line_user_session_repo.set_awaiting_escalation_msg(
+            line_user_id=line_user_id,
+            bot_id=bot.bot_id,
+            awaiting=False,
+        )
         _line_user_session_repo.set_escalated(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
@@ -313,23 +358,49 @@ async def _handle_text_message(
             role="user",
             content=text,
         )
-        # Create escalation record (use line_user_id as visitor_email substitute)
+        details = f"Message from user: {user_msg}" if user_msg else "User requested human assistance via LINE."
         conversation_service().create_escalation(
             bot_id=bot.bot_id,
             session_id=session.session_id,
             visitor_email=f"line:{line_user_id}",
-            details="User requested human assistance via LINE",
+            details=details,
         )
-        escalation_msg = (
-            "I'm connecting you with our staff. They'll reply to you shortly here in LINE.\n\n"
-            "When you're done, just say \"back to bot\" to return to the AI assistant."
+        confirm_msg = (
+            "Our team has been notified and will reply to you here shortly.\n\n"
+            "Reply \"back to bot\" anytime to return to the AI assistant."
         )
-        await reply_message(reply_token, [escalation_msg], access_token, suggested_flex=suggested_flex)
+        await reply_message(reply_token, [confirm_msg], access_token)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
-            content=escalation_msg,
+            content=confirm_msg,
+        )
+        return
+
+    # ── Escalation request ───────────────────────────────────────────
+    if _wants_escalation(text):
+        _line_user_session_repo.set_awaiting_escalation_msg(
+            line_user_id=line_user_id,
+            bot_id=bot.bot_id,
+            awaiting=True,
+        )
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=text,
+        )
+        prompt_msg = (
+            "I'll connect you with our team right away.\n\n"
+            "Would you like to leave a message for them? Type your message below, or reply \"skip\" to connect immediately."
+        )
+        await reply_message(reply_token, [prompt_msg], access_token)
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=prompt_msg,
         )
         return
 

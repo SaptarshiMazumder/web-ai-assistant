@@ -13,7 +13,10 @@
       "Bash(npm run build:*)",
       "Bash(git -C \"/c/Users/googler/OneDrive/Desktop/Projects/web-ai\" ls-files)",
       "Bash(dir:*)",
-      "WebFetch(domain:developers.line.biz)"
+      "WebFetch(domain:developers.line.biz)",
+      "Bash(python -c:*)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose restart:*)"
     ]
   }
 }

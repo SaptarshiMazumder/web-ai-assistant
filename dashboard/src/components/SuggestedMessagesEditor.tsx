@@ -45,18 +45,8 @@ export function SuggestedMessagesEditor({
   const openSuggestionModal = useCallback((item?: SuggestedMessageConfig) => {
     if (!item && !canAdd) return
     const base: SuggestedMessageConfig = item
-      ? {
-          ...item,
-          // Deprecated types are normalized to ai_response.
-          type: item.type === 'escalate' ? 'escalate' : 'ai_response',
-          urls: Array.isArray(item.urls) ? item.urls : [],
-        }
-      : {
-          id: `suggest_${Date.now()}`,
-          label: '',
-          type: 'ai_response',
-          urls: [],
-        }
+      ? { ...item, type: 'ai_response', urls: Array.isArray(item.urls) ? item.urls : [] }
+      : { id: `suggest_${Date.now()}`, label: '', type: 'ai_response', urls: [] }
     setEditingSuggestion(item || null)
     setSuggestionDraft(base)
     setIsSuggestionModalOpen(true)
@@ -142,9 +132,7 @@ export function SuggestedMessagesEditor({
               <div>
                 <div style={{ fontWeight: 600 }}>{msg.label}</div>
                 <div className="muted" style={{ fontSize: '0.85rem' }}>
-                  {msg.type === 'ai_response'
-                    ? `AI response${Array.isArray(msg.urls) && msg.urls.length ? ` - ${msg.urls.length} URL${msg.urls.length === 1 ? '' : 's'}` : ''}`
-                    : 'Request human support'}
+                  {`AI response${Array.isArray(msg.urls) && msg.urls.length ? ` · ${msg.urls.length} URL${msg.urls.length === 1 ? '' : 's'}` : ''}`}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -210,64 +198,34 @@ export function SuggestedMessagesEditor({
                 placeholder="Where are success stories?"
               />
               <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                Type
+                Prompt
               </label>
-              <select
+              <textarea
                 className="design-form-input"
-                value={suggestionDraft.type}
-                onChange={(e) => {
-                  const newType = e.target.value as SuggestedMessageConfig['type']
-                  setSuggestionDraft((prev) => {
-                    if (!prev) return prev
-                    const next = { ...prev, type: newType }
-                    if (newType === 'escalate' && !prev.label.trim()) {
-                      next.label = 'Request human support'
-                    }
-                    return next
-                  })
-                }}
-              >
-                <option value="ai_response">AI response</option>
-                <option value="escalate">Request human support</option>
-              </select>
-              {suggestionDraft.type === 'ai_response' && (
-                <>
-                  <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                    Prompt
-                  </label>
-                  <textarea
-                    className="design-form-input"
-                    rows={3}
-                    value={suggestionDraft.prompt || ''}
-                    onChange={(e) =>
-                      setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))
-                    }
-                    placeholder="Can you show me some user success stories?"
-                  />
-                  <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                    URLs (optional)
-                  </label>
-                  <textarea
-                    className="design-form-input"
-                    rows={3}
-                    value={Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls.join('\n') : ''}
-                    onChange={(e) =>
-                      setSuggestionDraft((prev) =>
-                        prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
-                      )
-                    }
-                    placeholder={'https://example.com/pricing\nhttps://example.com/faq'}
-                  />
-                  <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
-                    One URL per line.
-                  </div>
-                </>
-              )}
-              {suggestionDraft.type === 'escalate' && (
-                <div className="muted" style={{ marginTop: '0.75rem' }}>
-                  Visitors will be asked for their email and optional details, then the chat is escalated to support.
-                </div>
-              )}
+                rows={3}
+                value={suggestionDraft.prompt || ''}
+                onChange={(e) =>
+                  setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))
+                }
+                placeholder="Can you show me some user success stories?"
+              />
+              <label className="design-form-label" style={{ marginTop: '1rem' }}>
+                URLs (optional)
+              </label>
+              <textarea
+                className="design-form-input"
+                rows={3}
+                value={Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls.join('\n') : ''}
+                onChange={(e) =>
+                  setSuggestionDraft((prev) =>
+                    prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
+                  )
+                }
+                placeholder={'https://example.com/pricing\nhttps://example.com/faq'}
+              />
+              <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
+                One URL per line.
+              </div>
             </div>
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={closeSuggestionModal}>

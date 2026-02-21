@@ -30,16 +30,40 @@ def _jwks_url() -> str:
 
 
 def _get_jwks() -> Dict[str, Any]:
-    now = int(time.time())
-    if _JWKS_CACHE["jwks"] and _JWKS_CACHE["expires_at"] > now:
+    # Allow JWKS to be provided directly via env var (useful when DNS is restricted)
+    static_jwks = (config.AUTH_JWKS_JSON or "").strip()
+    if static_jwks:
+        if not _JWKS_CACHE["jwks"]:
+            try:
+                _JWKS_CACHE["jwks"] = json.loads(static_jwks)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"AUTH_JWKS_JSON is invalid JSON: {exc}") from exc
+            _JWKS_CACHE["expires_at"] = int(time.time()) + 86400 * 365
         return _JWKS_CACHE["jwks"]
+
+    now = int(time.time())
+    cached_jwks = _JWKS_CACHE["jwks"]
+    if cached_jwks and _JWKS_CACHE["expires_at"] > now:
+        return cached_jwks
     url = _jwks_url()
-    resp = requests.get(url, timeout=10)
-    resp.raise_for_status()
-    jwks = resp.json()
-    _JWKS_CACHE["jwks"] = jwks
-    _JWKS_CACHE["expires_at"] = now + 3600
-    return jwks
+    last_err: Exception = RuntimeError("JWKS fetch failed")
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            jwks = resp.json()
+            _JWKS_CACHE["jwks"] = jwks
+            _JWKS_CACHE["expires_at"] = now + 3600
+            return jwks
+        except Exception as exc:
+            last_err = exc
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    # If refresh failed, use last known JWKS as a temporary fallback.
+    if cached_jwks:
+        _JWKS_CACHE["expires_at"] = now + 300
+        return cached_jwks
+    raise last_err
 
 
 def _resolve_key(token: str) -> Any:

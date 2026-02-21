@@ -237,6 +237,7 @@ class LineUserSession:
     is_escalated: bool
     created_at: str
     updated_at: str
+    awaiting_escalation_msg: bool = False
 
 
 @dataclass
@@ -266,6 +267,7 @@ class InstagramUserSession:
     is_escalated: bool
     created_at: str
     updated_at: str
+    awaiting_escalation_msg: bool = False
 
 
 @dataclass

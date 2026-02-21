@@ -95,7 +95,7 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
 
   // Contacts section
   { id: 'conversations', label: 'Conversations History', to: `/bots/${botId}/conversations`, icon: History, header: 'Contacts' },
-  { id: 'escalations', label: 'Escalations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'Contacts' },
+  { id: 'escalations', label: 'Escalated Conversations', to: `/bots/${botId}/escalations`, icon: AlertCircle, header: 'Contacts' },
   { id: 'leads', label: 'Leads', to: `/bots/${botId}/leads`, icon: UsersRound, header: 'Contacts' },
 
   // Settings (standalone with separator)

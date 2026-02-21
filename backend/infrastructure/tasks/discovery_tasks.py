@@ -7,7 +7,6 @@ import asyncio
 import logging
 import time
 
-from common.di.container import url_discovery
 from infrastructure.celery_app import celery_app
 from infrastructure.db.repositories import PostgresDiscoveryJobRepository
 
@@ -39,6 +38,10 @@ def discovery_job_task(self, job_id: str, bot_id: str, root_url: str, method: st
         repo.update(job)
 
         async def run_stream() -> None:
+            # Lazy import avoids Celery startup circular-import path:
+            # container -> indexing_service -> celery_app -> discovery_tasks -> container
+            from common.di.container import url_discovery
+
             adapter = url_discovery()
             accumulated: list[str] = []
             # ENFORCE HARD 3-MINUTE TIMEOUT ON BACKEND

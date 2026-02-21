@@ -2,6 +2,7 @@ import time
 from typing import Optional
 
 import jwt
+import requests
 from fastapi import Header, HTTPException
 from psycopg.errors import OperationalError
 
@@ -77,6 +78,10 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Use
         ctx = build_user_context(claims)
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
+    except requests.RequestException as exc:
+        raise HTTPException(status_code=503, detail=f"Authentication provider unavailable: {exc}")
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=f"Authentication configuration error: {exc}")
 
     user_service = get_user_service()
     org_service = get_org_service()
