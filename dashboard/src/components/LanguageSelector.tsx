@@ -13,13 +13,15 @@ export function LanguageSelector() {
     const [isOpen, setIsOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
-    const currentLangCode = i18n.language || 'en'
+    const currentLangCode = (i18n.language || 'en').split('-')[0].toLowerCase()
     const currentLang = LANGUAGES.find(l => l.code === currentLangCode) || LANGUAGES[0]
 
     const toggleDropdown = () => setIsOpen(!isOpen)
 
     const selectLanguage = (code: string) => {
         i18n.changeLanguage(code)
+        // Store explicitly to ensure language detector picks it up via localStorage
+        localStorage.setItem('i18nextLng', code)
         setIsOpen(false)
     }
 
