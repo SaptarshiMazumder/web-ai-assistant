@@ -66,20 +66,20 @@ export default function BotEscalationsTab() {
   }
 
   if (!botId) {
-    return <div className="empty-panel">Select a bot to view escalated conversations.</div>
+    return <div className="empty-panel">Select a bot to view human support requests.</div>
   }
 
   return (
     <AnimatedPage>
       <SectionHeader
         eyebrow="Support"
-        title="Escalated conversations"
-        subtitle="Review and resolve customer escalation requests."
+        title="Human support requests"
+        subtitle="Review and resolve customer support requests."
       />
 
       <GlassCard style={{ marginTop: '0.5rem' }}>
         {escalations.length === 0 && (
-          <div className="muted" style={{ padding: '1rem 0' }}>No escalations yet.</div>
+          <div className="muted" style={{ padding: '1rem 0' }}>No human support requests yet.</div>
         )}
         <div className="escalation-list">
           {escalations.map((e) => (

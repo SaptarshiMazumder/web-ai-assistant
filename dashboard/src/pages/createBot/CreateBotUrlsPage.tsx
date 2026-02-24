@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ScanSearch, MousePointerClick, Printer, UploadCloud, FileText, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ScanSearch, CheckCircle2 } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { StopIcon } from './DiscoveryIcons'
@@ -598,200 +598,46 @@ export default function CreateBotUrlsPage() {
           )}
 
           {showPdfFallback && !isSharedDiscovering && (
-            <div style={{
-              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-              border: '2px solid #0ea5e9',
-              borderRadius: '16px',
-              padding: '2rem',
-              marginBottom: '1.5rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                border: '2px solid #0ea5e9',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                marginBottom: '1rem',
+              }}
+            >
+              <div style={{ marginBottom: '0.75rem', color: '#0f172a', fontWeight: 600 }}>
+                Automatic scanning is blocked for this website. Upload PDF pages instead.
+              </div>
+              {pdfFiles.length > 0 && (
                 <div style={{
-                  width: '48px',
-                  height: '48px',
+                  background: 'white',
                   borderRadius: '12px',
-                  background: '#0ea5e9',
+                  padding: '1rem 1.25rem',
+                  marginBottom: '1rem',
+                  border: '1px solid rgba(14, 165, 233, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
+                  gap: '0.75rem'
                 }}>
-                  <AlertCircle size={28} color="white" strokeWidth={2.5} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>
-                    No problem! We have an easy solution
-                  </h3>
-                  <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>
-                    Follow these 3 simple steps to add your website pages
-                  </p>
-                </div>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1rem',
-                marginBottom: '1.5rem'
-              }}>
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: 'var(--ui-flow-brand-gradient)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <MousePointerClick size={22} color="white" strokeWidth={2.5} />
-                  </div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 800,
-                    color: '#cbd5e1',
-                    marginBottom: '0.5rem'
-                  }}>
-                    STEP 1
-                  </div>
-                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                    Open your webpage
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
-                    Go to the important pages on your website (like Services, Prices, or Contact).
-                  </p>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <Printer size={22} color="white" strokeWidth={2.5} />
-                  </div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 800,
-                    color: '#cbd5e1',
-                    marginBottom: '0.5rem'
-                  }}>
-                    STEP 2
-                  </div>
-                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                    Save as PDF
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
-                    Right-click the page → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.
-                  </p>
-                </div>
-
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '1.25rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <UploadCloud size={22} color="white" strokeWidth={2.5} />
-                  </div>
-                  <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 800,
-                    color: '#cbd5e1',
-                    marginBottom: '0.5rem'
-                  }}>
-                    STEP 3
-                  </div>
-                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                    Upload here
-                  </h4>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
-                    Drop your PDF in the box below. Your AI will learn from it!
-                  </p>
-                </div>
-              </div>
-
-              <div style={{
-                background: 'rgba(14, 165, 233, 0.1)',
-                borderRadius: '12px',
-                padding: '1rem 1.25rem',
-                border: '1px solid rgba(14, 165, 233, 0.3)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <CheckCircle2 size={24} color="#0ea5e9" strokeWidth={2.5} />
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>
-                      💡 Tip: Do this for every important page
-                    </p>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>
-                      Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them all below.
+                    <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
+                      {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
                     </p>
                   </div>
                 </div>
-              </div>
-
-              <div style={{ marginTop: '1.25rem' }}>
-                {pdfFiles.length > 0 && (
-                  <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '1rem 1.25rem',
-                    marginBottom: '1rem',
-                    border: '1px solid rgba(14, 165, 233, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem'
-                  }}>
-                    <CheckCircle2 size={24} color="#0ea5e9" strokeWidth={2.5} />
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
-                        Perfect! {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#64748b' }}>
-                        Click "Start training" below to teach your AI
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <FileDropzone
-                  label="📄 Drop your PDFs here"
-                  helperText="Each PDF teaches your AI about that page. Upload up to 20 files."
-                  files={pdfFiles}
-                  setFiles={setPdfFiles}
-                  accept="application/pdf"
-                  multiple
-                  maxFiles={20}
-                />
-              </div>
+              )}
+              <FileDropzone
+                label="Drop your PDFs here"
+                helperText="Upload up to 20 PDF files."
+                files={pdfFiles}
+                setFiles={setPdfFiles}
+                accept="application/pdf"
+                multiple
+                maxFiles={20}
+              />
             </div>
           )}
 

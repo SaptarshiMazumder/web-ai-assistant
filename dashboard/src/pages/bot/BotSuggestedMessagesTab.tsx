@@ -214,47 +214,46 @@ export default function BotSuggestedMessagesTab() {
         subtitle="Quick actions shown when the chat opens. Auto-generate from your trained content or add manually."
       />
 
-      {/* Enable/Disable toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
-        <div>
-          <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Suggested messages</div>
-          <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-            Quick actions shown when the chat opens.
-          </p>
+      <GlassCard style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Suggested messages</div>
+            <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
+              Quick actions shown when the chat opens.
+            </p>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={isEnabled}
+              onChange={(e) => void handleToggleEnabled(e.target.checked)}
+              disabled={saving}
+            />
+            <span className="toggle-slider" />
+          </label>
         </div>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => void handleToggleEnabled(e.target.checked)}
-            disabled={saving}
-          />
-          <span className="toggle-slider" />
-        </label>
-      </div>
 
-      {isGenerating && (
-        <div
-          style={{
-            marginTop: '1rem',
-            padding: '0.75rem 1rem',
-            background: 'var(--flow-surface-alt, #fef3f0)',
-            border: '1px solid var(--flow-border, #f2d8d2)',
-            borderRadius: 'var(--flow-radius, 10px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            fontSize: '0.9rem',
-            color: 'var(--flow-text, #1e293b)',
-          }}
-        >
-          <Loader2 size={18} className="spin" style={{ color: 'var(--flow-primary, #e8614d)' }} />
-          Generating suggested messages from your trained content...
-        </div>
-      )}
+        {isGenerating && (
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1rem',
+              background: 'var(--flow-surface-alt, #fef3f0)',
+              border: '1px solid var(--flow-border, #f2d8d2)',
+              borderRadius: 'var(--flow-radius, 10px)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              fontSize: '0.9rem',
+              color: 'var(--flow-text, #1e293b)',
+            }}
+          >
+            <Loader2 size={18} className="spin" style={{ color: 'var(--flow-primary, #e8614d)' }} />
+            Generating suggested messages from your trained content...
+          </div>
+        )}
 
-      <div style={{ marginTop: '1rem', opacity: isEnabled ? 1 : 0.45, pointerEvents: isEnabled ? 'auto' : 'none' }}>
-        <GlassCard>
+        <div style={{ marginTop: '1rem', opacity: isEnabled ? 1 : 0.45, pointerEvents: isEnabled ? 'auto' : 'none' }}>
           <SuggestedMessagesEditor
             suggestedMessages={aiMessages}
             onChange={handleAiMessagesChange}
@@ -264,25 +263,25 @@ export default function BotSuggestedMessagesTab() {
             maxItems={10}
             actions={saveAction}
           />
-        </GlassCard>
-      </div>
+        </div>
+      </GlassCard>
 
-      {/* ── Section 2: Escalation Settings ── */}
+      {/* Section 2: Human Support Settings */}
       <div style={{ marginTop: '2rem' }}>
         <SectionHeader
-          title="Escalation settings"
+          title="Human support settings"
           subtitle="Let visitors request human support and notify your team by email."
         />
 
         <GlassCard style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
-          {/* Enable escalations toggle */}
+          {/* Enable human support toggle */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <Bell size={18} style={{ color: 'var(--ui-flow-accent)' }} />
               <div>
-                <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Enable escalations</div>
+                <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Enable human support requests</div>
                 <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                  Allow visitors to escalate to support with their email.
+                  Allow visitors to request human support with their email.
                 </p>
               </div>
             </div>
@@ -299,12 +298,12 @@ export default function BotSuggestedMessagesTab() {
 
           {escalationConfig.enabled && (
             <>
-              {/* Escalation button config */}
+              {/* Human support button config */}
               <div style={{ padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
                   <MessageSquare size={18} style={{ color: 'var(--ui-flow-accent)' }} />
                   <div>
-                    <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Escalation button</div>
+                    <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Human support button</div>
                     <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
                       A button shown in the chat that lets visitors request human support.
                     </p>
@@ -327,7 +326,7 @@ export default function BotSuggestedMessagesTab() {
                   <div>
                     <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>Email notifications</div>
                     <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                      Receive notifications when visitors escalate.
+                      Receive notifications when visitors request human support.
                     </p>
                   </div>
                 </div>

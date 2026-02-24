@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useTranslation } from 'react-i18next'
@@ -66,6 +66,11 @@ type ExtractionStatusResponse = {
   error?: string
 }
 
+type ExtractCancelResponse = {
+  status: string
+  job_id?: string
+}
+
 export default function BotImageAssetsTab() {
   const { t } = useTranslation()
   const { botId } = useParams()
@@ -98,6 +103,7 @@ export default function BotImageAssetsTab() {
 
   const [deleting, setDeleting] = useState<string | null>(null)
   const [extracting, setExtracting] = useState(false)
+  const [stoppingExtract, setStoppingExtract] = useState(false)
   const [extractResult, setExtractResult] = useState<string | null>(null)
   const [showExtractSettings, setShowExtractSettings] = useState(false)
   const [loadingExtractPages, setLoadingExtractPages] = useState(false)
@@ -107,6 +113,7 @@ export default function BotImageAssetsTab() {
 
   // Async extraction state
   const [extractStats, setExtractStats] = useState<ExtractionStatusResponse | null>(null)
+  const extractStartAbortRef = useRef<AbortController | null>(null)
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -222,6 +229,7 @@ export default function BotImageAssetsTab() {
 
           if (data.status === 'queued' || data.status === 'running') {
             setExtracting(true)
+            setStoppingExtract(false)
           } else if (data.status === 'done') {
             if (extracting) {
               // Job just finished while we were watching
@@ -229,11 +237,19 @@ export default function BotImageAssetsTab() {
               void loadAssets()
             }
             setExtracting(false)
+            setStoppingExtract(false)
           } else if (data.status === 'error') {
             if (extracting) {
               setError(data.error || 'Extraction failed')
             }
             setExtracting(false)
+            setStoppingExtract(false)
+          } else if (data.status === 'cancelled') {
+            if (extracting) {
+              setExtractResult(t('botImageAssets.extractionStopped', 'Extraction stopped.'))
+            }
+            setExtracting(false)
+            setStoppingExtract(false)
           }
         }
       } catch (e) {
@@ -251,7 +267,7 @@ export default function BotImageAssetsTab() {
     return () => {
       if (intervalId) clearInterval(intervalId)
     }
-  }, [botId, extracting, authedFetch, loadAssets])
+  }, [botId, extracting, authedFetch, loadAssets, t])
 
   const toggleExtractSettings = async () => {
     const nextOpen = !showExtractSettings
@@ -384,8 +400,11 @@ export default function BotImageAssetsTab() {
       return
     }
     setExtracting(true)
+    setStoppingExtract(false)
     setError(null)
     setExtractResult(null)
+    const controller = new AbortController()
+    extractStartAbortRef.current = controller
     try {
       const payload = {
         page_urls: extractPages.length > 0 ? Array.from(selectedExtractPages) : [],
@@ -394,6 +413,7 @@ export default function BotImageAssetsTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
@@ -403,6 +423,16 @@ export default function BotImageAssetsTab() {
 
       if (data.job_id) {
         // Polling effect will pick this up
+        setExtractStats((prev) => ({
+          job_id: data.job_id || prev?.job_id || '',
+          status: 'queued',
+          assets_discovered: prev?.assets_discovered ?? 0,
+          assets_downloaded: prev?.assets_downloaded ?? 0,
+          assets_created: prev?.assets_created ?? 0,
+          assets_total: prev?.assets_total ?? assetCount,
+          limit: prev?.limit ?? assetLimit,
+          error: prev?.error,
+        }))
       } else {
         // Fallback for sync return (shouldn't happen with new backend but safe to keep)
         setExtracting(false)
@@ -412,8 +442,55 @@ export default function BotImageAssetsTab() {
       }
 
     } catch (err) {
-      setError((err as Error).message)
+      const isAborted =
+        (err instanceof DOMException && err.name === 'AbortError') ||
+        ((err as Error).name === 'AbortError')
+      if (!isAborted) {
+        setError((err as Error).message)
+        setExtracting(false)
+      }
+    } finally {
+      if (extractStartAbortRef.current === controller) {
+        extractStartAbortRef.current = null
+      }
+    }
+  }
+
+  const handleStopExtract = async () => {
+    if (!botId || stoppingExtract) return
+    setStoppingExtract(true)
+    setError(null)
+
+    // If the start request is still in flight, abort immediately on the client side.
+    extractStartAbortRef.current?.abort()
+
+    try {
+      const resp = await authedFetch(`/v1/org/bots/${botId}/image-assets/extract-cancel`, {
+        method: 'POST',
+      })
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error((body as { detail?: string }).detail || resp.statusText)
+      }
+      const data = (await resp.json()) as ExtractCancelResponse
+      const nextJobId = data.job_id || extractStats?.job_id || ''
+
       setExtracting(false)
+      setExtractStats((prev) => ({
+        job_id: nextJobId,
+        status: 'cancelled',
+        assets_discovered: prev?.assets_discovered ?? 0,
+        assets_downloaded: prev?.assets_downloaded ?? 0,
+        assets_created: prev?.assets_created ?? 0,
+        assets_total: prev?.assets_total ?? assetCount,
+        limit: prev?.limit ?? assetLimit,
+        error: prev?.error,
+      }))
+      setExtractResult(t('botImageAssets.extractionStopped', 'Extraction stopped.'))
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setStoppingExtract(false)
     }
   }
 
@@ -519,15 +596,18 @@ export default function BotImageAssetsTab() {
               </UiButton>
               <UiButton
                 variant="secondary"
-                onClick={() => void toggleExtractSettings()}
+                onClick={() => void (extracting ? handleStopExtract() : toggleExtractSettings())}
+                disabled={extracting ? stoppingExtract : false}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
                 }}
               >
-                <Sparkles size={16} />
-                {showExtractSettings ? t('botImageAssets.hidePageSelection', 'Hide Page Selection') : t('botImageAssets.autoExtractFromPages', 'Auto extract from Pages')}
+                {extracting ? (stoppingExtract ? <Loader2 size={16} className="spin" /> : <X size={16} />) : <Sparkles size={16} />}
+                {extracting
+                  ? (stoppingExtract ? t('botImageAssets.stoppingExtraction', 'Stopping...') : t('botImageAssets.stopExtraction', 'Stop'))
+                  : (showExtractSettings ? t('botImageAssets.hidePageSelection', 'Hide Page Selection') : t('botImageAssets.autoExtractFromPages', 'Auto extract from Pages'))}
               </UiButton>
             </div>
           </>

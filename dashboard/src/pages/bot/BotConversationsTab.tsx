@@ -166,7 +166,7 @@ export default function BotConversationsTab() {
       <SectionHeader
         eyebrow="Conversations"
         title="Live inbox and replay"
-        subtitle="Track active chats, escalations, and message timelines in one place."
+        subtitle="Track active chats, human support requests, and message timelines in one place."
       />
       <div className={`card-grid conversation-grid${mobileView === 'detail' ? ' conversation-grid--mobile-detail' : ''}`}>
         <GlassCard className="conversation-panel conversation-panel--list">
@@ -229,7 +229,7 @@ export default function BotConversationsTab() {
                     {channelLabel(s.channel).emoji} {channelLabel(s.channel).label}
                   </span>
                   {escalatedSessionIds.has(s.session_id) && (
-                    <span className="conversation-pill conversation-pill--escalated">Escalated</span>
+                    <span className="conversation-pill conversation-pill--escalated">Support requested</span>
                   )}
                 </div>
               </button>

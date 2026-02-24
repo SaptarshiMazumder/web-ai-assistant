@@ -2,12 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import {
   ScanSearch,
-  MousePointerClick,
-  Printer,
-  UploadCloud,
   FileText,
   CheckCircle2,
-  AlertCircle,
   ArrowLeft,
   Plus,
   X,
@@ -595,61 +591,8 @@ export default function AddSourcePage() {
                 )}
 
                 {showPdfFallback && !isDiscovering && (
-                  <div
-                    style={{
-                      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                      border: '2px solid #0ea5e9',
-                      borderRadius: '16px',
-                      padding: '2rem',
-                      marginBottom: '1.5rem',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0ea5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <AlertCircle size={28} color="white" strokeWidth={2.5} />
-                      </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.noProblemSolution', 'No problem! We have an easy solution')}</h3>
-                        <p style={{ margin: '0.25rem 0 0', color: '#475569', fontSize: '0.95rem' }}>{t('addSource.threeSimpleSteps', 'Follow these 3 simple steps to add your website pages')}</p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                          <MousePointerClick size={22} color="white" strokeWidth={2.5} />
-                        </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step1', 'STEP 1')}</div>
-                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.openWebpage', 'Open your webpage')}</h4>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>{t('addSource.openWebpageDesc', 'Go to the important pages on your website (like Services, Prices, or Contact).')}</p>
-                      </div>
-                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                          <Printer size={22} color="white" strokeWidth={2.5} />
-                        </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step2', 'STEP 2')}</div>
-                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.saveAsPdf', 'Save as PDF')}</h4>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: t('addSource.saveAsPdfDesc', 'Right-click the page → <strong>Print</strong> → Choose <strong>"Save as PDF"</strong>.') }} />
-                      </div>
-                      <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', border: '1px solid #e2e8f0' }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                          <UploadCloud size={22} color="white" strokeWidth={2.5} />
-                        </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#cbd5e1', marginBottom: '0.5rem' }}>{t('addSource.step3', 'STEP 3')}</div>
-                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{t('addSource.uploadHere', 'Upload here')}</h4>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>{t('addSource.uploadHereDesc', 'Drop your PDF in the box below. Your AI will learn from it!')}</p>
-                      </div>
-                    </div>
-
-                    <div style={{ background: 'rgba(14, 165, 233, 0.1)', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid rgba(14, 165, 233, 0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                        <FileText size={20} color="#0ea5e9" strokeWidth={2} style={{ flexShrink: 0, marginTop: '2px' }} />
-                        <div>
-                          <p style={{ margin: 0, fontSize: '0.875rem', color: '#0f172a', fontWeight: 600 }}>{t('addSource.tipTitle', 'Tip: Do this for every important page')}</p>
-                          <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#475569' }}>{t('addSource.tipDesc', 'Save your Services page, Prices, Hours, Contact info, and FAQs as PDFs and upload them in the PDF tab.')}</p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="alert warning" style={{ marginBottom: '0.75rem' }}>
+                    {t('addSource.pdfFallbackShort', 'This website blocks automatic scanning. Use the PDF tab to upload pages.')}
                   </div>
                 )}
 
@@ -752,50 +695,6 @@ export default function AddSourcePage() {
                   </div>
                 </div>
               )}
-
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: 'var(--flow-heading)' }}>{t('addSource.addWebsitePagesAsPdfs', 'Add Website Pages as PDFs')}</h3>
-                    <p style={{ margin: '0.25rem 0 0', color: 'var(--flow-muted)', fontSize: '0.95rem' }}>{t('addSource.followThreeEasySteps', 'Follow these 3 easy steps')}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: '1rem' }}>
-                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MousePointerClick size={18} color="white" strokeWidth={2.5} />
-                    </div>
-                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>1</span>
-                  </div>
-                  <div className="flow-instruction-card-heading">{t('addSource.openWebpage', 'Open the page')}</div>
-                  <div className="flow-instruction-card-body">{t('addSource.openWebpageDesc', 'Open important pages (services, prices, hours, booking, contact).')}</div>
-                </div>
-                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Printer size={18} color="white" strokeWidth={2.5} />
-                    </div>
-                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>2</span>
-                  </div>
-                  <div className="flow-instruction-card-heading">{t('addSource.saveAsPdf', 'Save as PDF')}</div>
-                  <div className="flow-instruction-card-body" dangerouslySetInnerHTML={{ __html: t('addSource.saveAsPdfDesc', 'Right-click → Print → &quot;Save as PDF&quot;') }} />
-                </div>
-                <div className="flow-instruction-card" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--flow-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <UploadCloud size={18} color="white" strokeWidth={2.5} />
-                    </div>
-                    <span className="flow-instruction-card-number" style={{ fontSize: '1.25rem', color: '#cbd5e1' }}>3</span>
-                  </div>
-                  <div className="flow-instruction-card-heading">{t('addSource.uploadHere', 'Upload here')}</div>
-                  <div className="flow-instruction-card-body">{t('addSource.uploadHereDesc', 'Drop your PDFs below. Your AI will learn from them!')}</div>
-                </div>
-              </div>
-
               <FileDropzone
                 label={t('addSource.dropPdfsHere', 'Drop your PDFs here')}
                 helperText={t('addSource.dropPdfsHelper', 'Each PDF teaches your AI about that page. Upload up to 20 files.')}

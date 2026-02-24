@@ -793,7 +793,7 @@ class BotAssetAutoExtractResponse(BaseModel):
 
 class AssetExtractionStatusResponse(BaseModel):
     job_id: str
-    status: str  # queued, running, done, error
+    status: str  # none, queued, running, done, error, cancelled
     assets_discovered: int = 0
     assets_downloaded: int = 0
     assets_created: int = 0

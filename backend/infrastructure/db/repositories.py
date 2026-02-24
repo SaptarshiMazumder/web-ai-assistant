@@ -3943,13 +3943,16 @@ class PostgresAssetExtractionJobRepository:
         con = _connect()
         try:
             urls_json = json.dumps(job.page_urls or [])
+            # Keep "cancelled" sticky: once cancelled, background progress updates must not
+            # flip the row back to running/done.
+            where_clause = "WHERE job_id=%s" if job.status == "cancelled" else "WHERE job_id=%s AND status <> 'cancelled'"
             con.execute(
-                """
+                f"""
                 UPDATE asset_extraction_jobs
                 SET status=%s, gcs_prefix=%s, page_urls=%s,
                     assets_discovered=%s, assets_downloaded=%s, assets_created=%s,
                     error=%s, celery_task_id=%s, updated_at=%s
-                WHERE job_id=%s
+                {where_clause}
                 """,
                 (
                     job.status, job.gcs_prefix, urls_json,

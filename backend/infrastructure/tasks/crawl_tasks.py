@@ -467,7 +467,7 @@ def asset_extraction_task(
             from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
             job_repo = PostgresAssetExtractionJobRepository()
             current_job = job_repo.get_job(job_id)
-            if current_job:
+            if current_job and current_job.status != "cancelled":
                 current_job.status = "running"
                 job_repo.update_job(current_job)
         except Exception as e:
@@ -489,6 +489,16 @@ def asset_extraction_task(
                 "assets_limit": limit,
             }
 
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {
+                    "status": "cancelled",
+                    "assets_count": 0,
+                    "assets_total": existing_count,
+                    "assets_limit": limit,
+                }
+
         from application.services.asset_extraction_service import asset_extraction_service
         service = asset_extraction_service()
         count = service.extract_from_gcs_prefix(
@@ -496,11 +506,20 @@ def asset_extraction_task(
             bot_id=bot_id,
             gcs_prefix=gcs_prefix,
             max_assets=remaining,
+            page_urls=(current_job.page_urls if current_job else None),
             job_id=job_id,
         )
         total_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
-        
+
         if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {
+                    "status": "cancelled",
+                    "assets_count": count,
+                    "assets_total": total_count,
+                    "assets_limit": limit,
+                }
             current_job.status = "done"
             job_repo.update_job(current_job)
 
@@ -512,6 +531,10 @@ def asset_extraction_task(
             "assets_limit": limit,
         }
     except Exception as e:
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {"status": "cancelled"}
         if job_repo and current_job:
             current_job.status = "error"
             current_job.error = str(e)[:200]

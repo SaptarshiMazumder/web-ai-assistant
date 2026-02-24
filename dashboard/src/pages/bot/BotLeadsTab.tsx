@@ -42,7 +42,7 @@ export default function BotLeadsTab() {
         ) : leads.length === 0 ? (
           <div style={{ padding: '2rem 0', textAlign: 'center' }}>
             <UsersRound size={36} style={{ color: 'var(--ui-flow-muted, #94a3b8)', marginBottom: '0.75rem' }} />
-            <p className="muted" style={{ margin: 0 }}>No leads yet. Escalations will appear here once visitors request follow-up.</p>
+            <p className="muted" style={{ margin: 0 }}>No leads yet. Human support requests will appear here once visitors request follow-up.</p>
           </div>
         ) : (
           <div className="leads-table-wrap">

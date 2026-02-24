@@ -893,6 +893,15 @@ class AssetExtractionService:
             except Exception as e:
                 logger.warning(f"Failed to load job {job_id}: {e}")
 
+        def _is_cancelled() -> bool:
+            if not job_repo or not job_id:
+                return False
+            try:
+                latest = job_repo.get_job(job_id)
+                return bool(latest and latest.status == "cancelled")
+            except Exception:
+                return False
+
         # Get existing assets to avoid duplicates
         existing = self._repo.list_assets_for_bot(bot_id, active_only=False)
         existing_names = {a.name.strip().lower() for a in existing}
@@ -905,6 +914,9 @@ class AssetExtractionService:
         all_extracted: List[Dict[str, Any]] = []
 
         for doc in documents:
+            if _is_cancelled():
+                logger.info("[AssetExtraction] Job %s cancelled while extracting candidates", job_id)
+                break
             if len(all_extracted) >= max_assets:
                 break
 
@@ -949,12 +961,18 @@ class AssetExtractionService:
             if extraction_mode in ("llm", "hybrid") and len(all_extracted) < max_assets:
                 # Limit to first 2 chunks per page to avoid excessive LLM calls
                 for chunk in chunks[:2]:
+                    if _is_cancelled():
+                        logger.info("[AssetExtraction] Job %s cancelled during LLM extraction", job_id)
+                        break
                     if len(all_extracted) >= max_assets:
                         break
                     page_assets = _extract_assets_from_page(url, chunk, image_urls)
                     _append_page_assets(page_assets)
 
             if extraction_mode in ("deterministic", "hybrid") and len(all_extracted) < max_assets:
+                if _is_cancelled():
+                    logger.info("[AssetExtraction] Job %s cancelled before deterministic extraction", job_id)
+                    break
                 deterministic_assets = _extract_assets_from_page_deterministic(url, content, image_urls)
                 filtered_assets = _filter_business_assets_with_llm(url, deterministic_assets)
                 logger.info(
@@ -980,6 +998,9 @@ class AssetExtractionService:
         limit = int((os.environ.get("ASSET_MAX_PER_BOT") or "15").strip() or 15)
 
         for item in all_extracted:
+            if _is_cancelled():
+                logger.info("[AssetExtraction] Job %s cancelled while saving assets", job_id)
+                break
             # ── Re-check limit before EACH insert ──
             current_count = len(self._repo.list_assets_for_bot(bot_id, active_only=False))
             if current_count >= limit:

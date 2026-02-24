@@ -498,7 +498,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
           <MetricCard label="Total conversations" value={summary?.conversations ?? 0} icon={<MessagesSquare size={15} />} />
           <MetricCard label="Leads captured" value={summary?.escalations ?? 0} icon={<UserPlus size={15} />} />
           <MetricCard label="Messages / Conv" value={Number((summary?.messages_per_conversation ?? 0).toFixed(1))} icon={<MessageCircle size={15} />} />
-          <MetricCard label="Unresolved escalations" value={unresolvedEscalations ?? 0} icon={<AlertTriangle size={15} />} />
+          <MetricCard label="Unresolved support requests" value={unresolvedEscalations ?? 0} icon={<AlertTriangle size={15} />} />
           <div className="ui-metric-card summary-metric-card--feedback">
             <div className="ui-metric-card-head">
               <span className="ui-metric-card-label">CSAT</span>
@@ -535,7 +535,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
         </section>
         <section className="ui-glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div className="card-title" style={{ margin: 0 }}>Daily escalations</div>
+            <div className="card-title" style={{ margin: 0 }}>Daily support requests</div>
             <RangeControls preset={escPreset} setPreset={setEscPreset} custom={escCustom} setCustom={setEscCustom} />
           </div>
           <div style={{ marginTop: 8, flex: 1, minHeight: CHART_HEIGHT, display: 'flex', flexDirection: 'column', width: '100%' }}>

@@ -25,6 +25,7 @@ from api.schemas import (
 )
 from common.di.container import asset_repo, bot_service
 from domain.entities import BotAsset
+from infrastructure.celery_app import celery_app
 from infrastructure.services.indexing_service import _parse_bucket_and_prefix
 from infrastructure.tasks.crawl_tasks import asset_extraction_task
 
@@ -393,6 +394,36 @@ async def get_asset_extraction_status(
         limit=limit,
         error=job.error,
     )
+
+
+@router.post("/v1/org/bots/{bot_id}/image-assets/extract-cancel")
+async def cancel_asset_extraction(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Cancel the latest queued/running image extraction job for this bot."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+
+    from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
+    repo = PostgresAssetExtractionJobRepository()
+    job = repo.get_latest_job_for_bot(bot_id)
+    if not job:
+        return {"status": "none", "job_id": ""}
+    if job.status not in ("queued", "running"):
+        return {"status": "already_done", "job_id": job.job_id}
+
+    if job.celery_task_id:
+        try:
+            celery_app.control.revoke(job.celery_task_id, terminate=True)
+        except Exception as e:
+            logger.warning("Failed to revoke extraction task %s for bot %s: %s", job.celery_task_id, bot_id, e)
+
+    job.status = "cancelled"
+    job.error = "Cancelled by user."
+    repo.update_job(job)
+    return {"status": "cancelled", "job_id": job.job_id}
 
 
 # ---------------------------------------------------------------------------
