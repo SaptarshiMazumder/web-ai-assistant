@@ -53,6 +53,18 @@ export type SourceRecord = {
   display_name?: string | null
   created_at: string
   updated_at: string
+  sync_enabled?: boolean
+  sync_frequency?: string
+  sync_time_utc?: string
+  sync_timezone?: string
+  last_synced_at?: string | null
+}
+
+export type SyncSettings = {
+  sync_enabled: boolean
+  sync_frequency: string
+  sync_time_utc: string
+  sync_timezone: string
 }
 
 export type PdfSourceUploadItem = {
@@ -416,6 +428,8 @@ type DashboardData = {
   verifyDomain: (hostname: string) => Promise<void>
   startCrawl: () => Promise<void>
   startCrawlForSource: (botId: string, sourceId: string) => Promise<void>
+  syncSource: (botId: string, sourceId: string) => Promise<void>
+  updateSourceSyncSettings: (botId: string, sourceId: string, settings: SyncSettings) => Promise<SourceRecord | null>
   queueCrawlUrls: (botId: string, urls: string[]) => Promise<string | null>
   cancelCrawl: () => Promise<void>
   cancelIndexJob: (botId: string, cancelUrl: string) => Promise<void>
@@ -1180,6 +1194,44 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setError((err as Error).message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function syncSource(botId: string, sourceId: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}/sync`, orgOverride), {
+        method: 'POST',
+      })
+      await loadJobs(botId)
+      await loadSources(botId)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function updateSourceSyncSettings(botId: string, sourceId: string, settings: SyncSettings): Promise<SourceRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    setError(null)
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<SourceRecord>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}/sync-settings`, orgOverride),
+        {
+          method: 'PUT',
+          body: JSON.stringify(settings),
+        }
+      )
+      await loadSources(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
     }
   }
 
@@ -2241,6 +2293,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     verifyDomain,
     startCrawl,
     startCrawlForSource,
+    syncSource,
+    updateSourceSyncSettings,
     queueCrawlUrls,
     cancelCrawl,
     cancelIndexJob,

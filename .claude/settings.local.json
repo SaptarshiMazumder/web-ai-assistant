@@ -16,7 +16,8 @@
       "WebFetch(domain:developers.line.biz)",
       "Bash(python -c:*)",
       "Bash(docker compose up:*)",
-      "Bash(docker compose restart:*)"
+      "Bash(docker compose restart:*)",
+      "Bash(grep:*)"
     ]
   }
 }

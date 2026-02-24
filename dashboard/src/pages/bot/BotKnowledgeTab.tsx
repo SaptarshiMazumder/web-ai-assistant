@@ -124,6 +124,8 @@ export default function BotKnowledgeTab() {
     cancelIndexJob,
     discoverUrls,
     getJobStatus,
+    syncSource,
+    updateSourceSyncSettings,
     listBookingLinkJobs,
     getBookingLinkJob,
     startAvailabilityJob,
@@ -142,6 +144,16 @@ export default function BotKnowledgeTab() {
   const [sourcesSelected, setSourcesSelected] = useState<Set<string>>(new Set())
   const [deletingSelectedSources, setDeletingSelectedSources] = useState(false)
   const [stoppingTraining, setStoppingTraining] = useState(false)
+
+  // Sync state
+  const [syncingSourceIds, setSyncingSourceIds] = useState<Set<string>>(new Set())
+  const [syncSettingsSourceId, setSyncSettingsSourceId] = useState<string | null>(null)
+  const [syncSettingsFrequency, setSyncSettingsFrequency] = useState('daily')
+  const [syncSettingsHour, setSyncSettingsHour] = useState('09')
+  const [syncSettingsMinute, setSyncSettingsMinute] = useState('00')
+  const [savingSyncSettings, setSavingSyncSettings] = useState(false)
+  const [syncingSelected, setSyncingSelected] = useState(false)
+  const syncPopupRef = useRef<HTMLDivElement | null>(null)
 
   // Discovery UI (Add more pages)
   const [discoverInputUrl, setDiscoverInputUrl] = useState('')
@@ -775,6 +787,109 @@ export default function BotKnowledgeTab() {
     }
   }, [selectedBot, activeSourcesJob, stoppingTraining, cancelIndexJob])
 
+  const handleSyncSource = useCallback(async (sourceId: string) => {
+    if (!selectedBot || syncingSourceIds.has(sourceId)) return
+    setSyncingSourceIds((prev) => new Set(prev).add(sourceId))
+    try {
+      await syncSource(selectedBot.bot_id, sourceId)
+    } finally {
+      setSyncingSourceIds((prev) => { const next = new Set(prev); next.delete(sourceId); return next })
+    }
+  }, [selectedBot, syncingSourceIds, syncSource])
+
+  const handleSyncSelected = useCallback(async () => {
+    if (!selectedBot || syncingSelected) return
+    const urlSourceIds = sources
+      .filter((s) => s.type.toLowerCase() === 'url' && sourcesSelected.has(s.source_id))
+      .map((s) => s.source_id)
+    if (urlSourceIds.length === 0) return
+    setSyncingSelected(true)
+    try {
+      for (const sid of urlSourceIds) {
+        setSyncingSourceIds((prev) => new Set(prev).add(sid))
+        try {
+          await syncSource(selectedBot.bot_id, sid)
+        } finally {
+          setSyncingSourceIds((prev) => { const next = new Set(prev); next.delete(sid); return next })
+        }
+      }
+    } finally {
+      setSyncingSelected(false)
+    }
+  }, [selectedBot, syncingSelected, sources, sourcesSelected, syncSource])
+
+  const handleOpenSyncSettings = useCallback((source: { source_id: string; sync_frequency?: string; sync_time_utc?: string }) => {
+    setSyncSettingsSourceId(source.source_id)
+    setSyncSettingsFrequency(source.sync_frequency || 'daily')
+    const timeParts = (source.sync_time_utc || '00:00').split(':')
+    setSyncSettingsHour(timeParts[0] || '00')
+    setSyncSettingsMinute(timeParts[1] || '00')
+  }, [])
+
+  const handleSaveSyncSettings = useCallback(async (sourceId: string, enabled: boolean) => {
+    if (!selectedBot || savingSyncSettings) return
+    setSavingSyncSettings(true)
+    try {
+      const localOffset = new Date().getTimezoneOffset()
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      const localH = parseInt(syncSettingsHour, 10)
+      const localM = parseInt(syncSettingsMinute, 10)
+      const totalMinutes = localH * 60 + localM + localOffset
+      const utcMinutes = ((totalMinutes % 1440) + 1440) % 1440
+      const utcH = String(Math.floor(utcMinutes / 60)).padStart(2, '0')
+      const utcM = String(utcMinutes % 60).padStart(2, '0')
+      await updateSourceSyncSettings(selectedBot.bot_id, sourceId, {
+        sync_enabled: enabled,
+        sync_frequency: syncSettingsFrequency,
+        sync_time_utc: `${utcH}:${utcM}`,
+        sync_timezone: tz,
+      })
+      setSyncSettingsSourceId(null)
+    } finally {
+      setSavingSyncSettings(false)
+    }
+  }, [selectedBot, savingSyncSettings, syncSettingsFrequency, syncSettingsHour, syncSettingsMinute, updateSourceSyncSettings])
+
+  const handleToggleAutoSync = useCallback(async (source: { source_id: string; sync_enabled?: boolean; sync_frequency?: string; sync_time_utc?: string; sync_timezone?: string }) => {
+    if (!selectedBot) return
+    const newEnabled = !source.sync_enabled
+    if (newEnabled) {
+      handleOpenSyncSettings(source)
+    } else {
+      await updateSourceSyncSettings(selectedBot.bot_id, source.source_id, {
+        sync_enabled: false,
+        sync_frequency: source.sync_frequency || 'daily',
+        sync_time_utc: source.sync_time_utc || '00:00',
+        sync_timezone: source.sync_timezone || 'UTC',
+      })
+    }
+  }, [selectedBot, handleOpenSyncSettings, updateSourceSyncSettings])
+
+  // Close sync popup on outside click
+  useEffect(() => {
+    if (!syncSettingsSourceId) return
+    const handler = (e: MouseEvent) => {
+      if (syncPopupRef.current && !syncPopupRef.current.contains(e.target as Node)) {
+        setSyncSettingsSourceId(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [syncSettingsSourceId])
+
+  /** True if at least one selected source is a URL type. */
+  const hasSelectedUrlSources = useMemo(() => {
+    return sources.some((s) => s.type.toLowerCase() === 'url' && sourcesSelected.has(s.source_id))
+  }, [sources, sourcesSelected])
+
+  /** Convert UTC HH:MM to local time display string. */
+  function formatSyncTimeLocal(utcTime: string, _tz?: string): string {
+    const [h, m] = (utcTime || '00:00').split(':').map(Number)
+    const now = new Date()
+    now.setUTCHours(h, m, 0, 0)
+    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+  }
+
   /** For Source column: URL or config summary (not display name). */
   function sourceUrlOrConfig(source: { type: string; config: Record<string, unknown> }): string {
     if (source.type === 'url' && typeof source.config?.url === 'string') return source.config.url
@@ -925,6 +1040,20 @@ export default function BotKnowledgeTab() {
                   {deletingSelectedSources ? t('botKnowledge.deleting', 'Deleting...') : t('botKnowledge.deleteSelected', 'Delete selected ({{count}})', { count: sourcesSelected.size })}
                 </button>
               )}
+              {sourcesSelected.size > 0 && hasSelectedUrlSources && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={handleSyncSelected}
+                  disabled={syncingSelected || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: syncingSelected ? 'spin 1s linear infinite' : 'none' }}>
+                    <path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                  </svg>
+                  {syncingSelected ? t('botKnowledge.syncing', 'Syncing...') : t('botKnowledge.syncNow', 'Sync now')}
+                </button>
+              )}
               {sourcesSelected.size > 0 && <span className="muted">{t('botKnowledge.selectedCount', '{{count}} selected', { count: sourcesSelected.size })}</span>}
             </>
           )}
@@ -949,6 +1078,7 @@ export default function BotKnowledgeTab() {
                   <th style={{ width: '160px' }}>{t('botKnowledge.name', 'Name')}</th>
                   <th>{t('botKnowledge.source', 'Source')}</th>
                   <th style={{ width: '100px' }}>{t('botKnowledge.status', 'Status')}</th>
+                  <th style={{ width: '220px' }}>{t('botKnowledge.sync', 'Sync')}</th>
                   <th>{t('botKnowledge.added', 'Added')}</th>
                   <th style={{ width: '80px' }}></th>
                 </tr>
@@ -992,6 +1122,98 @@ export default function BotKnowledgeTab() {
                         >
                           {training ? t('botKnowledge.training', 'Training') : t('botKnowledge.trained', 'Trained')}
                         </span>
+                      </td>
+                      <td>
+                        {s.type.toLowerCase() === 'url' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', position: 'relative' }}>
+                            {/* Circular sync icon button */}
+                            <button
+                              type="button"
+                              onClick={() => handleSyncSource(s.source_id)}
+                              disabled={training || syncingSourceIds.has(s.source_id)}
+                              title={t('botKnowledge.syncNow', 'Sync now')}
+                              style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--ui-flow-border)', background: 'var(--ui-flow-bg, #fff)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: training ? 'not-allowed' : 'pointer', opacity: training ? 0.4 : 1, flexShrink: 0, padding: 0 }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: syncingSourceIds.has(s.source_id) ? 'spin 1s linear infinite' : 'none' }}>
+                                <path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                              </svg>
+                            </button>
+                            {/* Auto-sync toggle */}
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.8125rem', flexShrink: 0 }}>
+                              <input
+                                type="checkbox"
+                                checked={!!s.sync_enabled}
+                                onChange={() => handleToggleAutoSync(s)}
+                                style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
+                              />
+                              {t('botKnowledge.autoSync', 'Auto')}
+                            </label>
+                            {/* Schedule label + pencil edit icon */}
+                            {s.sync_enabled && (
+                              <span className="muted" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
+                                {t('botKnowledge.syncSchedule', '{{frequency}} at {{time}}', {
+                                  frequency: t(`botKnowledge.${s.sync_frequency || 'daily'}`, s.sync_frequency || 'daily'),
+                                  time: formatSyncTimeLocal(s.sync_time_utc || '00:00', s.sync_timezone),
+                                })}
+                                <button type="button" onClick={() => handleOpenSyncSettings(s)} title={t('botKnowledge.edit', 'edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'inline-flex', color: 'var(--ui-flow-muted)' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                  </svg>
+                                </button>
+                              </span>
+                            )}
+                            {/* Last synced */}
+                            {s.last_synced_at && (
+                              <span className="muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                                {formatRelativeTime(s.last_synced_at)}
+                              </span>
+                            )}
+                            {/* Sync settings popup */}
+                            {syncSettingsSourceId === s.source_id && (
+                              <div
+                                ref={syncPopupRef}
+                                style={{
+                                  position: 'absolute', top: '100%', left: 0, zIndex: 100,
+                                  background: '#fff', border: '1px solid var(--ui-flow-border)', borderRadius: '10px',
+                                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '14px 16px',
+                                  display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '240px', marginTop: '4px',
+                                }}
+                              >
+                                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t('botKnowledge.autoSync', 'Auto sync')}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <select value={syncSettingsFrequency} onChange={(e) => setSyncSettingsFrequency(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', flex: 1 }}>
+                                    <option value="daily">{t('botKnowledge.daily', 'Daily')}</option>
+                                    <option value="weekly">{t('botKnowledge.weekly', 'Weekly')}</option>
+                                    <option value="monthly">{t('botKnowledge.monthly', 'Monthly')}</option>
+                                  </select>
+                                  <span style={{ fontSize: '0.8125rem' }}>{t('botKnowledge.at', 'at')}</span>
+                                  <select value={syncSettingsHour} onChange={(e) => setSyncSettingsHour(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
+                                    {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                                      <option key={h} value={h}>{h}</option>
+                                    ))}
+                                  </select>
+                                  <span style={{ fontSize: '0.8125rem' }}>:</span>
+                                  <select value={syncSettingsMinute} onChange={(e) => setSyncSettingsMinute(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
+                                    <option value="00">00</option>
+                                    <option value="15">15</option>
+                                    <option value="30">30</option>
+                                    <option value="45">45</option>
+                                  </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button type="button" className="ghost" onClick={() => setSyncSettingsSourceId(null)} style={{ fontSize: '0.8125rem', padding: '4px 12px', borderRadius: '6px' }}>
+                                    {t('botKnowledge.cancel', 'Cancel')}
+                                  </button>
+                                  <button type="button" className="primary" onClick={() => handleSaveSyncSettings(s.source_id, true)} disabled={savingSyncSettings} style={{ fontSize: '0.8125rem', padding: '4px 14px', borderRadius: '6px' }}>
+                                    {savingSyncSettings ? '...' : t('botKnowledge.save', 'Save')}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="muted" style={{ fontSize: '0.8125rem' }}>—</span>
+                        )}
                       </td>
                       <td className="muted">{formatRelativeTime(s.updated_at)}</td>
                       <td>

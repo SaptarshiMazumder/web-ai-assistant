@@ -148,6 +148,13 @@ class BotSourceCreateRequest(BaseModel):
     display_name: Optional[str] = None
 
 
+class BotSourceSyncSettingsRequest(BaseModel):
+    sync_enabled: bool
+    sync_frequency: str = "daily"  # daily | weekly | monthly
+    sync_time_utc: str = "00:00"  # HH:MM in UTC
+    sync_timezone: str = "UTC"  # IANA timezone for display
+
+
 class BotSourceResponse(BaseModel):
     source_id: str
     bot_id: str
@@ -156,6 +163,11 @@ class BotSourceResponse(BaseModel):
     display_name: Optional[str] = None
     created_at: str
     updated_at: str
+    sync_enabled: bool = False
+    sync_frequency: str = "daily"
+    sync_time_utc: str = "00:00"
+    sync_timezone: str = "UTC"
+    last_synced_at: Optional[str] = None
 
 
 class BotSourceListResponse(BaseModel):

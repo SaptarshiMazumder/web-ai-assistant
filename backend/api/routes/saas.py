@@ -34,6 +34,7 @@ from api.schemas import (
     BotSourceCreateRequest,
     BotSourceListResponse,
     BotSourceResponse,
+    BotSourceSyncSettingsRequest,
     PdfSourceUploadResponse,
     PdfSourceUploadItem,
     TextSourceUploadRequest,
@@ -2604,6 +2605,11 @@ async def v1_org_list_sources(bot_id: str, org_id: Optional[str] = None, user=De
                 display_name=s.display_name,
                 created_at=s.created_at,
                 updated_at=s.updated_at,
+                sync_enabled=s.sync_enabled,
+                sync_frequency=s.sync_frequency,
+                sync_time_utc=s.sync_time_utc,
+                sync_timezone=s.sync_timezone,
+                last_synced_at=s.last_synced_at,
             )
             for s in sources
         ],
@@ -2630,6 +2636,11 @@ async def v1_org_create_source(
         display_name=source.display_name,
         created_at=source.created_at,
         updated_at=source.updated_at,
+        sync_enabled=source.sync_enabled,
+        sync_frequency=source.sync_frequency,
+        sync_time_utc=source.sync_time_utc,
+        sync_timezone=source.sync_timezone,
+        last_synced_at=source.last_synced_at,
     )
 
 
@@ -2809,7 +2820,76 @@ async def v1_org_get_source(
         display_name=source.display_name,
         created_at=source.created_at,
         updated_at=source.updated_at,
+        sync_enabled=source.sync_enabled,
+        sync_frequency=source.sync_frequency,
+        sync_time_utc=source.sync_time_utc,
+        sync_timezone=source.sync_timezone,
+        last_synced_at=source.last_synced_at,
     )
+
+
+@router.put("/v1/org/bots/{bot_id}/sources/{source_id}/sync-settings", response_model=BotSourceResponse)
+async def v1_org_update_source_sync_settings(
+    bot_id: str,
+    source_id: str,
+    payload: BotSourceSyncSettingsRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    source = indexing_service().get_source(bot_id, source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if (source.type or "").lower() != "url":
+        raise HTTPException(status_code=400, detail="Sync is only supported for URL sources")
+    from infrastructure.db.repositories import PostgresBotSourceRepository
+    PostgresBotSourceRepository().update_sync_settings(
+        bot_id, source_id, payload.sync_enabled, payload.sync_frequency, payload.sync_time_utc, payload.sync_timezone
+    )
+    updated = indexing_service().get_source(bot_id, source_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Source not found after update")
+    return BotSourceResponse(
+        source_id=updated.source_id,
+        bot_id=updated.bot_id,
+        type=updated.type,
+        config=updated.config,
+        display_name=updated.display_name,
+        created_at=updated.created_at,
+        updated_at=updated.updated_at,
+        sync_enabled=updated.sync_enabled,
+        sync_frequency=updated.sync_frequency,
+        sync_time_utc=updated.sync_time_utc,
+        sync_timezone=updated.sync_timezone,
+        last_synced_at=updated.last_synced_at,
+    )
+
+
+@router.post("/v1/org/bots/{bot_id}/sources/{source_id}/sync")
+async def v1_org_sync_source(
+    bot_id: str,
+    source_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Manual sync: re-crawl a URL source to update RAG data."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    source = indexing_service().get_source(bot_id, source_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if (source.type or "").lower() != "url":
+        raise HTTPException(status_code=400, detail="Sync is only supported for URL sources")
+    try:
+        result = await indexing_service().start_indexing_for_source(bot_id, source_id)
+        return result
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/v1/org/bots/{bot_id}/sources/{source_id}")

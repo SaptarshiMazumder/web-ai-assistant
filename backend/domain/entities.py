@@ -88,6 +88,11 @@ class BotSource:
     display_name: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+    sync_enabled: bool = False
+    sync_frequency: str = "daily"  # daily | weekly | monthly
+    sync_time_utc: str = "00:00"  # HH:MM in UTC
+    sync_timezone: str = "UTC"  # IANA timezone for display
+    last_synced_at: Optional[str] = None
 
 
 @dataclass

@@ -796,14 +796,62 @@ class PostgresDomainCorpusRepository:
 
 
 class PostgresBotSourceRepository(BotSourceRepository):
+    _sync_columns_ensured = False
+
+    @classmethod
+    def _ensure_sync_columns(cls) -> None:
+        if cls._sync_columns_ensured:
+            return
+        con = _connect()
+        try:
+            for stmt in [
+                "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS sync_enabled BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS sync_frequency VARCHAR(20) DEFAULT 'daily'",
+                "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS sync_time_utc VARCHAR(5) DEFAULT '00:00'",
+                "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS sync_timezone VARCHAR(50) DEFAULT 'UTC'",
+                "ALTER TABLE bot_sources ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ",
+            ]:
+                con.execute(stmt)
+            con.commit()
+            cls._sync_columns_ensured = True
+        except Exception:
+            cls._sync_columns_ensured = True  # Don't retry on error; columns may already exist
+        finally:
+            con.close()
+
+    @staticmethod
+    def _row_to_source(row) -> BotSource:
+        try:
+            config = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or {})
+        except (TypeError, ValueError):
+            config = {}
+        return BotSource(
+            source_id=row[0],
+            bot_id=row[1],
+            type=row[2],
+            config=config if isinstance(config, dict) else {},
+            display_name=row[4],
+            created_at=row[5] or "",
+            updated_at=row[6] or "",
+            sync_enabled=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
+            sync_frequency=row[8] or "daily" if len(row) > 8 else "daily",
+            sync_time_utc=row[9] or "00:00" if len(row) > 9 else "00:00",
+            sync_timezone=row[10] or "UTC" if len(row) > 10 else "UTC",
+            last_synced_at=row[11] if len(row) > 11 else None,
+        )
+
+    _SELECT_COLS = "source_id, bot_id, type, config, display_name, created_at, updated_at, sync_enabled, sync_frequency, sync_time_utc, sync_timezone, last_synced_at"
+
     def create_source(self, source: BotSource) -> None:
+        self._ensure_sync_columns()
         con = _connect()
         try:
             config_json = json.dumps(source.config if isinstance(source.config, dict) else {})
             con.execute(
                 """
-                INSERT INTO bot_sources (source_id, bot_id, type, config, display_name, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO bot_sources (source_id, bot_id, type, config, display_name, created_at, updated_at,
+                                         sync_enabled, sync_frequency, sync_time_utc, sync_timezone, last_synced_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     source.source_id,
@@ -813,6 +861,11 @@ class PostgresBotSourceRepository(BotSourceRepository):
                     source.display_name,
                     source.created_at,
                     source.updated_at,
+                    source.sync_enabled,
+                    source.sync_frequency,
+                    source.sync_time_utc,
+                    source.sync_timezone,
+                    source.last_synced_at,
                 ),
             )
             con.commit()
@@ -824,6 +877,7 @@ class PostgresBotSourceRepository(BotSourceRepository):
         sid = (source.source_id or "").strip()
         if not bid or not sid:
             return
+        self._ensure_sync_columns()
         con = _connect()
         try:
             config_json = json.dumps(source.config if isinstance(source.config, dict) else {}, ensure_ascii=False)
@@ -845,30 +899,16 @@ class PostgresBotSourceRepository(BotSourceRepository):
         sid = (source_id or "").strip()
         if not bid or not sid:
             return None
+        self._ensure_sync_columns()
         con = _connect()
         try:
             row = con.execute(
-                """
-                SELECT source_id, bot_id, type, config, display_name, created_at, updated_at
-                FROM bot_sources WHERE bot_id = %s AND source_id = %s
-                """,
+                f"SELECT {self._SELECT_COLS} FROM bot_sources WHERE bot_id = %s AND source_id = %s",
                 (bid, sid),
             ).fetchone()
             if not row:
                 return None
-            try:
-                config = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or {})
-            except (TypeError, ValueError):
-                config = {}
-            return BotSource(
-                source_id=row[0],
-                bot_id=row[1],
-                type=row[2],
-                config=config if isinstance(config, dict) else {},
-                display_name=row[4],
-                created_at=row[5],
-                updated_at=row[6],
-            )
+            return self._row_to_source(row)
         finally:
             con.close()
 
@@ -876,33 +916,14 @@ class PostgresBotSourceRepository(BotSourceRepository):
         bid = (bot_id or "").strip()
         if not bid:
             return []
+        self._ensure_sync_columns()
         con = _connect()
         try:
             rows = con.execute(
-                """
-                SELECT source_id, bot_id, type, config, display_name, created_at, updated_at
-                FROM bot_sources WHERE bot_id = %s ORDER BY updated_at DESC
-                """,
+                f"SELECT {self._SELECT_COLS} FROM bot_sources WHERE bot_id = %s ORDER BY updated_at DESC",
                 (bid,),
             ).fetchall()
-            result = []
-            for row in rows:
-                try:
-                    config = json.loads(row[3]) if isinstance(row[3], str) else (row[3] or {})
-                except (TypeError, ValueError):
-                    config = {}
-                result.append(
-                    BotSource(
-                        source_id=row[0],
-                        bot_id=row[1],
-                        type=row[2],
-                        config=config if isinstance(config, dict) else {},
-                        display_name=row[4],
-                        created_at=row[5],
-                        updated_at=row[6],
-                    )
-                )
-            return result
+            return [self._row_to_source(row) for row in rows]
         finally:
             con.close()
 
@@ -915,6 +936,101 @@ class PostgresBotSourceRepository(BotSourceRepository):
         try:
             con.execute("DELETE FROM bot_sources WHERE bot_id = %s AND source_id = %s", (bid, sid))
             con.commit()
+        finally:
+            con.close()
+
+    def update_sync_settings(
+        self, bot_id: str, source_id: str, sync_enabled: bool, sync_frequency: str, sync_time_utc: str, sync_timezone: str
+    ) -> None:
+        bid = (bot_id or "").strip()
+        sid = (source_id or "").strip()
+        if not bid or not sid:
+            return
+        self._ensure_sync_columns()
+        con = _connect()
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            con.execute(
+                """
+                UPDATE bot_sources
+                SET sync_enabled = %s, sync_frequency = %s, sync_time_utc = %s, sync_timezone = %s, updated_at = %s
+                WHERE bot_id = %s AND source_id = %s
+                """,
+                (sync_enabled, sync_frequency, sync_time_utc, sync_timezone, now, bid, sid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_last_synced(self, bot_id: str, source_id: str) -> None:
+        bid = (bot_id or "").strip()
+        sid = (source_id or "").strip()
+        if not bid or not sid:
+            return
+        self._ensure_sync_columns()
+        con = _connect()
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            con.execute(
+                "UPDATE bot_sources SET last_synced_at = %s, updated_at = %s WHERE bot_id = %s AND source_id = %s",
+                (now, now, bid, sid),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def list_sources_due_for_sync(self) -> List[BotSource]:
+        """Return URL sources with sync_enabled=True whose schedule matches the current 15-min window."""
+        self._ensure_sync_columns()
+        now_utc = datetime.now(timezone.utc)
+        current_hhmm = now_utc.strftime("%H:%M")
+        # Build a 15-minute window around the scheduled time
+        window_start = (now_utc - timedelta(minutes=7)).strftime("%H:%M")
+        window_end = (now_utc + timedelta(minutes=7)).strftime("%H:%M")
+
+        con = _connect()
+        try:
+            if window_start <= window_end:
+                rows = con.execute(
+                    f"""
+                    SELECT {self._SELECT_COLS} FROM bot_sources
+                    WHERE sync_enabled = TRUE AND type = 'url'
+                      AND sync_time_utc >= %s AND sync_time_utc <= %s
+                    ORDER BY updated_at DESC
+                    """,
+                    (window_start, window_end),
+                ).fetchall()
+            else:
+                # Window wraps around midnight (e.g. 23:55 - 00:05)
+                rows = con.execute(
+                    f"""
+                    SELECT {self._SELECT_COLS} FROM bot_sources
+                    WHERE sync_enabled = TRUE AND type = 'url'
+                      AND (sync_time_utc >= %s OR sync_time_utc <= %s)
+                    ORDER BY updated_at DESC
+                    """,
+                    (window_start, window_end),
+                ).fetchall()
+
+            sources = [self._row_to_source(row) for row in rows]
+
+            # Filter by frequency: skip if already synced within the period
+            result = []
+            for s in sources:
+                if s.last_synced_at:
+                    try:
+                        last = datetime.fromisoformat(s.last_synced_at.replace("Z", "+00:00"))
+                    except (ValueError, TypeError):
+                        last = None
+                    if last:
+                        if s.sync_frequency == "daily" and (now_utc - last).total_seconds() < 23 * 3600:
+                            continue
+                        elif s.sync_frequency == "weekly" and (now_utc - last).total_seconds() < 6.5 * 24 * 3600:
+                            continue
+                        elif s.sync_frequency == "monthly" and (now_utc - last).total_seconds() < 29 * 24 * 3600:
+                            continue
+                result.append(s)
+            return result
         finally:
             con.close()
 

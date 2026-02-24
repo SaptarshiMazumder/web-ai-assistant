@@ -44,4 +44,8 @@ beat_schedule = {
         "task": "infrastructure.tasks.instagram_tasks.refresh_instagram_tokens",
         "schedule": crontab(hour="3", minute="0"),  # Run daily at 3 AM UTC
     },
+    "check-source-syncs": {
+        "task": "infrastructure.tasks.sync_tasks.check_and_run_source_syncs",
+        "schedule": crontab(minute="*/15"),  # Every 15 minutes
+    },
 }
