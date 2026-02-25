@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Bot, User, Search, Download, ArrowLeft, XCircle, MessageCircle, MessagesSquare } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import type {
   ConversationMessageRecord,
@@ -10,6 +11,10 @@ import type {
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
 
 export default function BotConversationsTab() {
+  const { i18n } = useTranslation()
+  const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
+  const isJa = lang.startsWith('ja') || lang.startsWith('jp')
+  const tr = (en: string, ja: string) => (isJa ? ja : en)
   const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
@@ -55,26 +60,35 @@ export default function BotConversationsTab() {
     const now = new Date()
     const diffMs = now.getTime() - d.getTime()
     const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 1) return 'Just now'
-    if (diffMin < 60) return `${diffMin} min ago`
+    if (diffMin < 1) return tr('Just now', 'たった今')
+    if (diffMin < 60) return isJa ? `${diffMin}分前` : `${diffMin} min ago`
     const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `${diffH} hours ago`
+    if (diffH < 24) return isJa ? `${diffH}時間前` : `${diffH} hours ago`
     const yesterday = new Date(now)
     yesterday.setDate(now.getDate() - 1)
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    if (d.toDateString() === yesterday.toDateString()) return tr('Yesterday', '昨日')
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
-  function statusForSession(s: ConversationSessionRecord | null) {
+  type SessionStatus = 'active' | 'away' | 'ended' | null
+
+  function statusForSession(s: ConversationSessionRecord | null): SessionStatus {
     if (!s) return null
-    if (s.status && s.status !== 'active') return 'Session ended'
+    if (s.status && s.status !== 'active') return 'ended'
     const last = new Date(s.last_active_at)
     if (Number.isNaN(last.getTime())) return null
     const now = new Date()
     const diffMin = Math.floor((now.getTime() - last.getTime()) / 60000)
-    if (diffMin <= 5) return 'Active'
-    if (diffMin <= 30) return 'Away'
-    return 'Session ended'
+    if (diffMin <= 5) return 'active'
+    if (diffMin <= 30) return 'away'
+    return 'ended'
+  }
+
+  function statusLabel(status: SessionStatus) {
+    if (status === 'active') return tr('Active', '稼働中')
+    if (status === 'away') return tr('Away', '離席')
+    if (status === 'ended') return tr('Session ended', '終了')
+    return ''
   }
 
   async function loadSessions() {
@@ -129,8 +143,8 @@ export default function BotConversationsTab() {
     yesterday.setDate(now.getDate() - 1)
     const isYesterday = d.toDateString() === yesterday.toDateString()
     const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-    if (isToday) return `Today ${time}`
-    if (isYesterday) return `Yesterday ${time}`
+    if (isToday) return isJa ? `今日 ${time}` : `Today ${time}`
+    if (isYesterday) return isJa ? `昨日 ${time}` : `Yesterday ${time}`
     return `${d.toLocaleDateString()} ${time}`
   }
 
@@ -145,12 +159,12 @@ export default function BotConversationsTab() {
 
   function channelLabel(ch?: string | null): { emoji: string; label: string } {
     switch ((ch || '').toLowerCase()) {
-      case 'web': return { emoji: '🌐', label: 'Website' }
-      case 'test': return { emoji: '🧪', label: 'Test' }
-      case 'line': return { emoji: '💬', label: 'LINE' }
-      case 'instagram': return { emoji: '📸', label: 'Instagram' }
+      case 'web': return { emoji: '🌐', label: tr('Website', 'ウェブサイト') }
+      case 'test': return { emoji: '🧪', label: tr('Test', 'テスト') }
+      case 'line': return { emoji: '💬', label: tr('LINE', 'ライン') }
+      case 'instagram': return { emoji: '📸', label: tr('Instagram', 'インスタグラム') }
       default: {
-        const raw = (ch || 'unknown').trim()
+        const raw = (ch || tr('unknown', '不明')).trim()
         return { emoji: '💬', label: raw.charAt(0).toUpperCase() + raw.slice(1) }
       }
     }
@@ -158,32 +172,32 @@ export default function BotConversationsTab() {
 
 
   if (!selectedBot) {
-    return <div className="empty-panel">Select a bot to view conversations.</div>
+    return <div className="empty-panel">{tr('Select a bot to view conversations.', '会話を表示するボットを選択してください。')}</div>
   }
 
   return (
     <AnimatedPage>
       <SectionHeader
-        eyebrow="Conversations"
-        title="Live inbox and replay"
-        subtitle="Track active chats, human support requests, and message timelines in one place."
+        eyebrow={tr('Conversations', '会話')}
+        title={tr('Live inbox and replay', 'ライブ受信トレイと履歴')}
+        subtitle={tr('Track active chats, human support requests, and message timelines in one place.', '進行中チャット、ヒューマンサポート依頼、メッセージ履歴をまとめて確認できます。')}
       />
       <div className={`card-grid conversation-grid${mobileView === 'detail' ? ' conversation-grid--mobile-detail' : ''}`}>
         <GlassCard className="conversation-panel conversation-panel--list">
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <MessagesSquare size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-            Conversation sessions
+            {tr('Conversation sessions', '会話セッション')}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search messages…"
+              placeholder={tr('Search messages...', 'メッセージを検索...')}
               style={{ flex: 1 }}
             />
             <UiButton variant="secondary" onClick={() => void loadSessions()} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               <Search size={14} />
-              Search
+              {tr('Search', '検索')}
             </UiButton>
             <UiButton
               variant="ghost"
@@ -192,11 +206,11 @@ export default function BotConversationsTab() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
             >
               <Download size={14} />
-              Export CSV
+              {tr('Export CSV', 'CSVを出力')}
             </UiButton>
           </div>
-          {loading && <div className="muted">Loading...</div>}
-          {!loading && sessions.length === 0 && <div className="muted">No conversations yet.</div>}
+          {loading && <div className="muted">{tr('Loading...', '読み込み中...')}</div>}
+          {!loading && sessions.length === 0 && <div className="muted">{tr('No conversations yet.', '会話はまだありません。')}</div>}
           <div className="conversation-list">
             {sessions.map((s) => (
               <button
@@ -212,24 +226,28 @@ export default function BotConversationsTab() {
                   <div className="conversation-time">{formatListTime(s.last_active_at)}</div>
                 </div>
                 <div className="conversation-meta">
-                  {statusForSession(s) && (
-                    <span
-                      className={`conversation-status ${statusForSession(s) === 'Active'
-                        ? 'active'
-                        : statusForSession(s) === 'Away'
-                          ? 'inactive'
-                          : 'ended'
-                        }`}
-                    >
-                      {statusForSession(s)}
-                    </span>
-                  )}
-                  {s.message_count} messages
+                  {statusForSession(s) && (() => {
+                    const status = statusForSession(s)
+                    if (!status) return null
+                    return (
+                      <span
+                        className={`conversation-status ${status === 'active'
+                          ? 'active'
+                          : status === 'away'
+                            ? 'inactive'
+                            : 'ended'
+                          }`}
+                      >
+                        {statusLabel(status)}
+                      </span>
+                    )
+                  })()}
+                  {isJa ? `${s.message_count}件` : `${s.message_count} messages`}
                   <span className="conversation-pill conversation-pill--channel">
                     {channelLabel(s.channel).emoji} {channelLabel(s.channel).label}
                   </span>
                   {escalatedSessionIds.has(s.session_id) && (
-                    <span className="conversation-pill conversation-pill--escalated">Support requested</span>
+                    <span className="conversation-pill conversation-pill--escalated">{tr('Support requested', 'サポート依頼')}</span>
                   )}
                 </div>
               </button>
@@ -240,30 +258,35 @@ export default function BotConversationsTab() {
         <GlassCard className="conversation-panel conversation-panel--detail">
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <MessageCircle size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-            Conversation details{messages.length ? ` (${messages.length} messages)` : ''}
+            {tr('Conversation details', '会話詳細')}{messages.length ? (isJa ? `（${messages.length}件）` : ` (${messages.length} messages)`) : ''}
           </div>
-          {!selectedSession && <div className="muted">Select a session to view messages.</div>}
+          {!selectedSession && <div className="muted">{tr('Select a session to view messages.', 'メッセージを表示するセッションを選択してください。')}</div>}
           {selectedSession && (
             <>
               {selectedSessionRecord && (
                 <>
                   <div className="detail-row">
-                    <span>Status</span>
-                    <span
-                      className={`conversation-status ${statusForSession(selectedSessionRecord) === 'Active'
-                        ? 'active'
-                        : statusForSession(selectedSessionRecord) === 'Away'
-                          ? 'inactive'
-                          : statusForSession(selectedSessionRecord) === 'Session ended'
-                            ? 'ended'
-                            : 'inactive'
-                        }`}
-                    >
-                      {statusForSession(selectedSessionRecord)}
-                    </span>
+                    <span>{tr('Status', 'ステータス')}</span>
+                    {(() => {
+                      const status = statusForSession(selectedSessionRecord)
+                      return (
+                        <span
+                          className={`conversation-status ${status === 'active'
+                            ? 'active'
+                            : status === 'away'
+                              ? 'inactive'
+                              : status === 'ended'
+                                ? 'ended'
+                                : 'inactive'
+                            }`}
+                        >
+                          {statusLabel(status)}
+                        </span>
+                      )
+                    })()}
                   </div>
                   <div className="detail-row">
-                    <span>Channel</span>
+                    <span>{tr('Channel', 'チャネル')}</span>
                     <span className="conversation-pill conversation-pill--channel">
                       {channelLabel(selectedSessionRecord.channel).emoji} {channelLabel(selectedSessionRecord.channel).label}
                     </span>
@@ -272,22 +295,22 @@ export default function BotConversationsTab() {
               )}
               {escalation && (
                 <div className="conversation-escalation-box conversation-escalation-box--top">
-                  <div className="conversation-escalation-title">Support requested</div>
+                  <div className="conversation-escalation-title">{tr('Support requested', 'サポート依頼')}</div>
                   <div className="conversation-escalation-row">
-                    <span>Email</span>
+                    <span>{tr('Email', 'メール')}</span>
                     <span>{escalation.visitor_email}</span>
                   </div>
                   <div className="conversation-escalation-row">
-                    <span>Status</span>
-                    <span>{escalation.status === 'resolved' ? 'Resolved' : 'Pending'}</span>
+                    <span>{tr('Status', 'ステータス')}</span>
+                    <span>{escalation.status === 'resolved' ? tr('Resolved', '解決済み') : tr('Pending', '保留')}</span>
                   </div>
                   <div className="conversation-escalation-row">
-                    <span>Requested</span>
+                    <span>{tr('Requested', '依頼日時')}</span>
                     <span>{formatMessageTime(escalation.created_at || null)}</span>
                   </div>
                   {escalation.details && (
                     <div className="conversation-escalation-row">
-                      <span>Details</span>
+                      <span>{tr('Details', '詳細')}</span>
                       <span>{escalation.details}</span>
                     </div>
                   )}
@@ -296,11 +319,11 @@ export default function BotConversationsTab() {
               <div className="conversation-actions">
                 <UiButton variant="secondary" onClick={() => { setSelectedSession(null); setMobileView('list') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <ArrowLeft size={14} />
-                  Back to list
+                  {tr('Back to list', '一覧に戻る')}
                 </UiButton>
                 <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <XCircle size={14} />
-                  End session
+                  {tr('End session', 'セッションを終了')}
                 </UiButton>
               </div>
               <div className="conversation-messages">
@@ -341,7 +364,7 @@ export default function BotConversationsTab() {
                     </div>
                   )
                 })}
-                {messages.length === 0 && !loading && <div className="muted">No messages found.</div>}
+                {messages.length === 0 && !loading && <div className="muted">{tr('No messages found.', 'メッセージが見つかりません。')}</div>}
               </div>
             </>
           )}

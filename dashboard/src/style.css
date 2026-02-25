@@ -4798,6 +4798,14 @@ select.design-form-input:focus {
   background: #fff8f5;
 }
 
+.source-group-header:hover {
+  background: rgba(228, 88, 122, 0.06) !important;
+}
+
+.source-group-header td {
+  border-bottom: 1px solid var(--ui-flow-border) !important;
+}
+
 .knowledge-name {
   max-width: 200px;
   overflow: hidden;
@@ -4810,6 +4818,24 @@ select.design-form-input:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.knowledge-source-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.knowledge-source-link:hover,
+.knowledge-source-link:focus-visible {
+  color: var(--ui-flow-accent, #e4587a);
+  text-decoration: underline;
 }
 
 /* Source type badge: URL, Drive, Google Docs */
@@ -4846,6 +4872,19 @@ select.design-form-input:focus {
   gap: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--ui-flow-border);
+}
+
+/* Sync popup dropdowns: enforce a single chevron icon */
+.knowledge-sync-popup-select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  padding-right: 1.35rem !important;
+  background-color: #fff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237e5a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.35rem center !important;
+  background-size: 12px !important;
 }
 
 /* Modal */
@@ -5277,59 +5316,7 @@ select.design-form-input:focus {
   padding-right: 0.25rem;
 }
 
-.conversation-list,
-.conversation-messages,
-.escalation-list {
-  scrollbar-width: none;
-  scrollbar-color: transparent transparent;
-}
-
-.conversation-list::-webkit-scrollbar,
-.conversation-messages::-webkit-scrollbar,
-.escalation-list::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.conversation-list::-webkit-scrollbar-track,
-.conversation-messages::-webkit-scrollbar-track,
-.escalation-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.conversation-list::-webkit-scrollbar-thumb,
-.conversation-messages::-webkit-scrollbar-thumb,
-.escalation-list::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 999px;
-  border: none;
-}
-
-.conversation-list::-webkit-scrollbar-thumb:hover,
-.conversation-messages::-webkit-scrollbar-thumb:hover,
-.escalation-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(228, 88, 122, 0.45);
-}
-
-.conversation-list:hover,
-.conversation-messages:hover,
-.escalation-list:hover {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(228, 88, 122, 0.45) transparent;
-}
-
-.conversation-list:hover::-webkit-scrollbar-thumb,
-.conversation-messages:hover::-webkit-scrollbar-thumb,
-.escalation-list:hover::-webkit-scrollbar-thumb {
-  background: rgba(228, 88, 122, 0.45);
-}
-
-.conversation-list:hover::-webkit-scrollbar,
-.conversation-messages:hover::-webkit-scrollbar,
-.escalation-list:hover::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
+/* Conversation / escalation scrollbars inherit global always-visible style */
 
 .conversation-grid {
   height: calc(100vh - 250px);
@@ -7104,15 +7091,15 @@ pre {
   background: #fff3f1;
 }
 
-/* Global thin, unobtrusive scrollbar */
+/* Global thin scrollbar — always visible */
 * {
-  scrollbar-width: none;
-  scrollbar-color: transparent transparent;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(228, 88, 122, 0.18) transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 5px;
+  height: 5px;
 }
 
 *::-webkit-scrollbar-track {
@@ -7121,21 +7108,11 @@ pre {
 
 *::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: transparent;
+  background: rgba(228, 88, 122, 0.18);
 }
 
-*:hover {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(228, 88, 122, 0.42) transparent;
-}
-
-*:hover::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb:hover {
   background: rgba(228, 88, 122, 0.42);
-}
-
-*:hover::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
 }
 
 *::-webkit-scrollbar-thumb:active {

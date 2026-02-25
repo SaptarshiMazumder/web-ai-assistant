@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Check, CheckCircle, Clock, RotateCcw } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader } from '../../components/ui'
 
 export default function BotEscalationsTab() {
   const { botId } = useParams()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
+  const isJa = lang.startsWith('ja') || lang.startsWith('jp')
+  const tr = (en: string, ja: string) => (isJa ? ja : en)
   const { selectedBot, listEscalations, updateEscalationStatus } = useDashboardData()
   const [escalations, setEscalations] = useState<EscalationRecord[]>([])
   const pageSize = 200
@@ -31,13 +36,13 @@ export default function BotEscalationsTab() {
     const now = new Date()
     const diffMs = now.getTime() - d.getTime()
     const diffMin = Math.floor(diffMs / 60000)
-    if (diffMin < 1) return 'Just now'
-    if (diffMin < 60) return `${diffMin} min ago`
+    if (diffMin < 1) return tr('Just now', 'たった今')
+    if (diffMin < 60) return isJa ? `${diffMin}分前` : `${diffMin} min ago`
     const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `${diffH} hours ago`
+    if (diffH < 24) return isJa ? `${diffH}時間前` : `${diffH} hours ago`
     const yesterday = new Date(now)
     yesterday.setDate(now.getDate() - 1)
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    if (d.toDateString() === yesterday.toDateString()) return tr('Yesterday', '昨日')
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
@@ -66,20 +71,20 @@ export default function BotEscalationsTab() {
   }
 
   if (!botId) {
-    return <div className="empty-panel">Select a bot to view human support requests.</div>
+    return <div className="empty-panel">{tr('Select a bot to view support requests.', 'サポート依頼を表示するボットを選択してください。')}</div>
   }
 
   return (
     <AnimatedPage>
       <SectionHeader
-        eyebrow="Support"
-        title="Human support requests"
-        subtitle="Review and resolve customer support requests."
+        eyebrow={tr('Support', 'サポート')}
+        title={tr('Support requests', 'サポート依頼')}
+        subtitle={tr('Review and resolve customer support requests.', '顧客のサポート依頼を確認して対応できます。')}
       />
 
       <GlassCard style={{ marginTop: '0.5rem' }}>
         {escalations.length === 0 && (
-          <div className="muted" style={{ padding: '1rem 0' }}>No human support requests yet.</div>
+          <div className="muted" style={{ padding: '1rem 0' }}>{tr('No support requests yet.', 'サポート依頼はまだありません。')}</div>
         )}
         <div className="escalation-list">
           {escalations.map((e) => (
@@ -100,12 +105,12 @@ export default function BotEscalationsTab() {
                     <>
                       <span className="conversation-status resolved">
                         <CheckCircle size={14} />
-                        Resolved
+                        {tr('Resolved', '解決済み')}
                       </span>
                       <button
                         type="button"
                         className="icon-pill"
-                        aria-label="Undo resolve"
+                        aria-label={tr('Undo resolve', '解決を取り消す')}
                         onClick={(evt) => {
                           evt.stopPropagation()
                           void handleReopen(e.escalation_id)
@@ -118,7 +123,7 @@ export default function BotEscalationsTab() {
                     <>
                       <span className="conversation-status pending">
                         <Clock size={14} />
-                        Pending
+                        {tr('Pending', '保留')}
                       </span>
                       <button
                         type="button"
@@ -129,7 +134,7 @@ export default function BotEscalationsTab() {
                         }}
                       >
                         <Check size={14} />
-                        Mark as resolved
+                        {tr('Mark as resolved', '解決済みにする')}
                       </button>
                     </>
                   )}

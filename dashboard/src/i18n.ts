@@ -16,9 +16,14 @@ i18n
             },
             ja: {
                 translation: jaTranslations
+            },
+            jp: {
+                translation: jaTranslations
             }
         },
         fallbackLng: 'en', // fallback language if translation not found
+        supportedLngs: ['en', 'ja', 'jp'],
+        nonExplicitSupportedLngs: true,
 
         detection: {
             // Order of checks: URL -> LocalStorage -> Browser Settings

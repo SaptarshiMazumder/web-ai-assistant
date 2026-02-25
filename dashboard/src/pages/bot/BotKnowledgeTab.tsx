@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord } from '../../hooks/useDashboardData'
@@ -8,6 +8,7 @@ import {
   getAllUrlsFromCategory,
   getCategoryDisplayPath,
   getCategoryUrlCount,
+  getNormalizedUrlKey,
   type UrlCategory,
 } from '../createBot/urlCategorizer'
 import {
@@ -882,6 +883,66 @@ export default function BotKnowledgeTab() {
     return sources.some((s) => s.type.toLowerCase() === 'url' && sourcesSelected.has(s.source_id))
   }, [sources, sourcesSelected])
 
+  // Source grouping: URL sources nested by meaningful path, non-URL sources stay flat.
+  const urlSources = useMemo(() => sources.filter((s) => s.type.toLowerCase() === 'url'), [sources])
+  const nonUrlSources = useMemo(() => sources.filter((s) => s.type.toLowerCase() !== 'url'), [sources])
+
+  const sourceDisplayOrder = useMemo(() => {
+    const order = new Map<string, number>()
+    sources.forEach((s, idx) => order.set(s.source_id, idx))
+    return order
+  }, [sources])
+
+  const sourceUrlMap = useMemo(() => {
+    const map = new Map<string, typeof sources>()
+    for (const s of urlSources) {
+      const url =
+        typeof (s.config as Record<string, unknown>)?.url === 'string'
+          ? ((s.config as Record<string, unknown>).url as string)
+          : ''
+      if (!url) continue
+      const key = getNormalizedUrlKey(url)
+      const prev = map.get(key)
+      if (prev) prev.push(s)
+      else map.set(key, [s])
+    }
+    return map
+  }, [urlSources])
+
+  const sourceCategories = useMemo(() => {
+    const urls = urlSources
+      .map((s) =>
+        typeof (s.config as Record<string, unknown>)?.url === 'string'
+          ? ((s.config as Record<string, unknown>).url as string)
+          : ''
+      )
+      .filter(Boolean)
+    if (!urls.length) return null
+    return categorizeUrls(urls, '')
+  }, [urlSources])
+
+  const [expandedSourceGroups, setExpandedSourceGroups] = useState<Set<string>>(new Set())
+  const hasAutoExpandedSourceGroups = useRef(false)
+  useEffect(() => {
+    if (sourceCategories && !hasAutoExpandedSourceGroups.current) {
+      setExpandedSourceGroups(new Set(getAllExpandablePaths(sourceCategories)))
+      hasAutoExpandedSourceGroups.current = true
+    }
+    if (!sourceCategories) hasAutoExpandedSourceGroups.current = false
+  }, [sourceCategories])
+
+  const getSourcesForCategoryUrls = useCallback(
+    (urls: string[]) => {
+      const grouped = urls.flatMap((url) => sourceUrlMap.get(getNormalizedUrlKey(url)) || [])
+      return grouped.sort((a, b) => {
+        const orderA = sourceDisplayOrder.get(a.source_id) ?? 0
+        const orderB = sourceDisplayOrder.get(b.source_id) ?? 0
+        return orderA - orderB
+      })
+    },
+    [sourceDisplayOrder, sourceUrlMap]
+  )
+
   /** Convert UTC HH:MM to local time display string. */
   function formatSyncTimeLocal(utcTime: string, _tz?: string): string {
     const [h, m] = (utcTime || '00:00').split(':').map(Number)
@@ -897,6 +958,19 @@ export default function BotKnowledgeTab() {
     if (source.type === 'drive' && typeof source.config?.folder_id === 'string') return `Drive folder: ${source.config.folder_id}`
     if (source.type === 'docs' && typeof source.config?.doc_id === 'string') return `Doc: ${source.config.doc_id}`
     return source.type || '—'
+  }
+
+  function sourceClickableUrl(source: { type: string; config: Record<string, unknown> }): string | null {
+    if (source.type !== 'url' || typeof source.config?.url !== 'string') return null
+    const candidate = source.config.url.trim()
+    if (!candidate) return null
+    try {
+      const parsed = new URL(candidate)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+      return parsed.toString()
+    } catch {
+      return null
+    }
   }
 
   /** For Name column: display_name or fallback from URL (pathname/hostname) for URL sources. */
@@ -1077,163 +1151,251 @@ export default function BotKnowledgeTab() {
                   <th style={{ width: '120px' }}>{t('botKnowledge.type', 'Type')}</th>
                   <th style={{ width: '160px' }}>{t('botKnowledge.name', 'Name')}</th>
                   <th>{t('botKnowledge.source', 'Source')}</th>
-                  <th style={{ width: '100px' }}>{t('botKnowledge.status', 'Status')}</th>
+                  <th style={{ width: '100px' }}>{t('botKnowledge.statusColumn', 'Status')}</th>
                   <th style={{ width: '220px' }}>{t('botKnowledge.sync', 'Sync')}</th>
                   <th>{t('botKnowledge.added', 'Added')}</th>
                   <th style={{ width: '80px' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {sources.map((s) => {
-                  const training = isSourceTraining(s.source_id, s.type)
-                  return (
-                    <tr key={s.source_id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={sourcesSelected.has(s.source_id)}
-                          onChange={() => toggleSourcesSelected(s.source_id)}
-                          disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
-                          aria-label={`Select ${sourceDisplayName(s)}`}
-                          style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
-                        />
-                      </td>
-                      <td>
-                        <span className="source-type-badge" data-type={s.type.toLowerCase()}>
-                          {sourceTypeLabel(s.type)}
-                        </span>
-                      </td>
-                      <td className="knowledge-name">{sourceDisplayName(s)}</td>
-                      <td className="knowledge-name" style={{ wordBreak: 'break-all' }}>
-                        {sourceUrlOrConfig(s)}
-                      </td>
-                      <td>
-                        <span
-                          className="pill"
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            borderRadius: '9999px',
-                            fontSize: '0.8125rem',
-                            fontWeight: 500,
-                            ...(training
-                              ? { background: '#e2e8f0', color: '#64748b' }
-                              : { background: 'rgba(246, 180, 109, 0.2)', color: '#d97706' }),
-                          }}
-                        >
-                          {training ? t('botKnowledge.training', 'Training') : t('botKnowledge.trained', 'Trained')}
-                        </span>
-                      </td>
-                      <td>
-                        {s.type.toLowerCase() === 'url' ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', position: 'relative' }}>
-                            {/* Circular sync icon button */}
-                            <button
-                              type="button"
-                              onClick={() => handleSyncSource(s.source_id)}
-                              disabled={training || syncingSourceIds.has(s.source_id)}
-                              title={t('botKnowledge.syncNow', 'Sync now')}
-                              style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--ui-flow-border)', background: 'var(--ui-flow-bg, #fff)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: training ? 'not-allowed' : 'pointer', opacity: training ? 0.4 : 1, flexShrink: 0, padding: 0 }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: syncingSourceIds.has(s.source_id) ? 'spin 1s linear infinite' : 'none' }}>
-                                <path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                              </svg>
-                            </button>
-                            {/* Auto-sync toggle */}
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.8125rem', flexShrink: 0 }}>
-                              <input
-                                type="checkbox"
-                                checked={!!s.sync_enabled}
-                                onChange={() => handleToggleAutoSync(s)}
-                                style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
-                              />
-                              {t('botKnowledge.autoSync', 'Auto')}
-                            </label>
-                            {/* Schedule label + pencil edit icon */}
-                            {s.sync_enabled && (
-                              <span className="muted" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-                                {t('botKnowledge.syncSchedule', '{{frequency}} at {{time}}', {
-                                  frequency: t(`botKnowledge.${s.sync_frequency || 'daily'}`, s.sync_frequency || 'daily'),
-                                  time: formatSyncTimeLocal(s.sync_time_utc || '00:00', s.sync_timezone),
-                                })}
-                                <button type="button" onClick={() => handleOpenSyncSettings(s)} title={t('botKnowledge.edit', 'edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'inline-flex', color: 'var(--ui-flow-muted)' }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                  </svg>
-                                </button>
-                              </span>
-                            )}
-                            {/* Last synced */}
-                            {s.last_synced_at && (
-                              <span className="muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                                {formatRelativeTime(s.last_synced_at)}
-                              </span>
-                            )}
-                            {/* Sync settings popup */}
-                            {syncSettingsSourceId === s.source_id && (
-                              <div
-                                ref={syncPopupRef}
-                                style={{
-                                  position: 'absolute', top: '100%', left: 0, zIndex: 100,
-                                  background: '#fff', border: '1px solid var(--ui-flow-border)', borderRadius: '10px',
-                                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '14px 16px',
-                                  display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '240px', marginTop: '4px',
-                                }}
+                {(() => {
+                  const renderSourceRow = (s: typeof sources[0], indentLevel: number) => {
+                    const training = isSourceTraining(s.source_id, s.type)
+                    return (
+                      <tr key={s.source_id} style={indentLevel > 0 ? { background: 'transparent' } : {}}>
+                        <td style={indentLevel > 0 ? { paddingLeft: `${(0.75 + indentLevel * 1.1).toFixed(2)}rem` } : {}}>
+                          <input
+                            type="checkbox"
+                            checked={sourcesSelected.has(s.source_id)}
+                            onChange={() => toggleSourcesSelected(s.source_id)}
+                            disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                            aria-label={`Select ${sourceDisplayName(s)}`}
+                            style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
+                          />
+                        </td>
+                        <td>
+                          <span className="source-type-badge" data-type={s.type.toLowerCase()}>
+                            {sourceTypeLabel(s.type)}
+                          </span>
+                        </td>
+                        <td className="knowledge-name">{sourceDisplayName(s)}</td>
+                        <td className="knowledge-name" style={{ wordBreak: 'break-all' }}>
+                          {(() => {
+                            const url = sourceClickableUrl(s)
+                            if (!url) return sourceUrlOrConfig(s)
+                            return (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="knowledge-source-link"
+                                title={url}
                               >
-                                <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t('botKnowledge.autoSync', 'Auto sync')}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <select value={syncSettingsFrequency} onChange={(e) => setSyncSettingsFrequency(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', flex: 1 }}>
-                                    <option value="daily">{t('botKnowledge.daily', 'Daily')}</option>
-                                    <option value="weekly">{t('botKnowledge.weekly', 'Weekly')}</option>
-                                    <option value="monthly">{t('botKnowledge.monthly', 'Monthly')}</option>
-                                  </select>
-                                  <span style={{ fontSize: '0.8125rem' }}>{t('botKnowledge.at', 'at')}</span>
-                                  <select value={syncSettingsHour} onChange={(e) => setSyncSettingsHour(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
-                                    {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
-                                      <option key={h} value={h}>{h}</option>
-                                    ))}
-                                  </select>
-                                  <span style={{ fontSize: '0.8125rem' }}>:</span>
-                                  <select value={syncSettingsMinute} onChange={(e) => setSyncSettingsMinute(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
-                                    <option value="00">00</option>
-                                    <option value="15">15</option>
-                                    <option value="30">30</option>
-                                    <option value="45">45</option>
-                                  </select>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                  <button type="button" className="ghost" onClick={() => setSyncSettingsSourceId(null)} style={{ fontSize: '0.8125rem', padding: '4px 12px', borderRadius: '6px' }}>
-                                    {t('botKnowledge.cancel', 'Cancel')}
+                                {url}
+                              </a>
+                            )
+                          })()}
+                        </td>
+                        <td>
+                          <span
+                            className="pill"
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              ...(training
+                                ? { background: '#e2e8f0', color: '#64748b' }
+                                : { background: 'rgba(246, 180, 109, 0.2)', color: '#d97706' }),
+                            }}
+                          >
+                            {training ? t('botKnowledge.training', 'Training') : t('botKnowledge.trained', 'Trained')}
+                          </span>
+                        </td>
+                        <td>
+                          {s.type.toLowerCase() === 'url' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', position: 'relative' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleSyncSource(s.source_id)}
+                                disabled={training || syncingSourceIds.has(s.source_id)}
+                                title={t('botKnowledge.syncNow', 'Sync now')}
+                                style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid var(--ui-flow-border)', background: 'var(--ui-flow-bg, #fff)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: training ? 'not-allowed' : 'pointer', opacity: training ? 0.4 : 1, flexShrink: 0, padding: 0 }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: syncingSourceIds.has(s.source_id) ? 'spin 1s linear infinite' : 'none' }}>
+                                  <path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" /><path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                                </svg>
+                              </button>
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer', fontSize: '0.8125rem', flexShrink: 0 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.sync_enabled}
+                                  onChange={() => handleToggleAutoSync(s)}
+                                  style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
+                                />
+                                {t('botKnowledge.autoSync', 'Auto')}
+                              </label>
+                              {s.sync_enabled && (
+                                <span className="muted" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
+                                  {t('botKnowledge.syncSchedule', '{{frequency}} at {{time}}', {
+                                    frequency: t(`botKnowledge.${s.sync_frequency || 'daily'}`, s.sync_frequency || 'daily'),
+                                    time: formatSyncTimeLocal(s.sync_time_utc || '00:00', s.sync_timezone),
+                                  })}
+                                  <button type="button" onClick={() => handleOpenSyncSettings(s)} title={t('botKnowledge.edit', 'edit')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'inline-flex', color: 'var(--ui-flow-muted)' }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                    </svg>
                                   </button>
-                                  <button type="button" className="primary" onClick={() => handleSaveSyncSettings(s.source_id, true)} disabled={savingSyncSettings} style={{ fontSize: '0.8125rem', padding: '4px 14px', borderRadius: '6px' }}>
-                                    {savingSyncSettings ? '...' : t('botKnowledge.save', 'Save')}
-                                  </button>
+                                </span>
+                              )}
+                              {s.last_synced_at && (
+                                <span className="muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                                  {formatRelativeTime(s.last_synced_at)}
+                                </span>
+                              )}
+                              {syncSettingsSourceId === s.source_id && (
+                                <div
+                                  ref={syncPopupRef}
+                                  className="knowledge-sync-popup"
+                                  style={{
+                                    position: 'absolute', top: '100%', left: 0, zIndex: 100,
+                                    background: '#fff', border: '1px solid var(--ui-flow-border)', borderRadius: '10px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '14px 16px',
+                                    display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '240px', marginTop: '4px',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t('botKnowledge.autoSync', 'Auto sync')}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <select className="knowledge-sync-popup-select" value={syncSettingsFrequency} onChange={(e) => setSyncSettingsFrequency(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', flex: 1 }}>
+                                      <option value="daily">{t('botKnowledge.daily', 'Daily')}</option>
+                                      <option value="weekly">{t('botKnowledge.weekly', 'Weekly')}</option>
+                                      <option value="monthly">{t('botKnowledge.monthly', 'Monthly')}</option>
+                                    </select>
+                                    <span style={{ fontSize: '0.8125rem' }}>{t('botKnowledge.at', 'at')}</span>
+                                    <select className="knowledge-sync-popup-select" value={syncSettingsHour} onChange={(e) => setSyncSettingsHour(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
+                                      {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                                        <option key={h} value={h}>{h}</option>
+                                      ))}
+                                    </select>
+                                    <span style={{ fontSize: '0.8125rem' }}>:</span>
+                                    <select className="knowledge-sync-popup-select" value={syncSettingsMinute} onChange={(e) => setSyncSettingsMinute(e.target.value)} style={{ fontSize: '0.8125rem', padding: '4px 6px', borderRadius: '6px', border: '1px solid var(--ui-flow-border)', width: '52px' }}>
+                                      <option value="00">00</option>
+                                      <option value="15">15</option>
+                                      <option value="30">30</option>
+                                      <option value="45">45</option>
+                                    </select>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <button type="button" className="ghost" onClick={() => setSyncSettingsSourceId(null)} style={{ fontSize: '0.8125rem', padding: '4px 12px', borderRadius: '6px' }}>
+                                      {t('botKnowledge.cancel', 'Cancel')}
+                                    </button>
+                                    <button type="button" className="primary" onClick={() => handleSaveSyncSettings(s.source_id, true)} disabled={savingSyncSettings} style={{ fontSize: '0.8125rem', padding: '4px 14px', borderRadius: '6px' }}>
+                                      {savingSyncSettings ? '...' : t('botKnowledge.save', 'Save')}
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="muted" style={{ fontSize: '0.8125rem' }}>—</span>
-                        )}
-                      </td>
-                      <td className="muted">{formatRelativeTime(s.updated_at)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="delete-btn"
-                          onClick={() => handleDeleteSource(s.source_id)}
-                          disabled={deletingSourceId === s.source_id}
-                          aria-label={`Delete ${sourceDisplayName(s)}`}
-                        >
-                          {deletingSourceId === s.source_id ? (
-                            <span style={{ fontSize: '0.875rem' }}>…</span>
+                              )}
+                            </div>
                           ) : (
-                            <Trash2 size={18} aria-hidden />
+                            <span className="muted" style={{ fontSize: '0.8125rem' }}>{t('botKnowledge.notApplicable', 'N/A')}</span>
                           )}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="muted">{formatRelativeTime(s.updated_at)}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            onClick={() => handleDeleteSource(s.source_id)}
+                            disabled={deletingSourceId === s.source_id}
+                            aria-label={`Delete ${sourceDisplayName(s)}`}
+                          >
+                            {deletingSourceId === s.source_id ? (
+                              <span style={{ fontSize: '0.875rem' }}>...</span>
+                            ) : (
+                              <Trash2 size={18} aria-hidden />
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  const sortSourceCategories = (category: UrlCategory): UrlCategory[] => {
+                    return Array.from(category.children.values()).sort((a, b) => {
+                      const countA = getCategoryUrlCount(a)
+                      const countB = getCategoryUrlCount(b)
+                      if (countA !== countB) return countB - countA
+                      return a.name.localeCompare(b.name)
+                    })
+                  }
+
+                  const toggleSourceGroup = (path: string) => {
+                    setExpandedSourceGroups((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(path)) next.delete(path)
+                      else next.add(path)
+                      return next
+                    })
+                  }
+
+                  const renderSourceCategory = (category: UrlCategory): React.ReactNode => {
+                    const isExpanded = expandedSourceGroups.has(category.path)
+                    const directSources = getSourcesForCategoryUrls(category.urls)
+                    const totalCount = getCategoryUrlCount(category)
+                    const childCategories = sortSourceCategories(category)
+
+                    return (
+                      <React.Fragment key={category.path}>
+                        <tr
+                          className="source-group-header"
+                          onClick={() => toggleSourceGroup(category.path)}
+                          style={{ cursor: 'pointer', background: 'var(--ui-flow-surface, rgba(228,88,122,0.03))', userSelect: 'none' }}
+                        >
+                          <td colSpan={8} style={{ padding: '0.5rem 0.75rem' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontWeight: 600,
+                                fontSize: '0.85rem',
+                                color: 'var(--ui-flow-text)',
+                                paddingLeft: `${Math.max(0, category.level - 1) * 1.25}rem`,
+                              }}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'transform 0.15s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', color: 'var(--ui-flow-muted)', flexShrink: 0 }}>
+                                <path d="M9 18l6-6-6-6" />
+                              </svg>
+                              {getCategoryDisplayPath(category)}
+                              <span style={{ background: 'rgba(228,88,122,0.1)', color: 'var(--ui-flow-accent, #e4587a)', borderRadius: '999px', padding: '1px 8px', fontSize: '0.73rem', fontWeight: 700 }}>
+                                {totalCount}
+                              </span>
+                            </span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <>
+                            {directSources.map((source) => renderSourceRow(source, Math.max(1, category.level)))}
+                            {childCategories.map((child) => renderSourceCategory(child))}
+                          </>
+                        )}
+                      </React.Fragment>
+                    )
+                  }
+
+                  if (!sourceCategories) {
+                    return <>{sources.map((source) => renderSourceRow(source, 0))}</>
+                  }
+
+                  return (
+                    <>
+                      {sourceCategories.urls.length > 0 &&
+                        getSourcesForCategoryUrls(sourceCategories.urls).map((source) => renderSourceRow(source, 0))}
+                      {sortSourceCategories(sourceCategories).map((category) => renderSourceCategory(category))}
+                      {nonUrlSources.map((source) => renderSourceRow(source, 0))}
+                    </>
+                  )
+                })()}
               </tbody>
             </table>
           </div>
@@ -1594,4 +1756,3 @@ export default function BotKnowledgeTab() {
     </AnimatedPage>
   )
 }
-

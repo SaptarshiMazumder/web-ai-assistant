@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { botTabSecondaryItems } from '../../navigation/sidebarConfig'
 import PageHeader from '../../components/PageHeader'
@@ -8,6 +9,7 @@ import PageHeader from '../../components/PageHeader'
 export default function BotDetailLayout() {
   const { botId } = useParams()
   const location = useLocation()
+  const { t } = useTranslation()
   const { selectedBot, setSelectedBotId, isSuperAdmin, activeOrgId } = useDashboardData()
 
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
@@ -60,7 +62,7 @@ export default function BotDetailLayout() {
   const ActiveIcon = activeSecondaryItem?.icon
 
   if (isSuperAdmin && !activeOrgId) {
-    return <div className="empty-panel">Select an organization to view bot details.</div>
+    return <div className="empty-panel">{t('botDetailLayout.selectOrganization', 'Select an organization to view bot details.')}</div>
   }
 
   return (
@@ -79,7 +81,9 @@ export default function BotDetailLayout() {
               aria-expanded={mobileDropdownOpen}
             >
               {ActiveIcon && <ActiveIcon className="nav-icon" size={18} strokeWidth={1.8} aria-hidden />}
-              <span className="mobile-page-btn-label">{activeSecondaryItem?.label}</span>
+              <span className="mobile-page-btn-label">
+                {activeSecondaryItem ? t(activeSecondaryItem.label, activeSecondaryItem.label) : ''}
+              </span>
               <ChevronDown className={`mobile-page-chevron${mobileDropdownOpen ? ' open' : ''}`} size={15} strokeWidth={2} />
             </button>
 
@@ -90,7 +94,7 @@ export default function BotDetailLayout() {
               >
                 {groups.map((group, i) => (
                   <div key={i} className={group.header ? 'nav-category' : ''}>
-                    {group.header && <div className="nav-category-header">{group.header}</div>}
+                    {group.header && <div className="nav-category-header">{t(group.header, group.header)}</div>}
                     {group.items.map(item => {
                       const Icon = item.icon
                       return (
@@ -104,7 +108,7 @@ export default function BotDetailLayout() {
                           >
                             <span className="nav-link-content">
                               <Icon className="nav-icon" aria-hidden />
-                              {item.label}
+                              {t(item.label, item.label)}
                             </span>
                           </NavLink>
                         </div>

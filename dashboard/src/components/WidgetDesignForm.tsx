@@ -3,6 +3,7 @@ import { WidgetPreview } from '../pages/createBot/WidgetPreview'
 import { WIDGET_SIZE_DIMENSIONS } from '../constants/widgetSizes'
 import { FlowIcon } from './FlowIcon'
 import { FlowSelect } from './FlowSelect'
+import { useTranslation } from 'react-i18next'
 
 
 const FOOTER_MAX_LENGTH = 200
@@ -164,6 +165,7 @@ export function WidgetDesignForm({
   actions,
 
 }: WidgetDesignFormProps) {
+  const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const headerInputRef = useRef<HTMLInputElement>(null)
   const launcherInputRef = useRef<HTMLInputElement>(null)
@@ -230,22 +232,22 @@ export function WidgetDesignForm({
       <div className="widget-design-grid">
         <div className="design-form">
           <section className="ui-glass-card">
-            <div className="card-title">Basics</div>
+            <div className="card-title">{t('widgetDesign.basics', 'Basics')}</div>
             <div className="design-form-section">
               <div className="design-form-row">
                 <div className="design-form-field">
-                  <label className="design-form-label">Theme</label>
+                  <label className="design-form-label">{t('widgetDesign.theme', 'Theme')}</label>
                   <FlowSelect
                     value={theme}
                     onChange={(next) => update('theme', next as 'light' | 'dark')}
                     options={[
-                      { value: 'light', label: 'Light' },
-                      { value: 'dark', label: 'Dark' },
+                      { value: 'light', label: t('widgetDesign.light', 'Light') },
+                      { value: 'dark', label: t('widgetDesign.dark', 'Dark') },
                     ]}
                   />
                 </div>
                 <div className="design-form-field">
-                  <label className="design-form-label">Accent color</label>
+                  <label className="design-form-label">{t('widgetDesign.accentColor', 'Accent color')}</label>
                   <div className="design-form-color-row">
                     <input
                       type="color"
@@ -263,7 +265,7 @@ export function WidgetDesignForm({
                   </div>
                 </div>
                 <div className="design-form-field">
-                  <label className="design-form-label">Text color</label>
+                  <label className="design-form-label">{t('widgetDesign.textColor', 'Text color')}</label>
                   <div className="design-form-color-row">
                     <input
                       type="color"
@@ -283,13 +285,13 @@ export function WidgetDesignForm({
 
               </div>
               <div className="design-form-field design-form-field-full">
-                <label className="design-form-label">Initial welcome message</label>
-                <span className="design-form-hint">First message shown by the bot when the chat opens.</span>
+                <label className="design-form-label">{t('widgetDesign.initialWelcomeMessage', 'Initial welcome message')}</label>
+                <span className="design-form-hint">{t('widgetDesign.initialWelcomeHint', 'First message shown by the bot when the chat opens.')}</span>
                 <textarea
                   className="design-form-input"
                   value={welcomeMessage}
                   onChange={(e) => update('welcomeMessage', e.target.value)}
-                  placeholder="Welcome! How can I help you today?"
+                  placeholder={t('widgetDesign.welcomePlaceholder', 'Welcome! How can I help you today?')}
                   rows={2}
                   style={{ resize: 'vertical', width: '100%' }}
                 />
@@ -304,7 +306,7 @@ export function WidgetDesignForm({
               onClick={() => setAdvancedOpen((o) => !o)}
               aria-expanded={advancedOpen}
             >
-              <span>Advanced</span>
+              <span>{t('widgetDesign.advanced', 'Advanced')}</span>
               <span className="design-form-advanced-trigger-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 9l6 6 6-6" />
@@ -314,22 +316,22 @@ export function WidgetDesignForm({
             {advancedOpen && (
               <div className="design-form-advanced-content">
                 <section className="ui-glass-card">
-                  <div className="card-title">Messages</div>
+                  <div className="card-title">{t('widgetDesign.messages', 'Messages')}</div>
                   <div className="design-form-section">
                     <div className="design-form-field design-form-field-full">
-                      <label className="design-form-label">Placeholder message</label>
+                      <label className="design-form-label">{t('widgetDesign.placeholderMessage', 'Placeholder message')}</label>
                       <input
                         type="text"
                         className="design-form-input"
                         value={placeholder}
                         onChange={(e) => update('placeholder', e.target.value)}
-                        placeholder="Ask a question..."
+                        placeholder={t('widgetDesign.askQuestionPlaceholder', 'Ask a question...')}
                         style={{ width: '100%' }}
                       />
                     </div>
                     <div className="design-form-field design-form-field-full">
-                      <label className="design-form-label">Footer message</label>
-                      <span className="design-form-hint">Optional message under the chat input. Supports markdown.</span>
+                      <label className="design-form-label">{t('widgetDesign.footerMessage', 'Footer message')}</label>
+                      <span className="design-form-hint">{t('widgetDesign.footerHint', 'Optional message under the chat input. Supports markdown.')}</span>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                         <textarea
                           className="design-form-input"
@@ -349,12 +351,12 @@ export function WidgetDesignForm({
                 </section>
 
                 <section className="ui-glass-card design-form-card-icons">
-                  <div className="card-title">Icons</div>
+                  <div className="card-title">{t('widgetDesign.icons', 'Icons')}</div>
                   <div className="design-form-section">
                     <div className="design-form-row">
                       <div className="design-form-field">
-                        <label className="design-form-label">Launcher icon</label>
-                        <span className="design-form-hint">Click to choose image. 100×100px recommended.</span>
+                        <label className="design-form-label">{t('widgetDesign.launcherIcon', 'Launcher icon')}</label>
+                        <span className="design-form-hint">{t('widgetDesign.iconHint100', 'Click to choose image. 100x100px recommended.')}</span>
                         <input ref={launcherInputRef} type="file" accept="image/*" onChange={handleFile((url) => update('launcherIconUrl', url), launcherInputRef)} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden />
                         <div className="design-form-icon-wrap">
                           <button
@@ -370,43 +372,43 @@ export function WidgetDesignForm({
                             )}
                           </button>
                           {launcherIconUrl && (
-                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('launcherIconUrl', ''); }} aria-label="Remove launcher icon">
+                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('launcherIconUrl', ''); }} aria-label={t('widgetDesign.removeLauncherIcon', 'Remove launcher icon')}>
                               <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
                         </div>
                       </div>
                       <div className="design-form-field">
-                        <label className="design-form-label">Launcher text</label>
-                        <input type="text" className="design-form-input" value={launcherText} onChange={(e) => update('launcherText', e.target.value)} placeholder="Help" style={{ width: '100%', minWidth: '220px' }} />
+                        <label className="design-form-label">{t('widgetDesign.launcherText', 'Launcher text')}</label>
+                        <input type="text" className="design-form-input" value={launcherText} onChange={(e) => update('launcherText', e.target.value)} placeholder={t('widgetDesign.launcherTextPlaceholder', 'Help')} style={{ width: '100%', minWidth: '220px' }} />
                       </div>
                     </div>
                     <div className="design-form-row">
                       <div className="design-form-field">
-                        <label className="design-form-label">Header icon (bot avatar)</label>
-                        <span className="design-form-hint">Click to choose image. 100×100px recommended.</span>
+                        <label className="design-form-label">{t('widgetDesign.headerIcon', 'Header icon (bot avatar)')}</label>
+                        <span className="design-form-hint">{t('widgetDesign.iconHint100', 'Click to choose image. 100x100px recommended.')}</span>
                         <input ref={headerInputRef} type="file" accept="image/*" onChange={handleFile((url) => update('headerIconUrl', url), headerInputRef)} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden />
                         <div className="design-form-icon-wrap">
                           <button type="button" onClick={() => headerInputRef.current?.click()} className="design-form-input" style={{ width: 100, height: 100, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
                             {headerIconUrl ? <img src={headerIconUrl} alt="Header" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>}
                           </button>
                           {headerIconUrl && (
-                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('headerIconUrl', ''); }} aria-label="Remove header icon">
+                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('headerIconUrl', ''); }} aria-label={t('widgetDesign.removeHeaderIcon', 'Remove header icon')}>
                               <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
                         </div>
                       </div>
                       <div className="design-form-field">
-                        <label className="design-form-label">Share icon</label>
-                        <span className="design-form-hint">Click to choose image.</span>
+                        <label className="design-form-label">{t('widgetDesign.shareIcon', 'Share icon')}</label>
+                        <span className="design-form-hint">{t('widgetDesign.iconHint', 'Click to choose image.')}</span>
                         <input ref={shareInputRef} type="file" accept="image/*" onChange={handleFile((url) => update('shareIconUrl', url), shareInputRef)} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden />
                         <div className="design-form-icon-wrap">
                           <button type="button" onClick={() => shareInputRef.current?.click()} className="design-form-input" style={{ width: 100, height: 100, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
                             {shareIconUrl ? <img src={shareIconUrl} alt="Share" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span className="muted" style={{ fontSize: '0.9375rem' }}>—</span>}
                           </button>
                           {shareIconUrl && (
-                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('shareIconUrl', ''); }} aria-label="Remove share icon">
+                            <button type="button" className="design-form-icon-clear" onClick={(e) => { e.stopPropagation(); update('shareIconUrl', ''); }} aria-label={t('widgetDesign.removeShareIcon', 'Remove share icon')}>
                               <FlowIcon name="delete" size="xs" />
                             </button>
                           )}
@@ -417,39 +419,39 @@ export function WidgetDesignForm({
                 </section>
 
                 <section className="ui-glass-card">
-                  <div className="card-title">Layout & size</div>
+                  <div className="card-title">{t('widgetDesign.layoutAndSize', 'Layout & size')}</div>
                   <div className="design-form-section">
                     <div className="design-form-field">
-                      <label className="design-form-label">Max height</label>
+                      <label className="design-form-label">{t('widgetDesign.maxHeight', 'Max height')}</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <input type="range" min={400} max={maxHeightLimit} step={20} value={maxHeight} onChange={(e) => update('maxHeight', Number(e.target.value))} className="design-form-range-full" style={{ flex: 1, minWidth: 0 }} />
                         <span style={{ fontSize: '1rem', minWidth: '3rem' }}>{maxHeight}px</span>
                       </div>
                     </div>
                     <div className="design-form-field">
-                      <label className="design-form-label">Position</label>
+                      <label className="design-form-label">{t('widgetDesign.position', 'Position')}</label>
                       <div className="design-form-radio-group">
                         <label className="design-form-radio-card">
                           <input type="radio" name="widgetPosition" value="bottom-right" checked={widgetPosition === 'bottom-right'} onChange={() => update('widgetPosition', 'bottom-right')} />
-                          <span>Bottom right</span>
+                          <span>{t('widgetDesign.bottomRight', 'Bottom right')}</span>
                         </label>
                         <label className="design-form-radio-card">
                           <input type="radio" name="widgetPosition" value="bottom-left" checked={widgetPosition === 'bottom-left'} onChange={() => update('widgetPosition', 'bottom-left')} />
-                          <span>Bottom left</span>
+                          <span>{t('widgetDesign.bottomLeft', 'Bottom left')}</span>
                         </label>
                       </div>
                     </div>
                     <div className="design-form-field design-form-field-full">
-                      <label className="design-form-label">Widget title</label>
-                      <input type="text" className="design-form-input" value={widgetTitle} onChange={(e) => update('widgetTitle', e.target.value)} placeholder="Chat" style={{ width: '100%' }} />
+                      <label className="design-form-label">{t('widgetDesign.widgetTitle', 'Widget title')}</label>
+                      <input type="text" className="design-form-input" value={widgetTitle} onChange={(e) => update('widgetTitle', e.target.value)} placeholder={t('widgetDesign.widgetTitlePlaceholder', 'Chat')} style={{ width: '100%' }} />
                     </div>
                     <div className="design-form-field">
-                      <label className="design-form-label">Size</label>
+                      <label className="design-form-label">{t('widgetDesign.size', 'Size')}</label>
                       <div className="design-form-radio-group">
                         {(['small', 'medium', 'large'] as const).map((size) => (
                           <label key={size} className="design-form-radio-card">
                             <input type="radio" name="widgetSize" value={size} checked={widgetSize === size} onChange={() => update('widgetSize', size)} />
-                            <span style={{ textTransform: 'capitalize' }}>{size}</span>
+                            <span style={{ textTransform: 'capitalize' }}>{t(`widgetDesign.${size}`, size)}</span>
                           </label>
                         ))}
                       </div>
@@ -458,42 +460,42 @@ export function WidgetDesignForm({
                 </section>
 
                 <section className="ui-glass-card">
-                  <div className="card-title">Behaviour</div>
+                  <div className="card-title">{t('widgetDesign.behavior', 'Behavior')}</div>
                   <div className="design-form-section">
                     <div className="design-form-row">
                       <div className="design-form-field">
-                        <label className="design-form-label">Font size</label>
+                        <label className="design-form-label">{t('widgetDesign.fontSize', 'Font size')}</label>
                         <FlowSelect
                           value={fontSize}
                           onChange={(next) => update('fontSize', next as 'small' | 'medium' | 'large')}
                           options={[
-                            { value: 'small', label: 'Small' },
-                            { value: 'medium', label: 'Medium' },
-                            { value: 'large', label: 'Large' },
+                            { value: 'small', label: t('widgetDesign.small', 'Small') },
+                            { value: 'medium', label: t('widgetDesign.medium', 'Medium') },
+                            { value: 'large', label: t('widgetDesign.large', 'Large') },
                           ]}
                         />
                       </div>
                       <div className="design-form-field">
-                        <label className="design-form-label">Header size</label>
+                        <label className="design-form-label">{t('widgetDesign.headerSize', 'Header size')}</label>
                         <FlowSelect
                           value={headerSize}
                           onChange={(next) => update('headerSize', next as 'small' | 'medium' | 'large')}
                           options={[
-                            { value: 'small', label: 'Small' },
-                            { value: 'medium', label: 'Medium' },
-                            { value: 'large', label: 'Large' },
+                            { value: 'small', label: t('widgetDesign.small', 'Small') },
+                            { value: 'medium', label: t('widgetDesign.medium', 'Medium') },
+                            { value: 'large', label: t('widgetDesign.large', 'Large') },
                           ]}
                         />
                       </div>
                     </div>
                     <div className="design-form-row">
                       <div className="design-form-field">
-                        <label className="design-form-label">Auto popup welcome</label>
+                        <label className="design-form-label">{t('widgetDesign.autoPopupWelcome', 'Auto popup welcome')}</label>
                         <FlowSelect
                           value={autoPopupWelcome}
                           onChange={(next) => update('autoPopupWelcome', next as 'off' | '1s' | '2s' | '3s')}
                           options={[
-                            { value: 'off', label: 'Off' },
+                            { value: 'off', label: t('widgetDesign.off', 'Off') },
                             { value: '1s', label: '1s' },
                             { value: '2s', label: '2s' },
                             { value: '3s', label: '3s' },
@@ -501,32 +503,32 @@ export function WidgetDesignForm({
                         />
                       </div>
                       <div className="design-form-field">
-                        <label className="design-form-label">Auto scroll</label>
+                        <label className="design-form-label">{t('widgetDesign.autoScroll', 'Auto scroll')}</label>
                         <FlowSelect
                           value={autoScrollNewMessages ? 'yes' : 'no'}
                           onChange={(next) => update('autoScrollNewMessages', next === 'yes')}
                           options={[
-                            { value: 'yes', label: 'Yes' },
-                            { value: 'no', label: 'No' },
+                            { value: 'yes', label: t('widgetDesign.yes', 'Yes') },
+                            { value: 'no', label: t('widgetDesign.no', 'No') },
                           ]}
                         />
                       </div>
                       <div className="design-form-field">
-                        <label className="design-form-label">Display sources</label>
+                        <label className="design-form-label">{t('widgetDesign.displaySources', 'Display sources')}</label>
                         <FlowSelect
                           value={displaySourcesInMessages ? 'yes' : 'no'}
                           onChange={(next) => update('displaySourcesInMessages', next === 'yes')}
                           options={[
-                            { value: 'no', label: 'No' },
-                            { value: 'yes', label: 'Yes' },
+                            { value: 'no', label: t('widgetDesign.no', 'No') },
+                            { value: 'yes', label: t('widgetDesign.yes', 'Yes') },
                           ]}
                         />
                       </div>
                     </div>
                     {displaySourcesInMessages && (
                       <div className="design-form-field design-form-field-full">
-                        <label className="design-form-label">Sources label</label>
-                        <input type="text" className="design-form-input" value={sourcesLabel} onChange={(e) => update('sourcesLabel', e.target.value)} placeholder="Sources" style={{ width: '100%' }} />
+                        <label className="design-form-label">{t('widgetDesign.sourcesLabel', 'Sources label')}</label>
+                        <input type="text" className="design-form-input" value={sourcesLabel} onChange={(e) => update('sourcesLabel', e.target.value)} placeholder={t('widgetDesign.sourcesPlaceholder', 'Sources')} style={{ width: '100%' }} />
                       </div>
                     )}
                   </div>
@@ -539,7 +541,7 @@ export function WidgetDesignForm({
         <WidgetPreview
           position={widgetPosition}
           primaryColor={widgetPrimaryColor}
-          title={widgetTitle || 'Chat'}
+          title={widgetTitle || t('widgetDesign.widgetTitlePlaceholder', 'Chat')}
           size={widgetSize}
           welcomeMessage={welcomeMessage}
           placeholder={placeholder}

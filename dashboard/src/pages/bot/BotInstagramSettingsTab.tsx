@@ -4,6 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CheckCircle, AlertCircle, Loader2, Trash2, Zap, Instagram, ExternalLink, LogIn } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard } from '../../components/ui'
+import { useTranslation } from 'react-i18next'
 
 type InstagramChannelConfig = {
   channel_id: string
@@ -27,6 +28,10 @@ export default function BotInstagramSettingsTab() {
   const { selectedBot } = useDashboardData()
   const { getAccessTokenSilently } = useAuth0()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { i18n } = useTranslation()
+  const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
+  const isJa = lang.startsWith('ja') || lang.startsWith('jp')
+  const tr = (en: string, ja: string) => (isJa ? ja : en)
 
   const [existing, setExisting] = useState<InstagramChannelConfig | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,14 +49,18 @@ export default function BotInstagramSettingsTab() {
     const igError = searchParams.get('ig_error')
 
     if (connected === 'true') {
-      setSuccess(`Connected${username ? ` @${username}` : ''}! Your bot is live on Instagram.`)
+      setSuccess(
+        isJa
+          ? `接続完了${username ? ` @${username}` : ''}。ボットはInstagramで稼働中です。`
+          : `Connected${username ? ` @${username}` : ''}! Your bot is live on Instagram.`,
+      )
       // Clean URL params
       searchParams.delete('connected')
       searchParams.delete('username')
       setSearchParams(searchParams, { replace: true })
     }
     if (igError) {
-      setError(`Connection failed: ${decodeURIComponent(igError)}`)
+      setError(`${tr('Connection failed', '接続に失敗しました')}: ${decodeURIComponent(igError)}`)
       searchParams.delete('ig_error')
       setSearchParams(searchParams, { replace: true })
     }
@@ -140,7 +149,7 @@ export default function BotInstagramSettingsTab() {
 
   async function handleDisconnect() {
     if (!botId) return
-    const confirmed = window.confirm('Disconnect Instagram integration? Your bot will stop responding to DMs.')
+    const confirmed = window.confirm(tr('Disconnect Instagram integration? Your bot will stop responding to DMs.', 'Instagram連携を解除しますか？ボットはDMに返信しなくなります。'))
     if (!confirmed) return
     setDisconnecting(true)
     setError(null)
@@ -157,7 +166,7 @@ export default function BotInstagramSettingsTab() {
       }
       setExisting(null)
       setTestResult(null)
-      setSuccess('Instagram integration disconnected.')
+      setSuccess(tr('Instagram integration disconnected.', 'Instagram連携を解除しました。'))
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -166,7 +175,7 @@ export default function BotInstagramSettingsTab() {
   }
 
   if (!selectedBot || !botId) {
-    return <div className="empty-panel">Select a bot to configure Instagram integration.</div>
+    return <div className="empty-panel">{tr('Select a bot to configure Instagram integration.', 'Instagram連携を設定するボットを選択してください。')}</div>
   }
 
   if (loading) {
@@ -174,7 +183,7 @@ export default function BotInstagramSettingsTab() {
       <AnimatedPage className="page-body">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '0.75rem', color: 'var(--text-secondary)' }}>
           <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-          Loading Instagram settings...
+          {tr('Loading Instagram settings...', 'Instagram設定を読み込み中...')}
         </div>
       </AnimatedPage>
     )
@@ -187,15 +196,15 @@ export default function BotInstagramSettingsTab() {
       ? `@${existing.ig_username}`
       : existing.ig_page_id
     const tokenExpiry = existing.token_expires_at
-      ? new Date(existing.token_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? new Date(existing.token_expires_at).toLocaleDateString(isJa ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : null
 
     return (
       <AnimatedPage className="page-body">
         <SectionHeader
-          eyebrow="Integrations"
-          title="Instagram channel"
-          subtitle="Your bot is live and responding to DMs on Instagram."
+          eyebrow={tr('Integrations', '連携')}
+          title={tr('Instagram channel', 'Instagramチャンネル')}
+          subtitle={tr('Your bot is live and responding to DMs on Instagram.', 'ボットはInstagramのDMに自動返信中です。')}
         />
 
         {/* Status Hero */}
@@ -241,7 +250,7 @@ export default function BotInstagramSettingsTab() {
                   color: '#fff',
                   marginBottom: '0.25rem',
                 }}>
-                  Connected & Active
+                  {tr('Connected & Active', '接続済み・有効')}
                 </div>
                 <div style={{
                   color: 'rgba(255,255,255,0.85)',
@@ -258,9 +267,9 @@ export default function BotInstagramSettingsTab() {
                     }}>{displayName}</span>
                   )}
                   {' '}&bull;{' '}
-                  {existing.is_active ? 'Active' : 'Paused'}
+                  {existing.is_active ? tr('Active', '有効') : tr('Paused', '一時停止')}
                   {isOAuth && tokenExpiry && (
-                    <> &bull; Token expires {tokenExpiry}</>
+                    <> &bull; {tr('Token expires', 'トークン有効期限')} {tokenExpiry}</>
                   )}
                 </div>
               </div>
@@ -300,12 +309,12 @@ export default function BotInstagramSettingsTab() {
                 {testing ? (
                   <>
                     <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                    Testing...
+                    {tr('Testing...', 'テスト中...')}
                   </>
                 ) : (
                   <>
                     <Zap size={18} />
-                    Test Connection
+                    {tr('Test Connection', '接続テスト')}
                   </>
                 )}
               </button>
@@ -336,49 +345,49 @@ export default function BotInstagramSettingsTab() {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           <GlassCard>
             <div className="card-title" style={{ marginBottom: '1rem' }}>
-              Connection Details
+              {tr('Connection Details', '接続情報')}
             </div>
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Method</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Method', '方式')}</span>
                 <span style={{ fontWeight: 600 }}>
                   {isOAuth ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#833ab4' }}>
-                      <LogIn size={14} /> OAuth (automatic)
+                      <LogIn size={14} /> {tr('OAuth (automatic)', 'OAuth（自動）')}
                     </span>
                   ) : (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                      Manual credentials
+                      {tr('Manual credentials', '手動認証情報')}
                     </span>
                   )}
                 </span>
               </div>
               {existing.ig_username && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Account</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{tr('Account', 'アカウント')}</span>
                   <span style={{ fontWeight: 600 }}>@{existing.ig_username}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Account ID</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Account ID', 'アカウントID')}</span>
                 <code style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{existing.ig_user_id || existing.ig_page_id}</code>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Status</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Status', 'ステータス')}</span>
                 <span style={{ fontWeight: 600, color: existing.is_active ? '#27ae60' : '#e74c3c' }}>
-                  {existing.is_active ? 'Active' : 'Paused'}
+                  {existing.is_active ? tr('Active', '有効') : tr('Paused', '一時停止')}
                 </span>
               </div>
               {isOAuth && tokenExpiry && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Token expires</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>{tr('Token expires', 'トークン有効期限')}</span>
                   <span style={{ fontWeight: 500 }}>{tokenExpiry}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Connected</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Connected', '接続日')}</span>
                 <span style={{ fontWeight: 500 }}>
-                  {new Date(existing.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {new Date(existing.created_at).toLocaleDateString(isJa ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
             </div>
@@ -387,17 +396,17 @@ export default function BotInstagramSettingsTab() {
           {/* Reconnect / Disconnect */}
           <GlassCard>
             <div className="card-title" style={{ marginBottom: '1rem' }}>
-              Manage Connection
+              {tr('Manage Connection', '接続管理')}
             </div>
             {isOAuth && (
               <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                Token auto-refreshes. If you have issues, reconnect by clicking below.
+                {tr('Token auto-refreshes. If you have issues, reconnect by clicking below.', 'トークンは自動更新されます。問題がある場合は下のボタンで再接続してください。')}
               </p>
             )}
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {isOAuth && (
                 <UiButton variant="primary" onClick={handleConnect} disabled={connecting}>
-                  {connecting ? 'Redirecting...' : 'Reconnect'}
+                  {connecting ? tr('Redirecting...', 'リダイレクト中...') : tr('Reconnect', '再接続')}
                 </UiButton>
               )}
               <UiButton
@@ -407,7 +416,7 @@ export default function BotInstagramSettingsTab() {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e74c3c', borderColor: '#e74c3c' }}
               >
                 <Trash2 size={16} />
-                {disconnecting ? 'Removing...' : 'Disconnect'}
+                {disconnecting ? tr('Removing...', '解除中...') : tr('Disconnect', '連携解除')}
               </UiButton>
             </div>
           </GlassCard>
@@ -420,9 +429,9 @@ export default function BotInstagramSettingsTab() {
   return (
     <AnimatedPage className="page-body">
       <SectionHeader
-        eyebrow="Integrations"
-        title="Connect Instagram"
-        subtitle="Let your AI bot reply to Instagram DMs automatically."
+        eyebrow={tr('Integrations', '連携')}
+        title={tr('Connect Instagram', 'Instagramに接続')}
+        subtitle={tr('Let your AI bot reply to Instagram DMs automatically.', 'AIボットがInstagramのDMに自動返信できるようにします。')}
       />
 
       {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
@@ -453,7 +462,7 @@ export default function BotInstagramSettingsTab() {
             fontWeight: 700,
             margin: '0 0 0.5rem 0',
           }}>
-            Connect your Instagram account
+            {tr('Connect your Instagram account', 'Instagramアカウントを接続')}
           </h3>
           <p style={{
             margin: '0 0 2rem 0',
@@ -464,8 +473,10 @@ export default function BotInstagramSettingsTab() {
             marginRight: 'auto',
             lineHeight: 1.6,
           }}>
-            Sign in with Instagram, approve permissions, and your bot starts
-            replying to DMs instantly. No developer console needed.
+            {tr(
+              'Sign in with Instagram, approve permissions, and your bot starts replying to DMs instantly. No developer console needed.',
+              'Instagramでログインして権限を許可すると、ボットがDMにすぐ自動返信を開始します。開発者コンソールは不要です。',
+            )}
           </p>
 
           <button
@@ -502,12 +513,12 @@ export default function BotInstagramSettingsTab() {
             {connecting ? (
               <>
                 <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
-                Redirecting to Instagram...
+                {tr('Redirecting to Instagram...', 'Instagramへリダイレクト中...')}
               </>
             ) : (
               <>
                 <Instagram size={22} />
-                Connect with Instagram
+                {tr('Connect with Instagram', 'Instagramで接続')}
               </>
             )}
           </button>
@@ -527,13 +538,13 @@ export default function BotInstagramSettingsTab() {
             color: 'var(--text-secondary)',
             marginBottom: '1.25rem',
           }}>
-            How it works
+            {tr('How it works', '接続の流れ')}
           </div>
           <div style={{ display: 'grid', gap: '1rem' }}>
             {[
-              { num: '1', text: 'Click "Connect with Instagram" above' },
-              { num: '2', text: 'Log in with your Instagram account and approve permissions' },
-              { num: '3', text: 'Done! Your bot starts replying to DMs automatically' },
+              { num: '1', text: tr('Click "Connect with Instagram" above', '上の「Instagramで接続」をクリック') },
+              { num: '2', text: tr('Log in with your Instagram account and approve permissions', 'Instagramアカウントでログインして権限を許可') },
+              { num: '3', text: tr('Done! Your bot starts replying to DMs automatically', '完了です。ボットがDMへ自動返信を開始します') },
             ].map((step) => (
               <div key={step.num} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{
@@ -574,15 +585,17 @@ export default function BotInstagramSettingsTab() {
           }}>
             <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#833ab4' }} />
             <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Requirements:</strong> Your Instagram account must be a{' '}
-              <strong>Professional account</strong> (Business or Creator).{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>{tr('Requirements:', '要件:')}</strong>{' '}
+              {tr('Your Instagram account must be a', 'Instagramアカウントは')}{' '}
+              <strong>{tr('Professional account', 'プロアカウント')}</strong>{' '}
+              {tr('(Business or Creator).', '（ビジネスまたはクリエイター）である必要があります。')}{' '}
               <a
                 href="https://help.instagram.com/502981923235522"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ color: '#833ab4', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}
               >
-                Learn how to switch <ExternalLink size={12} />
+                {tr('Learn how to switch', '切り替え方法を見る')} <ExternalLink size={12} />
               </a>
             </div>
           </div>

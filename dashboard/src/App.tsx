@@ -30,11 +30,11 @@ import BotConversationsTab from './pages/bot/BotConversationsTab'
 import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotInstagramSettingsTab from './pages/bot/BotInstagramSettingsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
-import BotInfoLinksTab from './pages/bot/BotInfoLinksTab'
 
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
 import BotPersonaTab from './pages/bot/BotPersonaTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
+import BotHumanSupportTab from './pages/bot/BotHumanSupportTab'
 import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
 import BotImageAssetsTab from './pages/bot/BotImageAssetsTab'
 import BotNotificationsTab from './pages/bot/BotNotificationsTab'
@@ -110,12 +110,13 @@ export default function App() {
               <Route path="overview" element={<BotOverviewTab />} />
               <Route path="notifications" element={<BotNotificationsTab />} />
               <Route path="knowledge" element={<BotKnowledgeTab />} />
-              <Route path="info-links" element={<BotInfoLinksTab />} />
+              <Route path="info-links" element={<Navigate to="../knowledge" replace />} />
               <Route path="image-assets" element={<BotImageAssetsTab />} />
               <Route path="sources" element={<Navigate to="knowledge" replace />} />
               <Route path="sources/new" element={<AddSourcePage />} />
               <Route path="design" element={<BotDesignTab />} />
               <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
+              <Route path="human-support" element={<BotHumanSupportTab />} />
               <Route path="persona" element={<BotPersonaTab />} />
 
               <Route path="testing" element={<BotTestingTab />} />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Check, Paintbrush } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
   WidgetDesignForm,
@@ -14,6 +15,7 @@ import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 const SAVED_FEEDBACK_MS = 2000
 
 export default function BotDesignTab() {
+  const { t } = useTranslation()
   const { botId } = useParams()
   const { selectedBot, selectedBotWidgetConfig, saveWidgetConfig, loading } = useDashboardData()
   const [state, setState] = useState<WidgetDesignState>(() => DEFAULT_WIDGET_DESIGN_STATE)
@@ -48,22 +50,22 @@ export default function BotDesignTab() {
   }
 
   if (!botId) {
-    return <div className="empty-panel">Select a bot to edit design.</div>
+    return <div className="empty-panel">{t('botDesign.selectBot', 'Select a bot to edit design.')}</div>
   }
 
   if (loading && !selectedBot) {
-    return <div className="empty-panel">Loading...</div>
+    return <div className="empty-panel">{t('common.working', 'Working...')}</div>
   }
 
   if (selectedBot?.bot_id !== botId) {
-    return <div className="empty-panel">Loading...</div>
+    return <div className="empty-panel">{t('common.working', 'Working...')}</div>
   }
 
   return (
     <AnimatedPage>
       <SectionHeader
-        title="Design the chat widget"
-        subtitle="Customize how the widget appears. Changes update the preview on the right."
+        title={t('botDesign.title', 'Design the chat widget')}
+        subtitle={t('botDesign.subtitle', 'Customize how the widget appears. Changes update the preview on the right.')}
       />
 
       <WidgetDesignForm
@@ -77,16 +79,16 @@ export default function BotDesignTab() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
           >
             {saving ? (
-              'Saving...'
+              t('botDesign.saving', 'Saving...')
             ) : savedJustNow ? (
               <>
                 <Check size={18} strokeWidth={2.5} aria-hidden />
-                <span>Saved</span>
+                <span>{t('botDesign.saved', 'Saved')}</span>
               </>
             ) : (
               <>
                 <Paintbrush size={16} />
-                Save design
+                {t('botDesign.saveDesign', 'Save design')}
               </>
             )}
           </UiButton>

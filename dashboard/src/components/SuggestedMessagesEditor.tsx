@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+﻿import { useCallback, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { FlowIcon } from './FlowIcon'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
 
@@ -16,15 +17,20 @@ type SuggestedMessagesEditorProps = {
 export function SuggestedMessagesEditor({
   suggestedMessages,
   onChange,
-  title = 'Suggested messages',
-  subtitle = 'Quick actions shown to users when the chat opens.',
+  title,
+  subtitle,
   addButtonPlacement = 'top',
   maxItems,
   actions,
 }: SuggestedMessagesEditorProps) {
+  const { t } = useTranslation()
+  const resolvedTitle = title ?? t('suggestedMessagesEditor.title', 'Suggested messages')
+  const resolvedSubtitle = subtitle ?? t('suggestedMessagesEditor.subtitle', 'Quick actions shown to users when the chat opens.')
+
   const [editingSuggestion, setEditingSuggestion] = useState<SuggestedMessageConfig | null>(null)
   const [suggestionDraft, setSuggestionDraft] = useState<SuggestedMessageConfig | null>(null)
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false)
+
   const canAdd = useMemo(
     () => (typeof maxItems === 'number' ? suggestedMessages.length < maxItems : true),
     [maxItems, suggestedMessages.length]
@@ -64,6 +70,7 @@ export function SuggestedMessagesEditor({
       closeSuggestionModal()
       return
     }
+
     const normalizedUrls = Array.from(
       new Set(
         (Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls : [])
@@ -71,6 +78,7 @@ export function SuggestedMessagesEditor({
           .filter(Boolean)
       )
     )
+
     const next: SuggestedMessageConfig = {
       ...suggestionDraft,
       type: suggestionDraft.type === 'escalate' ? 'escalate' : 'ai_response',
@@ -78,17 +86,16 @@ export function SuggestedMessagesEditor({
       urls: suggestionDraft.type === 'ai_response' ? normalizedUrls : undefined,
       prompt: suggestionDraft.type === 'ai_response' ? suggestionDraft.prompt : undefined,
     }
-    if (!next) {
-      closeSuggestionModal()
-      return
-    }
+
     if (!editingSuggestion && typeof maxItems === 'number' && suggestedMessages.length >= maxItems) {
       closeSuggestionModal()
       return
     }
+
     const updated = editingSuggestion
       ? suggestedMessages.map((msg) => (msg.id === editingSuggestion.id ? next : msg))
       : [...suggestedMessages, next]
+
     onChange(updated)
     closeSuggestionModal()
   }, [suggestionDraft, editingSuggestion, maxItems, normalizeOneUrl, suggestedMessages, onChange, closeSuggestionModal])
@@ -103,11 +110,11 @@ export function SuggestedMessagesEditor({
   return (
     <>
       <div className="design-form-field design-form-field-full">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: title || subtitle ? 'space-between' : 'flex-end', gap: '0.75rem' }}>
-          {(title || subtitle) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: resolvedTitle || resolvedSubtitle ? 'space-between' : 'flex-end', gap: '0.75rem' }}>
+          {(resolvedTitle || resolvedSubtitle) && (
             <div className="stacked-title">
-              <label className="design-form-label">{title}</label>
-              <span className="design-form-hint">{subtitle}</span>
+              <label className="design-form-label">{resolvedTitle}</label>
+              <span className="design-form-hint">{resolvedSubtitle}</span>
             </div>
           )}
           {addButtonPlacement === 'top' && (
@@ -120,32 +127,52 @@ export function SuggestedMessagesEditor({
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
               >
                 <Plus size={15} />
-                Add
+                {t('suggestedMessagesEditor.add', 'Add')}
               </button>
             </div>
           )}
         </div>
+
         <div style={{ display: 'grid', gap: '0.5rem', marginTop: '0.75rem' }}>
-          {suggestedMessages.length === 0 && <span className="muted">No suggested messages yet.</span>}
-          {suggestedMessages.map((msg) => (
-            <div key={msg.id} className="list-row" style={{ background: 'var(--flow-surface, #fff)', border: '1px solid var(--flow-border, #f2d8d2)', borderRadius: 'var(--flow-radius, 10px)' }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{msg.label}</div>
-                <div className="muted" style={{ fontSize: '0.85rem' }}>
-                  {`AI response${Array.isArray(msg.urls) && msg.urls.length ? ` · ${msg.urls.length} URL${msg.urls.length === 1 ? '' : 's'}` : ''}`}
+          {suggestedMessages.length === 0 && <span className="muted">{t('suggestedMessagesEditor.noneYet', 'No suggested messages yet.')}</span>}
+          {suggestedMessages.map((msg) => {
+            const urlCount = Array.isArray(msg.urls) ? msg.urls.length : 0
+            const details = urlCount > 0
+              ? `${t('suggestedMessagesEditor.aiResponse', 'AI response')} - ${t(
+                urlCount === 1 ? 'suggestedMessagesEditor.urlSingular' : 'suggestedMessagesEditor.urlPlural',
+                urlCount === 1 ? '{{count}} URL' : '{{count}} URLs',
+                { count: urlCount }
+              )}`
+              : t('suggestedMessagesEditor.aiResponse', 'AI response')
+
+            return (
+              <div key={msg.id} className="list-row" style={{ background: 'var(--flow-surface, #fff)', border: '1px solid var(--flow-border, #f2d8d2)', borderRadius: 'var(--flow-radius, 10px)' }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{msg.label}</div>
+                  <div className="muted" style={{ fontSize: '0.85rem' }}>
+                    {details}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="secondary" onClick={() => openSuggestionModal(msg)}>
+                    {t('suggestedMessagesEditor.edit', 'Edit')}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => removeSuggestion(msg.id)}
+                    aria-label={t('suggestedMessagesEditor.delete', 'Delete')}
+                    title={t('suggestedMessagesEditor.delete', 'Delete')}
+                    style={{ padding: '0.4rem', color: 'var(--flow-muted, #64748b)' }}
+                  >
+                    <FlowIcon name="delete" size="sm" />
+                  </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" className="secondary" onClick={() => openSuggestionModal(msg)}>
-                  Edit
-                </button>
-                <button type="button" className="ghost" onClick={() => removeSuggestion(msg.id)} aria-label="Delete" title="Delete" style={{ padding: '0.4rem', color: 'var(--flow-muted, #64748b)' }}>
-                  <FlowIcon name="delete" size="sm" />
-                </button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+
         {(addButtonPlacement === 'bottom' || actions) && (
           <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -158,7 +185,7 @@ export function SuggestedMessagesEditor({
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
                 >
                   <Plus size={15} />
-                  Add
+                  {t('suggestedMessagesEditor.add', 'Add')}
                 </button>
               )}
               {typeof maxItems === 'number' && (
@@ -178,39 +205,40 @@ export function SuggestedMessagesEditor({
             <div className="modal-header">
               <div>
                 <div className="modal-title">
-                  {editingSuggestion ? 'Edit Suggested Message' : 'Add Suggested Message'}
+                  {editingSuggestion
+                    ? t('suggestedMessagesEditor.modalEditTitle', 'Edit Suggested Message')
+                    : t('suggestedMessagesEditor.modalAddTitle', 'Add Suggested Message')}
                 </div>
-                <div className="modal-subtitle">Update the suggested message details.</div>
+                <div className="modal-subtitle">{t('suggestedMessagesEditor.modalSubtitle', 'Update the suggested message details.')}</div>
               </div>
-              <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label="Close">
+              <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label={t('suggestedMessagesEditor.close', 'Close')}>
                 <FlowIcon name="close" />
               </button>
             </div>
+
             <div className="modal-body">
-              <label className="design-form-label">Name</label>
+              <label className="design-form-label">{t('suggestedMessagesEditor.nameLabel', 'Name')}</label>
               <input
                 type="text"
                 className="design-form-input"
                 value={suggestionDraft.label}
-                onChange={(e) =>
-                  setSuggestionDraft((prev) => (prev ? { ...prev, label: e.target.value } : prev))
-                }
-                placeholder="Where are success stories?"
+                onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
+                placeholder={t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')}
               />
+
               <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                Prompt
+                {t('suggestedMessagesEditor.promptLabel', 'Prompt')}
               </label>
               <textarea
                 className="design-form-input"
                 rows={3}
                 value={suggestionDraft.prompt || ''}
-                onChange={(e) =>
-                  setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))
-                }
-                placeholder="Can you show me some user success stories?"
+                onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))}
+                placeholder={t('suggestedMessagesEditor.promptPlaceholder', 'Can you show me some user success stories?')}
               />
+
               <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                URLs (optional)
+                {t('suggestedMessagesEditor.urlsLabel', 'URLs (optional)')}
               </label>
               <textarea
                 className="design-form-input"
@@ -221,18 +249,19 @@ export function SuggestedMessagesEditor({
                     prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
                   )
                 }
-                placeholder={'https://example.com/pricing\nhttps://example.com/faq'}
+                placeholder={t('suggestedMessagesEditor.urlsPlaceholder', 'https://example.com/pricing\nhttps://example.com/faq')}
               />
               <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
-                One URL per line.
+                {t('suggestedMessagesEditor.urlsHelper', 'One URL per line.')}
               </div>
             </div>
+
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={closeSuggestionModal}>
-                Cancel
+                {t('suggestedMessagesEditor.cancel', 'Cancel')}
               </button>
               <button type="button" className="primary" onClick={saveSuggestion}>
-                {editingSuggestion ? 'Update' : 'Add'}
+                {editingSuggestion ? t('suggestedMessagesEditor.update', 'Update') : t('suggestedMessagesEditor.add', 'Add')}
               </button>
             </div>
           </div>

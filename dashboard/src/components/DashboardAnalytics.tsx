@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useDashboardData, type AnalyticsSummary, type AnalyticsTimeseries, type TopSources, type Topics } from '../hooks/useDashboardData'
 import { MetricCard, SectionHeader } from './ui'
 import { AlertTriangle, MessageCircle, MessagesSquare, RotateCw, Smile, UserPlus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 function toDayString(d: Date) {
   const yyyy = d.getFullYear()
@@ -171,6 +172,7 @@ function RangeControls({
   custom: { fromDay: string; toDay: string }
   setCustom: (v: { fromDay: string; toDay: string }) => void
 }) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [showCustomPicker, setShowCustomPicker] = useState(false)
   const dropdownRef = React.useRef<HTMLDivElement>(null)
@@ -188,10 +190,10 @@ function RangeControls({
   }, [])
 
   const presetLabels: Record<PresetRange, string> = {
-    '1d': 'Today',
-    '7d': 'Last 7 days',
-    '1m': 'Last 30 days',
-    'custom': 'Custom range',
+    '1d': t('dashboardAnalytics.range.today', 'Today'),
+    '7d': t('dashboardAnalytics.range.last7d', 'Last 7 days'),
+    '1m': t('dashboardAnalytics.range.last30d', 'Last 30 days'),
+    'custom': t('dashboardAnalytics.range.custom', 'Custom range'),
   }
 
   const handlePresetSelect = (p: PresetRange) => {
@@ -260,11 +262,11 @@ function RangeControls({
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span>Back</span>
+                <span>{t('dashboardAnalytics.range.back', 'Back')}</span>
               </button>
               <div className="range-dropdown-custom-fields">
                 <label>
-                  <span>From</span>
+                  <span>{t('dashboardAnalytics.range.from', 'From')}</span>
                   <input
                     type="date"
                     value={custom.fromDay}
@@ -272,7 +274,7 @@ function RangeControls({
                   />
                 </label>
                 <label>
-                  <span>To</span>
+                  <span>{t('dashboardAnalytics.range.to', 'To')}</span>
                   <input
                     type="date"
                     value={custom.toDay}
@@ -285,7 +287,7 @@ function RangeControls({
                 className="range-dropdown-apply"
                 onClick={applyCustomRange}
               >
-                Apply
+                {t('dashboardAnalytics.range.apply', 'Apply')}
               </button>
             </div>
           )}
@@ -350,6 +352,7 @@ const ANALYTICS_STALE_MS = 10 * 60 * 1000 // 10 minutes
 const DASHBOARD_ANALYTICS_CACHE = new Map<string, DashboardAnalyticsCacheEntry>()
 
 export default function DashboardAnalytics({ botId, setupPills }: Props) {
+  const { t } = useTranslation()
   const { getAnalyticsSummary, getAnalyticsTimeseries, getAnalyticsTopSources, getEscalationCounts, recomputeAnalytics } =
     useDashboardData()
   const [loading, setLoading] = useState(false)
@@ -458,7 +461,7 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
   }
 
   if (!botId) {
-    return <div className="empty-panel">Create or select a bot to view analytics.</div>
+    return <div className="empty-panel">{t('dashboardAnalytics.selectBot', 'Create or select a bot to view analytics.')}</div>
   }
 
   return (
@@ -472,16 +475,16 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       <section className="ui-glass-card summary-card" style={{ marginTop: 0 }}>
         <div className="summary-card-header">
           <SectionHeader
-            eyebrow="Performance"
-            title="Summary"
-            subtitle="Live metrics and setup completion for your bot."
+            eyebrow={t('dashboardAnalytics.eyebrow', 'Performance')}
+            title={t('dashboardAnalytics.summaryTitle', 'Summary')}
+            subtitle={t('dashboardAnalytics.summarySubtitle', 'Live metrics and setup completion for your bot.')}
             titleAccessory={
               <button
                 type="button"
                 onClick={() => void handleRefreshSummary()}
                 disabled={refreshing || loading}
-                aria-label="Refresh summary stats"
-                title="Recompute and refresh summary stats"
+                aria-label={t('dashboardAnalytics.refreshAria', 'Refresh summary stats')}
+                title={t('dashboardAnalytics.refreshTitle', 'Recompute and refresh summary stats')}
                 className={`summary-refresh-icon-btn${refreshing || loading ? ' is-spinning' : ''}`}
               >
                 <RotateCw size={14} strokeWidth={2.25} />
@@ -495,13 +498,13 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
           </div>
         )}
         <div className="summary-metrics">
-          <MetricCard label="Total conversations" value={summary?.conversations ?? 0} icon={<MessagesSquare size={15} />} />
-          <MetricCard label="Leads captured" value={summary?.escalations ?? 0} icon={<UserPlus size={15} />} />
-          <MetricCard label="Messages / Conv" value={Number((summary?.messages_per_conversation ?? 0).toFixed(1))} icon={<MessageCircle size={15} />} />
-          <MetricCard label="Unresolved support requests" value={unresolvedEscalations ?? 0} icon={<AlertTriangle size={15} />} />
+          <MetricCard label={t('dashboardAnalytics.totalConversations', 'Total conversations')} value={summary?.conversations ?? 0} icon={<MessagesSquare size={15} />} />
+          <MetricCard label={t('dashboardAnalytics.leadsCaptured', 'Leads captured')} value={summary?.escalations ?? 0} icon={<UserPlus size={15} />} />
+          <MetricCard label={t('dashboardAnalytics.messagesPerConv', 'Messages / Conv')} value={Number((summary?.messages_per_conversation ?? 0).toFixed(1))} icon={<MessageCircle size={15} />} />
+          <MetricCard label={t('dashboardAnalytics.unresolvedSupportRequests', 'Unresolved support requests')} value={unresolvedEscalations ?? 0} icon={<AlertTriangle size={15} />} />
           <div className="ui-metric-card summary-metric-card--feedback">
             <div className="ui-metric-card-head">
-              <span className="ui-metric-card-label">CSAT</span>
+              <span className="ui-metric-card-label">{t('dashboardAnalytics.csat', 'CSAT')}</span>
               <span className="ui-metric-card-icon"><Smile size={15} /></span>
             </div>
             {((summary?.positive_feedback ?? 0) + (summary?.negative_feedback ?? 0)) === 0 ? (
@@ -519,11 +522,11 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
       <div className="card-grid" style={{ marginTop: 12 }}>
         <section className="ui-glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div className="card-title" style={{ margin: 0 }}>Daily conversations</div>
+            <div className="card-title" style={{ margin: 0 }}>{t('dashboardAnalytics.dailyConversations', 'Daily conversations')}</div>
             <RangeControls preset={convPreset} setPreset={setConvPreset} custom={convCustom} setCustom={setConvCustom} />
           </div>
           <div style={{ marginTop: 8, flex: 1, minHeight: CHART_HEIGHT, display: 'flex', flexDirection: 'column', width: '100%' }}>
-            {!convValues.length && <div className="muted">No data yet.</div>}
+            {!convValues.length && <div className="muted">{t('dashboardAnalytics.noDataYet', 'No data yet.')}</div>}
             {!!convValues.length && (
               <LineChartWithAxes
                 labels={convDays}
@@ -535,11 +538,11 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
         </section>
         <section className="ui-glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div className="card-title" style={{ margin: 0 }}>Daily support requests</div>
+            <div className="card-title" style={{ margin: 0 }}>{t('dashboardAnalytics.dailySupportRequests', 'Daily support requests')}</div>
             <RangeControls preset={escPreset} setPreset={setEscPreset} custom={escCustom} setCustom={setEscCustom} />
           </div>
           <div style={{ marginTop: 8, flex: 1, minHeight: CHART_HEIGHT, display: 'flex', flexDirection: 'column', width: '100%' }}>
-            {!escValues.length && <div className="muted">No data yet.</div>}
+            {!escValues.length && <div className="muted">{t('dashboardAnalytics.noDataYet', 'No data yet.')}</div>}
             {!!escValues.length && (
               <LineChartWithAxes
                 labels={escDays}
@@ -553,9 +556,9 @@ export default function DashboardAnalytics({ botId, setupPills }: Props) {
 
       <div className="card-grid" style={{ marginTop: 12 }}>
         <section className="ui-glass-card analytics-list-card">
-          <div className="card-title">Top sources</div>
+          <div className="card-title">{t('dashboardAnalytics.topSources', 'Top sources')}</div>
           <div className="analytics-list-scroll">
-            {!sources?.items?.length && <div className="muted">No data yet.</div>}
+            {!sources?.items?.length && <div className="muted">{t('dashboardAnalytics.noDataYet', 'No data yet.')}</div>}
             {!!sources?.items?.length && (
               <div>
                 {sources.items.map((s) => (

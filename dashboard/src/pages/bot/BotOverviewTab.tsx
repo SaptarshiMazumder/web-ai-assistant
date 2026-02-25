@@ -4,6 +4,7 @@ import { Check, Clock, Copy, Key, Code2 } from 'lucide-react'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import DashboardAnalytics from '../../components/DashboardAnalytics'
 import { GlassCard, UiButton } from '../../components/ui'
+import { useTranslation } from 'react-i18next'
 
 type SetupIndicator = {
   id: string
@@ -13,6 +14,7 @@ type SetupIndicator = {
 }
 
 export default function BotOverviewTab() {
+  const { t, i18n } = useTranslation()
   const { botId } = useParams()
   const {
     selectedBot,
@@ -34,7 +36,7 @@ export default function BotOverviewTab() {
   }, [botId, getEscalationConfig])
 
   if (!selectedBot || !botId) {
-    return <div className="empty-panel">Select a bot to view overview details.</div>
+    return <div className="empty-panel">{t('botOverview.selectBot', 'Select a bot to view overview details.')}</div>
   }
 
   const hasSources = sources.length > 0
@@ -45,11 +47,11 @@ export default function BotOverviewTab() {
   const escalationSetUp = escalationEnabled === true
 
   const setupIndicators: SetupIndicator[] = [
-    { id: 'sources', label: 'Knowledge and Training', done: hasSources, to: `/bots/${botId}/knowledge` },
-    { id: 'design', label: 'Design', done: hasDesign, to: `/bots/${botId}/design` },
-    { id: 'suggestions', label: 'Suggested messages', done: hasSuggestedMessages, to: `/bots/${botId}/suggested-messages` },
-    { id: 'deployment', label: 'Installation', done: hasVerifiedDomain, to: `/bots/${botId}/overview` },
-    { id: 'escalation', label: 'Human Support', done: escalationSetUp, to: `/bots/${botId}/suggested-messages` },
+    { id: 'sources', label: t('botOverview.setup.knowledgeTraining', 'Knowledge and Training'), done: hasSources, to: `/bots/${botId}/knowledge` },
+    { id: 'design', label: t('botOverview.setup.design', 'Design'), done: hasDesign, to: `/bots/${botId}/design` },
+    { id: 'suggestions', label: t('botOverview.setup.suggestedMessages', 'Suggested messages'), done: hasSuggestedMessages, to: `/bots/${botId}/suggested-messages` },
+    { id: 'deployment', label: t('botOverview.setup.installation', 'Installation'), done: hasVerifiedDomain, to: `/bots/${botId}/overview` },
+    { id: 'escalation', label: t('botOverview.setup.humanSupport', 'Human Support'), done: escalationSetUp, to: `/bots/${botId}/human-support` },
   ]
 
   return (
@@ -63,14 +65,16 @@ export default function BotOverviewTab() {
                 key={ind.id}
                 to={ind.to}
                 className="summary-pill"
-                title={ind.done ? `${ind.label} is set up` : `Set up ${ind.label}`}
+                title={ind.done
+                  ? t('botOverview.setupDoneTitle', '{{label}} is set up', { label: ind.label })
+                  : t('botOverview.setupPendingTitle', 'Set up {{label}}', { label: ind.label })}
               >
                 {ind.done ? (
                   <span className="summary-pill-icon summary-pill-icon--check" aria-hidden>
                     <Check size={13} strokeWidth={2.5} />
                   </span>
                 ) : (
-                  <span className="summary-pill-icon summary-pill-icon--setup" aria-hidden title="Pending">
+                  <span className="summary-pill-icon summary-pill-icon--setup" aria-hidden title={t('botOverview.pending', 'Pending')}>
                     <Clock size={13} strokeWidth={2.5} />
                   </span>
                 )}
@@ -85,32 +89,32 @@ export default function BotOverviewTab() {
         <GlassCard>
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Key size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-            Bot details
+            {t('botOverview.botDetailsTitle', 'Bot details')}
           </div>
           <div className="detail-row">
-            <span>Bot ID</span>
+            <span>{t('botOverview.botId', 'Bot ID')}</span>
             <code>{selectedBot.bot_id}</code>
           </div>
           <div className="detail-row">
-            <span>Publishable key</span>
+            <span>{t('botOverview.publishableKey', 'Publishable key')}</span>
             <code>{selectedBot.publishable_key}</code>
           </div>
           <div className="detail-row">
-            <span>Secret key</span>
+            <span>{t('botOverview.secretKey', 'Secret key')}</span>
             <code>{selectedBot.secret_key}</code>
           </div>
           <div className="detail-row">
-            <span>Created</span>
-            <span>{new Date(selectedBot.created_at).toLocaleString()}</span>
+            <span>{t('botOverview.created', 'Created')}</span>
+            <span>{new Date(selectedBot.created_at).toLocaleString(i18n.language || undefined)}</span>
           </div>
         </GlassCard>
 
         <GlassCard>
           <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Code2 size={16} style={{ color: 'var(--ui-flow-accent)' }} />
-            Embed script
+            {t('botOverview.embedScriptTitle', 'Embed script')}
           </div>
-          <p className="muted" style={{ marginBottom: '0.75rem' }}>Add this snippet to your client website.</p>
+          <p className="muted" style={{ marginBottom: '0.75rem' }}>{t('botOverview.embedScriptSubtitle', 'Add this snippet to your client website.')}</p>
           <pre className="snippet">{embedSnippet}</pre>
           <UiButton
             variant="secondary"
@@ -119,7 +123,7 @@ export default function BotOverviewTab() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}
           >
             <Copy size={16} />
-            Copy snippet
+            {t('botOverview.copySnippet', 'Copy snippet')}
           </UiButton>
         </GlassCard>
       </div>

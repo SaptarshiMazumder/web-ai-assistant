@@ -3,11 +3,16 @@ import { Code2, Copy, Check, Sparkles, Globe, Rocket } from 'lucide-react'
 import { AnimatedPage, SectionHeader, GlassCard, UiButton } from '../../components/ui'
 import { useParams } from 'react-router-dom'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { useTranslation } from 'react-i18next'
 
 export default function BotWebsiteSettingsTab() {
     const { botId } = useParams()
     const { embedSnippet, copySnippet } = useDashboardData()
     const [copied, setCopied] = useState(false)
+    const { i18n } = useTranslation()
+    const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
+    const isJa = lang.startsWith('ja') || lang.startsWith('jp')
+    const tr = (en: string, ja: string) => (isJa ? ja : en)
 
     const handleCopy = () => {
         void copySnippet()
@@ -16,15 +21,15 @@ export default function BotWebsiteSettingsTab() {
     }
 
     if (!botId) {
-        return <div className="empty-panel">Select a bot to view website installation.</div>
+        return <div className="empty-panel">{tr('Select a bot to view website installation.', 'Webサイト設置を表示するボットを選択してください。')}</div>
     }
 
     return (
         <AnimatedPage>
             <SectionHeader
-                eyebrow="Install"
-                title="Install on Website"
-                subtitle="Deploy your AI agent to any website with a single code snippet."
+                eyebrow={tr('Install', 'インストール')}
+                title={tr('Install on Website', 'Webサイトにインストール')}
+                subtitle={tr('Deploy your AI agent to any website with a single code snippet.', '1つのコードスニペットで、どのWebサイトにもAIエージェントを設置できます。')}
             />
 
             {/* Hero Card */}
@@ -68,7 +73,7 @@ export default function BotWebsiteSettingsTab() {
                             color: '#fff',
                             margin: 0,
                         }}>
-                            Ready to launch
+                            {tr('Ready to launch', '公開準備完了')}
                         </h2>
                     </div>
                     <p style={{
@@ -78,13 +83,27 @@ export default function BotWebsiteSettingsTab() {
                         margin: '0 0 1.5rem 0',
                         maxWidth: '600px',
                     }}>
-                        Copy the embed code below and paste it before the closing <code style={{
-                            background: 'rgba(0,0,0,0.2)',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            color: '#fff',
-                            fontFamily: 'monospace',
-                        }}>&lt;/body&gt;</code> tag of your website. Your AI agent will appear instantly.
+                        {isJa ? (
+                            <>
+                                下の埋め込みコードをコピーし、サイトの <code style={{
+                                    background: 'rgba(0,0,0,0.2)',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    color: '#fff',
+                                    fontFamily: 'monospace',
+                                }}>&lt;/body&gt;</code> タグの直前に貼り付けてください。AIエージェントがすぐに表示されます。
+                            </>
+                        ) : (
+                            <>
+                                Copy the embed code below and paste it before the closing <code style={{
+                                    background: 'rgba(0,0,0,0.2)',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    color: '#fff',
+                                    fontFamily: 'monospace',
+                                }}>&lt;/body&gt;</code> tag of your website. Your AI agent will appear instantly.
+                            </>
+                        )}
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                         <div style={{
@@ -94,13 +113,13 @@ export default function BotWebsiteSettingsTab() {
                             background: 'rgba(255,255,255,0.15)',
                             padding: '0.5rem 1rem',
                             borderRadius: '10px',
-                            backdropFilter: 'blur(10px)',
                             color: '#fff',
+                            backdropFilter: 'blur(10px)',
                             fontSize: '0.9rem',
                             fontWeight: 500,
                         }}>
                             <Globe size={16} />
-                            Works on any site
+                            {tr('Works on any site', 'あらゆるサイトで動作')}
                         </div>
                         <div style={{
                             display: 'flex',
@@ -115,7 +134,7 @@ export default function BotWebsiteSettingsTab() {
                             fontWeight: 500,
                         }}>
                             <Rocket size={16} />
-                            Live in 30 seconds
+                            {tr('Live in 30 seconds', '30秒で公開')}
                         </div>
                     </div>
                 </div>
@@ -145,7 +164,7 @@ export default function BotWebsiteSettingsTab() {
                         fontWeight: 600,
                         margin: 0,
                     }}>
-                        Your embed code
+                        {tr('Your embed code', '埋め込みコード')}
                     </h3>
                 </div>
 
@@ -166,7 +185,7 @@ export default function BotWebsiteSettingsTab() {
                             wordBreak: 'break-all',
                             minHeight: '120px',
                         }}>
-                            {embedSnippet || '// Loading...'}
+                            {embedSnippet || tr('// Loading...', '// 読み込み中...')}
                         </pre>
                     </div>
 
@@ -185,9 +204,9 @@ export default function BotWebsiteSettingsTab() {
                                 WebkitTextFillColor: 'transparent',
                                 fontWeight: 600,
                             }}>
-                                💡 Tip:
+                                {tr('Tip:', 'ヒント:')}
                             </span>
-                            Paste before the &lt;/body&gt; tag.
+                            {tr('Paste before the </body> tag.', '</body> タグの直前に貼り付けてください。')}
                         </p>
 
                         <UiButton
@@ -197,7 +216,7 @@ export default function BotWebsiteSettingsTab() {
                             style={{ minWidth: '140px' }}
                         >
                             {copied ? <Check size={18} /> : <Copy size={18} />}
-                            {copied ? 'Copied!' : 'Copy snippet'}
+                            {copied ? tr('Copied!', 'コピー済み') : tr('Copy snippet', 'スニペットをコピー')}
                         </UiButton>
                     </div>
                 </div>
@@ -210,14 +229,14 @@ export default function BotWebsiteSettingsTab() {
                     fontWeight: 600,
                     marginBottom: '1.5rem',
                 }}>
-                    How to install
+                    {tr('How to install', 'インストール手順')}
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                     {[
-                        { step: '1', title: 'Copy the embed code', emoji: '📋' },
-                        { step: '2', title: 'Open your HTML file', emoji: '📄' },
-                        { step: '3', title: 'Find the </body> tag', emoji: '🔍' },
-                        { step: '4', title: 'Paste it before it', emoji: '✨' },
+                        { step: '1', title: tr('Copy the embed code', '埋め込みコードをコピー'), emoji: '📋' },
+                        { step: '2', title: tr('Open your HTML file', 'HTMLファイルを開く'), emoji: '📄' },
+                        { step: '3', title: tr('Find the </body> tag', '</body> タグを探す'), emoji: '🔍' },
+                        { step: '4', title: tr('Paste it before it', 'その直前に貼り付ける'), emoji: '✨' },
                     ].map((item) => (
                         <div key={item.step} style={{
                             display: 'flex',

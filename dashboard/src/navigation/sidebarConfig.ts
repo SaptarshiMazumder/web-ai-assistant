@@ -21,7 +21,6 @@ import {
   History,
   Briefcase,
   AlertCircle,
-  Link2,
 } from 'lucide-react'
 import { LineIcon } from '../assets/icons/LineIcon'
 
@@ -78,13 +77,13 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
 
   // Sources section (was Knowledge)
   { id: 'knowledge', label: 'nav.sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'nav.agentKnowledge' },
-  { id: 'info-links', label: 'nav.infoLinks', to: `/bots/${botId}/info-links`, icon: Link2, header: 'nav.agentKnowledge' },
 
   { id: 'image-assets', label: 'nav.imageAssets', to: `/bots/${botId}/image-assets`, icon: Briefcase, header: 'nav.agentKnowledge' },
 
   // Appearance section (was Design)
   { id: 'design', label: 'nav.appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'nav.agentDesign' },
   { id: 'suggested-messages', label: 'nav.suggestedMessages', to: `/bots/${botId}/suggested-messages`, icon: MessageSquare, header: 'nav.agentDesign' },
+  { id: 'human-support', label: 'nav.humanSupport', to: `/bots/${botId}/human-support`, icon: AlertCircle, header: 'nav.agentDesign' },
   { id: 'persona', label: 'nav.personas', to: `/bots/${botId}/persona`, icon: UserCircle, header: 'nav.agentDesign' },
   { id: 'testing', label: 'nav.testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'nav.agentDesign' },
 
