@@ -518,6 +518,8 @@
     "saveDesign": "デザインを保存"
   },
   "widgetDesign": {
+    "botLanguage": "ボットの言語",
+    "botLanguageHint": "ウィジェットのコンテンツ、おすすめメッセージ、ペルソナプロンプトの言語を設定します。",
     "basics": "基本設定",
     "theme": "テーマ",
     "light": "ライト",

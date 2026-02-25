@@ -85,9 +85,49 @@ Business content (from trained data):
 Generate ONLY the "## Personality" and "## About the Business" sections. No commentary, no markdown fences."""
 
 
+_RAG_META_PROMPT_JA = """あなたは専門のプロンプトエンジニアです。AIチャットボットのシステム指示を書くのがあなたの仕事です。
+
+重要：AIの動作を指示する文書を書いています。ユーザーとの会話ではありません。出力は「あなたは...」「...してください」などの指示文として読めるようにしてください。
+
+出力ルール：
+1. すべて日本語で書いてください。
+2. 「## パーソナリティ」セクションから始め、AIのアイデンティティと役割を定義してください。例：「あなたは{business_name}のAIアシスタントで、[役割の説明]です。」自然にペルソナを説明してください（例：知識豊富なホテルコンシェルジュ、フレンドリーなレストランガイドなど）。
+3. 「## ビジネスについて」セクションを含めてください — 最大2〜3行。ビジネス名、特徴、タイプ（レストラン/ホテル/ショップなど）、場所を記述。価格、レビュー、メニュー項目、営業時間などの変動する詳細は含めないでください。
+4. 「応答ルール」や行動指示は含めないでください（自動で追加されます）。
+5. チャットボットの応答のようなものは書かないでください。挨拶や「何かお手伝いできますか？」は不要です。
+6. 出力全体を150語以内に収めてください。
+
+例：
+```
+## パーソナリティ
+あなたはExampleCafeのAIアシスタントで、コーヒーに情熱を持つ知識豊富でフレンドリーなカフェガイドです。
+
+## ビジネスについて
+ExampleCafeは東京・渋谷にあるスペシャルティコーヒーショップで、シングルオリジンの焙煎と居心地の良い雰囲気が特徴です。
+```
+
+ビジネス名: {business_name}
+
+ビジネスコンテンツ（トレーニングデータより）:
+{content}
+
+「## パーソナリティ」と「## ビジネスについて」セクションのみ生成してください。コメントやマークダウンフェンスは不要です。"""
+
+_STANDARD_RESPONSE_RULES_JA = """
+## 応答ルール
+- 必須：ユーザーの入力言語を検出し、同じ言語で応答してください。
+- 同じカテゴリに属する複数の項目をリストする場合は箇条書きを使用してください（例：メニュー項目、サービス一覧、場所のリストなど）。
+- 重要な項目を強調するためにマークダウンの太字（**テキスト**）を控えめに使用できます。
+- 詳細で役立つ説明を提供してください。
+- わからないことがある場合は正直に伝え、ウェブサイトの確認を提案してください。
+- 応答は前向きで歓迎的な言葉で締めくくり、適切な場合はトレーニングコンテンツに基づいた論理的なフォローアップの質問をしてください。
+"""
+
+
 def generate_prompt_from_rag_content(
     rag_snippets: list[str],
     business_name: str = "",
+    lang: str = "en",
 ) -> Optional[str]:
     """
     Use Gemini to generate a professional system prompt from RAG snippets.
@@ -112,8 +152,9 @@ def generate_prompt_from_rag_content(
 
     context_block = "\n\n".join(rag_snippets[:4])
 
-    prompt = _RAG_META_PROMPT.format(
-        business_name=business_name or "the business",
+    meta_template = _RAG_META_PROMPT_JA if lang == "ja" else _RAG_META_PROMPT
+    prompt = meta_template.format(
+        business_name=business_name or ("ビジネス" if lang == "ja" else "the business"),
         content=context_block,
     )
 
@@ -142,10 +183,11 @@ def generate_prompt_from_rag_content(
             else:
                 generated = "\n".join(lines[1:]).strip()
 
-        # Append standard response rules
-        generated = generated + _STANDARD_RESPONSE_RULES
+        # Append standard response rules (language-appropriate)
+        rules = _STANDARD_RESPONSE_RULES_JA if lang == "ja" else _STANDARD_RESPONSE_RULES
+        generated = generated + rules
 
-        logger.info("[PromptGen] Generated RAG-based prompt (%d chars) for %s", len(generated), business_name)
+        logger.info("[PromptGen] Generated RAG-based prompt (%d chars, lang=%s) for %s", len(generated), lang, business_name)
         return generated
 
     except Exception as e:
@@ -161,6 +203,7 @@ def generate_prompt_from_content(
     homepage_content: str,
     root_url: str = "",
     business_name: str = "",
+    lang: str = "en",
 ) -> Optional[str]:
     """
     Use Gemini to generate a professional system prompt from homepage content.
@@ -170,6 +213,8 @@ def generate_prompt_from_content(
     if not homepage_content or not homepage_content.strip():
         logger.warning("[PromptGen] No homepage content provided")
         return None
+
+    normalized_lang = "ja" if str(lang or "").strip().lower() in ("ja", "jp") else "en"
 
     project = (os.environ.get("PROJECT_ID") or "").strip()
     if not project:
@@ -187,19 +232,25 @@ def generate_prompt_from_content(
     max_content = int(os.environ.get("PROMPT_GEN_MAX_CONTENT_CHARS", "12000"))
     content = homepage_content[:max_content]
 
-    # Inject business name into the prompt instructions if provided
+    # Inject business name into the prompt instructions if provided (English template only).
     identity_instruction = ""
-    if business_name:
+    if business_name and normalized_lang != "ja":
         identity_instruction = f"""
 IMPORTANT: The business name is "{business_name}". Use EXACTLY this name in the identity line.
 """
 
-    prompt = _META_PROMPT.format(
-        url=root_url or "unknown",
-        content=content
-    )
+    if normalized_lang == "ja":
+        prompt = _RAG_META_PROMPT_JA.format(
+            business_name=business_name or "ビジネス",
+            content=content,
+        )
+    else:
+        prompt = _META_PROMPT.format(
+            url=root_url or "unknown",
+            content=content
+        )
     
-    if business_name:
+    if business_name and identity_instruction:
         # Prepend the identity instruction to the prompt context
         prompt = identity_instruction + "\n" + prompt
 
@@ -228,10 +279,11 @@ IMPORTANT: The business name is "{business_name}". Use EXACTLY this name in the 
             else:
                 generated = "\n".join(lines[1:]).strip()
 
-        # Append standard response rules
-        generated = generated + _STANDARD_RESPONSE_RULES
+        # Append standard response rules (language-appropriate)
+        rules = _STANDARD_RESPONSE_RULES_JA if normalized_lang == "ja" else _STANDARD_RESPONSE_RULES
+        generated = generated + rules
 
-        logger.info("[PromptGen] Generated prompt (%d chars) for %s", len(generated), root_url)
+        logger.info("[PromptGen] Generated prompt (%d chars, lang=%s) for %s", len(generated), normalized_lang, root_url)
         return generated
 
     except Exception as e:

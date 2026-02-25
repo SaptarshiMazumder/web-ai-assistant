@@ -39,10 +39,10 @@ const DEFAULT_PERSONA_ID = 'default-assistant'
 const CUSTOM_PERSONA_EMOJI = '💬'
 
 export default function BotPersonaTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
-  const { selectedBot, activeOrgId } = useDashboardData()
+  const { selectedBot, activeOrgId, selectedBotWidgetConfig } = useDashboardData()
   const { addTask, updateTask } = useBackgroundTasks()
 
   const [builtinPersonas, setBuiltinPersonas] = useState<Persona[]>([])
@@ -69,15 +69,25 @@ export default function BotPersonaTab() {
 
   const categoryTabsRef = useRef<HTMLDivElement>(null)
 
+  // Derive bot content language from widget config, fallback to dashboard UI language
+  const botLanguage = (() => {
+    const lang = selectedBotWidgetConfig?.language
+    if (lang === 'ja' || lang === 'jp') return 'ja'
+    if (lang === 'en') return 'en'
+    // No explicit bot language set — use dashboard UI language as fallback
+    return i18n.language?.startsWith('ja') ? 'ja' : 'en'
+  })()
+
   // All personas merged
   const personas = [...customPersonas.map((p) => ({ ...p, is_custom: true })), ...builtinPersonas]
 
-  // Load personas catalog
+  // Load personas catalog (re-fetch when bot language changes)
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      setLoading(true)
       try {
-        const res = await fetch(`${API_BASE}/v1/personas`)
+        const res = await fetch(`${API_BASE}/v1/personas?lang=${botLanguage}`)
         if (!res.ok) throw new Error(res.statusText)
         const data = await res.json() as { personas: Persona[]; categories: string[] }
         if (!cancelled) {
@@ -91,7 +101,7 @@ export default function BotPersonaTab() {
       }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [botLanguage])
 
   // Load current agent config to get saved persona_id + custom personas
   useEffect(() => {
@@ -230,7 +240,7 @@ export default function BotPersonaTab() {
 
     try {
       const token = await getAccessTokenSilently()
-      const path = withOrg(`/v1/org/bots/${botId}/generate-default-prompt`, activeOrgId)
+      const path = withOrg(`/v1/org/bots/${botId}/generate-default-prompt?lang=${encodeURIComponent(botLanguage)}`, activeOrgId)
       const res = await fetch(`${API_BASE}${path}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

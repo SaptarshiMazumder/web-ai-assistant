@@ -8,6 +8,11 @@ import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 const DEFAULT_PERSONA_ID = 'default-assistant'
+const LEGACY_DEFAULT_INSTRUCTIONS = `## Role
+You are a friendly and helpful AI chatbot who helps users with their inquiries, issues, and requests. Listen attentively, understand their needs, and assist them using the information provided. If a question is unclear, ask clarifying questions. End replies with a positive note.
+
+## Instructions
+These instructions allow you to customize the behavior, tone and personality of the agent and its responses.`
 
 const DEFAULT_MODELS = [
   { value: '', label: 'Default' },
@@ -15,17 +20,22 @@ const DEFAULT_MODELS = [
   { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash' },
 ]
 
-const DEFAULT_INSTRUCTIONS = `## Role
-You are a friendly and helpful AI chatbot who helps users with their inquiries, issues, and requests. Listen attentively, understand their needs, and assist them using the information provided. If a question is unclear, ask clarifying questions. End replies with a positive note.
-
-## Instructions
-These instructions allow you to customize the behavior, tone and personality of the agent and its responses.`
+type CustomPersonaConfig = {
+  id?: string
+  name?: string
+  category?: string
+  emoji?: string
+  system_prompt?: string
+  description?: string
+  [key: string]: unknown
+}
 
 type AgentConfig = {
   model_id?: string | null
   instructions?: string | null
   temperature?: number | null
   persona_id?: string | null
+  custom_personas?: CustomPersonaConfig[] | null
 }
 
 type PersonaItem = {
@@ -34,6 +44,27 @@ type PersonaItem = {
   category: string
   emoji: string
   system_prompt: string
+}
+
+function normalizePersona(input: CustomPersonaConfig | null | undefined): PersonaItem | null {
+  const id = String(input?.id || '').trim()
+  const systemPrompt = String(input?.system_prompt || '').trim()
+  if (!id || !systemPrompt) return null
+  return {
+    id,
+    name: String(input?.name || 'Custom Persona').trim() || 'Custom Persona',
+    category: String(input?.category || 'Custom').trim() || 'Custom',
+    emoji: String(input?.emoji || '💬').trim() || '💬',
+    system_prompt: systemPrompt,
+  }
+}
+
+function normalizePromptText(value: string): string {
+  return value.replace(/\r\n/g, '\n').trim()
+}
+
+function isLegacyDefaultInstructions(value: string): boolean {
+  return normalizePromptText(value) === normalizePromptText(LEGACY_DEFAULT_INSTRUCTIONS)
 }
 
 function withOrg(path: string, orgId: string | null): string {
@@ -93,7 +124,7 @@ function pickSourceOrigin(sources: SourceRecord[], botId?: string | null): { ori
 }
 
 export default function BotTestingTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { botId } = useParams()
   const { getAccessTokenSilently } = useAuth0()
   const {
@@ -109,12 +140,23 @@ export default function BotTestingTab() {
     getAvailabilityRaw,
   } = useDashboardData()
 
+  // Derive bot content language from widget config, fallback to dashboard UI language
+  const botLanguage = (() => {
+    const lang = selectedBotWidgetConfig?.language
+    if (lang === 'ja' || lang === 'jp') return 'ja'
+    if (lang === 'en') return 'en'
+    // No explicit bot language set — use dashboard UI language as fallback
+    return i18n.language?.startsWith('ja') ? 'ja' : 'en'
+  })()
+
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({})
   const [modelId, setModelId] = useState('')
-  const [instructions, setInstructions] = useState(DEFAULT_INSTRUCTIONS)
+  const [instructions, setInstructions] = useState('')
+  const [instructionsOverridden, setInstructionsOverridden] = useState(false)
   const [temperature, setTemperature] = useState(0.2)
   const [personaId, setPersonaId] = useState<string>(DEFAULT_PERSONA_ID)
-  const [personas, setPersonas] = useState<PersonaItem[]>([])
+  const [personas, setPersonas] = useState<PersonaItem[]>([]) // built-in personas
+  const [customPersonas, setCustomPersonas] = useState<CustomPersonaConfig[]>([])
   const [configLoading, setConfigLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -136,6 +178,18 @@ export default function BotTestingTab() {
 
   const [escalationsEnabled, setEscalationsEnabled] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+
+  const allPersonas = useMemo(() => {
+    const normalizedCustom = customPersonas
+      .map((p) => normalizePersona(p))
+      .filter((p): p is PersonaItem => p !== null)
+    return [...normalizedCustom, ...personas]
+  }, [customPersonas, personas])
+
+  const selectedPersona = useMemo(
+    () => allPersonas.find((p) => p.id === personaId) ?? null,
+    [allPersonas, personaId]
+  )
 
   const { siteUrl, siteTitle } = useMemo(() => {
     const primaryDomain = pickPrimaryDomain(domains, selectedBot?.bot_id)
@@ -206,12 +260,12 @@ export default function BotTestingTab() {
     return () => window.removeEventListener('beforeunload', endSession)
   }, [selectedBot])
 
-  // Load personas catalog
+  // Load personas catalog (re-fetch when bot language changes)
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const res = await fetch(`${API_BASE}/v1/personas`)
+        const res = await fetch(`${API_BASE}/v1/personas?lang=${botLanguage}`)
         if (res.ok) {
           const data = await res.json() as { personas: PersonaItem[] }
           if (!cancelled) setPersonas(data.personas)
@@ -219,23 +273,32 @@ export default function BotTestingTab() {
       } catch { /* ignore */ }
     })()
     return () => { cancelled = true }
-  }, [])
+  }, [botLanguage])
 
   // When persona is selected, populate the instructions with its system prompt
   const handlePersonaSelect = useCallback((selectedId: string) => {
     setPersonaId(selectedId)
-    const selectedPersona = personas.find((p) => p.id === selectedId)
-    if (selectedPersona) {
-      setInstructions(selectedPersona.system_prompt)
+    const persona = allPersonas.find((p) => p.id === selectedId)
+    if (persona) {
+      setInstructionsOverridden(false)
+      setInstructions(persona.system_prompt)
     }
-  }, [personas])
+  }, [allPersonas])
 
   useEffect(() => {
-    if (!personas.length) return
-    if (!personas.some((p) => p.id === personaId)) {
+    if (!allPersonas.length) return
+    if (!allPersonas.some((p) => p.id === personaId)) {
       setPersonaId(DEFAULT_PERSONA_ID)
     }
-  }, [personas, personaId])
+  }, [allPersonas, personaId])
+
+  // Keep instructions synced to persona when no explicit override is stored.
+  useEffect(() => {
+    if (instructionsOverridden) return
+    if (selectedPersona?.system_prompt) {
+      setInstructions(selectedPersona.system_prompt)
+    }
+  }, [instructionsOverridden, selectedPersona])
 
   const loadConfig = useCallback(async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
@@ -248,21 +311,29 @@ export default function BotTestingTab() {
       })
       if (!res.ok) throw new Error(res.statusText)
       const data = (await res.json()) as AgentConfig
+      const persistedInstructions = (data.instructions ?? '').trim()
+      const effectiveInstructions = isLegacyDefaultInstructions(persistedInstructions)
+        ? ''
+        : persistedInstructions
       setAgentConfig(data)
       setModelId(data.model_id ?? '')
-      setInstructions((data.instructions ?? '').trim() || DEFAULT_INSTRUCTIONS)
+      setInstructions(effectiveInstructions)
+      setInstructionsOverridden(Boolean(effectiveInstructions))
       setTemperature(
         typeof data.temperature === 'number' && data.temperature >= 0 && data.temperature <= 1
           ? data.temperature
           : 0.2
       )
       setPersonaId((data.persona_id || DEFAULT_PERSONA_ID).trim())
+      setCustomPersonas(Array.isArray(data.custom_personas) ? data.custom_personas : [])
     } catch {
       setAgentConfig({})
       setModelId('')
-      setInstructions(DEFAULT_INSTRUCTIONS)
+      setInstructions('')
+      setInstructionsOverridden(false)
       setTemperature(0.2)
       setPersonaId(DEFAULT_PERSONA_ID)
+      setCustomPersonas([])
     } finally {
       setConfigLoading(false)
     }
@@ -281,9 +352,10 @@ export default function BotTestingTab() {
       const path = withOrg(`/v1/org/bots/${botId}/agent-config`, activeOrgId)
       const payload: AgentConfig = {}
       if (modelId.trim()) payload.model_id = modelId.trim()
-      if (instructions.trim()) payload.instructions = instructions.trim()
+      if (instructionsOverridden && instructions.trim()) payload.instructions = instructions.trim()
       if (temperature !== 0.2) payload.temperature = temperature
       payload.persona_id = personaId || DEFAULT_PERSONA_ID
+      if (customPersonas.length > 0) payload.custom_personas = customPersonas
       const res = await fetch(`${API_BASE}${path}`, {
         method: 'PUT',
         headers: {
@@ -293,6 +365,7 @@ export default function BotTestingTab() {
         body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error((await res.json())?.detail || res.statusText)
+      setAgentConfig(payload)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
     } catch (e) {
@@ -302,12 +375,19 @@ export default function BotTestingTab() {
   }
 
   const handleReset = () => {
+    const resetPersonaId = (agentConfig.persona_id || DEFAULT_PERSONA_ID).trim()
+    const resetInstructions = (agentConfig.instructions ?? '').trim()
+    const effectiveResetInstructions = isLegacyDefaultInstructions(resetInstructions)
+      ? ''
+      : resetInstructions
+    const resetPersonaPrompt = allPersonas.find((p) => p.id === resetPersonaId)?.system_prompt || ''
     setModelId(agentConfig.model_id ?? '')
-    setInstructions((agentConfig.instructions ?? '').trim() || DEFAULT_INSTRUCTIONS)
+    setInstructions(effectiveResetInstructions || resetPersonaPrompt)
+    setInstructionsOverridden(Boolean(effectiveResetInstructions))
     setTemperature(
       typeof agentConfig.temperature === 'number' ? agentConfig.temperature : 0.2
     )
-    setPersonaId((agentConfig.persona_id || DEFAULT_PERSONA_ID).trim())
+    setPersonaId(resetPersonaId)
   }
 
   const handleGeneratePrompt = async () => {
@@ -315,7 +395,7 @@ export default function BotTestingTab() {
     setIsGenerating(true)
     try {
       const token = await getAccessTokenSilently()
-      const path = withOrg(`/v1/org/bots/${botId}/generate-prompt`, activeOrgId)
+      const path = withOrg(`/v1/org/bots/${botId}/generate-default-prompt?lang=${encodeURIComponent(botLanguage)}`, activeOrgId)
       const res = await fetch(`${API_BASE}${path}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
@@ -327,6 +407,7 @@ export default function BotTestingTab() {
       const data = await res.json() as { prompt: string }
       if (data.prompt) {
         setInstructions(data.prompt)
+        setInstructionsOverridden(true)
       }
     } catch (e) {
       alert("Failed to generate prompt: " + (e instanceof Error ? e.message : String(e)))
@@ -459,7 +540,7 @@ export default function BotTestingTab() {
                   onChange={(e) => handlePersonaSelect(e.target.value)}
                   disabled={configLoading}
                 >
-                  {personas.map((p) => (
+                  {allPersonas.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.emoji} {p.name} — {p.category}
                     </option>
@@ -484,16 +565,19 @@ export default function BotTestingTab() {
                     {isGenerating ? t('botTesting.generating', 'Generating...') : t('botTesting.generateFromWebsite', '⚡ Generate from website')}
                   </UiButton>
                 )}
-                {personaId && personas.find((p) => p.id === personaId) && personaId !== DEFAULT_PERSONA_ID && (
+                {personaId && selectedPersona && personaId !== DEFAULT_PERSONA_ID && (
                   <span style={{ fontSize: '0.75rem', color: 'var(--ui-flow-accent, #e4587a)', fontWeight: 500 }}>
-                    {t('botTesting.basedOn', 'Based on {{name}}', { name: personas.find((p) => p.id === personaId)?.name })}
+                    {t('botTesting.basedOn', 'Based on {{name}}', { name: selectedPersona.name })}
                   </span>
                 )}
               </div>
               <textarea
                 className="testing-textarea"
                 value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
+                onChange={(e) => {
+                  setInstructions(e.target.value)
+                  setInstructionsOverridden(true)
+                }}
                 placeholder={t('botTesting.instructionsPlaceholder', 'System prompt / instructions for the agent...')}
                 disabled={configLoading}
                 rows={10}

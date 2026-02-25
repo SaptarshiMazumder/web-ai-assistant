@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
-import { DEFAULT_WIDGET_DESIGN_STATE, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
+import { getDefaultsForLanguage, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
 import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath, getCreateBotSteps } from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
@@ -101,6 +102,8 @@ export type CreateBotStep3Slice = {
 
 /** Step 4: Design widget. Change only this slice when editing the fourth step. */
 export type CreateBotStep4Slice = {
+  botLanguage: 'en' | 'ja'
+  setBotLanguage: (value: 'en' | 'ja') => void
   widgetPosition: 'bottom-right' | 'bottom-left'
   setWidgetPosition: (value: 'bottom-right' | 'bottom-left') => void
   widgetPrimaryColor: string
@@ -180,6 +183,7 @@ function normalizeUrl(value: string) {
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
+  const { i18n } = useTranslation()
   const {
     createBot,
     discoverUrls: discoverUrlsFromHook,
@@ -195,6 +199,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     isSuperAdmin,
     generateSuggestedMessages,
   } = useDashboardData()
+
+  // Derive bot language from dashboard UI language
+  const appLang: 'en' | 'ja' = i18n.language?.startsWith('ja') ? 'ja' : 'en'
+  const initDefaults = getDefaultsForLanguage(appLang)
+
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [contentHosting, setContentHosting] = useState<ContentHosting | null>('shared')
@@ -232,17 +241,18 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [extraJobStatusById, setExtraJobStatusById] = useState<Record<string, any>>({})
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorType, setLocalErrorType] = useState<'error' | 'warning' | null>(null)
+  const [botLanguage, setBotLanguage] = useState<'en' | 'ja'>(appLang)
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#e4587a')
-  const [widgetTitle, setWidgetTitle] = useState('Chat')
+  const [widgetTitle, setWidgetTitle] = useState(initDefaults.widgetTitle)
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large'>('medium')
-  const [welcomeMessage, setWelcomeMessage] = useState('Welcome! How can I help you today?')
-  const [placeholder, setPlaceholder] = useState('Ask a question...')
-  const [footerMessage, setFooterMessage] = useState('Powered by WebAI')
+  const [welcomeMessage, setWelcomeMessage] = useState(initDefaults.welcomeMessage)
+  const [placeholder, setPlaceholder] = useState(initDefaults.placeholder)
+  const [footerMessage, setFooterMessage] = useState(initDefaults.footerMessage)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [textColor, setTextColor] = useState('#ffffff')
   const [launcherIconUrl, setLauncherIconUrl] = useState('')
-  const [launcherText, setLauncherText] = useState('Help')
+  const [launcherText, setLauncherText] = useState(initDefaults.launcherText)
   const [headerIconUrl, setHeaderIconUrl] = useState('')
   const [shareIconUrl, setShareIconUrl] = useState('')
   const [maxHeight, setMaxHeight] = useState(560)
@@ -251,14 +261,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [autoPopupWelcome, setAutoPopupWelcome] = useState<'off' | '1s' | '2s' | '3s'>('off')
   const [autoScrollNewMessages, setAutoScrollNewMessages] = useState(true)
   const [displaySourcesInMessages, setDisplaySourcesInMessages] = useState(false)
-  const [sourcesLabel, setSourcesLabel] = useState('Sources')
+  const [sourcesLabel, setSourcesLabel] = useState(initDefaults.sourcesLabel)
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
-    DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages
+    initDefaults.suggestedMessages
   )
   const [suggestedMessagesEnabled, setSuggestedMessagesEnabled] = useState(
-    DEFAULT_WIDGET_DESIGN_STATE.suggestedMessagesEnabled
+    initDefaults.suggestedMessagesEnabled
   )
   const resetFlow = useCallback(() => {
+    const defaults = getDefaultsForLanguage(appLang)
     setBotName('')
     setWebsiteUrl('')
     setContentHosting('shared')
@@ -289,17 +300,18 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setExtraJobIds([])
     setExtraJobStatusById({})
     setLocalError(null)
+    setBotLanguage(appLang)
     setWidgetPosition('bottom-right')
     setWidgetPrimaryColor('#e4587a')
-    setWidgetTitle('Chat')
+    setWidgetTitle(defaults.widgetTitle)
     setWidgetSize('medium')
-    setWelcomeMessage('Welcome! How can I help you today?')
-    setPlaceholder('Ask a question...')
-    setFooterMessage('Powered by WebAI')
+    setWelcomeMessage(defaults.welcomeMessage)
+    setPlaceholder(defaults.placeholder)
+    setFooterMessage(defaults.footerMessage)
     setTheme('light')
     setTextColor('#ffffff')
     setLauncherIconUrl('')
-    setLauncherText('Help')
+    setLauncherText(defaults.launcherText)
     setHeaderIconUrl('')
     setShareIconUrl('')
     setMaxHeight(560)
@@ -308,10 +320,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setAutoPopupWelcome('off')
     setAutoScrollNewMessages(true)
     setDisplaySourcesInMessages(false)
-    setSourcesLabel('Sources')
-    setSuggestedMessages(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
-    setSuggestedMessagesEnabled(DEFAULT_WIDGET_DESIGN_STATE.suggestedMessagesEnabled)
-  }, [])
+    setSourcesLabel(defaults.sourcesLabel)
+    setSuggestedMessages(defaults.suggestedMessages)
+    setSuggestedMessagesEnabled(defaults.suggestedMessagesEnabled)
+  }, [appLang])
 
   const discoverUrls = useCallback(async () => {
     setLocalError(null)
@@ -519,11 +531,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       return Array.from(m.values())
     })()
 
-    void saveWidgetConfig(created.bot_id, {
-      contentHosting: 'shared',
-      businessType: businessType || undefined,
-      urlBank: urlBankForSave,
-    }).catch(() => { })
+    try {
+      await saveWidgetConfig(created.bot_id, {
+        contentHosting: 'shared',
+        businessType: businessType || undefined,
+        language: botLanguage,
+        urlBank: urlBankForSave,
+      })
+    } catch {
+      // Non-blocking: bot can still be created without widget config.
+    }
     setTrainingStage('complete')
     setTrainingProgress(100)
     setTrainingPagesCrawled(0)
@@ -532,7 +549,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, sharedUrlRows])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -641,11 +658,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
-    void saveWidgetConfig(created.bot_id, {
-      contentHosting: 'shared',
-      businessType: businessType || undefined,
-      urlBank,
-    }).catch(() => { })
+    try {
+      await saveWidgetConfig(created.bot_id, {
+        contentHosting: 'shared',
+        businessType: businessType || undefined,
+        language: botLanguage,
+        urlBank,
+      })
+    } catch {
+      // Non-blocking: training can continue even if widget config save fails.
+    }
     if (!finalUrls.length && !hasPdfs && !hasDocs && !hasPlainText && !hasCustom) {
       setTrainingStage('complete')
       setTrainingProgress(100)
@@ -747,7 +769,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     // Background discovery disabled for now.
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -914,6 +936,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         resetFlow,
       },
       step4: {
+        botLanguage,
+        setBotLanguage,
         widgetPosition,
         setWidgetPosition,
         widgetPrimaryColor,
@@ -1049,6 +1073,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setSuggestedMessages,
       suggestedMessagesEnabled,
       setSuggestedMessagesEnabled,
+      botLanguage,
+      setBotLanguage,
       continueWithoutSources,
       discoverUrls,
       stopDiscovery,

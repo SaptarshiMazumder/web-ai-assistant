@@ -451,6 +451,7 @@ class EscalationStatusUpdateRequest(BaseModel):
 
 class WidgetConfigUpdate(BaseModel):
     """Widget design config stored per bot (widget API shape). All fields optional."""
+    language: Optional[str] = None  # "en" or "ja" — bot content language
     businessType: Optional[str] = None
     # Where the business content lives. Used to drive UX (own website vs website service).
     contentHosting: Optional[str] = None

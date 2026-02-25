@@ -22,12 +22,13 @@ export default function CreateBotWidgetPage() {
   }, [botId, navigate, flow.firstPath])
 
   useEffect(() => {
-    if (botName && step4.widgetTitle === 'Chat') {
+    if (botName && (step4.widgetTitle === 'Chat' || step4.widgetTitle === 'チャット')) {
       step4.setWidgetTitle(botName.trim())
     }
   }, [botName, step4.widgetTitle, step4.setWidgetTitle])
 
   const value: WidgetDesignState = {
+    botLanguage: step4.botLanguage,
     widgetPosition: step4.widgetPosition,
     widgetPrimaryColor: step4.widgetPrimaryColor,
     widgetTitle: step4.widgetTitle,

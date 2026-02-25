@@ -106,7 +106,7 @@ def _is_real_availability_summary(text: Optional[str]) -> bool:
     return not any(t.startswith(prefix) for prefix in _AVAILABILITY_ERROR_PREFIXES)
 
 
-def _resolve_system_instruction(agent_config: dict) -> Optional[str]:
+def _resolve_system_instruction(agent_config: dict, lang: str = "en") -> Optional[str]:
     """Resolve system instruction: prefer explicit instructions, fallback to persona prompt."""
     instructions = agent_config.get("instructions") if agent_config else None
     if instructions and instructions.strip():
@@ -116,7 +116,7 @@ def _resolve_system_instruction(agent_config: dict) -> Optional[str]:
     persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
 
     # Check built-in personas first.
-    builtin = get_persona_system_prompt(persona_id)
+    builtin = get_persona_system_prompt(persona_id, lang=lang)
     if builtin:
         return builtin
 
@@ -126,7 +126,20 @@ def _resolve_system_instruction(agent_config: dict) -> Optional[str]:
             return cp["system_prompt"]
 
     # Final fallback is always the Default built-in persona.
-    return get_persona_system_prompt(default_persona_id)
+    return get_persona_system_prompt(default_persona_id, lang=lang)
+
+
+def _get_bot_language(bot) -> str:
+    """Extract the bot content language from widget_config. Defaults to 'en'."""
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            wc = json.loads(bot.widget_config)
+            lang = (wc.get("language") or "").strip().lower()
+            if lang in ("ja", "jp"):
+                return "ja"
+        except (TypeError, ValueError):
+            pass
+    return "en"
 
 
 def _get_booking_url_for_chat(widget_config: Dict[str, Any]) -> Optional[str]:
@@ -687,7 +700,7 @@ async def v1_widget_chat(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config)
+    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -916,7 +929,7 @@ async def v1_widget_chat_stream(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config)
+    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -1424,16 +1437,25 @@ async def v1_org_update_agent_config(
 # ── Personas ──────────────────────────────────────────────────────────────────
 
 @router.get("/v1/personas", response_model=PersonaListResponse)
-async def v1_list_personas():
-    """List all built-in personas with their categories."""
+async def v1_list_personas(lang: str = "en"):
+    """List all built-in personas with their categories. Pass ?lang=ja for Japanese."""
     return PersonaListResponse(
-        personas=list_personas(),
-        categories=list_categories(),
+        personas=list_personas(lang=lang),
+        categories=list_categories(lang=lang),
     )
 
 
-def _default_prompt_fallback(business_name: str) -> str:
+def _default_prompt_fallback(business_name: str, lang: str = "en") -> str:
     """Fallback 3-part prompt when LLM or RAG is unavailable."""
+    if lang == "ja":
+        from domain.personas_ja import ABOUT_BUSINESS_JA, RESPONSE_RULES_JA
+        return (
+            f"## パーソナリティ\n"
+            f"あなたは{business_name}のAIアシスタントで、親切でフレンドリーなガイドです。\n\n"
+            f"## ビジネスについて\n"
+            f"{business_name}はお客様に卓越したサービスを提供することに専念しています。"
+            + RESPONSE_RULES_JA
+        )
     from application.services.prompt_generation_service import _STANDARD_RESPONSE_RULES
     return (
         f"## Personality\n"
@@ -1447,12 +1469,14 @@ def _default_prompt_fallback(business_name: str) -> str:
 @router.post("/v1/org/bots/{bot_id}/generate-default-prompt")
 async def v1_generate_default_prompt(
     bot_id: str,
+    lang: Optional[str] = None,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     """
     Query the bot's RAG corpus to build a curated, business-aware default system prompt.
     Returns the generated prompt text — caller saves it.
+    Respects the bot's language setting for Japanese prompt generation.
     """
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
@@ -1461,6 +1485,13 @@ async def v1_generate_default_prompt(
         raise HTTPException(status_code=404, detail="Unknown bot_id")
 
     business_name = (bot.display_name or "").strip() or "the business"
+    requested_lang = (lang or "").strip().lower()
+    if requested_lang in ("ja", "jp"):
+        bot_lang = "ja"
+    elif requested_lang == "en":
+        bot_lang = "en"
+    else:
+        bot_lang = _get_bot_language(bot)
 
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
@@ -1492,16 +1523,16 @@ async def v1_generate_default_prompt(
         # Use LLM to generate structured prompt from RAG snippets
         if snippets:
             from application.services.prompt_generation_service import generate_prompt_from_rag_content
-            generated = generate_prompt_from_rag_content(snippets, business_name)
+            generated = generate_prompt_from_rag_content(snippets, business_name, lang=bot_lang)
             if generated:
                 prompt_text = generated
             else:
                 # LLM failed, use fallback template
-                prompt_text = _default_prompt_fallback(business_name)
+                prompt_text = _default_prompt_fallback(business_name, lang=bot_lang)
         else:
-            prompt_text = _default_prompt_fallback(business_name)
+            prompt_text = _default_prompt_fallback(business_name, lang=bot_lang)
     except Exception:
-        prompt_text = _default_prompt_fallback(business_name)
+        prompt_text = _default_prompt_fallback(business_name, lang=bot_lang)
 
     return {"prompt": prompt_text, "business_name": business_name}
 
@@ -1525,6 +1556,7 @@ async def v1_generate_suggested_messages(
         raise HTTPException(status_code=404, detail="Unknown bot_id")
 
     business_name = (bot.display_name or "").strip() or "this business"
+    bot_lang = _get_bot_language(bot)
 
     # Gather context from RAG corpus
     snippets: list[str] = []
@@ -1580,7 +1612,29 @@ async def v1_generate_suggested_messages(
 
     context_block = "\n\n".join(context_parts)
 
-    generation_prompt = f"""You are analysing a business called "{business_name}".
+    if bot_lang == "ja":
+        generation_prompt = f"""「{business_name}」というビジネスを分析しています。
+以下のコンテンツに基づいて、初めての訪問者が尋ねそうな3つのクイック返信メッセージを生成してください。
+
+ルール：
+- 重要：各メッセージは10文字以内（スペースと句読点を含む）にしてください
+- 実際の顧客がタップするような短く自然な日本語のフレーズにしてください
+- このビジネスの最も重要/人気のあるトピックをカバーしてください
+- 一般的なものではなく、このビジネスが具体的に提供するものに合わせてください
+- 引用符や番号は使わないでください
+- 3つの文字列のJSON配列のみを返してください
+
+良い例（すべて10文字以内）：
+- レストラン: ["メニューを見る", "予約する", "本日のおすすめ"]
+- ホテル: ["空室確認", "設備について", "予約する"]
+- 美容院: ["料金プラン", "予約する", "営業時間"]
+- ソフトウェア: ["機能一覧", "料金プラン", "デモを見る"]
+
+{context_block}
+
+正確に3つの文字列のJSON配列のみを返してください（各10文字以内）："""
+    else:
+        generation_prompt = f"""You are analysing a business called "{business_name}".
 Based on the content below, generate exactly 3 suggested quick-reply messages that a first-time visitor would likely want to ask.
 
 Rules:
@@ -1754,7 +1808,7 @@ async def v1_org_test_chat(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config)
+    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
     result = run_vertex_rag(
@@ -3178,6 +3232,7 @@ async def v1_org_cancel_discovery_job(
 @router.post("/v1/org/bots/{bot_id}/generate-prompt")
 async def v1_org_generate_prompt(
     bot_id: str,
+    lang: Optional[str] = None,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
@@ -3221,9 +3276,21 @@ async def v1_org_generate_prompt(
         bot_repo = PostgresBotRepository()
         bot = bot_repo.get_bot(bot_id)
         business_name = bot.display_name if bot else ""
+        requested_lang = (lang or "").strip().lower()
+        if requested_lang in ("ja", "jp"):
+            bot_lang = "ja"
+        elif requested_lang == "en":
+            bot_lang = "en"
+        else:
+            bot_lang = _get_bot_language(bot)
 
         url = valid_job.url or (valid_job.crawled_urls[0] if valid_job.crawled_urls else "")
-        prompt = generate_prompt_from_content(homepage_content, root_url=url, business_name=business_name)
+        prompt = generate_prompt_from_content(
+            homepage_content,
+            root_url=url,
+            business_name=business_name,
+            lang=bot_lang,
+        )
         if not prompt:
             raise HTTPException(status_code=500, detail="LLM failed to generate prompt.")
         return {"prompt": prompt}

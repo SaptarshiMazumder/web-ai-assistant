@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 const FOOTER_MAX_LENGTH = 200
 
 export type WidgetDesignState = {
+  botLanguage: 'en' | 'ja'
   widgetPosition: 'bottom-right' | 'bottom-left'
   widgetPrimaryColor: string
   widgetTitle: string
@@ -43,6 +44,7 @@ export type SuggestedMessageConfig = {
 }
 
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
+  botLanguage: 'en',
   widgetPosition: 'bottom-right',
   widgetPrimaryColor: '#e4587a',
   widgetTitle: 'Chat',
@@ -71,9 +73,32 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   suggestedMessagesEnabled: false,
 }
 
+const DEFAULT_WIDGET_DESIGN_JA: Partial<WidgetDesignState> = {
+  botLanguage: 'ja',
+  widgetTitle: 'チャット',
+  welcomeMessage: 'こんにちは！何かお手伝いできますか？',
+  placeholder: '質問を入力...',
+  footerMessage: 'Powered by WebAI',
+  launcherText: 'ヘルプ',
+  sourcesLabel: 'ソース',
+  suggestedMessages: [
+    { id: 'suggest_1', label: '何ができますか？', type: 'ai_response', prompt: '何ができますか？' },
+    { id: 'suggest_2', label: '質問する', type: 'ai_response', prompt: '質問する' },
+    { id: 'suggest_3', label: 'サポートに相談', type: 'escalate' },
+  ],
+}
+
+export function getDefaultsForLanguage(lang: 'en' | 'ja'): WidgetDesignState {
+  if (lang === 'ja') return { ...DEFAULT_WIDGET_DESIGN_STATE, ...DEFAULT_WIDGET_DESIGN_JA }
+  return { ...DEFAULT_WIDGET_DESIGN_STATE }
+}
+
 export function widgetConfigToState(config: Record<string, unknown> | null): WidgetDesignState {
   const d = { ...DEFAULT_WIDGET_DESIGN_STATE }
   if (!config || typeof config !== 'object') return d
+  const lang = config.language
+  if (lang === 'ja' || lang === 'jp') d.botLanguage = 'ja'
+  else if (lang === 'en') d.botLanguage = 'en'
   const pos = config.position
   if (pos === 'bottom-right' || pos === 'bottom-left') d.widgetPosition = pos
   if (typeof config.color === 'string') d.widgetPrimaryColor = config.color
@@ -125,6 +150,7 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
 
 export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknown> {
   return {
+    language: s.botLanguage,
     position: s.widgetPosition,
     color: s.widgetPrimaryColor,
     title: s.widgetTitle || 'Chat',
@@ -234,6 +260,29 @@ export function WidgetDesignForm({
           <section className="ui-glass-card">
             <div className="card-title">{t('widgetDesign.basics', 'Basics')}</div>
             <div className="design-form-section">
+              <div className="design-form-field design-form-field-full">
+                <label className="design-form-label">{t('widgetDesign.botLanguage', 'Bot language')}</label>
+                <span className="design-form-hint">{t('widgetDesign.botLanguageHint', 'The language for your widget content, suggested messages, and persona prompts.')}</span>
+                <FlowSelect
+                  value={value.botLanguage}
+                  onChange={(next) => {
+                    const lang = next as 'en' | 'ja'
+                    update('botLanguage', lang)
+                    // Auto-apply language-specific defaults for widget text
+                    const defaults = getDefaultsForLanguage(lang)
+                    update('widgetTitle', defaults.widgetTitle)
+                    update('welcomeMessage', defaults.welcomeMessage)
+                    update('placeholder', defaults.placeholder)
+                    update('launcherText', defaults.launcherText)
+                    update('sourcesLabel', defaults.sourcesLabel)
+                    update('suggestedMessages', defaults.suggestedMessages)
+                  }}
+                  options={[
+                    { value: 'en', label: 'English' },
+                    { value: 'ja', label: '日本語 (Japanese)' },
+                  ]}
+                />
+              </div>
               <div className="design-form-row">
                 <div className="design-form-field">
                   <label className="design-form-label">{t('widgetDesign.theme', 'Theme')}</label>

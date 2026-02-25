@@ -68,6 +68,21 @@ def _get_source_language(bot_id: str, source_id: Optional[str]) -> str:
     return "ja"
 
 
+def _get_bot_language(bot: Any) -> str:
+    """Extract bot language from widget_config; defaults to English."""
+    raw = getattr(bot, "widget_config", None)
+    if not raw or not str(raw).strip():
+        return "en"
+    try:
+        cfg = json.loads(raw)
+        lang = str(cfg.get("language") or "").strip().lower()
+        if lang in ("ja", "jp"):
+            return "ja"
+    except (TypeError, ValueError, AttributeError):
+        pass
+    return "en"
+
+
 def _detect_declared_charset(raw: bytes) -> str:
     if not raw:
         return ""
@@ -607,7 +622,13 @@ def prompt_generation_task(
         # 3. Generate the prompt
         from application.services.prompt_generation_service import generate_prompt_from_content
         business_name = bot.display_name if bot else ""
-        generated_prompt = generate_prompt_from_content(homepage_content, root_url, business_name=business_name)
+        bot_lang = _get_bot_language(bot)
+        generated_prompt = generate_prompt_from_content(
+            homepage_content,
+            root_url,
+            business_name=business_name,
+            lang=bot_lang,
+        )
         if not generated_prompt:
             return {"status": "error", "reason": "LLM returned no prompt"}
 

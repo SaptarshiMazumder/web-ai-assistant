@@ -518,6 +518,8 @@
     "saveDesign": "Save design"
   },
   "widgetDesign": {
+    "botLanguage": "Bot language",
+    "botLanguageHint": "The language for your widget content, suggested messages, and persona prompts.",
     "basics": "Basics",
     "theme": "Theme",
     "light": "Light",

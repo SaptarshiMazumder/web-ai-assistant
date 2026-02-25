@@ -7,6 +7,7 @@ import {
   WidgetDesignForm,
   widgetConfigToState,
   stateToWidgetConfig,
+  getDefaultsForLanguage,
   type WidgetDesignState,
 } from '../../components/WidgetDesignForm'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -15,7 +16,7 @@ import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 const SAVED_FEEDBACK_MS = 2000
 
 export default function BotDesignTab() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { botId } = useParams()
   const { selectedBot, selectedBotWidgetConfig, saveWidgetConfig, loading } = useDashboardData()
   const [state, setState] = useState<WidgetDesignState>(() => DEFAULT_WIDGET_DESIGN_STATE)
@@ -23,11 +24,20 @@ export default function BotDesignTab() {
   const [savedJustNow, setSavedJustNow] = useState(false)
 
   useEffect(() => {
-    setState(widgetConfigToState(selectedBotWidgetConfig ?? null))
-  }, [selectedBotWidgetConfig])
+    const parsed = widgetConfigToState(selectedBotWidgetConfig ?? null)
+    // If bot has no explicit language set, inherit from dashboard UI language
+    if (!selectedBotWidgetConfig?.language) {
+      const appLang: 'en' | 'ja' = i18n.language?.startsWith('ja') ? 'ja' : 'en'
+      if (appLang !== parsed.botLanguage) {
+        const defaults = getDefaultsForLanguage(appLang)
+        Object.assign(parsed, defaults)
+      }
+    }
+    setState(parsed)
+  }, [selectedBotWidgetConfig, i18n.language])
 
   useEffect(() => {
-    if (selectedBot?.display_name && state.widgetTitle === 'Chat') {
+    if (selectedBot?.display_name && (state.widgetTitle === 'Chat' || state.widgetTitle === 'チャット')) {
       setState((prev) => ({ ...prev, widgetTitle: selectedBot.display_name.trim() }))
     }
   }, [selectedBot?.display_name, state.widgetTitle])

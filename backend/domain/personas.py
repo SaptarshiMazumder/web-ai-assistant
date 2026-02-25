@@ -13,6 +13,8 @@ Each persona has:
 from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional
 
+from domain.personas_ja import PERSONAS_JA, CATEGORIES_JA, ABOUT_BUSINESS_JA, RESPONSE_RULES_JA
+
 DEFAULT_PERSONA_ID = "default-assistant"
 
 _ABOUT_BUSINESS = (
@@ -685,15 +687,41 @@ PERSONAS: List[Persona] = [
 _BY_ID: Dict[str, Persona] = {p.id: p for p in PERSONAS}
 
 
-def get_persona(persona_id: str) -> Optional[Persona]:
-    return _BY_ID.get(persona_id)
+def _build_ja(personality: str) -> str:
+    return f"## パーソナリティ\n{personality}\n\n{ABOUT_BUSINESS_JA}{RESPONSE_RULES_JA}"
 
 
-def list_personas() -> List[dict]:
+def _translate_persona(p: Persona, lang: str) -> Persona:
+    """Overlay Japanese translations onto a persona when lang='ja'."""
+    if lang != "ja" or p.id not in PERSONAS_JA:
+        return p
+    tr = PERSONAS_JA[p.id]
+    return Persona(
+        id=p.id,
+        name=tr.get("name", p.name),
+        category=CATEGORIES_JA.get(p.category, p.category),
+        description=tr.get("description", p.description),
+        emoji=p.emoji,
+        system_prompt=_build_ja(tr["personality"]) if "personality" in tr else p.system_prompt,
+    )
+
+
+def get_persona(persona_id: str, lang: str = "en") -> Optional[Persona]:
+    p = _BY_ID.get(persona_id)
+    if p and lang == "ja":
+        p = _translate_persona(p, lang)
+    return p
+
+
+def list_personas(lang: str = "en") -> List[dict]:
+    if lang == "ja":
+        return [asdict(_translate_persona(p, "ja")) for p in PERSONAS]
     return [asdict(p) for p in PERSONAS]
 
 
-def list_categories() -> List[str]:
+def list_categories(lang: str = "en") -> List[str]:
+    if lang == "ja":
+        return [CATEGORIES_JA.get(c, c) for c in CATEGORIES]
     return list(CATEGORIES)
 
 
@@ -701,6 +729,6 @@ def get_default_persona_id() -> str:
     return DEFAULT_PERSONA_ID
 
 
-def get_persona_system_prompt(persona_id: str) -> Optional[str]:
-    p = _BY_ID.get(persona_id)
+def get_persona_system_prompt(persona_id: str, lang: str = "en") -> Optional[str]:
+    p = get_persona(persona_id, lang=lang)
     return p.system_prompt if p else None
