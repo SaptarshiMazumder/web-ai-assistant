@@ -142,7 +142,7 @@ export default function CreateBotUrlsPage() {
     const trimmedUrl = sharedDiscoveryUrl.trim()
 
     if (!trimmedUrl) {
-      setSharedDiscoveryError('Enter a URL to discover pages')
+      setSharedDiscoveryError(t('createBot.enterUrlToDiscoverPages', 'Enter a URL to discover pages'))
       setSharedDiscoveryErrorType('error')
       return
     }
@@ -153,7 +153,7 @@ export default function CreateBotUrlsPage() {
       const parsed = new URL(withProtocol)
       normalizedUrl = parsed.href
     } catch {
-      setSharedDiscoveryError('Enter a valid URL')
+      setSharedDiscoveryError(t('createBot.enterValidUrl', 'Enter a valid URL'))
       setSharedDiscoveryErrorType('error')
       return
     }
@@ -201,11 +201,16 @@ export default function CreateBotUrlsPage() {
             hasShownError = true
             const reason = evt.failure_reason as string | undefined
             if (reason === 'robots_blocked') {
-              setSharedDiscoveryError('This website blocks automatic scanning.')
+              setSharedDiscoveryError(t('createBot.websiteBlocksAutomaticScanning', 'This website blocks automatic scanning.'))
               setSharedDiscoveryErrorType('error')
               setShowPdfFallback(true)
             } else if (reason === 'sitemap_empty') {
-              setSharedDiscoveryError("No sitemap found. Switch to 'Automatic' discovery (recommended).")
+              setSharedDiscoveryError(
+                t(
+                  'createBot.noSitemapSwitchAutomaticRecommended',
+                  "No sitemap found. Switch to 'Automatic' discovery (recommended)."
+                )
+              )
               setSharedDiscoveryErrorType('warning')
             } else {
               setSharedDiscoveryError(evt.message)
@@ -226,33 +231,45 @@ export default function CreateBotUrlsPage() {
             if (start != null) setSharedDiscoveryDurationMs(Date.now() - start)
             setIsSharedDiscovering(false)
             if ((evt as { timed_out?: boolean }).timed_out === true) {
-              setSharedDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
+              setSharedDiscoveryTimedOutMessage(
+                t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
+              )
             }
             const urls = (evt as { urls?: unknown[] }).urls || []
             const reason = (evt as { failure_reason?: string }).failure_reason
             if (reason === 'no_results') {
               hasShownError = true
-              setSharedDiscoveryError('Could not discover pages. It\'s likely that the site is blocking our crawling agent.')
+              setSharedDiscoveryError(
+                t(
+                  'createBot.couldNotDiscoverLikelyBlocked',
+                  "Could not discover pages. It's likely that the site is blocking our crawling agent."
+                )
+              )
               setSharedDiscoveryErrorType('warning')
               setShowPdfFallback(true)
             } else if (Array.isArray(urls) && urls.length === 0) {
               hasShownError = true
               if (reason === 'robots_blocked') {
-                setSharedDiscoveryError('This website blocks automatic scanning.')
+                setSharedDiscoveryError(t('createBot.websiteBlocksAutomaticScanning', 'This website blocks automatic scanning.'))
                 setSharedDiscoveryErrorType('error')
                 setShowPdfFallback(true)
               } else if (reason === 'sitemap_empty') {
-                setSharedDiscoveryError("No sitemap found. Switch to 'Automatic' discovery.")
+                setSharedDiscoveryError(
+                  t('createBot.noSitemapSwitchAutomatic', "No sitemap found. Switch to 'Automatic' discovery.")
+                )
                 setSharedDiscoveryErrorType('warning')
               } else if (reason === 'no_results') {
-                setSharedDiscoveryError('We couldn\'t find any pages on this website.')
+                setSharedDiscoveryError(t('createBot.couldNotFindAnyPages', "We couldn't find any pages on this website."))
                 setSharedDiscoveryErrorType('warning')
                 setShowPdfFallback(true)
               } else {
                 setSharedDiscoveryError(
                   discoveryMethod === 'sitemap'
-                    ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
-                    : 'No pages found for this site.'
+                    ? t(
+                      'createBot.couldNotDiscoverViaSitemap',
+                      "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
+                    )
+                    : t('createBot.noPagesFoundForSite', 'No pages found for this site.')
                 )
                 setSharedDiscoveryErrorType('warning')
                 setShowPdfFallback(true)
@@ -268,7 +285,12 @@ export default function CreateBotUrlsPage() {
       localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
       if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
         hasShownError = true
-        setSharedDiscoveryError('Could not discover pages. It\'s likely that the site is blocking our crawling agent.')
+        setSharedDiscoveryError(
+          t(
+            'createBot.couldNotDiscoverLikelyBlocked',
+            "Could not discover pages. It's likely that the site is blocking our crawling agent."
+          )
+        )
         setSharedDiscoveryErrorType('warning')
         setShowPdfFallback(true)
       } else if (final && !final.urls?.length && final.error) {
@@ -285,11 +307,13 @@ export default function CreateBotUrlsPage() {
         const start = sharedDiscoveryStartTimeRef.current
         if (start != null) setSharedDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
         if (sharedDiscoveryTimedOutByTimerRef.current) {
-          setSharedDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
+          setSharedDiscoveryTimedOutMessage(
+            t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
+          )
         }
       } else {
         hasShownError = true
-        setSharedDiscoveryError(e.message || 'Discovery failed')
+        setSharedDiscoveryError(e.message || t('createBot.discoveryFailed', 'Discovery failed'))
         setSharedDiscoveryErrorType('error')
         setShowPdfFallback(true)
       }
@@ -304,12 +328,17 @@ export default function CreateBotUrlsPage() {
       // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show PDF fallback.
       // Use local count to avoid stale React state in closure.
       if (localDiscoveredCount <= 1 && !hasShownError) {
-        setSharedDiscoveryError('Discovery completed but found no usable pages. Please use the PDF upload method below.')
+        setSharedDiscoveryError(
+          t(
+            'createBot.discoveryNoUsablePagesUsePdf',
+            'Discovery completed but found no usable pages. Please use the PDF upload method below.'
+          )
+        )
         setSharedDiscoveryErrorType('warning')
         setShowPdfFallback(true)
       }
     }
-  }, [sharedDiscoveryUrl, discoverUrlsFromHook, discoveryMethod])
+  }, [sharedDiscoveryUrl, discoverUrlsFromHook, discoveryMethod, t])
 
   const handleStopSharedDiscovery = useCallback(() => {
     if (sharedDiscovery60sTimerRef.current) {
@@ -531,7 +560,10 @@ export default function CreateBotUrlsPage() {
 
           {!isSharedDiscovering && sharedDiscoveredUrls.length > 0 && sharedDiscoveryDurationLabel != null ? (
             <div className="flow-hint-text" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
-              Discovered {sharedDiscoveredUrls.length} page{sharedDiscoveredUrls.length !== 1 ? 's' : ''} in {sharedDiscoveryDurationLabel}.
+              {t('createBot.discoveredPagesInDuration', 'Discovered {{count}} pages in {{duration}}.', {
+                count: sharedDiscoveredUrls.length,
+                duration: sharedDiscoveryDurationLabel,
+              })}
             </div>
           ) : isSharedDiscovering ? (
             <div className="flow-hint-text discovery-loading" style={{ marginBottom: '0.75rem', color: 'var(--flow-accent)', fontWeight: 600 }}>
@@ -540,7 +572,9 @@ export default function CreateBotUrlsPage() {
                 <span />
                 <span />
               </span>
-              Discovering pages... {sharedDiscoveredUrls.length} found so far
+              {t('createBot.discoveringPagesFoundSoFar', 'Discovering pages... {{count}} found so far', {
+                count: sharedDiscoveredUrls.length,
+              })}
             </div>
           ) : (
             <div className="flow-hint-text" style={{ marginBottom: '0.75rem' }}>
@@ -559,7 +593,7 @@ export default function CreateBotUrlsPage() {
                 type="url"
                 value={sharedDiscoveryUrl}
                 onChange={(e) => setSharedDiscoveryUrl(e.target.value)}
-                placeholder="https://example.com/your-section/"
+                placeholder={t('createBot.sharedDiscoveryUrlPlaceholder', 'https://example.com/your-section/')}
                 disabled={isSharedDiscovering}
                 style={{ width: '100%' }}
                 onKeyDown={(e) => {
@@ -608,7 +642,10 @@ export default function CreateBotUrlsPage() {
               }}
             >
               <div style={{ marginBottom: '0.75rem', color: '#0f172a', fontWeight: 600 }}>
-                Automatic scanning is blocked for this website. Upload PDF pages instead.
+                {t(
+                  'createBot.automaticScanningBlockedUploadPdf',
+                  'Automatic scanning is blocked for this website. Upload PDF pages instead.'
+                )}
               </div>
               {pdfFiles.length > 0 && (
                 <div style={{
@@ -624,14 +661,14 @@ export default function CreateBotUrlsPage() {
                   <CheckCircle2 size={24} color="#0ea5e9" strokeWidth={2.5} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
-                      {pdfFiles.length} PDF{pdfFiles.length > 1 ? 's' : ''} ready
+                      {t('createBot.pdfReadyCount', '{{count}} PDFs ready', { count: pdfFiles.length })}
                     </p>
                   </div>
                 </div>
               )}
               <FileDropzone
-                label="Drop your PDFs here"
-                helperText="Upload up to 20 PDF files."
+                label={t('createBot.dropYourPdfsHere', 'Drop your PDFs here')}
+                helperText={t('createBot.uploadUpToPdfFiles', 'Upload up to {{count}} PDF files.', { count: 20 })}
                 files={pdfFiles}
                 setFiles={setPdfFiles}
                 accept="application/pdf"
@@ -657,7 +694,10 @@ export default function CreateBotUrlsPage() {
                   {expandedSharedCategories.size > 0 ? t('common.collapseAll', 'Collapse All') : t('common.expandAll', 'Expand All')}
                 </UiButton>
                 <span className="muted" style={{ marginLeft: 'auto' }}>
-                  {sharedSelectedDiscoveredUrls.size} of {sharedDiscoveredUrls.length} selected
+                  {t('createBot.selectedOfTotal', '{{selected}} of {{total}} selected', {
+                    selected: sharedSelectedDiscoveredUrls.size,
+                    total: sharedDiscoveredUrls.length,
+                  })}
                 </span>
               </div>
 
@@ -675,7 +715,9 @@ export default function CreateBotUrlsPage() {
               >
                 {isSharedDiscovering && (
                   <div style={{ marginBottom: '12px', color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
-                    Scanning... ({sharedDiscoveredUrls.length} found so far)
+                    {t('createBot.scanningFoundSoFar', 'Scanning... ({{count}} found so far)', {
+                      count: sharedDiscoveredUrls.length,
+                    })}
                   </div>
                 )}
                 {sharedUrlCategories ? (
@@ -714,7 +756,9 @@ export default function CreateBotUrlsPage() {
                   </div>
                 ) : (
                   <div style={{ color: 'var(--flow-muted)' }}>
-                    {isSharedDiscovering ? 'Discovering...' : 'No discovered pages yet.'}
+                    {isSharedDiscovering
+                      ? t('createBot.discovering', 'Discovering...')
+                      : t('createBot.noDiscoveredPagesYet', 'No discovered pages yet.')}
                   </div>
                 )}
               </div>
@@ -732,7 +776,7 @@ export default function CreateBotUrlsPage() {
                   }}
                   disabled={isSharedDiscovering}
                 >
-                  Clear
+                  {t('common.clear', 'Clear')}
                 </UiButton>
               </div>
             </>
@@ -745,7 +789,7 @@ export default function CreateBotUrlsPage() {
 
         <div className="flow-actions">
           <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-            Back
+            {t('common.back', 'Back')}
           </UiButton>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
             <UiButton variant="ghost" onClick={() => void handleSkip()}>
@@ -924,7 +968,7 @@ export default function CreateBotUrlsPage() {
             {discoveryTimedOutMessage}
           </div>
         )}
-        <div className="card-title">Pick pages to learn from</div>
+        <div className="card-title">{t('createBot.pickPagesToLearnFrom', 'Pick pages to learn from')}</div>
         <div className="card-subtitle">
           {isDiscovering ? (
             <span className="discovery-loading">
@@ -934,13 +978,17 @@ export default function CreateBotUrlsPage() {
                 <span />
               </span>
               <span style={{ color: 'var(--flow-accent)', fontWeight: 500 }}>
-                Scanning your website... {discoveredUrls.length} found so far
+                {t('createBot.scanningWebsiteFoundSoFar', 'Scanning your website... {{count}} found so far', {
+                  count: discoveredUrls.length,
+                })}
               </span>
             </span>
           ) : (
             <>
-              We found <span style={{ color: 'var(--flow-accent)', fontWeight: 600 }}>{discoveredUrls.length}</span> pages
-              on {normalizedWebsiteUrl}. Choose the ones your agent should learn from.
+              {t('createBot.foundPagesChooseForLearning', 'We found {{count}} pages on {{url}}. Choose the ones your agent should learn from.', {
+                count: discoveredUrls.length,
+                url: normalizedWebsiteUrl,
+              })}
               {discoveryDurationLabel != null && (
                 <span style={{ marginLeft: '6px', color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
                   ({discoveryDurationLabel})
@@ -956,16 +1004,23 @@ export default function CreateBotUrlsPage() {
           variant={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'ghost' : 'secondary'}
           onClick={selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? deselectAll : selectAll}
         >
-          {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0 ? 'Deselect all' : 'Select all'}
+          {selectedUrls.length === discoveredUrls.length && discoveredUrls.length > 0
+            ? t('common.deselectAll', 'Deselect All')
+            : t('common.selectAll', 'Select All')}
         </UiButton>
         <UiButton
           variant={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
           onClick={expandedCategories.size > 0 ? collapseAll : expandAll}
         >
-          {expandedCategories.size > 0 ? 'Collapse all' : 'Expand all'}
+          {expandedCategories.size > 0
+            ? t('common.collapseAll', 'Collapse All')
+            : t('common.expandAll', 'Expand All')}
         </UiButton>
         <span className="muted" style={{ marginLeft: 'auto' }}>
-          {selectedUrls.length} of {discoveredUrls.length} selected
+          {t('createBot.selectedOfTotal', '{{selected}} of {{total}} selected', {
+            selected: selectedUrls.length,
+            total: discoveredUrls.length,
+          })}
         </span>
       </div>
 
@@ -979,7 +1034,9 @@ export default function CreateBotUrlsPage() {
       }}>
         {isDiscovering && (
           <div style={{ marginBottom: '12px', color: 'var(--flow-muted)', fontSize: '0.85rem' }}>
-            Scanning... ({discoveredUrls.length} found so far)
+            {t('createBot.scanningFoundSoFar', 'Scanning... ({{count}} found so far)', {
+              count: discoveredUrls.length,
+            })}
           </div>
         )}
         {urlCategories ? (
@@ -1017,13 +1074,17 @@ export default function CreateBotUrlsPage() {
             )}
           </div>
         ) : (
-          <div style={{ color: 'var(--flow-muted)' }}>{isDiscovering ? 'Discovering...' : 'Loading categories...'}</div>
+          <div style={{ color: 'var(--flow-muted)' }}>
+            {isDiscovering
+              ? t('createBot.discovering', 'Discovering...')
+              : t('createBot.loadingCategories', 'Loading categories...')}
+          </div>
         )}
       </div>
 
       <FileDropzone
-        label="PDF files (optional)"
-        helperText="Drag & drop PDFs here. Your agent can learn from these too."
+        label={t('createBot.pdfFilesOptional', 'PDF files (optional)')}
+        helperText={t('createBot.pdfFilesOptionalHelper', 'Drag & drop PDFs here. Your agent can learn from these too.')}
         files={pdfFiles}
         setFiles={setPdfFiles}
         accept="application/pdf"
@@ -1035,20 +1096,20 @@ export default function CreateBotUrlsPage() {
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-          Back
+          {t('common.back', 'Back')}
         </UiButton>
         {isDiscovering ? (
           <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <StopIcon />
-            Stop
+            {t('createBot.stop', 'Stop')}
           </UiButton>
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
             <UiButton variant="ghost" onClick={() => void handleSkip()}>
-              Skip for now
+              {t('createBot.skip', 'Skip for now')}
             </UiButton>
             <UiButton variant="primary" onClick={handleContinue}>
-              Continue
+              {t('common.continue', 'Continue')}
             </UiButton>
           </div>
         )}

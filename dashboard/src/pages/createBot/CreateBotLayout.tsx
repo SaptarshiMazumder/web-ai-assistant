@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
@@ -8,6 +9,7 @@ import { TrainingProgressCircle } from './TrainingProgressCircle'
 
 function FlowStepsWithProgress() {
   const location = useLocation()
+  const { t } = useTranslation()
   const { step3 } = useCreateBotFlow()
   const steps = getCreateBotSteps()
   const activeStep = getCreateBotStepIndex(location.pathname, steps)
@@ -44,8 +46,8 @@ function FlowStepsWithProgress() {
                 )}
               </div>
               <div>
-                <div className="flow-step-title">{step.label}</div>
-                <div className="flow-step-desc">{step.description}</div>
+                <div className="flow-step-title">{t(step.labelKey, step.label)}</div>
+                <div className="flow-step-desc">{t(step.descriptionKey, step.description)}</div>
               </div>
             </div>
           )
@@ -70,6 +72,7 @@ function FlowStepsWithProgress() {
 export default function CreateBotLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
   const { error } = useDashboardData()
 
   return (
@@ -77,10 +80,15 @@ export default function CreateBotLayout() {
       <div className="flow-shell">
         <header className="flow-header">
           <div>
-            <div className="flow-eyebrow">Set up</div>
-            <div className="flow-title">Create AI Agent</div>
+            <div className="flow-eyebrow">{t('createBot.flowHeaderEyebrow', 'Set up')}</div>
+            <div className="flow-title">{t('createBot.flowHeaderTitle', 'Create AI Agent')}</div>
           </div>
-          <button type="button" className="flow-close" onClick={() => navigate('/bots')} aria-label="Close">
+          <button
+            type="button"
+            className="flow-close"
+            onClick={() => navigate('/bots')}
+            aria-label={t('common.close', 'Close')}
+          >
             <FlowIcon name="close" size="sm" />
           </button>
         </header>
@@ -96,7 +104,7 @@ export default function CreateBotLayout() {
                   type="button"
                   className="flow-mobile-back"
                   onClick={() => navigate(prevPath)}
-                  aria-label="Go back"
+                  aria-label={t('common.goBack', 'Go back')}
                 >
                   <FlowIcon name="arrow_back" size="md" />
                 </button>

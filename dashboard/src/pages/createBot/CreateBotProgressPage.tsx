@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { UiButton, UiCard } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
-import { getTrainingStageLabel, TRAINING_STAGE_LABELS } from './trainingProgressLabels'
+import { getTrainingStageLabel, getTrainingStageLabelByName } from './trainingProgressLabels'
 
 export default function CreateBotProgressPage() {
   const navigate = useNavigate()
@@ -52,7 +52,7 @@ export default function CreateBotProgressPage() {
   const currentStageLabel =
     !jobId && pdfJobs.length > 0
       ? t('createBot.preparingPdfFiles', 'Preparing your PDF files...')
-      : getTrainingStageLabel(jobId, trainingStage, trainingStageName)
+      : getTrainingStageLabel(jobId, trainingStage, trainingStageName, t)
 
   const isComplete = trainingStage === 'complete'
   const isIdle = trainingStage === 'idle'
@@ -132,7 +132,7 @@ export default function CreateBotProgressPage() {
                   ))}
                   {usedCustomEntries.slice(0, 8).map((entry) => (
                     <div key={entry.id} className="muted" style={{ fontSize: '0.82rem', marginBottom: '0.25rem' }}>
-                      {entry.title || `Custom entry ${entry.id}`}
+                      {entry.title || t('createBot.customEntryWithId', 'Custom entry {{id}}', { id: entry.id })}
                     </div>
                   ))}
                 </div>
@@ -212,7 +212,7 @@ export default function CreateBotProgressPage() {
                         fontSize: '0.78rem',
                         fontWeight: 600,
                       }}>
-                        {TRAINING_STAGE_LABELS[(j.stage || 'queued').toString()] || (j.stage || 'queued').toString()}
+                        {getTrainingStageLabelByName((j.stage || 'queued').toString(), t)}
                       </span>
                       {typeof j.docs_count === 'number' && (
                         <span className="muted" style={{ fontSize: '0.8rem' }}>{t('createBot.docsCount', '{{count}} docs', { count: j.docs_count })}</span>
@@ -226,7 +226,9 @@ export default function CreateBotProgressPage() {
 
           {trainingStageName === 'skipped' && botId && (
             <div className="alert info">
-              You can add pages and PDFs later from <b>Bot &rarr; Knowledge</b>.
+              {t('createBot.addSourcesLaterHint', 'You can add pages and PDFs later from {{path}}.', {
+                path: 'Bot -> Knowledge',
+              })}
             </div>
           )}
 

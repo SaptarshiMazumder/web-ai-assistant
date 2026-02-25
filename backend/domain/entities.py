@@ -101,7 +101,7 @@ class IndexJob:
     bot_id: str
     url: str
     hostname: str
-    stage: str  # queued|crawling|uploading|importing|import_submitted|cancelled|error|done
+    stage: str  # queued|crawling|uploading|importing|import_submitted|prompt_queued|prompt_generating|cancelled|error|done
     pages_crawled: int
     docs_count: int
     last_crawled_url: str

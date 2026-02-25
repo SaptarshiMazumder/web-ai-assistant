@@ -14,7 +14,9 @@ export type CreateBotStepId = 'details' | 'sources' | 'urls' | 'additional-sourc
 export type CreateBotStep = {
   id: CreateBotStepId
   path: string
+  labelKey: string
   label: string
+  descriptionKey: string
   description: string
   icon: string
   iconUrl?: string
@@ -24,7 +26,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'details',
     path: '/create-bot',
+    labelKey: 'createBot.stepDetailsLabel',
     label: 'Name',
+    descriptionKey: 'createBot.stepDetailsDescription',
     description: 'Pick a name customers will see.',
     icon: 'badge',
     iconUrl: autographIcon,
@@ -32,7 +36,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'sources',
     path: '/create-bot/sources',
+    labelKey: 'createBot.stepSourcesLabel',
     label: 'Website',
+    descriptionKey: 'createBot.stepSourcesDescription',
     description: 'Add sources from your website.',
     icon: 'source',
     iconUrl: googleDocsIcon,
@@ -40,7 +46,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'additional-sources',
     path: '/create-bot/additional-sources',
+    labelKey: 'createBot.stepAdditionalSourcesLabel',
     label: 'More sources',
+    descriptionKey: 'createBot.stepAdditionalSourcesDescription',
     description: 'Add PDFs, text docs, or custom content.',
     icon: 'library_add',
     iconUrl: googleDocsIcon,
@@ -48,7 +56,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'training',
     path: '/create-bot/progress',
+    labelKey: 'createBot.stepTrainingLabel',
     label: 'Agent Training',
+    descriptionKey: 'createBot.stepTrainingDescription',
     description: "We'll start learning from what you added.",
     icon: 'model_training',
     iconUrl: learningIcon,
@@ -56,7 +66,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'widget',
     path: '/create-bot/widget',
+    labelKey: 'createBot.stepWidgetLabel',
     label: 'Design widget',
+    descriptionKey: 'createBot.stepWidgetDescription',
     description: 'Customize agent\'s appearance.',
     icon: 'palette',
     iconUrl: paintPaletteIcon,
@@ -64,7 +76,9 @@ const BASE_STEPS: readonly CreateBotStep[] = [
   {
     id: 'embed',
     path: '/create-bot/embed',
+    labelKey: 'createBot.stepEmbedLabel',
     label: 'Install Agent',
+    descriptionKey: 'createBot.stepEmbedDescription',
     description: 'Make your agent available to your customers.',
     icon: 'code',
     iconUrl: googleCodeIcon,

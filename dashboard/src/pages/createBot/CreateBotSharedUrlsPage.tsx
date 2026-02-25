@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FlowIcon } from '../../components/FlowIcon'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
@@ -8,6 +9,7 @@ type SuggestedBubble = { key: string; label: string; description: string }
 
 export default function CreateBotSharedUrlsPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { step1, step2, flow } = useCreateBotFlow()
   const { businessType } = step1
   const {
@@ -20,22 +22,58 @@ export default function CreateBotSharedUrlsPage() {
 
   const suggestedBubbles: SuggestedBubble[] = useMemo(() => {
     const base: SuggestedBubble[] = [
-      { key: 'pricing', label: 'Pricing', description: 'Plans, packages, pricing tables' },
-      { key: 'location', label: 'Location', description: 'Address, map, directions' },
-      { key: 'hours', label: 'Hours', description: 'Opening hours, business hours' },
-      { key: 'contact', label: 'Contact', description: 'Phone, email, contact form' },
-      { key: 'services', label: 'Services', description: 'Service menu and details' },
-      { key: 'faq', label: 'FAQ', description: 'Common questions and answers' },
-      { key: 'policies', label: 'Policies', description: 'Refunds, cancellation, terms' },
+      {
+        key: 'pricing',
+        label: t('createBot.quickTopicPricing', 'Pricing'),
+        description: t('createBot.quickTopicPricingDesc', 'Plans, packages, pricing tables'),
+      },
+      {
+        key: 'location',
+        label: t('createBot.quickTopicLocation', 'Location'),
+        description: t('createBot.quickTopicLocationDesc', 'Address, map, directions'),
+      },
+      {
+        key: 'hours',
+        label: t('createBot.quickTopicHours', 'Hours'),
+        description: t('createBot.quickTopicHoursDesc', 'Opening hours, business hours'),
+      },
+      {
+        key: 'contact',
+        label: t('createBot.quickTopicContact', 'Contact'),
+        description: t('createBot.quickTopicContactDesc', 'Phone, email, contact form'),
+      },
+      {
+        key: 'services',
+        label: t('createBot.quickTopicServices', 'Services'),
+        description: t('createBot.quickTopicServicesDesc', 'Service menu and details'),
+      },
+      {
+        key: 'faq',
+        label: t('createBot.quickTopicFaq', 'FAQ'),
+        description: t('createBot.quickTopicFaqDesc', 'Common questions and answers'),
+      },
+      {
+        key: 'policies',
+        label: t('createBot.quickTopicPolicies', 'Policies'),
+        description: t('createBot.quickTopicPoliciesDesc', 'Refunds, cancellation, terms'),
+      },
     ]
     if (businessType === 'hotel') {
       base.unshift(
-        { key: 'availability', label: 'Availability', description: 'Availability & rates page' },
-        { key: 'booking', label: 'Booking', description: 'Booking / reservation page' }
+        {
+          key: 'availability',
+          label: t('createBot.quickTopicAvailability', 'Availability'),
+          description: t('createBot.quickTopicAvailabilityDesc', 'Availability & rates page'),
+        },
+        {
+          key: 'booking',
+          label: t('createBot.quickTopicBooking', 'Booking'),
+          description: t('createBot.quickTopicBookingDesc', 'Booking / reservation page'),
+        }
       )
     }
     return base
-  }, [businessType])
+  }, [businessType, t])
 
   const bubbleHasFilledUrl = (bubbleLabel: string) => {
     const k = normalizeLabelKey(bubbleLabel)
@@ -97,16 +135,19 @@ export default function CreateBotSharedUrlsPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Helpful links (optional)</div>
+        <div className="card-title">{t('createBot.helpfulLinksOptional', 'Helpful links (optional)')}</div>
         <div className="card-subtitle">
-          Add a few important links so your assistant can guide customers to the right page.
+          {t(
+            'createBot.helpfulLinksOptionalSubtitle',
+            'Add a few important links so your assistant can guide customers to the right page.'
+          )}
         </div>
       </div>
 
       {/* Suggested topics to help users add links quickly */}
       <div>
         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
-          Quick topics
+          {t('createBot.quickTopics', 'Quick topics')}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
           {suggestedBubbles.map((b) => {
@@ -137,7 +178,7 @@ export default function CreateBotSharedUrlsPage() {
                 <span>{b.label}</span>
                 {done && (
                   <span
-                    aria-label="Added"
+                    aria-label={t('createBot.added', 'Added')}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -175,7 +216,10 @@ export default function CreateBotSharedUrlsPage() {
         }}
       >
         <div className="flow-hint-text" style={{ marginBottom: '4px' }}>
-          Add links for the pages customers ask about most (menu/services, pricing, hours, booking, contact, FAQ).
+          {t(
+            'createBot.addLinksHint',
+            'Add links for the pages customers ask about most (menu/services, pricing, hours, booking, contact, FAQ).'
+          )}
         </div>
         <div style={{ overflowY: 'auto', minHeight: 0, paddingRight: '0.2rem' }}>
           {sharedUrlRows.map((row, idx) => (
@@ -199,7 +243,7 @@ export default function CreateBotSharedUrlsPage() {
                       next[idx] = { ...next[idx], url: e.target.value }
                       setSharedUrlRows(next)
                     }}
-                    placeholder="https://example.com/pricing"
+                    placeholder={t('createBot.sharedUrlPlaceholder', 'https://example.com/pricing')}
                     style={{ width: '100%' }}
                   />
                 </div>
@@ -214,7 +258,7 @@ export default function CreateBotSharedUrlsPage() {
                       next[idx] = { ...next[idx], label: e.target.value }
                       setSharedUrlRows(next)
                     }}
-                    placeholder="What is this page about? (e.g. Pricing)"
+                    placeholder={t('createBot.sharedLabelPlaceholder', 'What is this page about? (e.g. Pricing)')}
                     style={{ width: '100%' }}
                   />
                 </div>
@@ -226,8 +270,8 @@ export default function CreateBotSharedUrlsPage() {
                   setSharedUrlRows(next.length ? next : [{ url: '', label: '' }])
                 }}
                 disabled={sharedUrlRows.length <= 1}
-                aria-label="Remove row"
-                title="Remove"
+                aria-label={t('createBot.removeRow', 'Remove row')}
+                title={t('common.remove', 'Remove')}
                 style={{ color: 'var(--flow-muted, #64748b)', padding: '0.6rem', marginTop: '1px' }}
               >
                 <FlowIcon name="delete" size="sm" />
@@ -243,7 +287,7 @@ export default function CreateBotSharedUrlsPage() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--flow-accent)' }}
           >
             <FlowIcon name="add" size="xs" />
-            Add one more link
+            {t('createBot.addOneMoreLink', 'Add one more link')}
           </UiButton>
         </div>
       </div>
@@ -252,10 +296,10 @@ export default function CreateBotSharedUrlsPage() {
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-          Back
+          {t('common.back', 'Back')}
         </UiButton>
         <UiButton variant="primary" onClick={() => flow.nextPath && navigate(flow.nextPath)}>
-          Continue
+          {t('common.continue', 'Continue')}
         </UiButton>
       </div>
     </div>

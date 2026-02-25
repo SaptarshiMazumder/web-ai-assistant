@@ -4,24 +4,35 @@
  * Change labels here and they update in both places.
  */
 
-export const TRAINING_STAGE_LABELS: Record<string, string> = {
-  queued: 'Starting',
-  crawling: 'Reading your pages',
-  uploading: 'Saving what we found',
-  importing: 'Getting your agent ready',
-  import_submitted: 'Almost done',
-  skipped: 'Skipped (nothing added)',
-  done: 'Done',
-  error: 'Error',
+import type { TFunction } from 'i18next'
+
+export const TRAINING_STAGE_LABELS: Record<string, { key: string; fallback: string }> = {
+  queued: { key: 'createBot.trainingStageQueued', fallback: 'Starting' },
+  crawling: { key: 'createBot.trainingStageCrawling', fallback: 'Reading your pages' },
+  uploading: { key: 'createBot.trainingStageUploading', fallback: 'Saving what we found' },
+  importing: { key: 'createBot.trainingStageImporting', fallback: 'Getting your agent ready' },
+  prompt_queued: { key: 'createBot.trainingStagePromptQueued', fallback: 'Preparing your prompt' },
+  prompt_generating: { key: 'createBot.trainingStagePromptGenerating', fallback: 'Generating your prompt' },
+  import_submitted: { key: 'createBot.trainingStageImportSubmitted', fallback: 'Almost done' },
+  skipped: { key: 'createBot.trainingStageSkipped', fallback: 'Skipped (nothing added)' },
+  done: { key: 'createBot.trainingStageDone', fallback: 'Done' },
+  error: { key: 'createBot.trainingStageError', fallback: 'Error' },
+}
+
+export function getTrainingStageLabelByName(trainingStageName: string, t: TFunction): string {
+  const entry = TRAINING_STAGE_LABELS[trainingStageName]
+  if (!entry) return trainingStageName || t('createBot.trainingStageProcessing', 'Processing')
+  return t(entry.key, entry.fallback)
 }
 
 export function getTrainingStageLabel(
   jobId: string | null,
   trainingStage: string,
-  trainingStageName: string
+  trainingStageName: string,
+  t: TFunction
 ): string {
   if (!jobId && trainingStage === 'training') {
-    return 'Getting started…'
+    return t('createBot.trainingStageGettingStarted', 'Getting started...')
   }
-  return TRAINING_STAGE_LABELS[trainingStageName] || trainingStageName || 'Processing'
+  return getTrainingStageLabelByName(trainingStageName, t)
 }

@@ -5,6 +5,7 @@
 
 import { getTrainingStageLabel } from './trainingProgressLabels'
 import { UiCard } from '../../components/ui'
+import { useTranslation } from 'react-i18next'
 
 const SIZE = 130
 const STROKE = 8
@@ -29,7 +30,8 @@ export function TrainingProgressCircle({
   trainingPagesCrawled,
   trainingDocsCount,
 }: Props) {
-  const label = getTrainingStageLabel(jobId, trainingStage, trainingStageName)
+  const { t } = useTranslation()
+  const label = getTrainingStageLabel(jobId, trainingStage, trainingStageName, t)
   const offset = CIRCUMFERENCE * (1 - progress / 100)
 
   return (
@@ -103,16 +105,20 @@ export function TrainingProgressCircle({
               {progress}%
             </span>
             <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              complete
+              {t('createBot.complete', 'complete')}
             </span>
           </div>
         </div>
         <div style={{ textAlign: 'center', minHeight: '40px' }}>
           <div style={{ fontWeight: 600, color: '#ffffff', marginBottom: '3px', fontSize: '0.85rem' }}>{label}</div>
           <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-            {trainingPagesCrawled > 0 && <span>{trainingPagesCrawled} pages</span>}
+            {trainingPagesCrawled > 0 && (
+              <span>{t('createBot.pagesCount', '{{count}} pages', { count: trainingPagesCrawled })}</span>
+            )}
             {trainingPagesCrawled > 0 && trainingDocsCount > 0 && <span style={{ margin: '0 4px' }}>&middot;</span>}
-            {trainingDocsCount > 0 && <span>{trainingDocsCount} docs</span>}
+            {trainingDocsCount > 0 && (
+              <span>{t('createBot.docsCount', '{{count}} docs', { count: trainingDocsCount })}</span>
+            )}
             {trainingPagesCrawled === 0 && trainingDocsCount === 0 && (
               <span>&mdash;</span>
             )}

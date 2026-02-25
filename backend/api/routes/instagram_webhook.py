@@ -45,6 +45,7 @@ from infrastructure.db.repositories import (
     PostgresInstagramUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
+from domain.personas import get_default_persona_id, get_persona_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,39 @@ def _format_conversation_context(messages: list) -> str:
         role_label = "Assistant" if (m.role or "").lower() == "bot" else "User"
         lines.append(f"{role_label}: {content}")
     return "\n\n".join(lines) if lines else ""
+
+
+def _get_bot_language(bot) -> str:
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            wc = json.loads(bot.widget_config)
+            lang = (wc.get("language") or "").strip().lower()
+            if lang in ("ja", "jp"):
+                return "ja"
+        except (TypeError, ValueError):
+            pass
+    return "en"
+
+
+def _resolve_system_instruction(agent_config: Dict[str, Any], bot) -> Optional[str]:
+    instructions = agent_config.get("instructions") if agent_config else None
+    if instructions and str(instructions).strip():
+        return instructions
+
+    lang = _get_bot_language(bot)
+    default_persona_id = get_default_persona_id()
+    persona_id_raw = agent_config.get("persona_id") if agent_config else None
+    persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
+
+    builtin = get_persona_system_prompt(persona_id, lang=lang)
+    if builtin:
+        return builtin
+
+    for cp in (agent_config.get("custom_personas") or []):
+        if cp.get("id") == persona_id and cp.get("system_prompt"):
+            return cp["system_prompt"]
+
+    return get_persona_system_prompt(default_persona_id, lang=lang)
 
 
 # ── Helper: resolve org for auth (mirrors saas.py pattern) ───────────
@@ -563,7 +597,7 @@ async def _handle_text_message(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = agent_config.get("instructions") if agent_config else None
+    system_instruction = _resolve_system_instruction(agent_config, bot)
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 

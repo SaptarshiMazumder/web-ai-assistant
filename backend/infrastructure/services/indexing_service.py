@@ -38,7 +38,7 @@ class IndexJob:
     log_tail: list[str] = field(default_factory=list)
     worker_runtime: Dict[str, Any] = field(default_factory=dict)
     docs_count: int = 0
-    stage: str = "queued"  # queued|crawling|uploading|importing|import_submitted|cancelled|error|done
+    stage: str = "queued"  # queued|crawling|uploading|importing|import_submitted|prompt_queued|prompt_generating|cancelled|error|done
     pages_crawled: int = 0
     last_crawled_url: str = ""
     last_depth: int = -1
@@ -331,7 +331,7 @@ async def start_index_for_bot(
         if rc is None:
             return
         if rc == 0:
-            if job.stage not in ("import_submitted", "done"):
+            if job.stage not in ("import_submitted", "prompt_queued", "prompt_generating", "done"):
                 job.stage = "done"
             job.last_error = ""
             _touch(job)
@@ -472,7 +472,7 @@ async def start_index_for_bot_batch(
         if rc is None:
             return
         if rc == 0:
-            if job.stage not in ("import_submitted", "done"):
+            if job.stage not in ("import_submitted", "prompt_queued", "prompt_generating", "done"):
                 job.stage = "done"
             job.last_error = ""
             _touch(job)
@@ -512,7 +512,7 @@ def get_index_status_by_job_id(bot_id: str, job_id: str) -> Dict[str, Any]:
 def _format_job_status(bot_id: str, job: IndexJob) -> Dict[str, Any]:
     # If the worker exited but we didn't observe a terminal stage yet, surface it.
     try:
-        if job.process is not None and job.process.poll() is not None and job.stage not in ("done", "error", "cancelled", "import_submitted"):
+        if job.process is not None and job.process.poll() is not None and job.stage not in ("done", "error", "cancelled", "import_submitted", "prompt_queued", "prompt_generating"):
             rc = job.process.returncode
             if rc == 0:
                 job.stage = "done"

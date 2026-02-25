@@ -73,7 +73,7 @@ export default function CreateBotAdditionalSourcesPage() {
           value={activeTab}
           onChange={setActiveTab}
           options={tabs}
-          ariaLabel="Additional sources tabs"
+          ariaLabel={t('createBot.additionalSourcesTabsAria', 'Additional sources tabs')}
         />
       </div>
 
@@ -90,8 +90,8 @@ export default function CreateBotAdditionalSourcesPage() {
               </div>
             </div>
             <FileDropzone
-              label="📄 Drop PDF files here"
-              helperText="Upload additional PDFs (up to 20 files)"
+              label={t('createBot.dropPdfFilesHere', '📄 Drop PDF files here')}
+              helperText={t('createBot.uploadAdditionalPdfsHelper', 'Upload additional PDFs (up to 20 files)')}
               files={pdfFiles}
               setFiles={setPdfFiles}
               accept="application/pdf"
@@ -112,8 +112,8 @@ export default function CreateBotAdditionalSourcesPage() {
               </div>
             </div>
             <FileDropzone
-              label="📝 Drop text files here"
-              helperText="Upload .txt, .md, .doc, .docx files (up to 20 files)"
+              label={t('createBot.dropTextFilesHere', '📝 Drop text files here')}
+              helperText={t('createBot.uploadTextFilesHelper', 'Upload .txt, .md, .doc, .docx files (up to 20 files)')}
               files={textDocFiles}
               setFiles={setTextDocFiles}
               accept=".txt,.md,.doc,.docx,text/plain,text/markdown,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -164,7 +164,7 @@ export default function CreateBotAdditionalSourcesPage() {
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}
-                        title="Remove this entry"
+                        title={t('createBot.removeThisEntry', 'Remove this entry')}
                       >
                         <X size={18} />
                       </button>

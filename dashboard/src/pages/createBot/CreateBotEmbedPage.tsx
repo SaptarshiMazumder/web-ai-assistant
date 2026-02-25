@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FlowIcon } from '../../components/FlowIcon'
 import { UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -7,6 +8,7 @@ import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotEmbedPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { buildEmbedSnippet, copySnippet } = useDashboardData()
   const { step3, flow } = useCreateBotFlow()
   const { botId } = step3
@@ -37,15 +39,20 @@ export default function CreateBotEmbedPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Add the chat to your website</div>
+        <div className="card-title">{t('createBot.addChatToWebsite', 'Add the chat to your website')}</div>
         <div className="card-subtitle">
-          Copy this code snippet and share it with the person who manages your website. They'll paste it before the closing <code style={{
+          {t(
+            'createBot.addChatToWebsiteSubtitle',
+            "Copy this code snippet and share it with the person who manages your website. They'll paste it before the closing"
+          )}{' '}
+          <code style={{
             background: 'var(--flow-accent-soft)',
             padding: '0.15rem 0.4rem',
             borderRadius: '4px',
             fontSize: '0.85rem',
             color: 'var(--flow-accent)',
-          }}>&lt;/body&gt;</code> tag.
+          }}>&lt;/body&gt;</code>{' '}
+          {t('createBot.addChatToWebsiteSubtitleSuffix', 'tag.')}
         </div>
       </div>
 
@@ -58,7 +65,7 @@ export default function CreateBotEmbedPage() {
           type="button"
           onClick={() => void handleCopy()}
           disabled={!snippet}
-          title={copied ? 'Copied!' : 'Copy to clipboard'}
+          title={copied ? t('createBot.copied', 'Copied!') : t('createBot.copyToClipboard', 'Copy to clipboard')}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -79,12 +86,15 @@ export default function CreateBotEmbedPage() {
       </div>
 
       <div className="muted" style={{ fontSize: '0.85rem' }}>
-        If you update the widget design later, changes will appear on your website automatically.
+        {t(
+          'createBot.embedUpdateHint',
+          'If you update the widget design later, changes will appear on your website automatically.'
+        )}
       </div>
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-          Back
+          {t('common.back', 'Back')}
         </UiButton>
         <UiButton
           variant="primary"
@@ -92,7 +102,7 @@ export default function CreateBotEmbedPage() {
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <FlowIcon name="celebration" filled size="sm" />
-          Finish setup
+          {t('createBot.finishSetup', 'Finish setup')}
         </UiButton>
       </div>
     </div>

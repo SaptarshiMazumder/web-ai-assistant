@@ -95,7 +95,7 @@ class IndexingJobManager:
         if rc is None:
             return
         if rc == 0:
-            if job.stage not in ("import_submitted", "done"):
+            if job.stage not in ("import_submitted", "prompt_queued", "prompt_generating", "done"):
                 job.stage = "done"
             job.last_error = ""
         else:

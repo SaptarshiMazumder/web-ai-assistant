@@ -43,6 +43,7 @@ function statusLabel(stage: string): string {
   const s = (stage || '').toLowerCase()
   if (s === 'complete' || s === 'done') return '✓ Trained'
   if (s === 'crawling' || s === 'running' || s === 'pending' || s === 'queued') return 'Training'
+  if (s === 'prompt_queued' || s === 'prompt_generating') return 'Generating prompt'
   if (s === 'uploading' || s === 'importing' || s === 'import_submitted') return 'Importing'
   if (s === 'failed' || s === 'error') return 'Failed'
   if (s === 'cancelled') return 'Cancelled'
@@ -53,6 +54,8 @@ function statusLabel(stage: string): string {
 function trainingProgressPercent(stage: string | undefined): number {
   const s = (stage || '').toLowerCase()
   if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled' || s === 'import_submitted') return 100
+  if (s === 'prompt_generating') return 96
+  if (s === 'prompt_queued') return 90
   if (s === 'uploading' || s === 'importing') return 75
   if (s === 'crawling' || s === 'running' || s === 'pending') return 45
   if (s === 'queued') return 15
@@ -67,6 +70,8 @@ function trainingProgressDisplayPercent(
 ): number {
   const s = (stage || '').toLowerCase()
   if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled' || s === 'import_submitted') return 100
+  if (s === 'prompt_generating') return 96
+  if (s === 'prompt_queued') return 90
   if (s === 'uploading' || s === 'importing') return 75
   if (s === 'crawling' || s === 'running' || s === 'pending') {
     if (totalUrls > 0 && pagesCrawled != null && pagesCrawled >= 0) {
@@ -82,7 +87,7 @@ function trainingProgressDisplayPercent(
 /** Human-readable label for training progress (Sources section). */
 function trainingProgressLabel(stage: string | undefined): string {
   const s = (stage || '').toLowerCase()
-  if (s === 'queued' || s === 'crawling' || s === 'running' || s === 'pending' || s === 'uploading' || s === 'importing' || s === 'import_submitted') {
+  if (s === 'queued' || s === 'crawling' || s === 'running' || s === 'pending' || s === 'uploading' || s === 'importing' || s === 'import_submitted' || s === 'prompt_queued' || s === 'prompt_generating') {
     return 'Training in progress…'
   }
   return 'Training…'

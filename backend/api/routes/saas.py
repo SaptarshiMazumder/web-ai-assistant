@@ -3440,7 +3440,7 @@ async def v1_org_extract_topics(
     # Find a completed job with GCS content
     gcs_prefix = None
     for job in jobs:
-        if job.stage in ('done', 'import_submitted') and job.gcs_prefix:
+        if job.stage in ('done', 'import_submitted', 'prompt_queued', 'prompt_generating') and job.gcs_prefix:
             gcs_prefix = job.gcs_prefix
             break
     

@@ -13,6 +13,32 @@ You are a friendly and helpful AI chatbot who helps users with their inquiries, 
 
 ## Instructions
 These instructions allow you to customize the behavior, tone and personality of the agent and its responses.`
+const VANILLA_PROMPT_EN = `## Personality
+You are a helpful, clear, and professional AI assistant for this business.
+
+## About the Business
+You represent the business and assist visitors with their questions and needs.
+
+## Response Rules
+- MANDATORY: Detect the language of the user's input and respond in that same language.
+- Use bullet points when listing multiple items that belong to the same category.
+- You may use markdown bold (**text**) to emphasize important items sparingly.
+- Provide detailed, helpful explanations.
+- If you do not know something, say so and suggest checking the website.
+- End responses on a positive, welcoming note.`
+const VANILLA_PROMPT_JA = `## パーソナリティ
+あなたはこのビジネスのAIアシスタントです。丁寧でわかりやすく、親しみのある口調で案内してください。
+
+## ビジネスについて
+あなたはこのビジネスの代表として、訪問者の質問やニーズをサポートします。
+
+## 応答ルール
+- 必須：ユーザーの入力言語を検出し、同じ言語で応答してください。
+- 同じカテゴリに属する複数の項目を列挙する場合は箇条書きを使ってください。
+- 重要な箇所の強調には太字（**text**）を必要最小限で使えます。
+- 具体的で役立つ説明を提供してください。
+- 不明な点は正直に伝え、必要に応じてサイト確認を提案してください。
+- 最後は前向きで歓迎的な一言で締めてください。`
 
 const DEFAULT_MODELS = [
   { value: '', label: 'Default' },
@@ -65,6 +91,10 @@ function normalizePromptText(value: string): string {
 
 function isLegacyDefaultInstructions(value: string): boolean {
   return normalizePromptText(value) === normalizePromptText(LEGACY_DEFAULT_INSTRUCTIONS)
+}
+
+function getVanillaPromptForLanguage(lang: string): string {
+  return lang === 'ja' ? VANILLA_PROMPT_JA : VANILLA_PROMPT_EN
 }
 
 function withOrg(path: string, orgId: string | null): string {
@@ -151,7 +181,7 @@ export default function BotTestingTab() {
 
   const [agentConfig, setAgentConfig] = useState<AgentConfig>({})
   const [modelId, setModelId] = useState('')
-  const [instructions, setInstructions] = useState('')
+  const [instructions, setInstructions] = useState(() => getVanillaPromptForLanguage(botLanguage))
   const [instructionsOverridden, setInstructionsOverridden] = useState(false)
   const [temperature, setTemperature] = useState(0.2)
   const [personaId, setPersonaId] = useState<string>(DEFAULT_PERSONA_ID)
@@ -179,12 +209,25 @@ export default function BotTestingTab() {
   const [escalationsEnabled, setEscalationsEnabled] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
 
+  const languageFallbackPrompt = useMemo(
+    () => getVanillaPromptForLanguage(botLanguage),
+    [botLanguage]
+  )
+
   const allPersonas = useMemo(() => {
     const normalizedCustom = customPersonas
       .map((p) => normalizePersona(p))
       .filter((p): p is PersonaItem => p !== null)
-    return [...normalizedCustom, ...personas]
-  }, [customPersonas, personas])
+    const fallbackDefaultPersona: PersonaItem = {
+      id: DEFAULT_PERSONA_ID,
+      name: botLanguage === 'ja' ? 'デフォルト' : 'Default',
+      category: botLanguage === 'ja' ? 'プロフェッショナル' : 'Professional',
+      emoji: '💬',
+      system_prompt: languageFallbackPrompt,
+    }
+    const builtin = personas.length > 0 ? personas : [fallbackDefaultPersona]
+    return [...normalizedCustom, ...builtin]
+  }, [customPersonas, personas, botLanguage, languageFallbackPrompt])
 
   const selectedPersona = useMemo(
     () => allPersonas.find((p) => p.id === personaId) ?? null,
@@ -295,10 +338,12 @@ export default function BotTestingTab() {
   // Keep instructions synced to persona when no explicit override is stored.
   useEffect(() => {
     if (instructionsOverridden) return
-    if (selectedPersona?.system_prompt) {
+    if (selectedPersona?.system_prompt?.trim()) {
       setInstructions(selectedPersona.system_prompt)
+      return
     }
-  }, [instructionsOverridden, selectedPersona])
+    setInstructions((prev) => prev.trim() || languageFallbackPrompt)
+  }, [instructionsOverridden, selectedPersona, languageFallbackPrompt])
 
   const loadConfig = useCallback(async () => {
     if (!botId || !activeOrgId || activeOrgId === '__all__') return
@@ -317,7 +362,7 @@ export default function BotTestingTab() {
         : persistedInstructions
       setAgentConfig(data)
       setModelId(data.model_id ?? '')
-      setInstructions(effectiveInstructions)
+      setInstructions(effectiveInstructions || languageFallbackPrompt)
       setInstructionsOverridden(Boolean(effectiveInstructions))
       setTemperature(
         typeof data.temperature === 'number' && data.temperature >= 0 && data.temperature <= 1
@@ -329,7 +374,7 @@ export default function BotTestingTab() {
     } catch {
       setAgentConfig({})
       setModelId('')
-      setInstructions('')
+      setInstructions(languageFallbackPrompt)
       setInstructionsOverridden(false)
       setTemperature(0.2)
       setPersonaId(DEFAULT_PERSONA_ID)
@@ -337,7 +382,7 @@ export default function BotTestingTab() {
     } finally {
       setConfigLoading(false)
     }
-  }, [botId, activeOrgId, getAccessTokenSilently])
+  }, [botId, activeOrgId, getAccessTokenSilently, languageFallbackPrompt])
 
   useEffect(() => {
     void loadConfig()
@@ -380,7 +425,7 @@ export default function BotTestingTab() {
     const effectiveResetInstructions = isLegacyDefaultInstructions(resetInstructions)
       ? ''
       : resetInstructions
-    const resetPersonaPrompt = allPersonas.find((p) => p.id === resetPersonaId)?.system_prompt || ''
+    const resetPersonaPrompt = allPersonas.find((p) => p.id === resetPersonaId)?.system_prompt || languageFallbackPrompt
     setModelId(agentConfig.model_id ?? '')
     setInstructions(effectiveResetInstructions || resetPersonaPrompt)
     setInstructionsOverridden(Boolean(effectiveResetInstructions))
@@ -410,6 +455,8 @@ export default function BotTestingTab() {
         setInstructionsOverridden(true)
       }
     } catch (e) {
+      setInstructions((prev) => prev.trim() || selectedPersona?.system_prompt || languageFallbackPrompt)
+      setInstructionsOverridden(false)
       alert("Failed to generate prompt: " + (e instanceof Error ? e.message : String(e)))
     } finally {
       setIsGenerating(false)

@@ -183,7 +183,7 @@ function normalizeUrl(value: string) {
 
 export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const {
     createBot,
     discoverUrls: discoverUrlsFromHook,
@@ -268,6 +268,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [suggestedMessagesEnabled, setSuggestedMessagesEnabled] = useState(
     initDefaults.suggestedMessagesEnabled
   )
+  const defaultUrlBankLabel = t('createBot.urlBankLabelOther', 'Other')
+  const secondaryUrlBankLabel = t('createBot.urlBankLabelLink', 'Link')
+  const isFallbackUrlBankLabel = useCallback(
+    (label: string) =>
+      label === 'Other' ||
+      label === 'Link' ||
+      label === defaultUrlBankLabel ||
+      label === secondaryUrlBankLabel,
+    [defaultUrlBankLabel, secondaryUrlBankLabel]
+  )
   const resetFlow = useCallback(() => {
     const defaults = getDefaultsForLanguage(appLang)
     setBotName('')
@@ -328,18 +338,18 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const discoverUrls = useCallback(async () => {
     setLocalError(null)
     if (!botName.trim()) {
-      setLocalError('Enter a bot name to continue.')
+      setLocalError(t('createBot.enterBotNameToContinue', 'Enter a bot name to continue.'))
       return false
     }
     if (!websiteUrl.trim()) {
-      setLocalError('Enter a website URL to continue.')
+      setLocalError(t('createBot.enterWebsiteUrlToContinue', 'Enter a website URL to continue.'))
       return false
     }
     let normalized = ''
     try {
       normalized = normalizeUrl(websiteUrl)
     } catch {
-      setLocalError('Enter a valid website URL.')
+      setLocalError(t('createBot.enterValidWebsiteUrl', 'Enter a valid website URL.'))
       return false
     }
     setIsDiscovering(true)
@@ -385,10 +395,20 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           hasShownError = true
           const reason = (evt as { failure_reason?: string }).failure_reason
           if (reason === 'robots_blocked') {
-            setLocalError('🚫 This site blocks crawlers via robots.txt. Try adding specific URLs manually.')
+            setLocalError(
+              t(
+                'createBot.robotsBlockedTrySpecificUrls',
+                'This site blocks crawlers via robots.txt. Try adding specific URLs manually.'
+              )
+            )
             setLocalErrorType('error')
           } else if (reason === 'sitemap_empty') {
-            setLocalError("No sitemap found. Switch to 'Automatic' discovery (recommended).")
+            setLocalError(
+              t(
+                'createBot.noSitemapSwitchAutomaticRecommended',
+                "No sitemap found. Switch to 'Automatic' discovery (recommended)."
+              )
+            )
             setLocalErrorType('warning')
           } else {
             setLocalError(evt.message)
@@ -411,30 +431,47 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           if (start != null) setDiscoveryDurationMs(Date.now() - start)
           setIsDiscovering(false)
           if ((evt as { timed_out?: boolean }).timed_out === true) {
-            setDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
+            setDiscoveryTimedOutMessage(
+              t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
+            )
           }
           const urls = (evt as { urls?: unknown[] }).urls || []
           const reason = (evt as { failure_reason?: string }).failure_reason
           if (reason === 'no_results') {
             hasShownError = true
-            setLocalError('⚠️ We could not discover real pages from this site. Please use the PDF upload steps below.')
+            setLocalError(
+              t(
+                'createBot.couldNotDiscoverRealPagesUsePdf',
+                'We could not discover real pages from this site. Please use the PDF upload steps below.'
+              )
+            )
             setLocalErrorType('warning')
           } else if (Array.isArray(urls) && urls.length === 0) {
             hasShownError = true
             if (reason === 'robots_blocked') {
-              setLocalError('🚫 All discovered URLs are blocked by robots.txt')
+              setLocalError(t('createBot.allUrlsBlockedByRobots', 'All discovered URLs are blocked by robots.txt'))
               setLocalErrorType('error')
             } else if (reason === 'sitemap_empty') {
-              setLocalError("No sitemap found. Switch to 'Automatic' discovery.")
+              setLocalError(
+                t('createBot.noSitemapSwitchAutomatic', "No sitemap found. Switch to 'Automatic' discovery.")
+              )
               setLocalErrorType('warning')
             } else if (reason === 'no_results') {
-              setLocalError('⚠️ No pages found. Site may be blocking crawlers or have no discoverable links.')
+              setLocalError(
+                t(
+                  'createBot.noPagesFoundMaybeBlocked',
+                  'No pages found. Site may be blocking crawlers or have no discoverable links.'
+                )
+              )
               setLocalErrorType('warning')
             } else {
               setLocalError(
                 discoveryMethod === 'sitemap'
-                  ? "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
-                  : 'No URLs found for this site.'
+                  ? t(
+                    'createBot.couldNotDiscoverViaSitemap',
+                    "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
+                  )
+                  : t('createBot.noUrlsFoundForSite', 'No URLs found for this site.')
               )
               setLocalErrorType('warning')
             }
@@ -447,7 +484,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
           if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
             hasShownError = true
-            setLocalError('⚠️ We could not discover real pages from this site. Please use the PDF upload steps below.')
+            setLocalError(
+              t(
+                'createBot.couldNotDiscoverRealPagesUsePdf',
+                'We could not discover real pages from this site. Please use the PDF upload steps below.'
+              )
+            )
             setLocalErrorType('warning')
           } else if (final && !final.urls?.length && final.error) {
             hasShownError = true
@@ -462,7 +504,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
             const start = discoveryStartTimeRef.current
             if (start != null) setDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
             if (discoveryTimedOutByTimerRef.current) {
-              setDiscoveryTimedOutMessage('Found main URLs. You can train on these now.')
+              setDiscoveryTimedOutMessage(
+                t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
+              )
             }
           }
         })
@@ -477,7 +521,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show error.
           // Use local count to avoid stale React state in closure.
           if (localDiscoveredCount <= 1 && !hasShownError) {
-            setLocalError('⚠️ Discovery completed but found no usable pages. Please use PDF upload instead.')
+            setLocalError(
+              t(
+                'createBot.discoveryNoUsablePagesUsePdfShort',
+                'Discovery completed but found no usable pages. Please use PDF upload instead.'
+              )
+            )
             setLocalErrorType('warning')
           }
         })
@@ -485,12 +534,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
     // Return true so the UI can move to the URLs page immediately.
     return true
-  }, [botName, websiteUrl, discoveryMethod, discoverUrlsFromHook])
+  }, [botName, websiteUrl, discoveryMethod, discoverUrlsFromHook, t])
 
   const continueWithoutSources = useCallback(async () => {
     setLocalError(null)
     if (!botName.trim()) {
-      setLocalError('Enter a bot name to continue.')
+      setLocalError(t('createBot.enterBotNameToContinue', 'Enter a bot name to continue.'))
       return null
     }
     setIsStartingTraining(true)
@@ -499,7 +548,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     const created = await createBot(botName.trim(), orgOverride)
     if (!created) {
       setIsStartingTraining(false)
-      setLocalError('Failed to create bot. Select an organization above if you are an admin.')
+      setLocalError(
+        t(
+          'createBot.failedCreateBotSelectOrg',
+          'Failed to create bot. Select an organization above if you are an admin.'
+        )
+      )
       return null
     }
     setBotId(created.bot_id)
@@ -522,9 +576,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         const url = normalize(row.url)
         if (!url) continue
         const rawLabel = (row.label || '').trim()
-        const label = rawLabel || 'Other'
+        const label = rawLabel || defaultUrlBankLabel
         const prev = m.get(url)
-        if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
+        if (!prev || (isFallbackUrlBankLabel(prev.label) && rawLabel)) {
           m.set(url, { url, label })
         }
       }
@@ -549,7 +603,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, t])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -579,14 +633,14 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       const url = normalizeOneUrl(row.url)
       if (!url) continue
       const rawLabel = (row.label || '').trim()
-      const label = rawLabel || 'Other'
+      const label = rawLabel || defaultUrlBankLabel
       const prev = m.get(url)
-      if (!prev || ((prev.label === 'Other' || prev.label === 'Link') && rawLabel)) {
+      if (!prev || (isFallbackUrlBankLabel(prev.label) && rawLabel)) {
         m.set(url, { url, label })
       }
     }
     return Array.from(m.values())
-  }, [sharedUrlRows, normalizeOneUrl])
+  }, [sharedUrlRows, normalizeOneUrl, defaultUrlBankLabel, isFallbackUrlBankLabel])
 
   const toggleUrl = useCallback((url: string) => {
     selectionTouchedRef.current = true
@@ -634,7 +688,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const startTraining = useCallback(async (selectedDiscoveredUrls?: string[]) => {
     setLocalError(null)
     if (!botName.trim()) {
-      setLocalError('Enter a bot name to continue.')
+      setLocalError(t('createBot.enterBotNameToContinue', 'Enter a bot name to continue.'))
       return null
     }
     const overrideUrls = (selectedDiscoveredUrls || [])
@@ -653,7 +707,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     const created = await createBot(botName.trim(), orgOverride)
     if (!created) {
       setIsStartingTraining(false)
-      setLocalError('Failed to start training. Select an organization above if you are an admin.')
+      setLocalError(
+        t(
+          'createBot.failedStartTrainingSelectOrg',
+          'Failed to start training. Select an organization above if you are an admin.'
+        )
+      )
       return null
     }
     setBotId(created.bot_id)
@@ -700,7 +759,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         queueCrawlUrls(created.bot_id, finalUrls)
           .then((jobIdResult) => {
             if (jobIdResult) setJobId(jobIdResult)
-            else setLocalError('Could not start. Please try again.')
+            else setLocalError(t('createBot.couldNotStartTryAgain', 'Could not start. Please try again.'))
           })
           .catch(() => { })
       )
@@ -721,7 +780,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       if (finalUrls.length === 0) {
         const ids = await startPdfUpload
         if (!ids.length) {
-          setLocalError('Could not start. Please try again.')
+          setLocalError(t('createBot.couldNotStartTryAgain', 'Could not start. Please try again.'))
         }
       } else {
         starters.push(startPdfUpload)
@@ -769,7 +828,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     // Background discovery disabled for now.
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, t])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -781,6 +840,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       if (st === 'crawling') return 40
       if (st === 'uploading') return 70
       if (st === 'importing') return 85
+      if (st === 'prompt_queued') return 92
+      if (st === 'prompt_generating') return 96
       if (st === 'import_submitted') return 100
       if (st === 'done') return 100
       if (st === 'error') return 100
@@ -847,17 +908,21 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           suggestionsGenTriggeredRef.current = true
           void generateSuggestedMessages(botId)
         }
-        if (urlStage === 'error') setLocalError(urlStatus?.last_error || 'Training failed')
+        if (urlStage === 'error') setLocalError(urlStatus?.last_error || t('createBot.trainingFailed', 'Training failed'))
         const pdfError = Object.values(pdfStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
-        if (pdfError) setLocalError((pdfError as any).last_error || 'PDF processing failed')
+        if (pdfError) {
+          setLocalError((pdfError as any).last_error || t('createBot.pdfProcessingFailed', 'PDF processing failed'))
+        }
         const extraError = Object.values(extraStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
-        if (extraError) setLocalError((extraError as any).last_error || 'Source processing failed')
+        if (extraError) {
+          setLocalError((extraError as any).last_error || t('createBot.sourceProcessingFailed', 'Source processing failed'))
+        }
       }
     }
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length, generateSuggestedMessages])
+  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length, generateSuggestedMessages, t])
 
   const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)

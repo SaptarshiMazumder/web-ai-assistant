@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 export default function CreateBotHostingPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { step2, flow } = useCreateBotFlow()
   const { websiteUrl, setWebsiteUrl, localError, setLocalError } = step2
   const [continuing, setContinuing] = useState(false)
@@ -21,11 +23,11 @@ export default function CreateBotHostingPage() {
         const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
         const parsed = new URL(withProtocol)
         if (!/^https?:$/i.test(parsed.protocol)) {
-          setLocalError('Enter a valid website URL.')
+          setLocalError(t('createBot.enterValidWebsiteUrl', 'Enter a valid website URL.'))
           return
         }
       } catch {
-        setLocalError('Enter a valid website URL.')
+        setLocalError(t('createBot.enterValidWebsiteUrl', 'Enter a valid website URL.'))
         return
       }
       navigate(flow.nextPath)
@@ -37,21 +39,28 @@ export default function CreateBotHostingPage() {
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">Website URL</div>
-        <div className="card-subtitle">Enter your website or section URL. You can use a subpath like `example.com/hotel/tokyo`.</div>
+        <div className="card-title">{t('createBot.websiteUrlTitle', 'Website URL')}</div>
+        <div className="card-subtitle">
+          {t(
+            'createBot.websiteUrlSubtitle',
+            'Enter your website or section URL. You can use a subpath like `example.com/hotel/tokyo`.'
+          )}
+        </div>
       </div>
 
       <div className="flow-field">
-        <label className="flow-field-label">Website URL</label>
+        <label className="flow-field-label">{t('createBot.websiteUrlLabel', 'Website URL')}</label>
         <div className="flow-field-input-wrap">
           <input
             type="url"
             value={websiteUrl}
             onChange={(e) => setWebsiteUrl(e.target.value)}
-            placeholder="https://yourwebsite.com or https://yourwebsite.com/section/"
+            placeholder={t('createBot.websiteUrlPlaceholder', 'https://yourwebsite.com or https://yourwebsite.com/section/')}
           />
         </div>
-        <span className="flow-field-helper">We’ll discover pages from this URL scope in the next step.</span>
+        <span className="flow-field-helper">
+          {t('createBot.websiteUrlHelper', "We'll discover pages from this URL scope in the next step.")}
+        </span>
       </div>
 
       {localError && (
@@ -62,10 +71,10 @@ export default function CreateBotHostingPage() {
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-          Back
+          {t('common.back', 'Back')}
         </UiButton>
         <UiButton variant="primary" onClick={() => void handleContinue()} disabled={!canContinue}>
-          {continuing ? 'Checking...' : 'Continue'}
+          {continuing ? t('createBot.checking', 'Checking...') : t('common.continue', 'Continue')}
         </UiButton>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Check } from 'lucide-react'
 import { UiButton, SectionHeader } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -8,6 +9,7 @@ import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '.
 
 export default function CreateBotWidgetPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { saveWidgetConfig } = useDashboardData()
   const { step1, step2, step3, step4, flow } = useCreateBotFlow()
   const [saving, setSaving] = useState(false)
@@ -83,7 +85,7 @@ export default function CreateBotWidgetPage() {
             <span />
             <span />
           </span>
-          <span>Your agent is getting ready. Design the chat while you wait.</span>
+          <span>{t('createBot.agentGettingReadyDesignWhileWait', 'Your agent is getting ready. Design the chat while you wait.')}</span>
         </div>
       )}
       {trainingStage === 'complete' && !trainingError && (
@@ -92,7 +94,7 @@ export default function CreateBotWidgetPage() {
           style={{ color: step4.widgetPrimaryColor, marginBottom: 0 }}
         >
           <Check size={20} strokeWidth={2.5} aria-hidden />
-          <span>Your agent has learned from your content.</span>
+          <span>{t('createBot.agentLearnedFromContent', 'Your agent has learned from your content.')}</span>
         </div>
       )}
       {trainingError && (
@@ -106,10 +108,10 @@ export default function CreateBotWidgetPage() {
   const actions = (
     <>
       <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
-        Back
+        {t('common.back', 'Back')}
       </UiButton>
       <UiButton variant="primary" onClick={() => void handleContinue()} disabled={saving}>
-        {saving ? 'Saving...' : 'Continue'}
+        {saving ? t('botDesign.saving', 'Saving...') : t('common.continue', 'Continue')}
       </UiButton>
     </>
   )
@@ -117,8 +119,8 @@ export default function CreateBotWidgetPage() {
   return (
     <>
       <SectionHeader
-        title="Design the chat widget"
-        subtitle="Customize how the widget appears. Changes update the preview on the right."
+        title={t('botDesign.title', 'Design the chat widget')}
+        subtitle={t('botDesign.subtitle', 'Customize how the widget appears. Changes update the preview on the right.')}
       />
       <WidgetDesignForm
         value={value}

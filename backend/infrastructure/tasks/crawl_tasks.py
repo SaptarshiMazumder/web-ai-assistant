@@ -30,6 +30,7 @@ from google.cloud import storage
 import google.auth
 import vertexai
 from domain.entities import BookingLinkJob, Document, TopicJob
+from domain.personas import get_default_persona_id, get_persona_system_prompt
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 
 logger = logging.getLogger(__name__)
@@ -314,7 +315,12 @@ def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) ->
     repo.update(job)
 
 
-def _start_prompt_generation(bot_id: str, gcs_prefix: str, root_url: str) -> None:
+def _start_prompt_generation(
+    bot_id: str,
+    gcs_prefix: str,
+    root_url: str,
+    index_job_id: Optional[str] = None,
+) -> None:
     """Queue prompt generation from crawled content (non-blocking)."""
     if not bot_id or not gcs_prefix:
         return
@@ -326,12 +332,30 @@ def _start_prompt_generation(bot_id: str, gcs_prefix: str, root_url: str) -> Non
         bot = bot_repo.get_bot(bot_id)
         if not bot:
             return
-        prompt_generation_task.delay(
+        task = prompt_generation_task.delay(
             bot_id=bot_id,
             org_id=bot.org_id,
             gcs_prefix=gcs_prefix,
             root_url=root_url or "",
+            index_job_id=index_job_id,
         )
+        if index_job_id and task and task.id:
+            try:
+                job_repo = PostgresIndexJobRepository()
+                job = job_repo.get_job(bot_id, index_job_id)
+                if job and (job.stage or "").lower() not in ("cancelled", "error"):
+                    # Keep the index job "in progress" while prompt generation runs
+                    # so Sources/Training can show this background phase.
+                    job.stage = "prompt_queued"
+                    job.celery_task_id = task.id
+                    job_repo.update_job(job)
+            except Exception as update_error:
+                logger.warning(
+                    "Failed to mark prompt_queued for index job %s: %s: %s",
+                    index_job_id,
+                    type(update_error).__name__,
+                    str(update_error)[:200],
+                )
     except Exception as e:
         logger.warning(f"Failed to queue prompt generation for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
 
@@ -575,13 +599,38 @@ def prompt_generation_task(
     org_id: str,
     gcs_prefix: str,
     root_url: str = "",
+    index_job_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Generate a system prompt from crawled homepage content using LLM."""
+    job_repo: Optional[PostgresIndexJobRepository] = None
+    task_outcome = "error"
     try:
+        if index_job_id:
+            try:
+                job_repo = PostgresIndexJobRepository()
+                job = job_repo.get_job(bot_id, index_job_id)
+                if job and (job.stage or "").lower() == "cancelled":
+                    task_outcome = "cancelled"
+                    return {"status": "cancelled", "reason": "index job cancelled"}
+                if job and (job.stage or "").lower() != "error":
+                    job.stage = "prompt_generating"
+                    if self.request and self.request.id:
+                        job.celery_task_id = self.request.id
+                    job_repo.update_job(job)
+            except Exception as stage_error:
+                logger.warning(
+                    "[PromptGen] Failed to mark prompt_generating for bot %s job %s: %s: %s",
+                    bot_id,
+                    index_job_id,
+                    type(stage_error).__name__,
+                    str(stage_error)[:200],
+                )
+
         # 1. Check if bot already has custom instructions
         bot_repo = PostgresBotRepository()
         bot = bot_repo.get_bot(bot_id)
         if not bot:
+            task_outcome = "skipped"
             return {"status": "skipped", "reason": "bot not found"}
 
         existing_config = {}
@@ -594,12 +643,14 @@ def prompt_generation_task(
         existing_instructions = (existing_config.get("instructions") or "").strip()
         if existing_instructions:
             logger.info(f"[PromptGen] Bot {bot_id} already has custom instructions, skipping auto-generation")
+            task_outcome = "skipped"
             return {"status": "skipped", "reason": "custom instructions exist"}
 
         # 2. Load homepage content from GCS
         # 2. Load homepage content from GCS
         documents = _load_docs_from_gcs_prefix(gcs_prefix)
         if not documents:
+            task_outcome = "skipped"
             return {"status": "skipped", "reason": "no documents found"}
 
         # Filter for homepage document (matching root_url)
@@ -617,6 +668,7 @@ def prompt_generation_task(
 
         homepage_content = homepage_doc.get("content", "")
         if not homepage_content:
+            task_outcome = "skipped"
             return {"status": "skipped", "reason": "homepage content empty"}
 
         # 3. Generate the prompt
@@ -630,19 +682,52 @@ def prompt_generation_task(
             lang=bot_lang,
         )
         if not generated_prompt:
-            return {"status": "error", "reason": "LLM returned no prompt"}
+            default_prompt = get_persona_system_prompt(get_default_persona_id(), lang=bot_lang)
+            if not default_prompt:
+                return {"status": "error", "reason": "LLM returned no prompt and fallback prompt unavailable"}
+            generated_prompt = default_prompt
+            logger.warning(
+                "[PromptGen] LLM returned no prompt for bot %s; using %s default persona prompt fallback",
+                bot_id,
+                bot_lang,
+            )
 
         # 4. Save to agent_config.instructions
         existing_config["instructions"] = generated_prompt
+        if not str(existing_config.get("persona_id") or "").strip():
+            existing_config["persona_id"] = get_default_persona_id()
         config_json = json.dumps(existing_config, ensure_ascii=False)
         bot_repo.update_agent_config(bot_id, config_json)
 
         logger.info(f"[PromptGen] Auto-generated prompt for bot {bot_id} ({len(generated_prompt)} chars)")
+        task_outcome = "done"
         return {"status": "done", "prompt_length": len(generated_prompt)}
 
     except Exception as e:
+        task_outcome = "error"
         logger.warning(f"[PromptGen] Failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
         return {"status": "error", "error": str(e)[:200]}
+    finally:
+        if index_job_id:
+            try:
+                repo = job_repo or PostgresIndexJobRepository()
+                latest = repo.get_job(bot_id, index_job_id)
+                if latest:
+                    latest_stage = (latest.stage or "").lower()
+                    # Respect explicit terminal updates from other flows (cancel/error).
+                    if latest_stage not in ("cancelled", "error") and task_outcome != "cancelled":
+                        # Prompt generation is optional; once it exits, indexing
+                        # should be considered ready for normal post-import flows.
+                        latest.stage = "import_submitted"
+                        repo.update_job(latest)
+            except Exception as finalize_error:
+                logger.warning(
+                    "[PromptGen] Failed to finalize index job stage for bot %s job %s: %s: %s",
+                    bot_id,
+                    index_job_id,
+                    type(finalize_error).__name__,
+                    str(finalize_error)[:200],
+                )
 
 
 async def _execute_crawl(
@@ -822,12 +907,6 @@ async def _execute_crawl(
 
 
 
-            # Auto-generate system prompt from homepage content
-            try:
-                _start_prompt_generation(bot_id, gcs_prefix, _original_input_url)
-            except Exception as prompt_error:
-                logger.warning(f"Prompt generation queue failed: {type(prompt_error).__name__}: {str(prompt_error)[:200]}")
-
         # Import to RAG with error handling
         job.stage = "importing"
         job_repo.update_job(job)
@@ -852,6 +931,20 @@ async def _execute_crawl(
                 logger.warning(
                     f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"
                 )
+            # Auto-generate system prompt from homepage content. This is queued
+            # after import submission so Sources training progress includes it.
+            if gcs_prefix:
+                try:
+                    _start_prompt_generation(
+                        bot_id,
+                        gcs_prefix,
+                        _original_input_url,
+                        index_job_id=job_id,
+                    )
+                except Exception as prompt_error:
+                    logger.warning(
+                        f"Prompt generation queue failed: {type(prompt_error).__name__}: {str(prompt_error)[:200]}"
+                    )
         except Exception as import_error:
             error_msg = str(import_error)[:200]
             logger.error(f"RAG import error: {type(import_error).__name__}: {error_msg}")
