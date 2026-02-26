@@ -13,7 +13,7 @@ export default function CreateBotUrlsPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { discoverUrls: discoverUrlsFromHook } = useDashboardData()
-  const { step2, flow } = useCreateBotFlow()
+  const { step1, step2, flow } = useCreateBotFlow()
   const {
     discoveredUrls,
     selectedUrls,
@@ -34,7 +34,14 @@ export default function CreateBotUrlsPage() {
     stopDiscovery,
     localError,
     localErrorType,
+    restaurantTableCheckUrl,
+    setRestaurantTableCheckUrl,
+    restaurantTabelogUrl,
+    setRestaurantTabelogUrl,
+    restaurantHotPepperUrl,
+    setRestaurantHotPepperUrl,
   } = step2
+  const { businessType } = step1
 
   const discoveryDurationLabel =
     discoveryDurationMs != null && !isDiscovering
@@ -139,21 +146,47 @@ export default function CreateBotUrlsPage() {
     setSharedDiscoveryError(null)
     setSharedDiscoveryErrorType(null)
     setShowPdfFallback(false)
-    const trimmedUrl = sharedDiscoveryUrl.trim()
 
-    if (!trimmedUrl) {
-      setSharedDiscoveryError(t('createBot.enterUrlToDiscoverPages', 'Enter a URL to discover pages'))
-      setSharedDiscoveryErrorType('error')
-      return
+    // Build list of all URLs to discover (for restaurants: main + platform URLs)
+    const isRestaurant = businessType === 'restaurant'
+    const allUrlsToDiscover: string[] = []
+
+    // Add main shared discovery URL if provided
+    const trimmedUrl = sharedDiscoveryUrl.trim()
+    if (trimmedUrl) {
+      try {
+        const withProtocol = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
+        allUrlsToDiscover.push(new URL(withProtocol).href)
+      } catch {
+        setSharedDiscoveryError(t('createBot.enterValidUrl', 'Enter a valid URL'))
+        setSharedDiscoveryErrorType('error')
+        return
+      }
     }
 
-    let normalizedUrl = ''
-    try {
-      const withProtocol = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
-      const parsed = new URL(withProtocol)
-      normalizedUrl = parsed.href
-    } catch {
-      setSharedDiscoveryError(t('createBot.enterValidUrl', 'Enter a valid URL'))
+    // Add platform URLs for restaurants
+    if (isRestaurant) {
+      const platformUrls = [restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl]
+        .map((u) => {
+          const trimmed = u.trim()
+          if (!trimmed) return null
+          try {
+            const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+            return new URL(withProtocol).href
+          } catch {
+            return null
+          }
+        })
+        .filter((u) => u !== null) as string[]
+      allUrlsToDiscover.push(...platformUrls)
+    }
+
+    // Validate that we have at least one URL to discover
+    if (allUrlsToDiscover.length === 0) {
+      const msg = isRestaurant
+        ? 'Enter a website URL or at least one reservation platform URL to discover pages'
+        : 'Enter a URL to discover pages'
+      setSharedDiscoveryError(t('createBot.enterUrlToDiscoverPages', msg))
       setSharedDiscoveryErrorType('error')
       return
     }
@@ -163,7 +196,7 @@ export default function CreateBotUrlsPage() {
     setSharedSelectedDiscoveredUrls(new Set())
     setSharedDiscoveryDurationMs(null)
     setSharedDiscoveryTimedOutMessage(null)
-    setSharedNormalizedDiscoveryUrl(normalizedUrl)
+    setSharedNormalizedDiscoveryUrl(allUrlsToDiscover[0])
     sharedSelectionTouchedRef.current = false
     sharedDiscoveryStartTimeRef.current = Date.now()
 
@@ -176,142 +209,86 @@ export default function CreateBotUrlsPage() {
       controller.abort()
     }, 90_000)
 
-    // Track discovered count locally to avoid stale state in finally block
     let localDiscoveredCount = 0
     let hasShownError = false
 
     try {
-      const final = await discoverUrlsFromHook(
-        normalizedUrl,
-        discoveryMethod,
-        (evt) => {
-          if (evt.type === 'discovered' && typeof evt.url === 'string') {
-            const url = evt.url
-            localDiscoveredCount++
-            setSharedDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
-            if (!sharedSelectionTouchedRef.current) {
-              setSharedSelectedDiscoveredUrls((prev) => new Set([...prev, url]))
+      // Discover all URLs (sequentially for simplicity; results merge into shared state)
+      for (const urlToDiscover of allUrlsToDiscover) {
+        await discoverUrlsFromHook(
+          urlToDiscover,
+          discoveryMethod,
+          (evt) => {
+            if (evt.type === 'discovered' && typeof evt.url === 'string') {
+              const url = evt.url
+              localDiscoveredCount++
+              setSharedDiscoveredUrls((prev) => (prev.includes(url) ? prev : [...prev, url]))
+              if (!sharedSelectionTouchedRef.current) {
+                setSharedSelectedDiscoveredUrls((prev) => new Set([...prev, url]))
+              }
+              setSharedDiscoveryError(null)
+              setSharedDiscoveryErrorType(null)
+              setShowPdfFallback(false)
             }
-            // Clear stale warning once we actually get URLs.
-            setSharedDiscoveryError(null)
-            setSharedDiscoveryErrorType(null)
-            setShowPdfFallback(false)
-          }
-          if (evt.type === 'error' && typeof evt.message === 'string') {
-            hasShownError = true
-            const reason = evt.failure_reason as string | undefined
-            if (reason === 'robots_blocked') {
-              setSharedDiscoveryError(t('createBot.websiteBlocksAutomaticScanning', 'This website blocks automatic scanning.'))
-              setSharedDiscoveryErrorType('error')
-              setShowPdfFallback(true)
-            } else if (reason === 'sitemap_empty') {
-              setSharedDiscoveryError(
-                t(
-                  'createBot.noSitemapSwitchAutomaticRecommended',
-                  "No sitemap found. Switch to 'Automatic' discovery (recommended)."
-                )
-              )
-              setSharedDiscoveryErrorType('warning')
-            } else {
-              setSharedDiscoveryError(evt.message)
-              setSharedDiscoveryErrorType('error')
-            }
-          }
-          if (evt.type === 'warning' && typeof evt.message === 'string') {
-            hasShownError = true
-            setSharedDiscoveryError(evt.message)
-            setSharedDiscoveryErrorType('warning')
-          }
-          if (evt.type === 'done') {
-            if (sharedDiscovery60sTimerRef.current) {
-              clearTimeout(sharedDiscovery60sTimerRef.current)
-              sharedDiscovery60sTimerRef.current = null
-            }
-            const start = sharedDiscoveryStartTimeRef.current
-            if (start != null) setSharedDiscoveryDurationMs(Date.now() - start)
-            setIsSharedDiscovering(false)
-            if ((evt as { timed_out?: boolean }).timed_out === true) {
-              setSharedDiscoveryTimedOutMessage(
-                t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
-              )
-            }
-            const urls = (evt as { urls?: unknown[] }).urls || []
-            const reason = (evt as { failure_reason?: string }).failure_reason
-            if (reason === 'no_results') {
+            if (evt.type === 'error' && typeof evt.message === 'string') {
               hasShownError = true
-              setSharedDiscoveryError(
-                t(
-                  'createBot.couldNotDiscoverLikelyBlocked',
-                  "Could not discover pages. It's likely that the site is blocking our crawling agent."
-                )
-              )
-              setSharedDiscoveryErrorType('warning')
-              setShowPdfFallback(true)
-            } else if (Array.isArray(urls) && urls.length === 0) {
-              hasShownError = true
+              const reason = (evt as { failure_reason?: string }).failure_reason
               if (reason === 'robots_blocked') {
                 setSharedDiscoveryError(t('createBot.websiteBlocksAutomaticScanning', 'This website blocks automatic scanning.'))
                 setSharedDiscoveryErrorType('error')
                 setShowPdfFallback(true)
               } else if (reason === 'sitemap_empty') {
                 setSharedDiscoveryError(
-                  t('createBot.noSitemapSwitchAutomatic', "No sitemap found. Switch to 'Automatic' discovery.")
+                  t(
+                    'createBot.noSitemapSwitchAutomaticRecommended',
+                    "No sitemap found. Switch to 'Automatic' discovery (recommended)."
+                  )
                 )
                 setSharedDiscoveryErrorType('warning')
-              } else if (reason === 'no_results') {
-                setSharedDiscoveryError(t('createBot.couldNotFindAnyPages', "We couldn't find any pages on this website."))
-                setSharedDiscoveryErrorType('warning')
-                setShowPdfFallback(true)
               } else {
-                setSharedDiscoveryError(
-                  discoveryMethod === 'sitemap'
-                    ? t(
-                      'createBot.couldNotDiscoverViaSitemap',
-                      "Could not discover via sitemap. Switch to 'Automatic' (recommended)."
-                    )
-                    : t('createBot.noPagesFoundForSite', 'No pages found for this site.')
-                )
-                setSharedDiscoveryErrorType('warning')
-                setShowPdfFallback(true)
+                setSharedDiscoveryError(evt.message)
+                setSharedDiscoveryErrorType('error')
               }
             }
-          }
-        },
-        controller.signal,
-        { max_duration_sec: 90 }
-      )
-      // Final check: if we got ≤1 URL, treat as discovery failure.
-      const urlCount = final?.urls?.length ?? 0
-      localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
-      if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
+            if (evt.type === 'warning' && typeof evt.message === 'string') {
+              hasShownError = true
+              setSharedDiscoveryError(evt.message)
+              setSharedDiscoveryErrorType('warning')
+            }
+            if (evt.type === 'done') {
+              if (sharedDiscovery60sTimerRef.current) {
+                clearTimeout(sharedDiscovery60sTimerRef.current)
+                sharedDiscovery60sTimerRef.current = null
+              }
+              const start = sharedDiscoveryStartTimeRef.current
+              if (start != null) setSharedDiscoveryDurationMs(Date.now() - start)
+              if ((evt as { timed_out?: boolean }).timed_out === true) {
+                setSharedDiscoveryTimedOutMessage(
+                  t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
+                )
+              }
+            }
+          },
+          controller.signal,
+          { max_duration_sec: 90 }
+        )
+      }
+
+      // Final check
+      if (localDiscoveredCount <= 1 && !hasShownError) {
         hasShownError = true
         setSharedDiscoveryError(
           t(
-            'createBot.couldNotDiscoverLikelyBlocked',
-            "Could not discover pages. It's likely that the site is blocking our crawling agent."
+            'createBot.discoveryNoUsablePagesUsePdf',
+            'Discovery completed but found no usable pages. Please use the PDF upload method below.'
           )
         )
         setSharedDiscoveryErrorType('warning')
         setShowPdfFallback(true)
-      } else if (final && !final.urls?.length && final.error) {
-        hasShownError = true
-        setSharedDiscoveryError(final.error)
-        setSharedDiscoveryErrorType('error')
-        setShowPdfFallback(true)
       }
-      const start = sharedDiscoveryStartTimeRef.current
-      if (start != null) setSharedDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
     } catch (err) {
       const e = err as Error & { name?: string }
-      if (e.name === 'AbortError') {
-        const start = sharedDiscoveryStartTimeRef.current
-        if (start != null) setSharedDiscoveryDurationMs((prev) => (prev === null ? Date.now() - start : prev))
-        if (sharedDiscoveryTimedOutByTimerRef.current) {
-          setSharedDiscoveryTimedOutMessage(
-            t('createBot.foundMainUrlsTrainNow', 'Found main URLs. You can train on these now.')
-          )
-        }
-      } else {
+      if (e.name !== 'AbortError') {
         hasShownError = true
         setSharedDiscoveryError(e.message || t('createBot.discoveryFailed', 'Discovery failed'))
         setSharedDiscoveryErrorType('error')
@@ -324,21 +301,8 @@ export default function CreateBotUrlsPage() {
       }
       setIsSharedDiscovering(false)
       sharedDiscoveryAbortRef.current = null
-
-      // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show PDF fallback.
-      // Use local count to avoid stale React state in closure.
-      if (localDiscoveredCount <= 1 && !hasShownError) {
-        setSharedDiscoveryError(
-          t(
-            'createBot.discoveryNoUsablePagesUsePdf',
-            'Discovery completed but found no usable pages. Please use the PDF upload method below.'
-          )
-        )
-        setSharedDiscoveryErrorType('warning')
-        setShowPdfFallback(true)
-      }
     }
-  }, [sharedDiscoveryUrl, discoverUrlsFromHook, discoveryMethod, t])
+  }, [sharedDiscoveryUrl, businessType, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, discoverUrlsFromHook, discoveryMethod, t])
 
   const handleStopSharedDiscovery = useCallback(() => {
     if (sharedDiscovery60sTimerRef.current) {
@@ -587,13 +551,26 @@ export default function CreateBotUrlsPage() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
-            <div style={{ flex: 1 }}>
+          {/* URL Input Container for all sources */}
+          <div
+            style={{
+              border: '1px solid var(--flow-border)',
+              borderRadius: 'var(--flow-radius)',
+              padding: '1rem',
+              background: 'var(--flow-surface)',
+              marginBottom: '0.75rem',
+            }}
+          >
+            {/* Main website URL */}
+            <div style={{ marginBottom: '0.6rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                {t('createBot.websiteUrl', 'Website URL')}
+              </label>
               <input
                 type="url"
                 value={sharedDiscoveryUrl}
                 onChange={(e) => setSharedDiscoveryUrl(e.target.value)}
-                placeholder={t('createBot.sharedDiscoveryUrlPlaceholder', 'https://example.com/your-section/')}
+                placeholder={t('createBot.sharedDiscoveryUrlPlaceholder', 'https://example.com')}
                 disabled={isSharedDiscovering}
                 style={{ width: '100%' }}
                 onKeyDown={(e) => {
@@ -603,11 +580,82 @@ export default function CreateBotUrlsPage() {
                 }}
               />
             </div>
+
+            {/* OR separator for restaurants */}
+            {businessType === 'restaurant' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.15rem 0', marginBottom: '0.6rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {t('common.or', 'or')}
+                  </span>
+                  <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
+                </div>
+
+                {/* Restaurant Platform URLs */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
+                    {t('createBot.reservationPlatforms', 'Reservation platforms')}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {/* TableCheck */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                        {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
+                      </label>
+                      <input
+                        type="url"
+                        value={restaurantTableCheckUrl}
+                        onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
+                        placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                        disabled={isSharedDiscovering}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+
+                    {/* HotPepper */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                        {t('botKnowledge.hotPepperUrl', 'HotPepper URL')}
+                      </label>
+                      <input
+                        type="url"
+                        value={restaurantHotPepperUrl}
+                        onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
+                        placeholder="https://www.hotpepper.jp/strJ001234567/"
+                        disabled={isSharedDiscovering}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+
+                    {/* Tabelog */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                        {t('botKnowledge.tabelogUrl', 'Tabelog URL')}
+                      </label>
+                      <input
+                        type="url"
+                        value={restaurantTabelogUrl}
+                        onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
+                        placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
+                        disabled={isSharedDiscovering}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  </div>
+
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Scan button below all URL fields */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
             {!isSharedDiscovering ? (
               <UiButton
                 variant="primary"
                 onClick={() => void handleSharedDiscoverUrls()}
-                disabled={!sharedDiscoveryUrl.trim()}
+                disabled={!sharedDiscoveryUrl.trim() && (businessType !== 'restaurant' || (!restaurantTableCheckUrl.trim() && !restaurantHotPepperUrl.trim() && !restaurantTabelogUrl.trim()))}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <ScanSearch size={16} />
@@ -784,7 +832,6 @@ export default function CreateBotUrlsPage() {
         </div>
 
 
-
         {localError && <div className={`alert ${localErrorType || 'error'}`}>{localError}</div>}
 
         <div className="flow-actions">
@@ -800,7 +847,7 @@ export default function CreateBotUrlsPage() {
               onClick={() => void handleContinue()}
               disabled={isSharedDiscovering && sharedDiscoveredUrls.length === 0}
             >
-              {t('createBot.startTraining', 'Start training')}
+              {t('common.continue', 'Continue')}
             </UiButton>
           </div>
         </div>

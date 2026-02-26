@@ -44,10 +44,11 @@ export default function CreateBotDetailsPage() {
       >
         <FlowSelect
           value={businessType}
-          onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'other')}
+          onChange={(next) => setBusinessType((next || '') as '' | 'hotel' | 'restaurant' | 'other')}
           options={[
             { value: '', label: t('common.blank', '--') },
             { value: 'hotel', label: t('createBot.hotel', 'Hotel') },
+            { value: 'restaurant', label: t('createBot.restaurant', 'Restaurant') },
             { value: 'other', label: t('createBot.other', 'Other') },
           ]}
         />

@@ -458,6 +458,10 @@ class WidgetConfigUpdate(BaseModel):
     allowRealtimeAvailability: Optional[bool] = None
     bookingTestUrl: Optional[str] = None
     bookingUrlPattern: Optional[Dict[str, Any]] = None  # written by availability job
+    # Restaurant reservation platform URLs (restaurant bots only)
+    tableCheckUrl: Optional[str] = None
+    tabelogUrl: Optional[str] = None
+    hotPepperUrl: Optional[str] = None
     # Labeled links the agent can share in answers (not crawled/trained sources).
     urlBank: Optional[List[Dict[str, Any]]] = None
     position: Optional[str] = None

@@ -72,6 +72,35 @@ export default function CreateBotSharedUrlsPage() {
         }
       )
     }
+    if (businessType === 'restaurant') {
+      base.unshift(
+        {
+          key: 'tablecheck',
+          label: t('createBot.quickTopicTableCheck', 'TableCheck'),
+          description: t('createBot.quickTopicTableCheckDesc', 'TableCheck reservation page'),
+        },
+        {
+          key: 'tabelog',
+          label: t('createBot.quickTopicTabelog', 'Tabelog'),
+          description: t('createBot.quickTopicTabelogDesc', 'Tabelog restaurant page'),
+        },
+        {
+          key: 'hotpepper',
+          label: t('createBot.quickTopicHotPepper', 'HotPepper'),
+          description: t('createBot.quickTopicHotPepperDesc', 'HotPepper Gourmet restaurant page'),
+        },
+        {
+          key: 'menu',
+          label: t('createBot.quickTopicMenu', 'Menu'),
+          description: t('createBot.quickTopicMenuDesc', 'Food and drink menu'),
+        },
+        {
+          key: 'reservation',
+          label: t('createBot.quickTopicReservation', 'Reservation'),
+          description: t('createBot.quickTopicReservationDesc', 'Reservation or booking page'),
+        }
+      )
+    }
     return base
   }, [businessType, t])
 

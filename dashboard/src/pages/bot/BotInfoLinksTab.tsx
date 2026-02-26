@@ -57,6 +57,15 @@ export default function BotInfoLinksTab() {
         { key: 'booking', label: 'Booking', description: 'Booking or reservation page' }
       )
     }
+    if (businessType === 'restaurant') {
+      base.unshift(
+        { key: 'tablecheck', label: 'TableCheck', description: 'TableCheck reservation page' },
+        { key: 'tabelog', label: 'Tabelog', description: 'Tabelog restaurant page' },
+        { key: 'hotpepper', label: 'HotPepper', description: 'HotPepper Gourmet restaurant page' },
+        { key: 'menu', label: 'Menu', description: 'Food and drink menu' },
+        { key: 'reservation', label: 'Reservation', description: 'Reservation or booking page' }
+      )
+    }
     return base
   }, [businessType])
 

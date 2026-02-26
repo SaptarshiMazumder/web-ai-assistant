@@ -189,6 +189,60 @@ def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) ->
     return out
 
 
+# ── Restaurant reservation prompt templates ─────────────────────────────────
+
+_RESTAURANT_RESERVATION_INSTRUCTION_EN = (
+    "## Restaurant Reservation Assistance\n"
+    "When a customer asks about making a reservation or booking, let them know they can book online "
+    "and direct them to the appropriate booking page below. Be warm and helpful.\n\n"
+    "Online reservation links:\n"
+    "{platform_links}\n\n"
+    "- Share the relevant booking link as a clickable markdown link.\n"
+    "- If no platform URL is configured, let the customer know to contact the restaurant directly.\n"
+)
+
+_RESTAURANT_RESERVATION_INSTRUCTION_JA = (
+    "## レストラン予約サポート\n"
+    "お客様が予約・ご予約についてお問い合わせの際は、オンラインで予約できることをお伝えし、"
+    "以下の予約ページにご案内ください。温かく丁寧に対応してください。\n\n"
+    "オンライン予約リンク：\n"
+    "{platform_links}\n\n"
+    "- 該当する予約リンクをマークダウンのクリック可能なリンクとして共有してください。\n"
+    "- プラットフォームURLが設定されていない場合は、レストランに直接お問い合わせいただくようご案内ください。\n"
+)
+
+
+def _get_restaurant_reservation_instruction(widget_config: Dict[str, Any], lang: str = "en") -> Optional[str]:
+    """Build restaurant reservation instruction for restaurant bots. Returns None if not applicable."""
+    if widget_config.get("businessType") != "restaurant":
+        return None
+
+    tablecheck_url = (widget_config.get("tableCheckUrl") or "").strip()
+    tabelog_url = (widget_config.get("tabelogUrl") or "").strip()
+    hotpepper_url = (widget_config.get("hotPepperUrl") or "").strip()
+
+    if not tablecheck_url and not tabelog_url and not hotpepper_url:
+        return None
+
+    template = _RESTAURANT_RESERVATION_INSTRUCTION_JA if lang == "ja" else _RESTAURANT_RESERVATION_INSTRUCTION_EN
+
+    platform_lines = []
+    if tablecheck_url:
+        if not tablecheck_url.startswith(("http://", "https://")):
+            tablecheck_url = "https://" + tablecheck_url
+        platform_lines.append(f"- TableCheck: {tablecheck_url}")
+    if hotpepper_url:
+        if not hotpepper_url.startswith(("http://", "https://")):
+            hotpepper_url = "https://" + hotpepper_url
+        platform_lines.append(f"- HotPepper Gourmet: {hotpepper_url}")
+    if tabelog_url:
+        if not tabelog_url.startswith(("http://", "https://")):
+            tabelog_url = "https://" + tabelog_url
+        platform_lines.append(f"- Tabelog: {tabelog_url}")
+
+    return template.format(platform_links="\n".join(platform_lines))
+
+
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.services.indexing_service import ensure_bot_corpus
@@ -761,6 +815,11 @@ async def v1_widget_chat(
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
 
+    # Inject restaurant reservation instructions if applicable
+    restaurant_instruction = _get_restaurant_reservation_instruction(widget_config, lang=_get_bot_language(bot))
+    if restaurant_instruction:
+        system_instruction = f"{system_instruction}\n\n{restaurant_instruction}" if system_instruction else restaurant_instruction
+
     # Inject business assets as evidence and system instruction
     asset_evidence = build_asset_evidence(bot.bot_id)
     if asset_evidence:
@@ -989,6 +1048,11 @@ async def v1_widget_chat_stream(
             "Write links as markdown like [Pricing](https://...) inside a normal sentence."
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
+
+    # Inject restaurant reservation instructions if applicable
+    restaurant_instruction_stream = _get_restaurant_reservation_instruction(widget_config_stream, lang=_get_bot_language(bot))
+    if restaurant_instruction_stream:
+        system_instruction = f"{system_instruction}\n\n{restaurant_instruction_stream}" if system_instruction else restaurant_instruction_stream
 
     # Inject business assets as evidence and system instruction
     asset_evidence_stream = build_asset_evidence(bot.bot_id)

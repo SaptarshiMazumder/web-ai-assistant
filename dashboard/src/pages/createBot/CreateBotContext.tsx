@@ -12,8 +12,8 @@ type ContentHosting = 'own' | 'shared'
 export type CreateBotStep1Slice = {
   botName: string
   setBotName: (value: string) => void
-  businessType: '' | 'hotel' | 'other'
-  setBusinessType: (value: '' | 'hotel' | 'other') => void
+  businessType: '' | 'hotel' | 'restaurant' | 'other'
+  setBusinessType: (value: '' | 'hotel' | 'restaurant' | 'other') => void
   localError: string | null
   setLocalError: (value: string | null) => void
 }
@@ -68,6 +68,13 @@ export type CreateBotStep2Slice = {
   deselectAll: () => void
   startTraining: (selectedDiscoveredUrls?: string[]) => Promise<string | null>
   stopDiscovery: () => void
+  // Restaurant platform URLs (restaurant bots only)
+  restaurantTableCheckUrl: string
+  setRestaurantTableCheckUrl: (value: string) => void
+  restaurantTabelogUrl: string
+  setRestaurantTabelogUrl: (value: string) => void
+  restaurantHotPepperUrl: string
+  setRestaurantHotPepperUrl: (value: string) => void
 }
 
 /** Step 3: Training progress. Change only this slice when editing the third step. */
@@ -207,7 +214,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [contentHosting, setContentHosting] = useState<ContentHosting | null>('shared')
-  const [businessType, setBusinessType] = useState<'' | 'hotel' | 'other'>('')
+  const [businessType, setBusinessType] = useState<'' | 'hotel' | 'restaurant' | 'other'>('')
   const [discoveryMethod, setDiscoveryMethod] = useState('auto') // 'auto' (crawl4ai) or 'sitemap'
   const [normalizedWebsiteUrl, setNormalizedWebsiteUrl] = useState('')
   const [discoveredUrls, setDiscoveredUrls] = useState<string[]>([])
@@ -218,6 +225,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [textDocFiles, setTextDocFiles] = useState<File[]>([])
   const [plainTextContent, setPlainTextContent] = useState('')
   const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
+  const [restaurantTableCheckUrl, setRestaurantTableCheckUrl] = useState('')
+  const [restaurantTabelogUrl, setRestaurantTabelogUrl] = useState('')
+  const [restaurantHotPepperUrl, setRestaurantHotPepperUrl] = useState('')
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
@@ -289,6 +299,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setSharedUrlRows([{ url: '', label: '' }])
+    setRestaurantTableCheckUrl('')
+    setRestaurantTabelogUrl('')
+    setRestaurantHotPepperUrl('')
     setTrainingUrls([])
     setPdfFiles([])
     setTextDocFiles([])
@@ -586,12 +599,19 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     })()
 
     try {
-      await saveWidgetConfig(created.bot_id, {
+      const widgetPayload: Record<string, unknown> = {
         contentHosting: 'shared',
         businessType: businessType || undefined,
         language: botLanguage,
         urlBank: urlBankForSave,
-      })
+      }
+      // Save restaurant platform URLs from dedicated state fields
+      if (businessType === 'restaurant') {
+        if (restaurantTableCheckUrl.trim()) widgetPayload.tableCheckUrl = restaurantTableCheckUrl.trim()
+        if (restaurantTabelogUrl.trim()) widgetPayload.tabelogUrl = restaurantTabelogUrl.trim()
+        if (restaurantHotPepperUrl.trim()) widgetPayload.hotPepperUrl = restaurantHotPepperUrl.trim()
+      }
+      await saveWidgetConfig(created.bot_id, widgetPayload)
     } catch {
       // Non-blocking: bot can still be created without widget config.
     }
@@ -603,7 +623,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, t])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -694,9 +714,17 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     const overrideUrls = (selectedDiscoveredUrls || [])
       .map((u) => normalizeOneUrl(u))
       .filter(Boolean)
-    const finalUrls = overrideUrls.length > 0
+    let finalUrls = overrideUrls.length > 0
       ? overrideUrls
       : (contentHosting === 'own' ? selectedUrls : trainingUrls)
+    // Collect restaurant platform URLs for discovery + crawl
+    const restaurantPlatformUrls = businessType === 'restaurant'
+      ? [restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl]
+          .map((u) => normalizeOneUrl(u))
+          .filter(Boolean)
+          .filter((u) => !finalUrls.includes(u))
+      : []
+    if (restaurantPlatformUrls.length > 0) finalUrls = [...finalUrls, ...restaurantPlatformUrls]
     const hasPdfs = pdfFiles.length > 0
     const hasDocs = textDocFiles.length > 0
     const hasPlainText = plainTextContent.trim().length > 0
@@ -718,12 +746,19 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
     try {
-      await saveWidgetConfig(created.bot_id, {
+      const widgetPayloadTrain: Record<string, unknown> = {
         contentHosting: 'shared',
         businessType: businessType || undefined,
         language: botLanguage,
         urlBank,
-      })
+      }
+      // Save restaurant platform URLs from dedicated state fields
+      if (businessType === 'restaurant') {
+        if (restaurantTableCheckUrl.trim()) widgetPayloadTrain.tableCheckUrl = restaurantTableCheckUrl.trim()
+        if (restaurantTabelogUrl.trim()) widgetPayloadTrain.tabelogUrl = restaurantTabelogUrl.trim()
+        if (restaurantHotPepperUrl.trim()) widgetPayloadTrain.hotPepperUrl = restaurantHotPepperUrl.trim()
+      }
+      await saveWidgetConfig(created.bot_id, widgetPayloadTrain)
     } catch {
       // Non-blocking: training can continue even if widget config save fails.
     }
@@ -826,9 +861,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     }
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
-    // Background discovery disabled for now.
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, t])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -983,6 +1017,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         deselectAll,
         startTraining,
         stopDiscovery,
+        restaurantTableCheckUrl,
+        setRestaurantTableCheckUrl,
+        restaurantTabelogUrl,
+        setRestaurantTabelogUrl,
+        restaurantHotPepperUrl,
+        setRestaurantHotPepperUrl,
       },
       step3: {
         trainingStage,
@@ -1148,6 +1188,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       selectAll,
       deselectAll,
       startTraining,
+      restaurantTableCheckUrl,
+      restaurantTabelogUrl,
+      restaurantHotPepperUrl,
       resetFlow,
       businessType,
       setBusinessType,

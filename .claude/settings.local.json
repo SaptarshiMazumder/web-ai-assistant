@@ -17,7 +17,18 @@
       "Bash(python -c:*)",
       "Bash(docker compose up:*)",
       "Bash(docker compose restart:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:tabelog.com)",
+      "WebFetch(domain:www.hotpepper.jp)",
+      "WebFetch(domain:www.tablecheck.com)",
+      "WebFetch(domain:tablecheck.atlassian.net)",
+      "WebFetch(domain:webservice.recruit.co.jp)",
+      "WebFetch(domain:api.tablecheck.com)",
+      "WebFetch(domain:docs.nimbleway.com)",
+      "WebFetch(domain:www.scrapestorm.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:tech-blog.tabelog.com)",
+      "WebFetch(domain:owner-support.tabelog.com)"
     ]
   }
 }
