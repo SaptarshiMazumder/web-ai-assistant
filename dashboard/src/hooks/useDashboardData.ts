@@ -1855,7 +1855,63 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     if (isSuperAdmin && !activeOrgId) return { urls: [] }
     setLoading(true)
     setError(null)
-    const collected: string[] = []
+    const normalizeDiscoveryUrl = (raw: string): string => {
+      const v = (raw || '').trim()
+      if (!v) return ''
+      try {
+        const u = new URL(v)
+        let path = u.pathname || '/'
+        if (!path) path = '/'
+        if (path !== '/' && !path.endsWith('/')) {
+          const leaf = path.split('/').pop() || ''
+          if (!/\.[a-z0-9]{1,8}$/i.test(leaf)) path = `${path}/`
+        }
+        u.pathname = path
+        u.hash = ''
+        return u.toString()
+      } catch {
+        return v
+      }
+    }
+    const discoveryDedupeKey = (raw: string): string => {
+      const v = (raw || '').trim()
+      if (!v) return ''
+      try {
+        const u = new URL(v)
+        const path = u.pathname || '/'
+        const pathNoSlash = path === '/' ? '/' : (path.replace(/\/+$/, '') || '/')
+        return `${u.origin}${pathNoSlash}${u.search}`
+      } catch {
+        return v
+      }
+    }
+    const hasPathTrailingSlash = (raw: string): boolean => {
+      try {
+        return new URL(raw).pathname.endsWith('/')
+      } catch {
+        return raw.endsWith('/')
+      }
+    }
+
+    const collectedByKey = new Map<string, string>()
+    const collectedOrder: string[] = []
+    const pushUnique = (candidate: string): boolean => {
+      const normalized = normalizeDiscoveryUrl(candidate)
+      if (!normalized) return false
+      const key = discoveryDedupeKey(normalized)
+      if (!key) return false
+      const existing = collectedByKey.get(key)
+      if (!existing) {
+        collectedByKey.set(key, normalized)
+        collectedOrder.push(key)
+        return true
+      }
+      // If both variants exist, keep trailing-slash version.
+      if (!hasPathTrailingSlash(existing) && hasPathTrailingSlash(normalized)) {
+        collectedByKey.set(key, normalized)
+      }
+      return false
+    }
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const token = await getAccessTokenSilently()
@@ -1894,11 +1950,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       let finalMethod: string | undefined
       let finalFailureReason: string | undefined
 
-      const pushUnique = (u: string) => {
-        if (!u) return
-        if (!collected.includes(u)) collected.push(u)
-      }
-
       while (true) {
         const { value, done } = await reader.read()
         if (done) break
@@ -1916,10 +1967,23 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
             continue
           }
 
-          if (onEvent) onEvent(evt)
-
           if (evt.type === 'discovered' && typeof evt.url === 'string') {
-            pushUnique(evt.url)
+            const normalizedUrl = normalizeDiscoveryUrl(evt.url)
+            if (!normalizedUrl) continue
+            const isNew = pushUnique(normalizedUrl)
+            if (isNew && onEvent) onEvent({ ...evt, url: normalizedUrl })
+          } else if (evt.type === 'done') {
+            if (Array.isArray(evt.urls)) {
+              for (const u of evt.urls) {
+                if (typeof u === 'string') pushUnique(u)
+              }
+            }
+            const urls = collectedOrder
+              .map((k) => collectedByKey.get(k))
+              .filter((u): u is string => !!u)
+            if (onEvent) onEvent({ ...evt, urls })
+          } else {
+            if (onEvent) onEvent(evt)
           }
 
           if (evt.type === 'error' && typeof evt.message === 'string') {
@@ -1927,11 +1991,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
           }
 
           if (evt.type === 'done') {
-            if (Array.isArray(evt.urls)) {
-              for (const u of evt.urls) {
-                if (typeof u === 'string') pushUnique(u)
-              }
-            }
             if (typeof evt.method_used === 'string') finalMethod = evt.method_used
             if (typeof evt.failure_reason === 'string') finalFailureReason = evt.failure_reason
           }
@@ -1941,11 +2000,17 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         }
       }
 
+      const collected = collectedOrder
+        .map((k) => collectedByKey.get(k))
+        .filter((u): u is string => !!u)
       return { urls: collected, error: finalError, methodUsed: finalMethod, failureReason: finalFailureReason }
     } catch (err) {
       const e = err as Error & { name?: string }
       if (e.name === 'AbortError') {
         setLoading(false)
+        const collected = collectedOrder
+          .map((k) => collectedByKey.get(k))
+          .filter((u): u is string => !!u)
         return { urls: collected }
       }
       const errorMsg = e.message

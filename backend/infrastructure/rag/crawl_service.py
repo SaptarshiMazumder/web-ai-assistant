@@ -11,6 +11,8 @@ from urllib.parse import urlparse, urldefrag, urljoin, urlunparse
 
 logger = logging.getLogger(__name__)
 
+from domain.platform_profiles import should_allow_url
+
 from google.cloud import storage
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
 
@@ -917,6 +919,7 @@ async def discover_internal_urls(
                                     and href not in visited
                                     and is_internal(href)
                                     and _is_probably_page_url(href, root_netloc=root_netloc)
+                                    and should_allow_url(href)
                                 ):
                                     next_level_urls.add(href)
                             except Exception:
@@ -929,6 +932,7 @@ async def discover_internal_urls(
                                     and is_internal(href)
                                     and href not in visited
                                     and _is_probably_page_url(href, root_netloc=root_netloc)
+                                    and should_allow_url(href)
                                 ):
                                     next_level_urls.add(href)
                             except Exception:
@@ -939,7 +943,7 @@ async def discover_internal_urls(
                             if not raw or not isinstance(raw, str):
                                 continue
                             for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                if href not in visited and is_internal(href):
+                                if href not in visited and is_internal(href) and should_allow_url(href):
                                     next_level_urls.add(href)
                     except Exception:
                         continue
@@ -1106,6 +1110,7 @@ async def discover_internal_urls_stream(
                                         and href not in visited
                                         and is_internal(href)
                                         and _is_probably_page_url(href, root_netloc=root_netloc)
+                                        and should_allow_url(href)
                                     ):
                                         next_level_urls.add(href)
                                 except Exception:
@@ -1118,6 +1123,7 @@ async def discover_internal_urls_stream(
                                         and is_internal(href)
                                         and href not in visited
                                         and _is_probably_page_url(href, root_netloc=root_netloc)
+                                        and should_allow_url(href)
                                     ):
                                         next_level_urls.add(href)
                                 except Exception:
@@ -1128,7 +1134,7 @@ async def discover_internal_urls_stream(
                                 if not raw or not isinstance(raw, str):
                                     continue
                                 for href in _extract_urls_from_content(raw, page_url, root_netloc):
-                                    if href not in visited and is_internal(href):
+                                    if href not in visited and is_internal(href) and should_allow_url(href):
                                         next_level_urls.add(href)
                         except Exception:
                             continue

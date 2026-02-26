@@ -28,7 +28,9 @@
       "WebFetch(domain:www.scrapestorm.com)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:tech-blog.tabelog.com)",
-      "WebFetch(domain:owner-support.tabelog.com)"
+      "WebFetch(domain:owner-support.tabelog.com)",
+      "Bash(/c/Users/googler/OneDrive/Desktop/Projects/web-ai/temp_part1.py:*)",
+      "Bash(python3:*)"
     ]
   }
 }

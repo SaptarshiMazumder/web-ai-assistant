@@ -86,6 +86,10 @@ from api.schemas import (
     PersonaListResponse,
 )
 from domain.personas import list_personas, list_categories, get_persona, get_persona_system_prompt, get_default_persona_id
+from application.services.default_prompt_service import (
+    build_default_system_instruction,
+    extract_business_type_from_widget_config,
+)
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
@@ -106,27 +110,52 @@ def _is_real_availability_summary(text: Optional[str]) -> bool:
     return not any(t.startswith(prefix) for prefix in _AVAILABILITY_ERROR_PREFIXES)
 
 
-def _resolve_system_instruction(agent_config: dict, lang: str = "en") -> Optional[str]:
-    """Resolve system instruction: prefer explicit instructions, fallback to persona prompt."""
-    instructions = agent_config.get("instructions") if agent_config else None
-    if instructions and instructions.strip():
-        return instructions
+def _normalize_prompt_text(value: str) -> str:
+    return str(value or "").replace("\r\n", "\n").strip()
+
+
+def _resolve_system_instruction(
+    agent_config: dict,
+    *,
+    lang: str = "en",
+    bot_name: str = "",
+    widget_config: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """
+    Resolve system instruction:
+    1) explicit instructions
+    2) explicit non-default persona/custom persona prompt
+    3) deterministic default prompt (no LLM)
+    """
     default_persona_id = get_default_persona_id()
+    instructions = agent_config.get("instructions") if agent_config else None
+    if instructions and str(instructions).strip():
+        default_persona_prompt = get_persona_system_prompt(default_persona_id, lang=lang) or ""
+        if _normalize_prompt_text(instructions) != _normalize_prompt_text(default_persona_prompt):
+            return instructions
+
     persona_id_raw = agent_config.get("persona_id") if agent_config else None
     persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
+    has_explicit_non_default_persona = bool(persona_id_raw and persona_id and persona_id != default_persona_id)
 
-    # Check built-in personas first.
-    builtin = get_persona_system_prompt(persona_id, lang=lang)
-    if builtin:
-        return builtin
+    if has_explicit_non_default_persona:
+        # Check built-in personas first.
+        builtin = get_persona_system_prompt(persona_id, lang=lang)
+        if builtin:
+            return builtin
 
-    # Check custom personas stored in agent_config.
-    for cp in (agent_config.get("custom_personas") or []):
-        if cp.get("id") == persona_id and cp.get("system_prompt"):
-            return cp["system_prompt"]
+        # Check custom personas stored in agent_config.
+        for cp in (agent_config.get("custom_personas") or []):
+            if cp.get("id") == persona_id and cp.get("system_prompt"):
+                return cp["system_prompt"]
 
-    # Final fallback is always the Default built-in persona.
-    return get_persona_system_prompt(default_persona_id, lang=lang)
+    # Final fallback is deterministic and based on bot name + optional business type.
+    business_type = extract_business_type_from_widget_config(widget_config)
+    return build_default_system_instruction(
+        bot_name=bot_name,
+        business_type=business_type,
+        lang=lang,
+    )
 
 
 def _get_bot_language(bot) -> str:
@@ -140,6 +169,66 @@ def _get_bot_language(bot) -> str:
         except (TypeError, ValueError):
             pass
     return "en"
+
+
+def _get_language_from_widget_config_dict(widget_config: Optional[Dict[str, Any]]) -> str:
+    if isinstance(widget_config, dict):
+        lang = str(widget_config.get("language") or "").strip().lower()
+        if lang in ("ja", "jp"):
+            return "ja"
+    return "en"
+
+
+def _build_deterministic_instruction_for_bot(
+    *,
+    bot_name: str,
+    widget_config: Optional[Dict[str, Any]],
+) -> str:
+    return build_default_system_instruction(
+        bot_name=(bot_name or "").strip(),
+        business_type=extract_business_type_from_widget_config(widget_config),
+        lang=_get_language_from_widget_config_dict(widget_config),
+    )
+
+
+def _should_autoupdate_to_deterministic_instruction(
+    *,
+    existing_instructions: str,
+    bot_name: str,
+    old_widget_config: Optional[Dict[str, Any]],
+    new_widget_config: Optional[Dict[str, Any]],
+) -> bool:
+    """True when instructions are blank/legacy/default and safe to replace."""
+    normalized = _normalize_prompt_text(existing_instructions)
+    if not normalized:
+        return True
+
+    default_persona_id = get_default_persona_id()
+    candidates = set()
+
+    for cfg in (old_widget_config or {}, new_widget_config or {}):
+        lang = _get_language_from_widget_config_dict(cfg)
+        default_persona = get_persona_system_prompt(default_persona_id, lang=lang) or ""
+        candidates.add(_normalize_prompt_text(default_persona))
+        candidates.add(
+            _normalize_prompt_text(
+                _build_deterministic_instruction_for_bot(bot_name=bot_name, widget_config=cfg)
+            )
+        )
+
+    return normalized in candidates
+
+
+def _initialize_default_agent_config(bot_id: str, display_name: str) -> None:
+    """Persist deterministic instructions immediately after bot creation."""
+    payload = {
+        "persona_id": get_default_persona_id(),
+        "instructions": _build_deterministic_instruction_for_bot(
+            bot_name=display_name,
+            widget_config={},
+        ),
+    }
+    bot_service().update_agent_config(bot_id, json.dumps(payload, ensure_ascii=False))
 
 
 def _get_booking_url_for_chat(widget_config: Dict[str, Any]) -> Optional[str]:
@@ -227,10 +316,6 @@ def _get_restaurant_reservation_instruction(widget_config: Dict[str, Any], lang:
     template = _RESTAURANT_RESERVATION_INSTRUCTION_JA if lang == "ja" else _RESTAURANT_RESERVATION_INSTRUCTION_EN
 
     platform_lines = []
-    if tablecheck_url:
-        if not tablecheck_url.startswith(("http://", "https://")):
-            tablecheck_url = "https://" + tablecheck_url
-        platform_lines.append(f"- TableCheck: {tablecheck_url}")
     if hotpepper_url:
         if not hotpepper_url.startswith(("http://", "https://")):
             hotpepper_url = "https://" + hotpepper_url
@@ -239,6 +324,10 @@ def _get_restaurant_reservation_instruction(widget_config: Dict[str, Any], lang:
         if not tabelog_url.startswith(("http://", "https://")):
             tabelog_url = "https://" + tabelog_url
         platform_lines.append(f"- Tabelog: {tabelog_url}")
+    if tablecheck_url:
+        if not tablecheck_url.startswith(("http://", "https://")):
+            tablecheck_url = "https://" + tablecheck_url
+        platform_lines.append(f"- TableCheck: {tablecheck_url}")
 
     return template.format(platform_links="\n".join(platform_lines))
 
@@ -398,6 +487,7 @@ async def v1_create_bot(
     if not resolved_org_id:
         raise HTTPException(status_code=400, detail="org_id is required")
     b = bot_service().create_bot(payload.display_name, resolved_org_id)
+    _initialize_default_agent_config(b.bot_id, b.display_name)
     return BotCreateResponse(
         bot_id=b.bot_id,
         display_name=b.display_name,
@@ -748,13 +838,25 @@ async def v1_widget_chat(
         evt2["trace_id"] = trace_id
         chat_debug_emit(evt2)
 
+    widget_config: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
         try:
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
+    system_instruction = _resolve_system_instruction(
+        agent_config,
+        lang=_get_bot_language(bot),
+        bot_name=getattr(bot, "display_name", "") or "",
+        widget_config=widget_config,
+    )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -779,12 +881,6 @@ async def v1_widget_chat(
 
     # If message asks about availability and bot has booking config, run sync check and inject as evidence
     extra_evidence: List[Dict[str, str]] = []
-    widget_config: Dict[str, Any] = {}
-    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-        try:
-            widget_config = json.loads(bot.widget_config)
-        except (TypeError, ValueError):
-            pass
     availability_summary, availability_skip_reason = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
     if availability_skip_reason:
         chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason})
@@ -982,13 +1078,25 @@ async def v1_widget_chat_stream(
         evt2["trace_id"] = trace_id
         chat_debug_emit(evt2)
 
+    widget_config_stream: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config_stream = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
         try:
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
+    system_instruction = _resolve_system_instruction(
+        agent_config,
+        lang=_get_bot_language(bot),
+        bot_name=getattr(bot, "display_name", "") or "",
+        widget_config=widget_config_stream,
+    )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -1013,12 +1121,6 @@ async def v1_widget_chat_stream(
 
     # If message asks about availability and bot has booking config, run sync check and inject as evidence
     extra_evidence_stream: List[Dict[str, str]] = []
-    widget_config_stream: Dict[str, Any] = {}
-    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-        try:
-            widget_config_stream = json.loads(bot.widget_config)
-        except (TypeError, ValueError):
-            pass
     availability_summary_stream, availability_skip_reason_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
     if availability_skip_reason_stream:
         chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason_stream})
@@ -1344,6 +1446,7 @@ async def v1_org_list_bots(org_id: Optional[str] = None, user=Depends(get_curren
 async def v1_org_create_bot(payload: BotCreateRequest, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     b = bot_service().create_bot(payload.display_name, resolved_org)
+    _initialize_default_agent_config(b.bot_id, b.display_name)
     return BotCreateResponse(
         bot_id=b.bot_id,
         display_name=b.display_name,
@@ -1439,6 +1542,38 @@ async def v1_org_update_bot_widget_config(
     merged = {**existing, **incoming}
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
+
+    # Keep deterministic default instructions in sync with businessType/language,
+    # but never overwrite explicit custom instructions or explicit non-default persona.
+    agent_config: Dict[str, Any] = {}
+    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+        try:
+            agent_config = json.loads(bot.agent_config)
+        except (TypeError, ValueError):
+            agent_config = {}
+
+    default_persona_id = get_default_persona_id()
+    persona_id = str(agent_config.get("persona_id") or "").strip()
+    is_explicit_non_default_persona = bool(persona_id and persona_id != default_persona_id)
+
+    existing_instructions = str(agent_config.get("instructions") or "")
+    if (
+        not is_explicit_non_default_persona
+        and _should_autoupdate_to_deterministic_instruction(
+            existing_instructions=existing_instructions,
+            bot_name=(bot.display_name or "").strip(),
+            old_widget_config=existing,
+            new_widget_config=merged,
+        )
+    ):
+        agent_config["instructions"] = _build_deterministic_instruction_for_bot(
+            bot_name=(bot.display_name or "").strip(),
+            widget_config=merged,
+        )
+        if not str(agent_config.get("persona_id") or "").strip():
+            agent_config["persona_id"] = default_persona_id
+        bot_service().update_agent_config(bot_id, json.dumps(agent_config, ensure_ascii=False))
+
     return {"status": "ok", "bot_id": bot_id}
 
 
@@ -1466,9 +1601,26 @@ async def v1_org_get_agent_config(bot_id: str, org_id: Optional[str] = None, use
         effective_persona_id = raw_persona_id
     else:
         effective_persona_id = get_default_persona_id()
+    bot_lang = _get_bot_language(bot)
+    instructions = agent_config.get("instructions")
+    default_persona_prompt = get_persona_system_prompt(get_default_persona_id(), lang=bot_lang) or ""
+    if isinstance(instructions, str) and _normalize_prompt_text(instructions) == _normalize_prompt_text(default_persona_prompt):
+        instructions = ""
+    if not (isinstance(instructions, str) and instructions.strip()):
+        widget_config: Dict[str, Any] = {}
+        if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+            try:
+                widget_config = json.loads(bot.widget_config)
+            except (TypeError, ValueError):
+                widget_config = {}
+        instructions = build_default_system_instruction(
+            bot_name=(bot.display_name or "").strip(),
+            business_type=extract_business_type_from_widget_config(widget_config),
+            lang=bot_lang,
+        )
     return AgentConfigResponse(
         model_id=agent_config.get("model_id"),
-        instructions=agent_config.get("instructions"),
+        instructions=instructions,
         temperature=agent_config.get("temperature"),
         persona_id=effective_persona_id,
         custom_personas=custom_personas,
@@ -1872,7 +2024,18 @@ async def v1_org_test_chat(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config, lang=_get_bot_language(bot))
+    widget_config_test: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config_test = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            pass
+    system_instruction = _resolve_system_instruction(
+        agent_config,
+        lang=_get_bot_language(bot),
+        bot_name=getattr(bot, "display_name", "") or "",
+        widget_config=widget_config_test,
+    )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
     result = run_vertex_rag(

@@ -719,7 +719,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       : (contentHosting === 'own' ? selectedUrls : trainingUrls)
     // Collect restaurant platform URLs for discovery + crawl
     const restaurantPlatformUrls = businessType === 'restaurant'
-      ? [restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl]
+      ? [restaurantHotPepperUrl, restaurantTabelogUrl, restaurantTableCheckUrl]
           .map((u) => normalizeOneUrl(u))
           .filter(Boolean)
           .filter((u) => !finalUrls.includes(u))

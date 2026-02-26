@@ -31,15 +31,24 @@ function segmentLabel(value: string): string {
   return decoded || value
 }
 
-/** Normalize URL key for dedupe/mapping: path '' and '/' are treated the same. */
+/** Normalize URL key for dedupe/mapping: ignores trailing slash differences on non-root paths. */
 export function getNormalizedUrlKey(url: string): string {
   try {
     const u = new URL(url)
-    const normalizedPath = (u.pathname || '') === '' ? '/' : u.pathname
+    const rawPath = (u.pathname || '') === '' ? '/' : u.pathname
+    const normalizedPath = rawPath === '/' ? '/' : (rawPath.replace(/\/+$/, '') || '/')
     if (normalizedPath === '/') return `${u.origin}/${u.search || ''}`
     return `${u.origin}${normalizedPath}${u.search || ''}`
   } catch {
     return (url || '').trim()
+  }
+}
+
+function hasPathTrailingSlash(url: string): boolean {
+  try {
+    return new URL(url).pathname.endsWith('/')
+  } catch {
+    return (url || '').trim().endsWith('/')
   }
 }
 
@@ -79,6 +88,33 @@ function parsePathSegments(urlObj: URL): ParsedSegment[] {
     .filter((seg) => seg.length > 0)
     .map((seg) => ({ key: normalizeSegmentKey(seg), label: segmentLabel(seg) }))
     .filter((seg) => seg.key.length > 0)
+}
+
+/**
+ * If URL shares the full base path prefix, anchor grouping at the base page leaf.
+ * Example:
+ *   base: /tokyo/A1304/A130401/13224546
+ *   url : /tokyo/A1304/A130401/13224546/peripheral_map
+ *   -> start from 13224546/peripheral_map
+ */
+function anchorSegmentsByBasePath(
+  urlObj: URL,
+  segments: ParsedSegment[],
+  baseUrlObj: URL | null,
+  baseSegments: ParsedSegment[]
+): { segments: ParsedSegment[]; anchored: boolean } {
+  if (!baseUrlObj || baseSegments.length === 0) return { segments, anchored: false }
+  if (urlObj.origin.toLowerCase() !== baseUrlObj.origin.toLowerCase()) return { segments, anchored: false }
+  if (segments.length < baseSegments.length) return { segments, anchored: false }
+
+  for (let i = 0; i < baseSegments.length; i += 1) {
+    if (segments[i]?.key !== baseSegments[i]?.key) {
+      return { segments, anchored: false }
+    }
+  }
+
+  const anchorStart = Math.max(0, baseSegments.length - 1)
+  return { segments: segments.slice(anchorStart), anchored: true }
 }
 
 /**
@@ -133,6 +169,16 @@ function getOrCreateChild(parent: UrlCategory, segment: ParsedSegment): UrlCateg
 }
 
 export function categorizeUrls(urls: string[], _baseUrl: string): UrlCategory {
+  let baseUrlObj: URL | null = null
+  let baseSegments: ParsedSegment[] = []
+  try {
+    baseUrlObj = new URL(_baseUrl)
+    baseSegments = parsePathSegments(baseUrlObj)
+  } catch {
+    baseUrlObj = null
+    baseSegments = []
+  }
+
   const root: UrlCategory = {
     name: 'Main',
     path: '',
@@ -141,14 +187,25 @@ export function categorizeUrls(urls: string[], _baseUrl: string): UrlCategory {
     level: 0,
   }
 
-  // Dedupe so https://example.com and https://example.com/ count as one
-  const seen = new Set<string>()
-  const deduped = urls.filter((u) => {
+  // Dedupe equivalent URLs (including slash/no-slash variants); prefer trailing-slash form.
+  const dedupedByKey = new Map<string, string>()
+  const dedupeOrder: string[] = []
+  for (const u of urls) {
     const k = getNormalizedUrlKey(u)
-    if (seen.has(k)) return false
-    seen.add(k)
-    return true
-  })
+    if (!k) continue
+    const existing = dedupedByKey.get(k)
+    if (!existing) {
+      dedupedByKey.set(k, u)
+      dedupeOrder.push(k)
+      continue
+    }
+    if (!hasPathTrailingSlash(existing) && hasPathTrailingSlash(u)) {
+      dedupedByKey.set(k, u)
+    }
+  }
+  const deduped = dedupeOrder
+    .map((k) => dedupedByKey.get(k))
+    .filter((u): u is string => !!u)
 
   for (const url of deduped) {
     try {
@@ -165,7 +222,8 @@ export function categorizeUrls(urls: string[], _baseUrl: string): UrlCategory {
         continue
       }
 
-      const meaningful = stripNoisyLeadingSegments(parsed)
+      const { segments: baseAnchored, anchored } = anchorSegmentsByBasePath(urlObj, parsed, baseUrlObj, baseSegments)
+      const meaningful = anchored ? baseAnchored : stripNoisyLeadingSegments(baseAnchored)
       if (meaningful.length === 0) {
         ensureRootPagesCategory(root).urls.push(url)
         continue

@@ -75,9 +75,9 @@ export default function CreateBotSharedUrlsPage() {
     if (businessType === 'restaurant') {
       base.unshift(
         {
-          key: 'tablecheck',
-          label: t('createBot.quickTopicTableCheck', 'TableCheck'),
-          description: t('createBot.quickTopicTableCheckDesc', 'TableCheck reservation page'),
+          key: 'hotpepper',
+          label: t('createBot.quickTopicHotPepper', 'HotPepper'),
+          description: t('createBot.quickTopicHotPepperDesc', 'HotPepper Gourmet restaurant page'),
         },
         {
           key: 'tabelog',
@@ -85,9 +85,9 @@ export default function CreateBotSharedUrlsPage() {
           description: t('createBot.quickTopicTabelogDesc', 'Tabelog restaurant page'),
         },
         {
-          key: 'hotpepper',
-          label: t('createBot.quickTopicHotPepper', 'HotPepper'),
-          description: t('createBot.quickTopicHotPepperDesc', 'HotPepper Gourmet restaurant page'),
+          key: 'tablecheck',
+          label: t('createBot.quickTopicTableCheck', 'TableCheck'),
+          description: t('createBot.quickTopicTableCheckDesc', 'TableCheck reservation page'),
         },
         {
           key: 'menu',

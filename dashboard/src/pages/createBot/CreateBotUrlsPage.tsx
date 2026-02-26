@@ -166,7 +166,7 @@ export default function CreateBotUrlsPage() {
 
     // Add platform URLs for restaurants
     if (isRestaurant) {
-      const platformUrls = [restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl]
+      const platformUrls = [restaurantHotPepperUrl, restaurantTabelogUrl, restaurantTableCheckUrl]
         .map((u) => {
           const trimmed = u.trim()
           if (!trimmed) return null
@@ -595,24 +595,9 @@ export default function CreateBotUrlsPage() {
                 {/* Restaurant Platform URLs */}
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
-                    {t('createBot.reservationPlatforms', 'Reservation platforms')}
+                    {t('createBot.reservationPlatforms', 'Reservation platforms (HotPepper or Tabelog or TableCheck)')}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {/* TableCheck */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                        {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
-                      </label>
-                      <input
-                        type="url"
-                        value={restaurantTableCheckUrl}
-                        onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
-                        placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
-                        disabled={isSharedDiscovering}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
                     {/* HotPepper */}
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
@@ -628,6 +613,12 @@ export default function CreateBotUrlsPage() {
                       />
                     </div>
 
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {t('common.or', 'or')}
+                      </span>
+                    </div>
+
                     {/* Tabelog */}
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
@@ -638,6 +629,27 @@ export default function CreateBotUrlsPage() {
                         value={restaurantTabelogUrl}
                         onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
                         placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
+                        disabled={isSharedDiscovering}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {t('common.or', 'or')}
+                      </span>
+                    </div>
+
+                    {/* TableCheck */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                        {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
+                      </label>
+                      <input
+                        type="url"
+                        value={restaurantTableCheckUrl}
+                        onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
+                        placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
                         disabled={isSharedDiscovering}
                         style={{ width: '100%' }}
                       />

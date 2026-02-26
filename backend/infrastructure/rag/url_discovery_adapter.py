@@ -4,9 +4,12 @@ AutoUrlDiscoveryAdapter: combine multiple strategies for maximum coverage.
 """
 import asyncio
 import logging
+import re
 import time
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Set, Tuple
+from urllib.parse import urlparse, urlunparse
 
+from domain.platform_profiles import normalize_url_for_crawl, resolve_platform_profile, should_allow_url
 from domain.repositories import UrlDiscoveryPort
 
 from infrastructure.rag.crawl_service import _is_url_under_root_path, discover_internal_urls_stream
@@ -25,6 +28,91 @@ def _ensure_url(url: str) -> str:
     return url
 
 
+def _normalize_discovery_path(url: str) -> str:
+    """
+    Normalize URL path for discovery dedupe:
+    - remove fragment
+    - keep root as "/"
+    - for path-like pages (no file extension), prefer trailing slash
+    """
+    try:
+        p = urlparse(url)
+        if p.scheme not in ("http", "https") or not p.netloc:
+            return url
+        path = p.path or "/"
+        if not path:
+            path = "/"
+        if path != "/" and not path.endswith("/"):
+            leaf = path.rsplit("/", 1)[-1]
+            # Keep likely file resources unchanged (e.g., .pdf, .xml).
+            if not re.search(r"\.[a-z0-9]{1,8}$", leaf, re.IGNORECASE):
+                path = f"{path}/"
+        return urlunparse((p.scheme, p.netloc, path, p.params, p.query, ""))
+    except Exception:
+        return url
+
+
+def _canonical_discovery_url(url: str) -> str:
+    """
+    Canonicalize URL for discovery output/dedup.
+    For platforms that mark strip_query_params=True (e.g. Hotpepper),
+    remove query/fragment so UI-state variants collapse into one URL.
+    """
+    u = (url or "").strip()
+    if not u:
+        return ""
+    profile, _ = resolve_platform_profile(u)
+    if profile is not None and profile.strip_query_params:
+        u = normalize_url_for_crawl(u)
+    return _normalize_discovery_path(u)
+
+
+def _passes_discovery_policy(url: str, root_url: str) -> bool:
+    """Single URL gate for discovery outputs (scope + platform profile rules)."""
+    canonical = _canonical_discovery_url(url)
+    if not canonical:
+        return False
+    if not _is_url_under_root_path(canonical, root_url):
+        return False
+    return should_allow_url(canonical)
+
+
+async def _filter_urls_for_discovery(
+    urls: List[str],
+    *,
+    root_url: str,
+    check_robots: bool,
+) -> Tuple[List[str], int, int]:
+    """
+    Filter URLs by scope/profile policy and optionally robots.txt.
+
+    Returns:
+      (allowed_urls, blocked_by_profile_count, blocked_by_robots_count)
+    """
+    allowed: List[str] = []
+    seen: Set[str] = set()
+    blocked_by_profile = 0
+    blocked_by_robots = 0
+    rp = robots_policy() if check_robots else None
+
+    for raw in urls:
+        if not isinstance(raw, str):
+            continue
+        url = _canonical_discovery_url(raw)
+        if not url or url in seen:
+            continue
+        if not _passes_discovery_policy(url, root_url):
+            blocked_by_profile += 1
+            continue
+        if rp is not None and not await rp.is_allowed(url):
+            blocked_by_robots += 1
+            continue
+        seen.add(url)
+        allowed.append(url)
+
+    return allowed, blocked_by_profile, blocked_by_robots
+
+
 class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
     """HTTP + HTML parsing discovery (fast, deterministic). Used for 'auto'. Sitemap for 'sitemap'."""
 
@@ -35,9 +123,14 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
             urls = await discover_urls_from_sitemap(root_url)
         else:
             urls = await discover_internal_urls_http(
-            root_url, max_depth=10, max_concurrent=50, max_urls=2000
+                root_url, max_depth=10, max_concurrent=50, max_urls=2000
+            )
+        allowed, _, _ = await _filter_urls_for_discovery(
+            urls,
+            root_url=root_url,
+            check_robots=True,
         )
-        return await robots_policy().filter_urls(urls)
+        return allowed
 
     def discover_stream(
         self,
@@ -77,15 +170,13 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
                 yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
                 yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
-            allowed: List[str] = []
-            blocked_count = 0
-            for u in urls:
-                if await rp.is_allowed(u):
-                    allowed.append(u)
-                else:
-                    blocked_count += 1
-            if not allowed and blocked_count > 0:
-                yield {"type": "error", "message": f"All {blocked_count} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
+            allowed, blocked_by_profile, blocked_by_robots = await _filter_urls_for_discovery(
+                urls,
+                root_url=root_url,
+                check_robots=True,
+            )
+            if not allowed and blocked_by_robots > 0 and blocked_by_profile == 0:
+                yield {"type": "error", "message": f"All {blocked_by_robots} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "robots_blocked"}
                 return
             for i, u in enumerate(allowed, start=1):
@@ -100,16 +191,22 @@ class HttpUrlDiscoveryAdapter(UrlDiscoveryPort):
             max_duration_sec=max_duration_sec,
         ):
             if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
-                u = evt["url"]
-                if await rp.is_allowed(u):
+                u = _canonical_discovery_url(evt["url"])
+                if _passes_discovery_policy(u, root_url) and await rp.is_allowed(u):
+                    evt = dict(evt)
+                    evt["url"] = u
                     yield evt
                 continue
             if evt.get("type") == "done":
                 urls = list(evt.get("urls") or [])
-                allowed = await rp.filter_urls(urls)
+                allowed, blocked_by_profile, blocked_by_robots = await _filter_urls_for_discovery(
+                    urls,
+                    root_url=root_url,
+                    check_robots=True,
+                )
                 evt = dict(evt)
                 evt["urls"] = allowed
-                if not allowed and urls:
+                if not allowed and urls and blocked_by_robots > 0 and blocked_by_profile == 0:
                     evt["failure_reason"] = "robots_blocked"
                     yield {"type": "error", "message": f"All {len(urls)} discovered URLs are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield evt
@@ -122,11 +219,17 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
 
     async def discover(self, root_url: str, method: str = "auto") -> List[str]:
         method = (method or "auto").lower()
+        root_url = _ensure_url(root_url or "")
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
         else:
             urls = await discover_urls_auto(root_url)
-        return await robots_policy().filter_urls(urls)
+        allowed, _, _ = await _filter_urls_for_discovery(
+            urls,
+            root_url=root_url,
+            check_robots=True,
+        )
+        return allowed
 
     def discover_stream(
         self,
@@ -159,6 +262,7 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
         max_duration_sec: Optional[int] = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         method = (method or "auto").lower()
+        root_url = _ensure_url(root_url or "")
         rp = robots_policy()
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
@@ -166,15 +270,13 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
                 yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
                 yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
-            allowed: List[str] = []
-            blocked_count = 0
-            for u in urls:
-                if await rp.is_allowed(u):
-                    allowed.append(u)
-                else:
-                    blocked_count += 1
-            if not allowed and blocked_count > 0:
-                yield {"type": "error", "message": f"All {blocked_count} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
+            allowed, blocked_by_profile, blocked_by_robots = await _filter_urls_for_discovery(
+                urls,
+                root_url=root_url,
+                check_robots=True,
+            )
+            if not allowed and blocked_by_robots > 0 and blocked_by_profile == 0:
+                yield {"type": "error", "message": f"All {blocked_by_robots} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "robots_blocked"}
                 return
             for i, u in enumerate(allowed, start=1):
@@ -189,16 +291,22 @@ class Crawl4AIUrlDiscoveryAdapter(UrlDiscoveryPort):
             max_duration_sec=max_duration_sec,
         ):
             if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
-                u = evt["url"]
-                if await rp.is_allowed(u):
+                u = _canonical_discovery_url(evt["url"])
+                if _passes_discovery_policy(u, root_url) and await rp.is_allowed(u):
+                    evt = dict(evt)
+                    evt["url"] = u
                     yield evt
                 continue
             if evt.get("type") == "done":
                 urls = list(evt.get("urls") or [])
-                allowed = await rp.filter_urls(urls)
+                allowed, blocked_by_profile, blocked_by_robots = await _filter_urls_for_discovery(
+                    urls,
+                    root_url=root_url,
+                    check_robots=True,
+                )
                 evt = dict(evt)
                 evt["urls"] = allowed
-                if not allowed and urls:
+                if not allowed and urls and blocked_by_robots > 0 and blocked_by_profile == 0:
                     evt["failure_reason"] = "robots_blocked"
                     yield {"type": "error", "message": f"All {len(urls)} discovered URLs are blocked by robots.txt", "failure_reason": "robots_blocked"}
                 yield evt
@@ -217,7 +325,12 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         root_url = _ensure_url(root_url or "")
         if method == "sitemap":
             urls = await discover_urls_from_sitemap(root_url)
-            return await robots_policy().filter_urls(urls)
+            allowed, _, _ = await _filter_urls_for_discovery(
+                urls,
+                root_url=root_url,
+                check_robots=True,
+            )
+            return allowed
         urls: List[str] = []
         async for evt in self._discover_stream_impl(
             root_url,
@@ -229,10 +342,20 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         ):
             if evt.get("type") == "done":
                 final = list(evt.get("urls") or [])
-                return await robots_policy().filter_urls(final)
+                allowed, _, _ = await _filter_urls_for_discovery(
+                    final,
+                    root_url=root_url,
+                    check_robots=True,
+                )
+                return allowed
             if evt.get("type") == "discovered" and isinstance(evt.get("url"), str):
                 urls.append(evt["url"])
-        return await robots_policy().filter_urls(urls)
+        allowed, _, _ = await _filter_urls_for_discovery(
+            urls,
+            root_url=root_url,
+            check_robots=True,
+        )
+        return allowed
 
     def discover_stream(
         self,
@@ -271,9 +394,18 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
                 yield {"type": "error", "message": "No URLs found from sitemap.", "failure_reason": "sitemap_empty"}
                 yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "sitemap_empty"}
                 return
-            for i, u in enumerate(urls, start=1):
+            allowed, blocked_by_profile, blocked_by_robots = await _filter_urls_for_discovery(
+                urls,
+                root_url=root_url,
+                check_robots=True,
+            )
+            if not allowed and blocked_by_robots > 0 and blocked_by_profile == 0:
+                yield {"type": "error", "message": f"All {blocked_by_robots} URLs from sitemap are blocked by robots.txt", "failure_reason": "robots_blocked"}
+                yield {"type": "done", "urls": [], "method_used": "sitemap", "failure_reason": "robots_blocked"}
+                return
+            for i, u in enumerate(allowed, start=1):
                 yield {"type": "discovered", "url": u, "count": i, "depth": 0, "method_used": "sitemap"}
-            yield {"type": "done", "urls": urls, "method_used": "sitemap"}
+            yield {"type": "done", "urls": allowed, "method_used": "sitemap"}
             return
         async for evt in self._discover_stream_auto(
             root_url=root_url,
@@ -307,6 +439,7 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
         sources_with_hits: set = set()
         no_results_warning_sent = False
         NO_RESULTS_WARNING_THRESHOLD = 45.0  # Warn after 45 seconds with 0 results
+        rp = robots_policy()
 
         async def emit_list(source: str, urls: List[str]) -> None:
             for u in urls:
@@ -411,11 +544,14 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
                     continue
 
                 if evt.get("type") == "discovered":
-                    url = evt.get("url")
+                    raw_url = evt.get("url")
+                    url = _canonical_discovery_url(raw_url) if isinstance(raw_url, str) else ""
                     if isinstance(url, str) and url:
                         if url in seen:
                             continue
-                        if not _is_url_under_root_path(url, root_url):
+                        if not _passes_discovery_policy(url, root_url):
+                            continue
+                        if not await rp.is_allowed(url):
                             continue
                         seen.add(url)
                         collected.append(url)
@@ -435,7 +571,7 @@ class AutoUrlDiscoveryAdapter(UrlDiscoveryPort):
 
         fallback_only = False
         if not collected and root_url:
-            if root_url not in seen:
+            if root_url not in seen and _passes_discovery_policy(root_url, root_url) and await rp.is_allowed(root_url):
                 collected.append(root_url)
                 fallback_only = True
                 yield {"type": "discovered", "url": root_url, "count": len(collected), "source": "fallback"}

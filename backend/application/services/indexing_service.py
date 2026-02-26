@@ -2,6 +2,7 @@ import asyncio
 import os
 import subprocess
 import sys
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -11,6 +12,7 @@ from google.cloud import storage
 
 from common.config import config
 from domain.entities import BotSource, IndexJob
+from domain.platform_profiles import normalize_url_for_crawl, should_allow_url, resolve_platform_profile
 from domain.repositories import (
     BotCorpusRepository,
     BotDomainRepository,
@@ -519,6 +521,8 @@ class IndexingService:
     ) -> Dict[str, Any]:
         """Start crawling for a list of URLs (no BFS expansion). Creates one source per URL so the Sources table shows each URL."""
         cleaned = _validate_urls_for_bot(bot_id, urls)
+        # Apply platform-specific crawl profiles (e.g., restaurant platform include/exclude rules)
+        cleaned = apply_platform_profiles_to_urls(cleaned)
 
         if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
             raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
@@ -634,3 +638,36 @@ class IndexingService:
         self._job_repo.update_job(job)
 
         return {"status": "stopping", "job_id": job.job_id, "hostname": job.hostname}
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Platform Profile URL Filter
+# Logic lives in domain.platform_profiles; this is just the pipeline entry point.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def apply_platform_profiles_to_urls(urls: List[str]) -> List[str]:
+    """
+    Filter and deduplicate a URL list using platform profile rules.
+
+    Delegates filtering to domain.platform_profiles.should_allow_url (junk detection +
+    profile include/exclude rules). Then deduplicates platform URLs whose profile sets
+    strip_query_params=True, collapsing ?RDT=YYYYMMDD variations into one entry.
+    Unknown-domain URLs are passed through untouched.
+    """
+    filtered = [url for url in urls if should_allow_url(url)]
+
+    # Deduplication: only for platforms with strip_query_params=True
+    deduplicated: List[str] = []
+    seen_normalized: set = set()
+
+    for url in filtered:
+        profile, _ = resolve_platform_profile(url)
+        if profile is not None and profile.strip_query_params:
+            normalized = normalize_url_for_crawl(url)
+            if normalized not in seen_normalized:
+                deduplicated.append(url)
+                seen_normalized.add(normalized)
+        else:
+            deduplicated.append(url)
+
+    return deduplicated
