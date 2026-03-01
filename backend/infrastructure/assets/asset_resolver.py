@@ -797,7 +797,21 @@ def sanitize_answer_for_display(answer: str) -> str:
     text = re.sub(r"\s*\{\{asset[:_][a-zA-Z0-9_\-]+\}\}", "", text)
     text = re.sub(r"asset_[a-f0-9]{12,}", "", text)
 
+    # 1b. Strip malformed {{...}} (LLM sometimes outputs {{| name}} or {{ name}} instead of {{asset_ID}})
+    def _unwrap_malformed_braces(m: re.Match) -> str:
+        inner = (m.group(1) or "").strip()
+        inner = re.sub(r"^\|\s*", "", inner)  # remove leading "| " if present
+        return inner if inner else ""
+
+    text = re.sub(r"\s*\{\{([^}]*)\}\}", _unwrap_malformed_braces, text)
+
     # 2. Ensure standalone URLs are on their own line (prevents concatenation with following text)
+    # Use ASCII-only URL chars so we stop before Japanese/CJK (e.g. から) that can run into the URL
+    _URL_PATTERN = re.compile(
+        r"https?://[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+",
+        re.IGNORECASE,
+    )
+
     def _url_on_newline(m: re.Match) -> str:
         url = m.group(0)
         start, end = m.start(), m.end()
@@ -809,7 +823,8 @@ def sanitize_answer_for_display(answer: str) -> str:
         prefix = "\n" if before and before not in "\n" else ""
         suffix = "\n" if after and after not in "\n)" else ""
         return f"{prefix}{url}{suffix}"
-    text = re.sub(r"https?://[^\s<>()\"'\]]+", _url_on_newline, text, flags=re.IGNORECASE)
+
+    text = _URL_PATTERN.sub(_url_on_newline, text)
 
     # Clean up excess whitespace
     text = re.sub(r"\n{3,}", "\n\n", text)

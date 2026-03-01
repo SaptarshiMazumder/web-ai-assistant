@@ -36,6 +36,7 @@ from infrastructure.clients.instagram_client import (
     send_message,
     send_image,
     send_generic_template,
+    send_button_template,
     build_ig_quick_replies,
     show_typing as ig_show_typing,
 )
@@ -137,6 +138,8 @@ _MENU_CATEGORY_LABELS_BY_LANG: Dict[str, Dict[str, str]] = {
 _MENU_TEXT_BY_LANG: Dict[str, Dict[str, str]] = {
     "en": {
         "view_full_menu": "View full menu: {url}",
+        "view_menu_button_prompt": "Tap the button below to view our full menu.",
+        "view_menu_button_title": "View full menu",
         "menu_not_ready": "Our menu isn't ready yet. Please try again shortly after menu extraction completes.",
         "tap_view_more": "Tap 'View more' to continue.",
         "choose_another": "You can choose another option.",
@@ -145,6 +148,8 @@ _MENU_TEXT_BY_LANG: Dict[str, Dict[str, str]] = {
     },
     "ja": {
         "view_full_menu": "メニュー一覧: {url}",
+        "view_menu_button_prompt": "下のボタンでメニューをご覧いただけます。",
+        "view_menu_button_title": "メニューを見る",
         "menu_not_ready": "メニューの準備中です。メニュー抽出完了後にもう一度お試しください。",
         "tap_view_more": "「もっと見る」で続きを表示できます。",
         "choose_another": "他の候補も選べます。",
@@ -373,7 +378,7 @@ async def _send_text_chunks(
     access_token: str,
     lines: List[str],
 ) -> bool:
-    chunks = _build_line_chunks(lines, max_chars=900)
+    chunks = _build_line_chunks(lines, max_chars=400)
     sent_any = False
     for chunk in chunks:
         ok = await send_message(ig_user_id, chunk, access_token)
@@ -464,13 +469,15 @@ def _first_header_value(request: Request, name: str) -> str:
     return raw.split(",", 1)[0].strip()
 
 
-def _resolve_public_base_url(request: Request) -> str:
+def _resolve_public_base_url(request: Optional[Request] = None) -> str:
     configured = _PUBLIC_BASE_URL
     if configured:
         if configured.startswith(("http://", "https://")):
             return configured.rstrip("/")
         return f"https://{configured}".rstrip("/")
 
+    if not request:
+        return ""
     forwarded_host = _first_header_value(request, "x-forwarded-host")
     host = forwarded_host or _first_header_value(request, "host")
     if not host:
@@ -478,6 +485,14 @@ def _resolve_public_base_url(request: Request) -> str:
 
     proto = _first_header_value(request, "x-forwarded-proto") or "https"
     return f"{proto}://{host}".rstrip("/")
+
+
+def _menu_page_url(publishable_key: str, request: Optional[Request] = None) -> str:
+    """Build the scrollable menu page URL for the bot."""
+    base = _resolve_public_base_url(request)
+    if not base:
+        return ""
+    return f"{base}/v1/pk/{publishable_key}/menu"
 
 
 def _absolute_public_url(raw_url: str, request: Request) -> str:
@@ -550,6 +565,35 @@ def _quick_reply_variants(quick_replies: Optional[List[dict]]) -> List[Optional[
     return variants
 
 
+def _split_text_for_instagram(text: str, max_chars: int = 400) -> List[str]:
+    """Split text into chunks under max_chars for Instagram web (avoids truncation with '...')."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    if len(text) <= max_chars:
+        return [text]
+    chunks: List[str] = []
+    rest = text
+    while rest:
+        if len(rest) <= max_chars:
+            chunks.append(rest)
+            break
+        cut = rest[:max_chars]
+        split_at = max_chars
+        last_nl = cut.rfind("\n")
+        if last_nl > max_chars // 2:
+            split_at = last_nl + 1
+        else:
+            for sep in (". ", "。", "! ", "? ", "\n", " "):
+                idx = cut.rfind(sep)
+                if idx > max_chars // 2:
+                    split_at = idx + len(sep)
+                    break
+        chunks.append(rest[:split_at].strip())
+        rest = rest[split_at:].lstrip()
+    return [c for c in chunks if c]
+
+
 async def _send_answer_text_with_quick_replies(
     *,
     ig_user_id: str,
@@ -558,7 +602,7 @@ async def _send_answer_text_with_quick_replies(
     quick_replies: Optional[List[dict]],
 ) -> None:
     text = (answer or "").strip() or "I can help with that."
-    chunks = [text[i:i + 1000] for i in range(0, len(text), 1000)] or [text[:1000]]
+    chunks = _split_text_for_instagram(text, max_chars=400) or [text[:400]]
 
     # Send earlier chunks first without quick replies.
     for chunk in chunks[:-1]:
@@ -630,12 +674,13 @@ async def _send_menu_page_content(
     items: List[Any],
     start: int,
     lang: str,
+    menu_page_url: Optional[str] = None,
 ) -> bool:
-    view_all_url = _menu_view_all_url_for_category(category, items)
+    view_url = menu_page_url or _menu_view_all_url_for_category(category, items)
     page_start = start + 1
     lines: List[str] = [label]
-    if view_all_url:
-        lines.append(_menu_text("view_full_menu", lang, url=view_all_url))
+    if view_url:
+        lines.append(_menu_text("view_full_menu", lang, url=view_url))
 
     for idx, item in enumerate(items, start=page_start):
         name = str(item.name or "Menu item").strip()
@@ -661,6 +706,8 @@ async def _send_menu_by_category(
     page_category: Optional[str] = None,
     page_offset: int = 0,
     lang: str = "en",
+    publishable_key: Optional[str] = None,
+    request: Optional[Request] = None,
 ) -> None:
     items = _get_menu_items_for_bot(bot_id)
     if not items:
@@ -671,6 +718,30 @@ async def _send_menu_by_category(
             quick_replies=quick_replies,
         )
         return
+
+    menu_page_url = _menu_page_url(publishable_key, request) if publishable_key else None
+    is_initial_menu = page_category is None and page_offset == 0
+
+    if not menu_page_url and is_initial_menu and publishable_key:
+        logger.info(
+            "Instagram menu: menu_page_url empty (PUBLIC_BASE_URL or request host?). bot_id=%s pk=%s",
+            bot_id,
+            publishable_key,
+        )
+
+    if menu_page_url and is_initial_menu:
+        prompt = _menu_text("view_menu_button_prompt", lang)
+        btn_title = _menu_text("view_menu_button_title", lang)
+        sent = await send_button_template(
+            recipient_id=ig_user_id,
+            text=prompt,
+            buttons=[{"type": "web_url", "url": menu_page_url, "title": btn_title[:20]}],
+            page_access_token=access_token,
+            quick_replies=quick_replies,
+        )
+        if sent:
+            return
+        logger.warning("Instagram menu button failed, falling back to text list")
 
     grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
     for item in items:
@@ -705,6 +776,7 @@ async def _send_menu_by_category(
             items=page_items,
             start=start,
             lang=lang,
+            menu_page_url=menu_page_url,
         )
         sent_any = sent_any or page_sent
         if next_payload:
@@ -1250,6 +1322,8 @@ async def _handle_text_message(
             page_category=category,
             page_offset=offset,
             lang=_normalize_lang(widget_config),
+            publishable_key=getattr(bot, "publishable_key", None),
+            request=request,
         )
         conversation_service().add_message(
             session_id=session.session_id,
@@ -1272,6 +1346,8 @@ async def _handle_text_message(
             access_token=access_token,
             quick_replies=ig_quick_replies,
             lang=_normalize_lang(widget_config),
+            publishable_key=getattr(bot, "publishable_key", None),
+            request=request,
         )
         conversation_service().add_message(
             session_id=session.session_id,

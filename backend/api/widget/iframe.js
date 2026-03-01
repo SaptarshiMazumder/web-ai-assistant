@@ -742,6 +742,7 @@
       var content = p.content;
       var um;
       var uLast = 0;
+      urlRe.lastIndex = 0;  // Reset: global regex retains lastIndex across exec calls
       while ((um = urlRe.exec(content)) !== null) {
         if (um.index > uLast) final.push({ type: "text", content: content.slice(uLast, um.index) });
         var bareUrl = um[0].replace(/[.,;:!?)]+$/, "");
@@ -851,8 +852,8 @@
     bubble.appendChild(wrap);
   }
 
-  const STREAM_TICK_MS = 24;
-  const STREAM_CHARS_PER_TICK = 3;
+  const STREAM_TICK_MS = 16;
+  const STREAM_CHARS_PER_TICK = 12;
 
   async function streamResponse(resp) {
     if (!resp.body) throw new Error("No response body");
@@ -873,8 +874,15 @@
       ticking = true;
       const tick = () => {
         if (pending.length > 0) {
-          const slice = pending.slice(0, STREAM_CHARS_PER_TICK);
-          pending = pending.slice(STREAM_CHARS_PER_TICK);
+          var slice;
+          var nl = pending.indexOf("\n");
+          if (nl >= 0) {
+            slice = pending.slice(0, nl + 1);
+            pending = pending.slice(nl + 1);
+          } else {
+            slice = pending.slice(0, STREAM_CHARS_PER_TICK);
+            pending = pending.slice(STREAM_CHARS_PER_TICK);
+          }
           text += slice;
           setBubbleText(bubble, text, "bot");
           if (chat) chat.scrollTop = chat.scrollHeight;

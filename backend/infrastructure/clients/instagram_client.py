@@ -219,6 +219,46 @@ async def send_generic_template(
     return True
 
 
+async def send_button_template(
+    recipient_id: str,
+    text: str,
+    buttons: list,
+    page_access_token: str,
+    *,
+    quick_replies: Optional[List[dict]] = None,
+) -> bool:
+    """Send a Button Template (text + buttons) via the Graph API. Used for 'View full menu' etc."""
+    base = _api_base(page_access_token)
+    formatted_text = format_for_messaging(text)[:640]  # IG limit
+    message: dict = {
+        "attachment": {
+            "type": "template",
+            "payload": {
+                "template_type": "button",
+                "text": formatted_text,
+                "buttons": buttons[:3],  # max 3
+            },
+        }
+    }
+    normalized_qr = _normalize_quick_replies(quick_replies)
+    if normalized_qr:
+        message["quick_replies"] = normalized_qr
+    payload = {
+        "recipient": {"id": recipient_id},
+        "message": message,
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{base}/me/messages",
+            json=payload,
+            params={"access_token": page_access_token},
+        )
+    if resp.status_code != 200:
+        logger.error("Instagram send_button_template failed: %s %s", resp.status_code, resp.text)
+        return False
+    return True
+
+
 # ── Page info (connection test) ───────────────────────────────────────
 
 

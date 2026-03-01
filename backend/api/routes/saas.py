@@ -1,4 +1,5 @@
 import asyncio
+import html
 import logging
 import time
 import urllib.request
@@ -12,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from api.deps.auth import get_current_user, require_org_admin, require_super_admin
 from api.schemas import (
@@ -103,7 +104,7 @@ from application.services.default_prompt_service import (
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
-from common.di.container import bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
+from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
@@ -726,6 +727,91 @@ async def v1_pk_widget_config(publishable_key: str):
     config["suggestedMessagesEnabled"] = True
     
     return config
+
+
+@router.get("/v1/pk/{publishable_key}/menu", response_class=HTMLResponse)
+async def v1_pk_menu_page(publishable_key: str, request: Request):
+    """Public: scrollable menu page for the bot. Used when user taps menu on Instagram."""
+    bot = bot_service().get_bot_by_publishable_key(publishable_key)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot publishable key")
+    items = asset_repo().list_assets_for_bot(bot.bot_id, active_only=True, asset_type="menu_item")
+    base = str(request.base_url).rstrip("/")
+    title = getattr(bot, "display_name", "Menu") or "Menu"
+    _MENU_CATEGORY_ORDER = ("course", "dish", "drink", "lunch", "menu")
+    _MENU_CATEGORY_LABELS = {
+        "course": "Party / Course",
+        "dish": "Dish",
+        "drink": "Drink",
+        "lunch": "Lunch",
+        "menu": "Menu",
+    }
+    grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
+    for item in items:
+        meta = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
+        raw = str(meta.get("category") or "").strip().lower()
+        aliases = {"party": "course", "plan": "course", "set": "course", "beverage": "drink", "food": "dish", "lunch_set": "lunch"}
+        cat = aliases.get(raw, raw) if raw else "menu"
+        cat = cat if cat in _MENU_CATEGORY_ORDER else "menu"
+        grouped[cat].append(item)
+    html_sections: List[str] = []
+    for cat in _MENU_CATEGORY_ORDER:
+        cat_items = grouped.get(cat) or []
+        if not cat_items:
+            continue
+        label = _MENU_CATEGORY_LABELS.get(cat, cat.title())
+        section_items: List[str] = []
+        for a in cat_items:
+            name = str(a.name or "Menu item").strip()
+            meta = a.metadata if isinstance(getattr(a, "metadata", None), dict) else {}
+            price_text = str(meta.get("price_text") or "").strip()
+            if not price_text and isinstance(meta.get("price"), dict):
+                price_text = str((meta.get("price") or {}).get("text") or "").strip()
+            details = str(meta.get("details") or "").strip() or (a.description or "").strip()
+            img_url = (a.image_public_url or "").strip()
+            if img_url and not img_url.startswith(("http://", "https://")):
+                img_url = f"{base}{img_url}" if img_url.startswith("/") else f"{base}/{img_url}"
+            img_html = f'<img src="{html.escape(img_url)}" alt="" loading="lazy" />' if img_url else ""
+            price_html = f'<span class="price">{html.escape(price_text)}</span>' if price_text else ""
+            details_html = f'<p class="details">{html.escape(details)}</p>' if details else ""
+            section_items.append(
+                f'<li class="menu-item">'
+                f'<div class="item-img">{img_html}</div>'
+                f'<div class="item-info"><h4>{html.escape(name)}</h4>{price_html}{details_html}</div>'
+                f'</li>'
+            )
+        html_sections.append(
+            f'<section class="category"><h2>{html.escape(label)}</h2><ul>{"".join(section_items)}</ul></section>'
+        )
+    body = "\n".join(html_sections) if html_sections else '<p class="empty">No menu items available.</p>'
+    page_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{html.escape(title)} - Menu</title>
+<style>
+* {{ box-sizing: border-box; }}
+body {{ font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 16px; background: #f5f5f5; color: #222; }}
+h1 {{ font-size: 1.25rem; margin: 0 0 16px; }}
+h2 {{ font-size: 1rem; margin: 16px 0 8px; color: #555; text-transform: uppercase; letter-spacing: 0.05em; }}
+.category {{ margin-bottom: 24px; }}
+.menu-item {{ display: flex; gap: 12px; margin-bottom: 16px; padding: 12px; background: #fff; border-radius: 8px; list-style: none; }}
+.item-img {{ flex-shrink: 0; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; background: #eee; }}
+.item-img img {{ width: 100%; height: 100%; object-fit: cover; }}
+.item-info {{ flex: 1; min-width: 0; }}
+.item-info h4 {{ margin: 0 0 4px; font-size: 0.95rem; }}
+.price {{ color: #c00; font-weight: 600; }}
+.details {{ margin: 4px 0 0; font-size: 0.85rem; color: #666; }}
+.empty {{ color: #666; }}
+</style>
+</head>
+<body>
+<h1>{html.escape(title)} - Menu</h1>
+{body}
+</body>
+</html>"""
+    return HTMLResponse(content=page_html)
 
 
 @router.get("/v1/pk/{publishable_key}/escalation-config", response_model=EscalationConfigResponse)
