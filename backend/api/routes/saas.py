@@ -916,7 +916,7 @@ async def v1_widget_chat(
     result = run_vertex_rag(
         query,
         rag_corpus=corpus,
-        allowed_host=allowed_host or None,
+        allowed_host=None,
         debug_cb=_rag_dbg,
         system_instruction=system_instruction,
         model_name=model_name,
@@ -1180,7 +1180,7 @@ async def v1_widget_chat_stream(
             for evt in run_vertex_rag_stream(
                 query,
                 rag_corpus=corpus,
-                allowed_host=allowed_host or None,
+                allowed_host=None,
                 debug_cb=_rag_dbg,
                 system_instruction=system_instruction,
                 model_name=model_name,

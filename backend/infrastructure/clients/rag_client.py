@@ -388,6 +388,7 @@ def is_complex_question(client: genai.Client, question: str) -> bool:
 # =========================
 # Query Expansion (local, no LLM)
 # =========================
+
 def expand_query_local(question: str) -> List[str]:
     """
     Fast local query expansion without LLM calls.
@@ -396,12 +397,9 @@ def expand_query_local(question: str) -> List[str]:
     q = (question or "").strip()
     if not q:
         return [q]
-    
-    # Always include the original question
+
     variants = [q]
-    
-    # Extract key nouns/phrases (simple word splitting)
-    # Remove common stopwords and very short words
+
     stopwords = {
         "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
         "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
@@ -410,17 +408,14 @@ def expand_query_local(question: str) -> List[str]:
         "this", "that", "these", "those", "what", "which", "who", "when", "where",
         "why", "how", "about", "tell", "me", "please", "want", "know"
     }
-    
-    # Simple tokenization
+
     words = re.findall(r'\b\w+\b', q.lower())
     keywords = [w for w in words if len(w) > 2 and w not in stopwords]
-    
-    # If we extracted meaningful keywords, create a keyword-only variant
     if keywords and len(keywords) < len(words):
-        keyword_query = " ".join(keywords[:5])  # max 5 keywords
+        keyword_query = " ".join(keywords[:5])
         if keyword_query and keyword_query != q.lower():
             variants.append(keyword_query)
-    
+
     return variants[:MAX_SUBQUERIES]
 
 
@@ -1020,21 +1015,21 @@ def run_vertex_rag(
     else:
         # Fast local expansion
         subqueries = expand_query_local(question)
-    
+
     _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries, "llm_enabled": ENABLE_LLM_SUBQUERIES})
 
     # Step 2: multi-query retrieval (PARALLEL)
     all_evidence: List[Dict[str, str]] = []
-    
+
     def _retrieve_one(sq: str) -> List[Dict[str, str]]:
         _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
         return retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
-    
+
     with ThreadPoolExecutor(max_workers=min(len(subqueries), 5)) as executor:
         futures = [executor.submit(_retrieve_one, sq) for sq in subqueries]
         for future in futures:
             all_evidence.extend(future.result())
-    
+
     evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
@@ -1159,21 +1154,21 @@ def run_vertex_rag_stream(
     else:
         # Fast local expansion
         subqueries = expand_query_local(question)
-    
+
     _dbg({"type": "query_expansion", "original": question, "subqueries": subqueries, "llm_enabled": ENABLE_LLM_SUBQUERIES})
 
     # Step 2: multi-query retrieval (PARALLEL)
     all_evidence: List[Dict[str, str]] = []
-    
+
     def _retrieve_one(sq: str) -> List[Dict[str, str]]:
         _dbg({"type": "retrieval_start", "query": sq, "top_k": RETRIEVAL_TOP_K, "rag_corpus": rag_corpus})
         return retrieve_for_subquery(rag_corpus, sq, top_k=RETRIEVAL_TOP_K)
-    
+
     with ThreadPoolExecutor(max_workers=min(len(subqueries), 5)) as executor:
         futures = [executor.submit(_retrieve_one, sq) for sq in subqueries]
         for future in futures:
             all_evidence.extend(future.result())
-    
+
     evidence = dedupe_evidence(all_evidence)
     bucket_name = GCS_BUCKET.split("/")[0] if GCS_BUCKET else ""
     resolve_evidence_urls(evidence, bucket_name)
