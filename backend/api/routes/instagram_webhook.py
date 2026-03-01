@@ -47,7 +47,13 @@ from infrastructure.db.repositories import (
     PostgresInstagramUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
-from domain.platform_profiles import resolve_platform_profile
+from domain.platform_profiles import (
+    ensure_canonical_reservation_url_in_text,
+    get_platform_asset_instructions,
+    get_platform_features_from_widget,
+    get_reservation_config_from_widget,
+    get_suggested_messages_for_widget,
+)
 from domain.personas import get_default_persona_id, get_persona_system_prompt
 
 logger = logging.getLogger(__name__)
@@ -274,160 +280,6 @@ def _parse_menu_page_payload(payload: Optional[str]) -> Optional[tuple[str, int]
     return category, offset
 
 
-def _is_restaurant_widget(widget_config: Dict[str, Any]) -> bool:
-    if not isinstance(widget_config, dict):
-        return False
-    return str(widget_config.get("businessType") or "").strip().lower() == "restaurant"
-
-
-def _is_tabelog_url(url: str) -> bool:
-    cleaned = (url or "").strip()
-    if not cleaned:
-        return False
-    try:
-        _, domain_key = resolve_platform_profile(cleaned)
-        return domain_key == "tabelog.com"
-    except Exception:
-        return False
-
-
-def _is_tabelog_restaurant_bot(bot: Any, widget_config: Dict[str, Any]) -> bool:
-    if not _is_restaurant_widget(widget_config):
-        return False
-    bot_id = str(getattr(bot, "bot_id", "") or "").strip()
-    if not bot_id:
-        return False
-
-    # Primary signal: bot URL sources include Tabelog.
-    try:
-        sources = _bot_source_repo.list_sources_for_bot(bot_id)
-    except Exception:
-        logger.exception("Failed to list sources for bot_id=%s", bot_id)
-        sources = []
-    for src in sources or []:
-        cfg = src.config if isinstance(getattr(src, "config", None), dict) else {}
-        url = str(cfg.get("url") or "").strip()
-        if _is_tabelog_url(url):
-            return True
-
-    # Fallback signal: existing menu items originate from Tabelog URLs.
-    for item in _get_menu_items_for_bot(bot_id):
-        source_url = _menu_item_source_url(item)
-        if _is_tabelog_url(source_url):
-            return True
-
-    return False
-
-
-def _normalize_http_url(url: Any) -> str:
-    cleaned = str(url or "").strip()
-    if not cleaned:
-        return ""
-    if cleaned.startswith(("http://", "https://")):
-        return cleaned
-    return f"https://{cleaned}"
-
-
-def _tabelog_primary_url(bot: Any, widget_config: Dict[str, Any]) -> str:
-    configured = _normalize_http_url((widget_config or {}).get("tabelogUrl"))
-    if configured and _is_tabelog_url(configured):
-        return configured
-
-    bot_id = str(getattr(bot, "bot_id", "") or "").strip()
-    if not bot_id:
-        return ""
-    try:
-        sources = _bot_source_repo.list_sources_for_bot(bot_id)
-    except Exception:
-        logger.exception("Failed to list sources for reservation url bot_id=%s", bot_id)
-        return ""
-    for src in sources or []:
-        cfg = src.config if isinstance(getattr(src, "config", None), dict) else {}
-        url = _normalize_http_url(cfg.get("url"))
-        if url and _is_tabelog_url(url):
-            return url
-    return ""
-
-
-def _tabelog_reservation_profile_config(url: str) -> Dict[str, Any]:
-    try:
-        profile, domain_key = resolve_platform_profile(url)
-    except Exception:
-        return {}
-    if profile is None or domain_key != "tabelog.com":
-        return {}
-    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
-    reservation = metadata.get("reservation")
-    return reservation if isinstance(reservation, dict) else {}
-
-
-def _is_reservation_intent(text: str, *, lang: str, reservation_cfg: Dict[str, Any]) -> bool:
-    normalized = str(text or "").strip().lower()
-    if not normalized:
-        return False
-    keywords_block = reservation_cfg.get("intent_keywords")
-    keywords: List[str] = []
-    if isinstance(keywords_block, dict):
-        preferred = str(lang or "en").strip().lower()
-        raw = keywords_block.get(preferred) or keywords_block.get("en") or []
-        if isinstance(raw, list):
-            keywords = [str(k or "").strip().lower() for k in raw if str(k or "").strip()]
-    if not keywords:
-        keywords = [
-            "reservation",
-            "reserve",
-            "booking",
-            "book a table",
-            "book table",
-            "online reservation",
-            "予約",
-            "ネット予約",
-            "オンライン予約",
-            "席予約",
-        ]
-    return any(keyword in normalized for keyword in keywords)
-
-
-def _tabelog_reservation_reply_text(*, reservation_url: str, lang: str, reservation_cfg: Dict[str, Any]) -> str:
-    label = "Tabelog Online Reservation"
-    label_block = reservation_cfg.get("link_label")
-    if isinstance(label_block, dict):
-        label = str(label_block.get(lang) or label_block.get("en") or label).strip() or label
-    template = ""
-    templates_block = reservation_cfg.get("response_templates")
-    if isinstance(templates_block, dict):
-        template = str(templates_block.get(lang) or templates_block.get("en") or "").strip()
-    if not template:
-        template = (
-            "オンライン予約はこちらをご利用ください: [{label}]({url})"
-            if lang == "ja"
-            else "For online reservations, please use [{label}]({url})."
-        )
-    try:
-        return template.format(label=label, url=reservation_url).strip()
-    except Exception:
-        return f"[{label}]({reservation_url})"
-
-
-def _build_tabelog_reservation_reply(bot: Any, widget_config: Dict[str, Any], text: str) -> Optional[str]:
-    if not _is_tabelog_restaurant_bot(bot, widget_config):
-        return None
-    reservation_url = _tabelog_primary_url(bot, widget_config)
-    if not reservation_url:
-        return None
-    reservation_cfg = _tabelog_reservation_profile_config(reservation_url)
-    if reservation_cfg and not _is_truthy(reservation_cfg.get("enabled", True)):
-        return None
-    lang = _normalize_lang(widget_config)
-    if not _is_reservation_intent(text, lang=lang, reservation_cfg=reservation_cfg):
-        return None
-    return _tabelog_reservation_reply_text(
-        reservation_url=reservation_url,
-        lang=lang,
-        reservation_cfg=reservation_cfg,
-    )
-
-
 def _normalize_lang(widget_config: Dict[str, Any]) -> str:
     value = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
     return "ja" if value in ("ja", "jp") else "en"
@@ -459,31 +311,6 @@ def _menu_label_for_lang(lang: str) -> str:
     fallback = "メニュー" if lang == "ja" else "Menu"
     _MENU_LABEL_CACHE[lang] = fallback
     return fallback
-
-
-def _ensure_restaurant_menu_suggestion(
-    widget_config: Dict[str, Any],
-    messages: Optional[List[Dict[str, Any]]],
-) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = list(messages or [])
-    if not _is_restaurant_widget(widget_config):
-        return out
-    for sm in out:
-        label = str((sm or {}).get("label") or "").strip()
-        prompt = str((sm or {}).get("prompt") or "").strip()
-        if _is_full_menu_request(label, None) or _is_full_menu_request(prompt, None):
-            return out
-    label = _menu_label_for_lang(_normalize_lang(widget_config))
-    out.insert(
-        0,
-        {
-            "id": "suggest_menu",
-            "type": "ai_response",
-            "label": label,
-            "prompt": label,
-        },
-    )
-    return out
 
 
 def _format_menu_subtitle(item: Any) -> str:
@@ -1233,7 +1060,7 @@ async def _handle_text_message(
     # Show typing indicator immediately while processing
     await ig_show_typing(ig_user_id, access_token)
 
-    # Load suggested messages from widget config for Instagram quick replies
+    # Load suggested messages from platform profile or default (config-driven)
     ig_quick_replies = None
     widget_config: Dict[str, Any] = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
@@ -1241,16 +1068,9 @@ async def _handle_text_message(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    tabelog_menu_enabled = _is_tabelog_restaurant_bot(bot, widget_config)
-    suggested_messages_enabled = _is_truthy(widget_config.get("suggestedMessagesEnabled")) if isinstance(widget_config, dict) else False
-    if tabelog_menu_enabled:
-        suggested_messages_enabled = True
-    raw_suggested = (
-        widget_config.get("suggestedMessages")
-        if isinstance(widget_config, dict) and suggested_messages_enabled
-        else None
-    )
-    suggested_messages = list(raw_suggested or [])
+    platform_features = get_platform_features_from_widget(widget_config)
+    menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
+    suggested_messages = get_suggested_messages_for_widget(widget_config, lang=_normalize_lang(widget_config))
     if suggested_messages:
         ig_quick_replies = build_ig_quick_replies(suggested_messages)
     logger.info("Instagram quick replies bot_id=%s quick_reply_count=%s", bot.bot_id, len(ig_quick_replies or []))
@@ -1412,31 +1232,8 @@ async def _handle_text_message(
         )
         return
 
-    # Tabelog reservation intent: deterministic reply to the store reservation page.
-    reservation_reply = _build_tabelog_reservation_reply(bot, widget_config, effective_text)
-    if reservation_reply:
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=effective_text,
-        )
-        await send_message(
-            ig_user_id,
-            reservation_reply,
-            access_token,
-            quick_replies=ig_quick_replies,
-        )
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=reservation_reply,
-        )
-        return
-
     # Full menu request (quick reply tap or explicit short command)
-    page_req = _parse_menu_page_payload(quick_payload) if tabelog_menu_enabled else None
+    page_req = _parse_menu_page_payload(quick_payload) if menu_extraction_enabled else None
     if page_req:
         category, offset = page_req
         conversation_service().add_message(
@@ -1462,7 +1259,7 @@ async def _handle_text_message(
         )
         return
 
-    if tabelog_menu_enabled and _is_full_menu_request(effective_text, quick_payload):
+    if menu_extraction_enabled and _is_full_menu_request(effective_text, quick_payload):
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1517,6 +1314,26 @@ async def _handle_text_message(
     asset_instruction = build_asset_instruction(bot.bot_id)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_normalize_lang(widget_config))
+    if platform_asset_instruction:
+        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+
+    # Reservation: config-driven from widget_config + platform profiles (Tabelog, HotPepper, TableCheck).
+    reservation_config = get_reservation_config_from_widget(
+        widget_config,
+        lang=_normalize_lang(widget_config),
+    )
+
+    if reservation_config:
+        extra_evidence.append({
+            "url": reservation_config["url"],
+            "snippet": f"Official online reservation page: {reservation_config['url']}",
+        })
+        system_instruction = (
+            f"{system_instruction}\n\n{reservation_config['instruction']}"
+            if system_instruction
+            else reservation_config["instruction"]
+        )
 
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
@@ -1535,7 +1352,14 @@ async def _handle_text_message(
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
-            allowed_asset_types = {"menu_item"} if tabelog_menu_enabled else None
+            # Ensure any reservation URLs in the response use the canonical one from config
+            if reservation_config:
+                answer = ensure_canonical_reservation_url_in_text(
+                    answer,
+                    reservation_config["url"],
+                    reservation_config["domain_key"],
+                )
+            allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
             # Extract {{asset:ID}} markers from the LLM answer first
             answer, marker_cards = resolve_asset_markers(
                 answer,

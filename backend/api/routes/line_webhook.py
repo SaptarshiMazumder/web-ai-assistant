@@ -30,6 +30,13 @@ from infrastructure.clients.line_client import (
     show_typing as line_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
+from domain.platform_profiles import (
+    ensure_canonical_reservation_url_in_text,
+    get_platform_asset_instructions,
+    get_platform_features_from_widget,
+    get_reservation_config_from_widget,
+    get_suggested_messages_for_widget,
+)
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
@@ -264,7 +271,7 @@ async def _handle_text_message(
     # Show typing indicator immediately while processing
     await line_show_typing(line_user_id, access_token)
 
-    # Load suggested messages from widget config for LINE flex buttons
+    # Load suggested messages from platform profile or default (config-driven)
     suggested_flex = None
     widget_config: Dict[str, Any] = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
@@ -272,12 +279,9 @@ async def _handle_text_message(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    suggested_messages_enabled = _is_truthy(widget_config.get("suggestedMessagesEnabled")) if isinstance(widget_config, dict) else False
-    suggested_messages = (
-        widget_config.get("suggestedMessages")
-        if isinstance(widget_config, dict) and suggested_messages_enabled
-        else None
-    )
+    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+    suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
 
@@ -488,6 +492,28 @@ async def _handle_text_message(
     asset_instruction = build_asset_instruction(bot.bot_id)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=lang)
+    if platform_asset_instruction:
+        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+
+    # Reservation: config-driven from platform profiles (Tabelog, HotPepper, TableCheck)
+    reservation_config = get_reservation_config_from_widget(widget_config, lang=lang)
+    if reservation_config:
+        extra_evidence.append({
+            "url": reservation_config["url"],
+            "snippet": f"Official online reservation page: {reservation_config['url']}",
+        })
+        system_instruction = (
+            f"{system_instruction}\n\n{reservation_config['instruction']}"
+            if system_instruction
+            else reservation_config["instruction"]
+        )
+
+    platform_features = get_platform_features_from_widget(widget_config)
+    menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
+    allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
 
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
@@ -506,8 +532,15 @@ async def _handle_text_message(
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
 
+        if reservation_config:
+            answer = ensure_canonical_reservation_url_in_text(
+                answer, reservation_config["url"], reservation_config["domain_key"]
+            )
+
         # Extract {{asset:ID}} markers from the LLM answer
-        answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
+        answer, marker_cards = resolve_asset_markers(
+            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
+        )
         if marker_cards:
             asset_cards = marker_cards
         else:
@@ -517,6 +550,7 @@ async def _handle_text_message(
                 bot.bot_id,
                 user_query=text,
                 session_id=session.session_id,
+                allowed_asset_types=allowed_asset_types,
             )
     except Exception as e:
         if is_quota_exhausted_error(e):

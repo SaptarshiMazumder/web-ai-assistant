@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import time
 import urllib.request
 import uuid
@@ -86,7 +88,14 @@ from api.schemas import (
     PersonaListResponse,
 )
 from domain.personas import list_personas, list_categories, get_persona, get_persona_system_prompt, get_default_persona_id
-from domain.platform_profiles import resolve_platform_profile
+from domain.platform_profiles import (
+    RESERVATION_PLATFORM_CONFIG,
+    ensure_canonical_reservation_url_in_text,
+    get_platform_asset_instructions,
+    get_platform_features_from_widget,
+    get_reservation_config_from_widget,
+    get_suggested_messages_for_widget,
+)
 from application.services.default_prompt_service import (
     build_default_system_instruction,
     extract_business_type_from_widget_config,
@@ -98,6 +107,8 @@ from common.di.container import bot_service, conversation_service, indexing_serv
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
+
+logger = logging.getLogger(__name__)
 
 # Prefixes that indicate availability check failed; don't inject as success.
 _AVAILABILITY_ERROR_PREFIXES = ("Could not complete availability check", "The availability check is taking longer")
@@ -293,156 +304,9 @@ def _normalize_http_url(value: Any) -> str:
     return url
 
 
-def _is_same_suggested_message(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
-    if not isinstance(a, dict) or not isinstance(b, dict):
-        return False
-    a_id = str(a.get("id") or "").strip().lower()
-    b_id = str(b.get("id") or "").strip().lower()
-    if a_id and b_id and a_id == b_id:
-        return True
-    a_label = str(a.get("label") or "").strip().lower()
-    b_label = str(b.get("label") or "").strip().lower()
-    a_prompt = str(a.get("prompt") or "").strip().lower()
-    b_prompt = str(b.get("prompt") or "").strip().lower()
-    return a_label == b_label and a_prompt == b_prompt
+# ── Reservation (from platform config) ──────────────────────────────────────
 
 
-def _profile_candidate_urls_from_widget_config(config: Dict[str, Any]) -> List[str]:
-    candidates: List[str] = []
-    for key in ("tabelogUrl", "hotPepperUrl", "tableCheckUrl"):
-        normalized = _normalize_http_url(config.get(key))
-        if normalized:
-            candidates.append(normalized)
-
-    raw_bank = config.get("urlBank")
-    if isinstance(raw_bank, list):
-        for item in raw_bank:
-            if not isinstance(item, dict):
-                continue
-            normalized = _normalize_http_url(item.get("url"))
-            if normalized:
-                candidates.append(normalized)
-
-    deduped: List[str] = []
-    seen: set[str] = set()
-    for url in candidates:
-        key = url.lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(url)
-    return deduped
-
-
-def _resolve_profile_suggested_messages(config: Dict[str, Any]) -> List[Dict[str, Any]]:
-    lang = _normalize_lang_value(config.get("language"))
-    out: List[Dict[str, Any]] = []
-
-    for url in _profile_candidate_urls_from_widget_config(config):
-        profile, _ = resolve_platform_profile(url)
-        if profile is None:
-            continue
-        metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
-        raw_items = metadata.get("suggested_messages")
-        if not isinstance(raw_items, list):
-            continue
-
-        for raw in raw_items:
-            if not isinstance(raw, dict):
-                continue
-            raw_label = raw.get("label")
-            if isinstance(raw_label, dict):
-                label = str(raw_label.get(lang) or raw_label.get("en") or "").strip()
-            else:
-                label = str(raw_label or "").strip()
-            if not label:
-                continue
-
-            raw_prompt = raw.get("prompt")
-            if isinstance(raw_prompt, dict):
-                prompt = str(raw_prompt.get(lang) or raw_prompt.get("en") or "").strip()
-            else:
-                prompt = str(raw_prompt or "").strip()
-
-            candidate = {
-                "id": str(raw.get("id") or "").strip() or str(uuid.uuid4())[:8],
-                "label": label,
-                "type": str(raw.get("type") or "ai_response").strip() or "ai_response",
-                "prompt": prompt or label,
-            }
-            if any(_is_same_suggested_message(existing, candidate) for existing in out):
-                continue
-            out.append(candidate)
-    return out
-
-
-def _ensure_profile_suggested_messages(config: Dict[str, Any]) -> Dict[str, Any]:
-    if not isinstance(config, dict):
-        return config
-    raw_messages = config.get("suggestedMessages")
-    messages: List[Dict[str, Any]] = []
-    if isinstance(raw_messages, list):
-        messages = [m for m in raw_messages if isinstance(m, dict)]
-    for candidate in _resolve_profile_suggested_messages(config):
-        if any(_is_same_suggested_message(existing, candidate) for existing in messages):
-            continue
-        messages.append(candidate)
-    config["suggestedMessages"] = messages
-    return config
-
-
-# ── Restaurant reservation prompt templates ─────────────────────────────────
-
-_RESTAURANT_RESERVATION_INSTRUCTION_EN = (
-    "## Restaurant Reservation Assistance\n"
-    "When a customer asks about making a reservation or booking, let them know they can book online "
-    "and direct them to the appropriate booking page below. Be warm and helpful.\n\n"
-    "Online reservation links:\n"
-    "{platform_links}\n\n"
-    "- Share the relevant booking link as a clickable markdown link.\n"
-    "- If no platform URL is configured, let the customer know to contact the restaurant directly.\n"
-)
-
-_RESTAURANT_RESERVATION_INSTRUCTION_JA = (
-    "## レストラン予約サポート\n"
-    "お客様が予約・ご予約についてお問い合わせの際は、オンラインで予約できることをお伝えし、"
-    "以下の予約ページにご案内ください。温かく丁寧に対応してください。\n\n"
-    "オンライン予約リンク：\n"
-    "{platform_links}\n\n"
-    "- 該当する予約リンクをマークダウンのクリック可能なリンクとして共有してください。\n"
-    "- プラットフォームURLが設定されていない場合は、レストランに直接お問い合わせいただくようご案内ください。\n"
-)
-
-
-def _get_restaurant_reservation_instruction(widget_config: Dict[str, Any], lang: str = "en") -> Optional[str]:
-    """Build restaurant reservation instruction for restaurant bots. Returns None if not applicable."""
-    if widget_config.get("businessType") != "restaurant":
-        return None
-
-    tablecheck_url = (widget_config.get("tableCheckUrl") or "").strip()
-    tabelog_url = (widget_config.get("tabelogUrl") or "").strip()
-    hotpepper_url = (widget_config.get("hotPepperUrl") or "").strip()
-
-    if not tablecheck_url and not tabelog_url and not hotpepper_url:
-        return None
-
-    template = _RESTAURANT_RESERVATION_INSTRUCTION_JA if lang == "ja" else _RESTAURANT_RESERVATION_INSTRUCTION_EN
-
-    platform_lines = []
-    if hotpepper_url:
-        if not hotpepper_url.startswith(("http://", "https://")):
-            hotpepper_url = "https://" + hotpepper_url
-        platform_lines.append(f"- HotPepper Gourmet: {hotpepper_url}")
-    if tabelog_url:
-        if not tabelog_url.startswith(("http://", "https://")):
-            tabelog_url = "https://" + tabelog_url
-        platform_lines.append(f"- Tabelog: {tabelog_url}")
-    if tablecheck_url:
-        if not tablecheck_url.startswith(("http://", "https://")):
-            tablecheck_url = "https://" + tablecheck_url
-        platform_lines.append(f"- TableCheck: {tablecheck_url}")
-
-    return template.format(platform_links="\n".join(platform_lines))
 
 
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
@@ -853,9 +717,13 @@ async def v1_pk_widget_config(publishable_key: str):
             config = {}
     
     # Fallback: if no custom title is set, use the bot's display_name
-    # This ensures renamed bots automatically show the new name in the widget
     if not config.get("title"):
         config["title"] = getattr(bot, "display_name", "Chat")
+    
+    # Inject suggested messages from platform profile or default (config-driven, all channels)
+    lang = _get_language_from_widget_config_dict(config)
+    config["suggestedMessages"] = get_suggested_messages_for_widget(config, lang=lang)
+    config["suggestedMessagesEnabled"] = True
     
     return config
 
@@ -1019,15 +887,23 @@ async def v1_widget_chat(
         bank_instruction = (
             "Answer links (use only when they match the customer’s question):\n"
             f"{bank_lines}\n\n"
-            "If the question matches one of these topics, include the matching link in your response.\n"
+            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
             "Write links as markdown like [Pricing](https://...) inside a normal sentence."
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
 
-    # Inject restaurant reservation instructions if applicable
-    restaurant_instruction = _get_restaurant_reservation_instruction(widget_config, lang=_get_bot_language(bot))
-    if restaurant_instruction:
-        system_instruction = f"{system_instruction}\n\n{restaurant_instruction}" if system_instruction else restaurant_instruction
+    # Inject reservation config from platform profile if applicable
+    reservation_cfg = get_reservation_config_from_widget(widget_config, lang=_get_bot_language(bot))
+    if reservation_cfg:
+        extra_evidence.append({
+            "url": reservation_cfg["url"],
+            "snippet": f"Official online reservation page: {reservation_cfg['url']}",
+        })
+        system_instruction = (
+            f"{system_instruction}\n\n{reservation_cfg['instruction']}"
+            if system_instruction
+            else reservation_cfg["instruction"]
+        )
 
     # Inject business assets as evidence and system instruction
     asset_evidence = build_asset_evidence(bot.bot_id)
@@ -1036,6 +912,9 @@ async def v1_widget_chat(
     asset_instruction = build_asset_instruction(bot.bot_id)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_get_bot_language(bot))
+    if platform_asset_instruction:
+        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
 
     result = run_vertex_rag(
         query,
@@ -1089,8 +968,20 @@ async def v1_widget_chat(
     )
     answer = str(result.get("answer") or "")
 
+    # Ensure reservation URLs use the canonical one from config
+    if reservation_cfg:
+        answer = ensure_canonical_reservation_url_in_text(
+            answer, reservation_cfg["url"], reservation_cfg["domain_key"]
+        )
+
+    platform_features = get_platform_features_from_widget(widget_config)
+    menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
+    allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
+
     # Extract {{asset:ID}} markers from the LLM answer first
-    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
+    answer, marker_cards = resolve_asset_markers(
+        answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
+    )
     if marker_cards:
         asset_cards = marker_cards
     else:
@@ -1100,6 +991,7 @@ async def v1_widget_chat(
             bot.bot_id,
             user_query=msg,
             session_id=session.session_id,
+            allowed_asset_types=allowed_asset_types,
         )
     assets = [AssetCard(**c) for c in asset_cards]
 
@@ -1259,15 +1151,23 @@ async def v1_widget_chat_stream(
         bank_instruction_stream = (
             "Answer links (use only when they match the customer’s question):\n"
             f"{bank_lines_stream}\n\n"
-            "If the question matches one of these topics, include the matching link in your response.\n"
+            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
             "Write links as markdown like [Pricing](https://...) inside a normal sentence."
         )
         system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
 
     # Inject restaurant reservation instructions if applicable
-    restaurant_instruction_stream = _get_restaurant_reservation_instruction(widget_config_stream, lang=_get_bot_language(bot))
-    if restaurant_instruction_stream:
-        system_instruction = f"{system_instruction}\n\n{restaurant_instruction_stream}" if system_instruction else restaurant_instruction_stream
+    reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=_get_bot_language(bot))
+    if reservation_cfg_stream:
+        extra_evidence_stream.append({
+            "url": reservation_cfg_stream["url"],
+            "snippet": f"Official online reservation page: {reservation_cfg_stream['url']}",
+        })
+        system_instruction = (
+            f"{system_instruction}\n\n{reservation_cfg_stream['instruction']}"
+            if system_instruction
+            else reservation_cfg_stream["instruction"]
+        )
 
     # Inject business assets as evidence and system instruction
     asset_evidence_stream = build_asset_evidence(bot.bot_id)
@@ -1276,6 +1176,9 @@ async def v1_widget_chat_stream(
     asset_instruction_stream = build_asset_instruction(bot.bot_id)
     if asset_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
+    platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=_get_bot_language(bot))
+    if platform_asset_instruction_stream:
+        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
 
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
@@ -1329,8 +1232,17 @@ async def v1_widget_chat_stream(
                         ) + "\n"
                     else:
                         answer = str(evt.get("answer") or "")
+                        if reservation_cfg_stream:
+                            answer = ensure_canonical_reservation_url_in_text(
+                                answer, reservation_cfg_stream["url"], reservation_cfg_stream["domain_key"]
+                            )
+                        platform_features_stream = get_platform_features_from_widget(widget_config_stream)
+                        menu_extraction_enabled_stream = platform_features_stream.get("menu_extraction_enabled") if platform_features_stream else False
+                        allowed_asset_types_stream = {"menu_item"} if menu_extraction_enabled_stream else None
                         # Extract {{asset:ID}} markers from the LLM answer first
-                        answer, marker_cards_stream = resolve_asset_markers(answer, bot.bot_id, session.session_id)
+                        answer, marker_cards_stream = resolve_asset_markers(
+                            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_stream
+                        )
                         if marker_cards_stream:
                             asset_cards_stream = marker_cards_stream
                         else:
@@ -1340,6 +1252,7 @@ async def v1_widget_chat_stream(
                                 bot.bot_id,
                                 user_query=msg,
                                 session_id=session.session_id,
+                                allowed_asset_types=allowed_asset_types_stream,
                             )
                         chat_debug_emit(
                             {
@@ -1653,7 +1566,6 @@ async def v1_org_update_bot_widget_config(
         existing = {}
 
     merged = {**existing, **incoming}
-    merged = _ensure_profile_suggested_messages(merged)
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
 
@@ -2046,7 +1958,6 @@ Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 chara
     prev_messages = existing_config.get("suggestedMessages") or []
     escalate_messages = [m for m in prev_messages if isinstance(m, dict) and m.get("type") == "escalate"]
     existing_config["suggestedMessages"] = suggested_messages + escalate_messages
-    existing_config = _ensure_profile_suggested_messages(existing_config)
     bot_service().update_widget_config(bot_id, json.dumps(existing_config))
 
     return {"suggestedMessages": existing_config.get("suggestedMessages") or []}
@@ -2179,21 +2090,25 @@ async def v1_org_test_chat(
         bank_instruction_test = (
             "Answer links (use only when they match the customer’s question):\n"
             f"{bank_lines}\n\n"
-            "If the question matches one of these topics, include the matching link in your response.\n"
+            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
             "Write links as markdown like [Pricing](https://...) inside a normal sentence."
         )
         system_instruction = (
             f"{system_instruction}\n\n{bank_instruction_test}" if system_instruction else bank_instruction_test
         )
 
-    restaurant_instruction_test = _get_restaurant_reservation_instruction(
+    reservation_cfg_test = get_reservation_config_from_widget(
         widget_config_test, lang=_get_bot_language(bot)
     )
-    if restaurant_instruction_test:
+    if reservation_cfg_test:
+        extra_evidence_test.append({
+            "url": reservation_cfg_test["url"],
+            "snippet": f"Official online reservation page: {reservation_cfg_test['url']}",
+        })
         system_instruction = (
-            f"{system_instruction}\n\n{restaurant_instruction_test}"
+            f"{system_instruction}\n\n{reservation_cfg_test['instruction']}"
             if system_instruction
-            else restaurant_instruction_test
+            else reservation_cfg_test["instruction"]
         )
 
     asset_evidence_test = build_asset_evidence(bot.bot_id)
@@ -2203,6 +2118,11 @@ async def v1_org_test_chat(
     if asset_instruction_test:
         system_instruction = (
             f"{system_instruction}\n\n{asset_instruction_test}" if system_instruction else asset_instruction_test
+        )
+    platform_asset_instruction_test = get_platform_asset_instructions(widget_config_test, lang=_get_bot_language(bot))
+    if platform_asset_instruction_test:
+        system_instruction = (
+            f"{system_instruction}\n\n{platform_asset_instruction_test}" if system_instruction else platform_asset_instruction_test
         )
 
     result = run_vertex_rag(
@@ -2219,7 +2139,16 @@ async def v1_org_test_chat(
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
     answer = str(result.get("answer") or "")
-    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
+    if reservation_cfg_test:
+        answer = ensure_canonical_reservation_url_in_text(
+            answer, reservation_cfg_test["url"], reservation_cfg_test["domain_key"]
+        )
+    platform_features_test = get_platform_features_from_widget(widget_config_test)
+    menu_extraction_enabled_test = platform_features_test.get("menu_extraction_enabled") if platform_features_test else False
+    allowed_asset_types_test = {"menu_item"} if menu_extraction_enabled_test else None
+    answer, marker_cards = resolve_asset_markers(
+        answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_test
+    )
     if marker_cards:
         asset_cards = marker_cards
     else:
@@ -2228,6 +2157,7 @@ async def v1_org_test_chat(
             bot.bot_id,
             user_query=msg,
             session_id=session.session_id,
+            allowed_asset_types=allowed_asset_types_test,
         )
     assets = [AssetCard(**c) for c in asset_cards]
     conversation_service().add_message(
@@ -4083,7 +4013,8 @@ async def v1_org_sync_url_bank_topics(
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
-    """Sync URL bank entries as topics. Call when URL bank is saved."""
+    """Sync URL bank entries as topics. Call when URL bank is saved.
+    If url_bank exists with URLs, triggers indexing so the agent can answer from that content when topics match."""
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     synced = topic_extraction_service().sync_url_bank_topics(
@@ -4091,6 +4022,28 @@ async def v1_org_sync_url_bank_topics(
         bot_id=bot_id,
         url_bank=payload.url_bank,
     )
+
+    # If url_bank exists with URLs, index them so the agent can answer from that content when topics match
+    if payload.url_bank:
+        urls_to_index = []
+        for entry in payload.url_bank:
+            if not isinstance(entry, dict):
+                continue
+            url = str(entry.get("url") or "").strip()
+            if not url:
+                continue
+            if not url.startswith(("http://", "https://")):
+                url = "https://" + url
+            urls_to_index.append(url)
+        if urls_to_index:
+            async def _index_url_bank():
+                try:
+                    await indexing_service().start_indexing_batch_for_bot(bot_id, urls_to_index)
+                except (PermissionError, ValueError, RuntimeError) as e:
+                    logger.warning("URL bank indexing skipped for bot_id=%s: %s", bot_id, e)
+
+            asyncio.create_task(_index_url_bank())
+
     return ExtractedTopicsResponse(
         bot_id=bot_id,
         topics=[ExtractedTopicItem(**t) for t in synced],

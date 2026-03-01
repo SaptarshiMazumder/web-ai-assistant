@@ -193,7 +193,8 @@ export default function BotKnowledgeTab() {
   const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
   const [bookingTestUrl, setBookingTestUrl] = useState('')
 
-  // Restaurant platform URL state
+  // Restaurant reservation: one profile per agent
+  const [reservationPlatform, setReservationPlatform] = useState<'tabelog' | 'hotpepper' | 'tablecheck' | ''>('')
   const [restaurantTableCheckUrl, setRestaurantTableCheckUrl] = useState('')
   const [restaurantTabelogUrl, setRestaurantTabelogUrl] = useState('')
   const [restaurantHotPepperUrl, setRestaurantHotPepperUrl] = useState('')
@@ -253,7 +254,13 @@ export default function BotKnowledgeTab() {
       const url = cfg.bookingTestUrl
       if (typeof allow === 'boolean') setAllowRealtimeAvailability(allow)
       if (typeof url === 'string' && url) setBookingTestUrl(url)
-      // Restaurant platform URLs
+      // Restaurant reservation platform (one per agent)
+      const platform = String(cfg.reservationPlatform || '').toLowerCase()
+      if (['tabelog', 'hotpepper', 'tablecheck'].includes(platform)) setReservationPlatform(platform as 'tabelog' | 'hotpepper' | 'tablecheck')
+      else if (cfg.tabelogUrl) setReservationPlatform('tabelog')
+      else if (cfg.hotPepperUrl) setReservationPlatform('hotpepper')
+      else if (cfg.tableCheckUrl) setReservationPlatform('tablecheck')
+      else setReservationPlatform('')
       if (typeof cfg.tableCheckUrl === 'string') setRestaurantTableCheckUrl(cfg.tableCheckUrl)
       if (typeof cfg.tabelogUrl === 'string') setRestaurantTabelogUrl(cfg.tabelogUrl)
       if (typeof cfg.hotPepperUrl === 'string') setRestaurantHotPepperUrl(cfg.hotPepperUrl)
@@ -696,12 +703,13 @@ export default function BotKnowledgeTab() {
     const existing = selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object' ? selectedBotWidgetConfig : {}
     const merged = {
       ...existing,
-      tableCheckUrl: restaurantTableCheckUrl.trim() || undefined,
-      tabelogUrl: restaurantTabelogUrl.trim() || undefined,
-      hotPepperUrl: restaurantHotPepperUrl.trim() || undefined,
+      reservationPlatform: reservationPlatform || undefined,
+      tableCheckUrl: reservationPlatform === 'tablecheck' ? restaurantTableCheckUrl.trim() || undefined : undefined,
+      tabelogUrl: reservationPlatform === 'tabelog' ? restaurantTabelogUrl.trim() || undefined : undefined,
+      hotPepperUrl: reservationPlatform === 'hotpepper' ? restaurantHotPepperUrl.trim() || undefined : undefined,
     }
     await saveWidgetConfig(selectedBot.bot_id, merged)
-  }, [selectedBot, selectedBotWidgetConfig, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, saveWidgetConfig])
+  }, [selectedBot, selectedBotWidgetConfig, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, saveWidgetConfig])
 
   const handleSaveAvailabilitySettings = useCallback(async () => {
     if (!selectedBot) return
@@ -1618,57 +1626,67 @@ export default function BotKnowledgeTab() {
         </GlassCard>
       )}
 
-      {/* Restaurant reservation platforms (restaurant bots only) */}
+      {/* Restaurant reservation: one profile per agent (Tabelog, HotPepper, or TableCheck) */}
       {selectedBotWidgetConfig?.businessType === 'restaurant' && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">{t('botKnowledge.restaurantPlatformsTitle', 'Reservation platforms')}</div>
+          <div className="card-title">{t('botKnowledge.restaurantPlatformsTitle', 'Reservation platform')}</div>
           <p className="card-subtitle" style={{ marginTop: 0 }}>
-            {t('botKnowledge.restaurantPlatformsSubtitle', "Add your restaurant's reservation platform URLs. TableCheck links will enable pre-filled reservation URLs for customers.")}
+            {t('botKnowledge.restaurantPlatformsSubtitle', 'Select one reservation platform. The agent will use its profile when answering reservation questions.')}
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0', marginTop: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
             <div className="testing-field">
-              <label className="testing-label">{t('botKnowledge.tableCheckUrl', 'TableCheck URL')}</label>
-              <input
-                type="url"
+              <label className="testing-label">{t('botKnowledge.reservationPlatform', 'Platform')}</label>
+              <select
                 className="design-form-input"
-                value={restaurantTableCheckUrl}
-                onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
-                placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                value={reservationPlatform}
+                onChange={(e) => setReservationPlatform((e.target.value || '') as 'tabelog' | 'hotpepper' | 'tablecheck' | '')}
                 style={{ width: '100%', maxWidth: '700px' }}
-              />
+              >
+                <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
+                <option value="tabelog">{t('botKnowledge.reservationPlatformTabelog', 'Tabelog')}</option>
+                <option value="hotpepper">{t('botKnowledge.reservationPlatformHotpepper', 'HotPepper')}</option>
+                <option value="tablecheck">{t('botKnowledge.reservationPlatformTablecheck', 'TableCheck')}</option>
+              </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', maxWidth: '700px' }}>
-              <div style={{ flex: 1, height: '1px', background: 'var(--flow-border, #e2e8f0)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--flow-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('common.or', 'or')}</span>
-              <div style={{ flex: 1, height: '1px', background: 'var(--flow-border, #e2e8f0)' }} />
-            </div>
-            <div className="testing-field">
-              <label className="testing-label">{t('botKnowledge.hotPepperUrl', 'HotPepper URL')}</label>
-              <input
-                type="url"
-                className="design-form-input"
-                value={restaurantHotPepperUrl}
-                onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
-                placeholder="https://www.hotpepper.jp/strJ001234567/"
-                style={{ width: '100%', maxWidth: '700px' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.3rem 0', maxWidth: '700px' }}>
-              <div style={{ flex: 1, height: '1px', background: 'var(--flow-border, #e2e8f0)' }} />
-              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--flow-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('common.or', 'or')}</span>
-              <div style={{ flex: 1, height: '1px', background: 'var(--flow-border, #e2e8f0)' }} />
-            </div>
-            <div className="testing-field">
-              <label className="testing-label">{t('botKnowledge.tabelogUrl', 'Tabelog URL')}</label>
-              <input
-                type="url"
-                className="design-form-input"
-                value={restaurantTabelogUrl}
-                onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
-                placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
-                style={{ width: '100%', maxWidth: '700px' }}
-              />
-            </div>
+            {reservationPlatform === 'tabelog' && (
+              <div className="testing-field">
+                <label className="testing-label">{t('botKnowledge.tabelogUrl', 'Tabelog URL')}</label>
+                <input
+                  type="url"
+                  className="design-form-input"
+                  value={restaurantTabelogUrl}
+                  onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
+                  placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
+                  style={{ width: '100%', maxWidth: '700px' }}
+                />
+              </div>
+            )}
+            {reservationPlatform === 'hotpepper' && (
+              <div className="testing-field">
+                <label className="testing-label">{t('botKnowledge.hotPepperUrl', 'HotPepper URL')}</label>
+                <input
+                  type="url"
+                  className="design-form-input"
+                  value={restaurantHotPepperUrl}
+                  onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
+                  placeholder="https://www.hotpepper.jp/strJ001234567/"
+                  style={{ width: '100%', maxWidth: '700px' }}
+                />
+              </div>
+            )}
+            {reservationPlatform === 'tablecheck' && (
+              <div className="testing-field">
+                <label className="testing-label">{t('botKnowledge.tableCheckUrl', 'TableCheck URL')}</label>
+                <input
+                  type="url"
+                  className="design-form-input"
+                  value={restaurantTableCheckUrl}
+                  onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
+                  placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                  style={{ width: '100%', maxWidth: '700px' }}
+                />
+              </div>
+            )}
             <div>
               <button type="button" className="secondary" onClick={() => void handleSaveRestaurantPlatforms()}>
                 {t('botKnowledge.save', 'Save')}

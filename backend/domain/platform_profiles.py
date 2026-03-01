@@ -1,17 +1,22 @@
 """
-Platform-specific crawl profiles for restaurant booking platforms and other domains.
+Platform-specific profiles for restaurant booking platforms and other domains.
 
-A PlatformProfile defines how to crawl a specific domain (e.g., hotpepper.jp):
-- Which URL paths to include/exclude
-- How deep to follow links
-- Custom extraction rules for menus, images, etc.
+A PlatformProfile defines behavior for a domain (e.g., tabelog.com). The same config
+drives all channels (web widget, Line, Instagram); only the presentation layer differs.
 
-New platforms can be added by creating a profile and registering it in PLATFORM_PROFILES.
-Profiles are applied during URL crawling; if no profile matches, default behavior is used.
+Tabelog profile defines:
+- reservation: URL, instruction template, link labels (EN/JA)
+- suggested_messages: Menu, Reservation, Ask a question
+- asset_instructions: when to show menu assets vs reservation link
+- menu_extraction_rules: enabled, paths, categories
+
+Helpers (get_reservation_config_from_widget, get_suggested_messages_for_widget, etc.)
+read from the active profile. Web, Line, and Instagram all use these; each channel
+renders the result in its own UI (quick replies, flex buttons, etc.).
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -87,6 +92,14 @@ HOTPEPPER_PROFILE = PlatformProfile(
         "platform_type": "restaurant_reservation",
         "country": "JP",
         "service_name": "HotPepper Gourmet",
+        "reservation": {
+            "enabled": True,
+            "link_label": {"en": "HotPepper Gourmet", "ja": "ホットペッパーグルメ"},
+            "instruction_template": {
+                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
+                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
+            },
+        },
     },
 )
 
@@ -130,36 +143,30 @@ TABELOG_PROFILE = PlatformProfile(
                 "en": "Tabelog Online Reservation",
                 "ja": "食べログ ネット予約",
             },
-            "intent_keywords": {
-                "en": [
-                    "reservation",
-                    "reserve",
-                    "booking",
-                    "book a table",
-                    "book table",
-                    "online reservation",
-                ],
-                "ja": [
-                    "予約",
-                    "ネット予約",
-                    "オンライン予約",
-                    "席予約",
-                    "予約したい",
-                ],
-            },
-            "response_templates": {
-                "en": "For online reservations, please use [{label}]({url}).",
-                "ja": "オンライン予約はこちらをご利用ください: [{label}]({url})",
+            "instruction_template": {
+                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
+                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
             },
         },
         "suggested_messages": [
-            {
-                "id": "suggest_menu",
-                "type": "ai_response",
-                "label": {"en": "Menu", "ja": "メニュー"},
-                "prompt": {"en": "Menu", "ja": "メニュー"},
-            }
+            {"id": "suggest_menu", "type": "ai_response", "label": {"en": "Menu", "ja": "メニュー"}, "prompt": {"en": "Menu", "ja": "メニュー"}},
+            {"id": "suggest_reservation", "type": "ai_response", "label": {"en": "Reservation", "ja": "予約"}, "prompt": {"en": "Reservation", "ja": "予約"}},
+            {"id": "suggest_question", "type": "ai_response", "label": {"en": "Ask a question", "ja": "質問する"}, "prompt": {"en": "Ask a question", "ja": "質問する"}},
         ],
+        "asset_instructions": {
+            "en": (
+                "ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:\n"
+                "- Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset:ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.\n"
+                "- Menu/dish/course intent: Use {{asset:ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.\n"
+                "- Other questions: Use {{asset:ID}} only when the asset is directly relevant to the answer."
+            ),
+            "ja": (
+                "アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:\n"
+                "- 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset:ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。\n"
+                "- メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset:ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。\n"
+                "- その他の質問: アセットが回答に直接関連する場合のみ{{asset:ID}}を使用してください。"
+            ),
+        },
     },
 )
 
@@ -172,6 +179,14 @@ TABLECHECK_PROFILE = PlatformProfile(
         "platform_type": "restaurant_reservation",
         "country": "JP",
         "service_name": "TableCheck",
+        "reservation": {
+            "enabled": True,
+            "link_label": {"en": "TableCheck Reservation", "ja": "TableCheck予約"},
+            "instruction_template": {
+                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
+                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
+            },
+        },
     },
 )
 
@@ -189,6 +204,204 @@ PLATFORM_PROFILES = {
 Central registry mapping domain patterns to platform profiles.
 Used to look up crawl/extraction rules when processing a URL.
 """
+
+# One profile per restaurant agent. Maps platform id -> (widget_config URL key, domain_key)
+RESERVATION_PLATFORM_CONFIG: Dict[str, Tuple[str, str]] = {
+    "tabelog": ("tabelogUrl", "tabelog.com"),
+    "hotpepper": ("hotPepperUrl", "hotpepper.jp"),
+    "tablecheck": ("tableCheckUrl", "tablecheck.com"),
+}
+
+# Default suggested messages when no profile defines them. Used across Line, Instagram, web widget.
+DEFAULT_SUGGESTED_MESSAGES: List[Dict[str, Any]] = [
+    {"id": "suggest_1", "type": "ai_response", "label": {"en": "What can you do?", "ja": "何ができますか？"}, "prompt": {"en": "What can you do?", "ja": "何ができますか？"}},
+    {"id": "suggest_2", "type": "ai_response", "label": {"en": "Ask a question", "ja": "質問する"}, "prompt": {"en": "Ask a question", "ja": "質問する"}},
+]
+
+
+def get_reservation_config_from_widget(
+    widget_config: Dict[str, Any],
+    *,
+    lang: str = "en",
+) -> Optional[Dict[str, Any]]:
+    """
+    Get reservation config from widget_config and platform profiles.
+    Fully config-driven: presence of reservationPlatform + URL is the only signal.
+
+    Returns:
+        Dict with url, instruction, domain_key, link_label, platform_id; or None if not applicable.
+    """
+    if not isinstance(widget_config, dict):
+        return None
+
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+
+    # One profile per agent: use reservationPlatform if set, else infer from first URL
+    platform_id = str(widget_config.get("reservationPlatform") or "").strip().lower()
+    if not platform_id:
+        for pid, (config_key, _) in RESERVATION_PLATFORM_CONFIG.items():
+            if (widget_config.get(config_key) or "").strip():
+                platform_id = pid
+                break
+    if not platform_id or platform_id not in RESERVATION_PLATFORM_CONFIG:
+        return None
+
+    config_key, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
+    raw_url = (widget_config.get(config_key) or "").strip()
+    if not raw_url:
+        return None
+    if not raw_url.startswith(("http://", "https://")):
+        raw_url = f"https://{raw_url}"
+
+    profile, resolved_domain = resolve_platform_profile(raw_url)
+    if profile is None or resolved_domain != domain_key:
+        return None
+
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    reservation = metadata.get("reservation")
+    if not isinstance(reservation, dict):
+        return None
+    if not reservation.get("enabled", True):
+        return None
+
+    # Optional override from widget_config; else use platform profile template
+    custom = (widget_config.get("reservationInstruction") or "").strip()
+    if custom:
+        instruction = custom
+    else:
+        templates = reservation.get("instruction_template")
+        if isinstance(templates, dict):
+            instruction = str(templates.get(lang) or templates.get("en") or "").strip()
+        else:
+            instruction = "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence."
+    if not instruction:
+        return None
+
+    try:
+        instruction = instruction.format(url=raw_url)
+    except (KeyError, ValueError):
+        instruction = f"{instruction} {raw_url}"
+
+    labels = reservation.get("link_label")
+    if isinstance(labels, dict):
+        link_label = str(labels.get(lang) or labels.get("en") or "Online Reservation").strip()
+    else:
+        link_label = "Online Reservation"
+
+    return {
+        "url": raw_url,
+        "instruction": instruction,
+        "domain_key": domain_key,
+        "link_label": link_label,
+        "platform_id": platform_id,
+    }
+
+
+def get_platform_features_from_widget(widget_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Get platform features (menu, suggested_messages) from widget config.
+    Fully config-driven: reads from the active platform profile.
+    """
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return None
+    domain_key = cfg.get("domain_key")
+    if not domain_key or domain_key not in PLATFORM_PROFILES:
+        return None
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    menu_rules = getattr(profile, "menu_extraction_rules", None)
+    menu_enabled = (
+        isinstance(menu_rules, dict)
+        and menu_rules.get("enabled", True)
+    )
+    suggested = metadata.get("suggested_messages")
+    if not isinstance(suggested, list):
+        suggested = None
+    return {
+        "menu_extraction_enabled": menu_enabled,
+        "suggested_messages": suggested,
+    }
+
+
+def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
+    """Resolve label/prompt from string or {en, ja} dict."""
+    if isinstance(raw, dict):
+        return str(raw.get(lang) or raw.get("en") or "").strip()
+    return str(raw or "").strip()
+
+
+def get_suggested_messages_for_widget(
+    widget_config: Dict[str, Any],
+    *,
+    lang: str = "en",
+) -> List[Dict[str, Any]]:
+    """
+    Get suggested messages for a bot from its platform profile or default.
+    Used across Line, Instagram, web widget. Fully config-driven.
+
+    - If the active profile has suggested_messages → use it (resolved by lang).
+    - Else → use DEFAULT_SUGGESTED_MESSAGES (2 items: What can you do?, Ask a question).
+
+    Returns list of dicts with id, label (string), prompt (string), type.
+    """
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+
+    def resolve_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for raw in items:
+            if not isinstance(raw, dict):
+                continue
+            label = _resolve_label_or_prompt(raw.get("label"), lang)
+            if not label:
+                continue
+            prompt = _resolve_label_or_prompt(raw.get("prompt"), lang) or label
+            out.append({
+                "id": str(raw.get("id") or "").strip() or f"suggest_{len(out) + 1}",
+                "label": label,
+                "prompt": prompt,
+                "type": str(raw.get("type") or "ai_response").strip() or "ai_response",
+            })
+        return out
+
+    features = get_platform_features_from_widget(widget_config)
+    if features and features.get("suggested_messages"):
+        return resolve_items(features["suggested_messages"])
+    return resolve_items(DEFAULT_SUGGESTED_MESSAGES)
+
+
+def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:
+    """
+    Get asset usage instructions from the active platform profile.
+    Config-driven: no platform-specific logic in callers.
+    """
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return None
+    domain_key = cfg.get("domain_key")
+    if not domain_key or domain_key not in PLATFORM_PROFILES:
+        return None
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    instructions = metadata.get("asset_instructions")
+    if not isinstance(instructions, dict):
+        return None
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+    text = str(instructions.get(lang) or instructions.get("en") or "").strip()
+    return text if text else None
+
+
+def ensure_canonical_reservation_url_in_text(text: str, canonical_url: str, domain_key: str) -> str:
+    """Replace any URLs from the given domain in text with the canonical URL."""
+    import re
+    if not text or not canonical_url or not domain_key:
+        return text
+    escaped = re.escape(domain_key)
+    pattern = rf"https?://[^\s\)\]\"\']*{escaped}[^\s\)\]\"\']*"
+    return re.sub(pattern, canonical_url, text, flags=re.IGNORECASE)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -68,7 +68,9 @@ export type CreateBotStep2Slice = {
   deselectAll: () => void
   startTraining: (selectedDiscoveredUrls?: string[]) => Promise<string | null>
   stopDiscovery: () => void
-  // Restaurant platform URLs (restaurant bots only)
+  // Restaurant reservation: one profile per agent
+  reservationPlatform: '' | 'tabelog' | 'hotpepper' | 'tablecheck'
+  setReservationPlatform: (value: '' | 'tabelog' | 'hotpepper' | 'tablecheck') => void
   restaurantTableCheckUrl: string
   setRestaurantTableCheckUrl: (value: string) => void
   restaurantTabelogUrl: string
@@ -225,6 +227,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [textDocFiles, setTextDocFiles] = useState<File[]>([])
   const [plainTextContent, setPlainTextContent] = useState('')
   const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
+  const [reservationPlatform, setReservationPlatform] = useState<'' | 'tabelog' | 'hotpepper' | 'tablecheck'>('')
   const [restaurantTableCheckUrl, setRestaurantTableCheckUrl] = useState('')
   const [restaurantTabelogUrl, setRestaurantTabelogUrl] = useState('')
   const [restaurantHotPepperUrl, setRestaurantHotPepperUrl] = useState('')
@@ -299,6 +302,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setSharedUrlRows([{ url: '', label: '' }])
+    setReservationPlatform('')
     setRestaurantTableCheckUrl('')
     setRestaurantTabelogUrl('')
     setRestaurantHotPepperUrl('')
@@ -607,9 +611,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
       // Save restaurant platform URLs from dedicated state fields
       if (businessType === 'restaurant') {
-        if (restaurantTableCheckUrl.trim()) widgetPayload.tableCheckUrl = restaurantTableCheckUrl.trim()
-        if (restaurantTabelogUrl.trim()) widgetPayload.tabelogUrl = restaurantTabelogUrl.trim()
-        if (restaurantHotPepperUrl.trim()) widgetPayload.hotPepperUrl = restaurantHotPepperUrl.trim()
+        if (reservationPlatform && reservationPlatform === 'tablecheck' && restaurantTableCheckUrl.trim()) widgetPayload.tableCheckUrl = restaurantTableCheckUrl.trim()
+        if (reservationPlatform && reservationPlatform === 'tabelog' && restaurantTabelogUrl.trim()) widgetPayload.tabelogUrl = restaurantTabelogUrl.trim()
+        if (reservationPlatform && reservationPlatform === 'hotpepper' && restaurantHotPepperUrl.trim()) widgetPayload.hotPepperUrl = restaurantHotPepperUrl.trim()
+        if (reservationPlatform) widgetPayload.reservationPlatform = reservationPlatform
       }
       await saveWidgetConfig(created.bot_id, widgetPayload)
     } catch {
@@ -623,7 +628,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -719,7 +724,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       : (contentHosting === 'own' ? selectedUrls : trainingUrls)
     // Collect restaurant platform URLs for discovery + crawl
     const restaurantPlatformUrls = businessType === 'restaurant'
-      ? [restaurantHotPepperUrl, restaurantTabelogUrl, restaurantTableCheckUrl]
+      ? (reservationPlatform === 'hotpepper' ? [restaurantHotPepperUrl] : reservationPlatform === 'tabelog' ? [restaurantTabelogUrl] : reservationPlatform === 'tablecheck' ? [restaurantTableCheckUrl] : [])
           .map((u) => normalizeOneUrl(u))
           .filter(Boolean)
           .filter((u) => !finalUrls.includes(u))
@@ -754,9 +759,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
       // Save restaurant platform URLs from dedicated state fields
       if (businessType === 'restaurant') {
-        if (restaurantTableCheckUrl.trim()) widgetPayloadTrain.tableCheckUrl = restaurantTableCheckUrl.trim()
-        if (restaurantTabelogUrl.trim()) widgetPayloadTrain.tabelogUrl = restaurantTabelogUrl.trim()
-        if (restaurantHotPepperUrl.trim()) widgetPayloadTrain.hotPepperUrl = restaurantHotPepperUrl.trim()
+        if (reservationPlatform === 'tablecheck' && restaurantTableCheckUrl.trim()) widgetPayloadTrain.tableCheckUrl = restaurantTableCheckUrl.trim()
+        if (reservationPlatform === 'tabelog' && restaurantTabelogUrl.trim()) widgetPayloadTrain.tabelogUrl = restaurantTabelogUrl.trim()
+        if (reservationPlatform === 'hotpepper' && restaurantHotPepperUrl.trim()) widgetPayloadTrain.hotPepperUrl = restaurantHotPepperUrl.trim()
+        if (reservationPlatform) widgetPayloadTrain.reservationPlatform = reservationPlatform
       }
       await saveWidgetConfig(created.bot_id, widgetPayloadTrain)
     } catch {
@@ -862,7 +868,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -1017,6 +1023,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         deselectAll,
         startTraining,
         stopDiscovery,
+        reservationPlatform,
+        setReservationPlatform,
         restaurantTableCheckUrl,
         setRestaurantTableCheckUrl,
         restaurantTabelogUrl,
@@ -1188,6 +1196,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       selectAll,
       deselectAll,
       startTraining,
+      reservationPlatform,
       restaurantTableCheckUrl,
       restaurantTabelogUrl,
       restaurantHotPepperUrl,

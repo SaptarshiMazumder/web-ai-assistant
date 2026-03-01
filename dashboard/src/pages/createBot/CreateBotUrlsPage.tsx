@@ -34,6 +34,8 @@ export default function CreateBotUrlsPage() {
     stopDiscovery,
     localError,
     localErrorType,
+    reservationPlatform,
+    setReservationPlatform,
     restaurantTableCheckUrl,
     setRestaurantTableCheckUrl,
     restaurantTabelogUrl,
@@ -164,9 +166,10 @@ export default function CreateBotUrlsPage() {
       }
     }
 
-    // Add platform URLs for restaurants
-    if (isRestaurant) {
-      const platformUrls = [restaurantHotPepperUrl, restaurantTabelogUrl, restaurantTableCheckUrl]
+    // Add platform URL for restaurants (one profile per agent)
+    if (isRestaurant && reservationPlatform) {
+      const platformUrl = reservationPlatform === 'tabelog' ? restaurantTabelogUrl : reservationPlatform === 'hotpepper' ? restaurantHotPepperUrl : restaurantTableCheckUrl
+      const platformUrls = [platformUrl]
         .map((u) => {
           const trimmed = u.trim()
           if (!trimmed) return null
@@ -302,7 +305,7 @@ export default function CreateBotUrlsPage() {
       setIsSharedDiscovering(false)
       sharedDiscoveryAbortRef.current = null
     }
-  }, [sharedDiscoveryUrl, businessType, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, discoverUrlsFromHook, discoveryMethod, t])
+  }, [sharedDiscoveryUrl, businessType, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, discoverUrlsFromHook, discoveryMethod, t])
 
   const handleStopSharedDiscovery = useCallback(() => {
     if (sharedDiscovery60sTimerRef.current) {
@@ -592,70 +595,74 @@ export default function CreateBotUrlsPage() {
                   <div style={{ flex: 1, height: '1px', background: 'var(--flow-border)' }} />
                 </div>
 
-                {/* Restaurant Platform URLs */}
+                {/* Restaurant reservation: one profile per agent */}
                 <div>
                   <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.6rem' }}>
-                    {t('createBot.reservationPlatforms', 'Reservation platforms (HotPepper or Tabelog or TableCheck)')}
+                    {t('createBot.reservationPlatforms', 'Reservation platform')}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {/* HotPepper */}
                     <div>
                       <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                        {t('botKnowledge.hotPepperUrl', 'HotPepper URL')}
+                        {t('botKnowledge.reservationPlatform', 'Platform')}
                       </label>
-                      <input
-                        type="url"
-                        value={restaurantHotPepperUrl}
-                        onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
-                        placeholder="https://www.hotpepper.jp/strJ001234567/"
+                      <select
+                        value={reservationPlatform}
+                        onChange={(e) => setReservationPlatform((e.target.value || '') as '' | 'tabelog' | 'hotpepper' | 'tablecheck')}
                         disabled={isSharedDiscovering}
                         style={{ width: '100%' }}
-                      />
+                      >
+                        <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
+                        <option value="tabelog">{t('botKnowledge.reservationPlatformTabelog', 'Tabelog')}</option>
+                        <option value="hotpepper">{t('botKnowledge.reservationPlatformHotpepper', 'HotPepper')}</option>
+                        <option value="tablecheck">{t('botKnowledge.reservationPlatformTablecheck', 'TableCheck')}</option>
+                      </select>
                     </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {t('common.or', 'or')}
-                      </span>
-                    </div>
-
-                    {/* Tabelog */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                        {t('botKnowledge.tabelogUrl', 'Tabelog URL')}
-                      </label>
-                      <input
-                        type="url"
-                        value={restaurantTabelogUrl}
-                        onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
-                        placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
-                        disabled={isSharedDiscovering}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--flow-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                        {t('common.or', 'or')}
-                      </span>
-                    </div>
-
-                    {/* TableCheck */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                        {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
-                      </label>
-                      <input
-                        type="url"
-                        value={restaurantTableCheckUrl}
-                        onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
-                        placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
-                        disabled={isSharedDiscovering}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
+                    {reservationPlatform === 'tabelog' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                          {t('botKnowledge.tabelogUrl', 'Tabelog URL')}
+                        </label>
+                        <input
+                          type="url"
+                          value={restaurantTabelogUrl}
+                          onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
+                          placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
+                          disabled={isSharedDiscovering}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    )}
+                    {reservationPlatform === 'hotpepper' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                          {t('botKnowledge.hotPepperUrl', 'HotPepper URL')}
+                        </label>
+                        <input
+                          type="url"
+                          value={restaurantHotPepperUrl}
+                          onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
+                          placeholder="https://www.hotpepper.jp/strJ001234567/"
+                          disabled={isSharedDiscovering}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    )}
+                    {reservationPlatform === 'tablecheck' && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                          {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
+                        </label>
+                        <input
+                          type="url"
+                          value={restaurantTableCheckUrl}
+                          onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
+                          placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                          disabled={isSharedDiscovering}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    )}
                   </div>
-
                 </div>
               </>
             )}
@@ -667,7 +674,7 @@ export default function CreateBotUrlsPage() {
               <UiButton
                 variant="primary"
                 onClick={() => void handleSharedDiscoverUrls()}
-                disabled={!sharedDiscoveryUrl.trim() && (businessType !== 'restaurant' || (!restaurantTableCheckUrl.trim() && !restaurantHotPepperUrl.trim() && !restaurantTabelogUrl.trim()))}
+                disabled={!sharedDiscoveryUrl.trim() && (businessType !== 'restaurant' || !reservationPlatform || (reservationPlatform === 'tabelog' && !restaurantTabelogUrl.trim()) || (reservationPlatform === 'hotpepper' && !restaurantHotPepperUrl.trim()) || (reservationPlatform === 'tablecheck' && !restaurantTableCheckUrl.trim()))}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <ScanSearch size={16} />
