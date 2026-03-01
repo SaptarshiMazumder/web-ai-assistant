@@ -783,6 +783,41 @@ def _filter_and_record_session_assets(
     return filtered
 
 
+def sanitize_answer_for_display(answer: str) -> str:
+    """
+    Clean the answer before showing to user:
+    - Strip any remaining asset_id / asset marker syntax (never show to user)
+    - Ensure URLs are on their own line (avoids concatenation with random text)
+    """
+    if not (answer or "").strip():
+        return answer or ""
+    text = answer.strip()
+
+    # 1. Strip any remaining asset markers (never show asset_id to user)
+    text = re.sub(r"\s*\{\{asset[:_][a-zA-Z0-9_\-]+\}\}", "", text)
+    text = re.sub(r"asset_[a-f0-9]{12,}", "", text)
+
+    # 2. Ensure standalone URLs are on their own line (prevents concatenation with following text)
+    def _url_on_newline(m: re.Match) -> str:
+        url = m.group(0)
+        start, end = m.start(), m.end()
+        before = text[start - 1] if start > 0 else ""
+        after = text[end] if end < len(text) else ""
+        # Skip URLs inside markdown links [text](url)
+        if before == "(" and after == ")":
+            return url
+        prefix = "\n" if before and before not in "\n" else ""
+        suffix = "\n" if after and after not in "\n)" else ""
+        return f"{prefix}{url}{suffix}"
+    text = re.sub(r"https?://[^\s<>()\"'\]]+", _url_on_newline, text, flags=re.IGNORECASE)
+
+    # Clean up excess whitespace
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n ", "\n", text)
+    return text.strip()
+
+
 def resolve_asset_markers(
     answer: str,
     bot_id: str,
@@ -799,7 +834,7 @@ def resolve_asset_markers(
     pattern = r"\s*\{\{asset_([a-zA-Z0-9_\-]+)\}\}"
     matches = list(re.finditer(pattern, answer))
     if not matches:
-        return answer, []
+        return sanitize_answer_for_display(answer), []
 
     cards = []
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
@@ -839,7 +874,7 @@ def resolve_asset_markers(
     # Apply session-based deduplication
     final_cards = _filter_and_record_session_assets(unique_cards, bot_id, session_id)
 
-    return cleaned_answer.strip(), final_cards
+    return sanitize_answer_for_display(cleaned_answer), final_cards
 
 
 def process_answer_assets(
@@ -896,13 +931,13 @@ def process_answer_assets(
     # Only return cards that have images (skip broken/empty cards)
     cards = [c for c in cards if (c.get("image_url") or "").strip()]
     if not cards:
-        return cleaned, []
+        return sanitize_answer_for_display(cleaned), []
 
     max_cards_for_query = _max_cards_for_query(user_query, cards)
     if max_cards_for_query <= 0:
-        return cleaned, []
+        return sanitize_answer_for_display(cleaned), []
 
     sid = (session_id or "").strip()
     if sid and cards:
         cards = _filter_and_record_session_assets(cards, bot_id, sid)
-    return cleaned, cards[:_ASSET_BANK_LIMIT]
+    return sanitize_answer_for_display(cleaned), cards[:_ASSET_BANK_LIMIT]

@@ -176,9 +176,10 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
             pass
     vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
     display_name = _rag_display_name(bot_id)
+    from infrastructure.rag.crawl_service import EMBEDDING_PUBLISHER_MODEL
     emb_cfg = vx_rag.RagEmbeddingModelConfig(
         vertex_prediction_endpoint=vx_rag.VertexPredictionEndpoint(
-            publisher_model="publishers/google/models/text-embedding-005"
+            publisher_model=EMBEDDING_PUBLISHER_MODEL
         )
     )
     corpus = vx_rag.create_corpus(

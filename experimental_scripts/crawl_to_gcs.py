@@ -35,8 +35,11 @@ VERTEX_LOCATION = "us-central1"  # RAG lives in a regional Vertex location
 RAG_CORPUS = "projects/gen-lang-client-0545494042/locations/us-central1/ragCorpora/4611686018427387904"
 
 
-# Embedding model used by the RAG index
-EMBEDDING_PUBLISHER_MODEL = "publishers/google/models/text-embedding-005"
+# Embedding model used by the RAG index (env: RAG_EMBEDDING_MODEL). Supported: text-embedding-005, text-multilingual-embedding-002
+EMBEDDING_PUBLISHER_MODEL = (
+    os.environ.get("RAG_EMBEDDING_MODEL", "publishers/google/models/text-multilingual-embedding-002").strip()
+    or "publishers/google/models/text-multilingual-embedding-002"
+)
 
 BUCKET_NAME = "web-assistant-test-bucket-1"
 GCS_SUBPATH = "raw_pages"              # final prefix: raw_pages/<site>/<timestamp>/

@@ -33,8 +33,13 @@ VERTEX_LOCATION = (config.LOCATION or "us-central1").strip()
 # Else leave empty ("") and the script will create one and print its name.
 RAG_CORPUS = os.environ.get("DEFAULT_RAG_CORPUS", "").strip()
 
-# Embedding model used by the RAG index
-EMBEDDING_PUBLISHER_MODEL = "publishers/google/models/text-embedding-005"
+# Embedding model used by the RAG index (env: RAG_EMBEDDING_MODEL)
+# Supported for RAG: text-embedding-005, text-embedding-004, text-multilingual-embedding-002
+# gemini-embedding-001 is NOT supported for Vertex RAG corpus yet.
+EMBEDDING_PUBLISHER_MODEL = (
+    os.environ.get("RAG_EMBEDDING_MODEL", "publishers/google/models/text-multilingual-embedding-002").strip()
+    or "publishers/google/models/text-multilingual-embedding-002"
+)
 
 def _parse_bucket_and_prefix() -> Tuple[str, str]:
     bucket_and_prefix = (config.GCS_BUCKET or "").strip("/").split("/", 1)

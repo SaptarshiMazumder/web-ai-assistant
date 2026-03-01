@@ -34,10 +34,11 @@ paths = [f"gs://{BUCKET_NAME}/{GCS_SUBPATH}/"]
 vertexai.init(project=PROJECT_ID, location="us-central1")
 
 # Create RagCorpus
-# Configure embedding model, for example "text-embedding-005".
+# Embedding model (env: RAG_EMBEDDING_MODEL). Supported: text-embedding-005, text-multilingual-embedding-002
+_embedding_model = os.environ.get("RAG_EMBEDDING_MODEL", "publishers/google/models/text-multilingual-embedding-002").strip() or "publishers/google/models/text-multilingual-embedding-002"
 embedding_model_config = rag.RagEmbeddingModelConfig(
     vertex_prediction_endpoint=rag.VertexPredictionEndpoint(
-        publisher_model="publishers/google/models/text-embedding-005"
+        publisher_model=_embedding_model
     )
 )
 
