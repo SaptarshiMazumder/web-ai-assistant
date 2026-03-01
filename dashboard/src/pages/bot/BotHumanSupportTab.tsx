@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Bell, BellRing, Check, MessageSquare, Save } from 'lucide-react'
+import { BellRing, Check, MessageSquare, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   stateToWidgetConfig,
@@ -37,8 +37,6 @@ export default function BotHumanSupportTab() {
   const [escalationBtnLabel, setEscalationBtnLabel] = useState(defaultEscalationBtnLabel)
   const [savingEscalation, setSavingEscalation] = useState(false)
   const [escalationSavedJustNow, setEscalationSavedJustNow] = useState(false)
-  const [escalationToggling, setEscalationToggling] = useState(false)
-
   useEffect(() => {
     const next = widgetConfigToState(selectedBotWidgetConfig ?? null)
     setSuggestedMessages(next.suggestedMessages)
@@ -61,48 +59,18 @@ export default function BotHumanSupportTab() {
     await saveWidgetConfig(botId, stateToWidgetConfig(currentState))
   }
 
-  const handleEscalationToggle = async (enabled: boolean) => {
-    if (!botId || escalationToggling) return
-    setEscalationToggling(true)
-    setEscalationConfig((prev) => ({ ...prev, enabled }))
-
-    try {
-      if (enabled) {
-        const hasEscalateMsg = suggestedMessages.some((m) => m.type === 'escalate')
-        if (!hasEscalateMsg) {
-          const newMsg: SuggestedMessageConfig = {
-            id: `suggest_escalate_${Date.now()}`,
-            label: escalationBtnLabel,
-            type: 'escalate',
-          }
-          await saveMessages([...suggestedMessages, newMsg])
-        }
-        await saveEscalationConfig(botId, { ...escalationConfig, enabled: true })
-      } else {
-        const filtered = suggestedMessages.filter((m) => m.type !== 'escalate')
-        await saveMessages(filtered)
-        await saveEscalationConfig(botId, { ...escalationConfig, enabled: false })
-      }
-    } catch {
-      setEscalationConfig((prev) => ({ ...prev, enabled: !enabled }))
-    } finally {
-      setEscalationToggling(false)
-    }
-  }
-
   const handleSave = async () => {
     if (!botId || savingEscalation || escalationSavedJustNow) return
     setSavingEscalation(true)
     try {
-      const saved = await saveEscalationConfig(botId, escalationConfig)
+      const toSave = { ...escalationConfig, enabled: true }
+      const saved = await saveEscalationConfig(botId, toSave)
       if (saved) setEscalationConfig(saved)
 
-      if (escalationConfig.enabled) {
-        const updatedMessages = suggestedMessages.map((m) =>
-          m.type === 'escalate' ? { ...m, label: escalationBtnLabel } : m
-        )
-        await saveMessages(updatedMessages)
-      }
+      const updatedMessages = suggestedMessages.map((m) =>
+        m.type === 'escalate' ? { ...m, label: escalationBtnLabel } : m
+      )
+      await saveMessages(updatedMessages)
 
       setEscalationSavedJustNow(true)
       setTimeout(() => setEscalationSavedJustNow(false), SAVED_FEEDBACK_MS)
@@ -125,30 +93,7 @@ export default function BotHumanSupportTab() {
       />
 
       <GlassCard style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Bell size={18} style={{ color: 'var(--ui-flow-accent)' }} />
-            <div>
-              <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>{t('botSuggestedMessages.enableHumanSupportTitle', 'Enable human support requests')}</div>
-              <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-                {t('botSuggestedMessages.enableHumanSupportSubtitle', 'Allow visitors to request human support with their email.')}
-              </p>
-            </div>
-          </div>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={escalationConfig.enabled}
-              onChange={(e) => void handleEscalationToggle(e.target.checked)}
-              disabled={escalationToggling}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-
-        {escalationConfig.enabled && (
-          <>
-            <div style={{ padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+        <div style={{ padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
                 <MessageSquare size={18} style={{ color: 'var(--ui-flow-accent)' }} />
                 <div>
@@ -203,8 +148,6 @@ export default function BotHumanSupportTab() {
                 }
               />
             </GlassField>
-          </>
-        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <UiButton

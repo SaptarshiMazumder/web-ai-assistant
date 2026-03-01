@@ -37,7 +37,7 @@ export type WidgetDesignState = {
 export type SuggestedMessageConfig = {
   id: string
   label: string
-  type: 'ai_response' | 'escalate'
+  type: 'ai_response' | 'show_menu' | 'escalate'
   message?: string
   prompt?: string
   urls?: string[]
@@ -66,7 +66,7 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   displaySourcesInMessages: false,
   sourcesLabel: 'Sources',
   suggestedMessages: [
-    { id: 'suggest_1', label: 'What can you do?', type: 'ai_response', prompt: 'What can you do?' },
+    { id: 'suggest_1', label: 'Menu', type: 'show_menu' },
     { id: 'suggest_2', label: 'Ask a question', type: 'ai_response', prompt: 'Ask a question' },
     { id: 'suggest_3', label: 'Request human support', type: 'escalate' },
   ],
@@ -82,7 +82,7 @@ const DEFAULT_WIDGET_DESIGN_JA: Partial<WidgetDesignState> = {
   launcherText: 'ヘルプ',
   sourcesLabel: 'ソース',
   suggestedMessages: [
-    { id: 'suggest_1', label: '何ができますか？', type: 'ai_response', prompt: '何ができますか？' },
+    { id: 'suggest_1', label: 'メニュー', type: 'show_menu' },
     { id: 'suggest_2', label: '質問する', type: 'ai_response', prompt: '質問する' },
     { id: 'suggest_3', label: 'サポートに相談', type: 'escalate' },
   ],
@@ -133,7 +133,7 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
         const label = typeof item?.label === 'string' ? item.label : ''
         if (!label) return null
         const type =
-          item?.type === 'ai_response' || item?.type === 'escalate'
+          item?.type === 'ai_response' || item?.type === 'show_menu' || item?.type === 'escalate'
             ? item.type
             : 'ai_response'
         const message = typeof item?.message === 'string' ? item.message : undefined

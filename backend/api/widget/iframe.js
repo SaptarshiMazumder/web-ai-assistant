@@ -16,7 +16,7 @@
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
   const suggestedMessagesEnabled = parseBool(params.get("suggestedMessagesEnabled"), false);
   const suggestedMessagesParam = suggestedMessagesEnabled ? params.get("suggestedMessages") : null;
-  const escalationsEnabled = parseBool(params.get("escalationsEnabled"), false);
+  const escalationsEnabled = true;
   const availabilityCheckEnabled = parseBool(params.get("availabilityCheckEnabled"), false);
   const sessionKey = pk ? `webai_session_${pk}` : null;
   let sessionId = sessionKey ? localStorage.getItem(sessionKey) || "" : "";
@@ -37,7 +37,7 @@
     return list
       .map((item, idx) => {
         const label = item && typeof item.label === "string" ? item.label : "";
-        const type = item && item.type === "escalate" ? "escalate" : "ai_response";
+        const type = item && (item.type === "escalate" ? "escalate" : item.type === "show_menu" ? "show_menu" : "ai_response");
         const message = item && typeof item.message === "string" ? item.message : "";
         const prompt = item && typeof item.prompt === "string" ? item.prompt : "";
         const urls = Array.isArray(item && item.urls)
@@ -210,6 +210,10 @@
       }
       if (item.type === "escalate") {
         openEscalationModal();
+        return;
+      }
+      if (item.type === "show_menu") {
+        sendMessageWithContent(item.label || "Menu", item.label || "Menu");
         return;
       }
       const content = item.message || item.label;

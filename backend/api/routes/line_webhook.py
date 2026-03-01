@@ -72,6 +72,29 @@ def _rate_limit(bot_id: str) -> None:
 
 # ── Escalation keyword detection ─────────────────────────────────────
 
+_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
+    "en": {
+        "prompt": "I'll connect you with our team right away.\n\n"
+        "Would you like to leave a message for them? Type your message below, or reply \"skip\" to connect immediately.",
+        "confirm": "Our team has been notified and will reply to you here shortly.\n\n"
+        'Reply "back to bot" anytime to return to the AI assistant.',
+        "ack_brief": "✓ Sent. (Say \"back to bot\" to return to the AI assistant.)",
+        "ack_full": "✓ Message received by our team. They'll reply here shortly.\n\n"
+        "To return to the AI assistant, just say \"back to bot\".",
+        "de_esc": "You're now back with our AI assistant. How can I help you?",
+    },
+    "ja": {
+        "prompt": "担当者におつなぎいたします。\n\n"
+        "メッセージを残しますか？下に入力するか、「skip」と返信するとすぐにつなぎます。",
+        "confirm": "担当者に連絡しました。こちらからご返信いたします。\n\n"
+        "AIアシスタントに戻るには「back to bot」と送信してください。",
+        "ack_brief": "✓ 送信しました。（AIアシスタントに戻るには「back to bot」と送信してください。）",
+        "ack_full": "✓ 担当者が受け取りました。まもなくご返信いたします。\n\n"
+        "AIアシスタントに戻るには「back to bot」と送信してください。",
+        "de_esc": "AIアシスタントに戻りました。何かお手伝いできますか？",
+    },
+}
+
 ESCALATION_KEYWORDS = {
     "human", "agent", "staff", "real person", "operator",
     "talk to someone", "スタッフ", "人間", "担当者",
@@ -79,6 +102,7 @@ ESCALATION_KEYWORDS = {
 
 SKIP_KEYWORDS = {
     "skip", "s", "/skip", "no", "nope", "never mind", "cancel",
+    "スキップ", "いいえ", "キャンセル",
 }
 
 # Matches any intent to return to the AI/bot, case-insensitive
@@ -94,6 +118,21 @@ _DE_ESCALATION_PATTERN = re.compile(
 def _wants_escalation(text: str) -> bool:
     lower = text.lower().strip()
     return any(kw in lower for kw in ESCALATION_KEYWORDS)
+
+
+def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
+    """True if text matches an escalate-type suggested message label or prompt."""
+    if not text or not suggested_messages:
+        return False
+    t = (text or "").strip()
+    for sm in suggested_messages:
+        if str(sm.get("type") or "").strip() != "escalate":
+            continue
+        label = (sm.get("label") or "").strip()
+        prompt = (sm.get("prompt") or "").strip()
+        if t == label or t == prompt:
+            return True
+    return False
 
 
 def _wants_de_escalation(text: str) -> bool:
@@ -345,17 +384,14 @@ async def _handle_text_message(
             bot_id=bot.bot_id,
             escalated=False,
         )
-        await reply_message(
-            reply_token,
-            ["You're now back with our AI assistant. How can I help you?"],
-            access_token,
-            suggested_flex=suggested_flex,
-        )
+        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+        de_esc_msg = msgs["de_esc"]
+        await reply_message(reply_token, [de_esc_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
-            content="You're now back with our AI assistant. How can I help you?",
+            content=de_esc_msg,
         )
         return
 
@@ -374,13 +410,8 @@ async def _handle_text_message(
             (m.role or "").lower() == "bot" and "back to bot" in (m.content or "")
             for m in recent
         )
-        if already_acked:
-            ack = "✓ Sent. (Say \"back to bot\" to return to the AI assistant.)"
-        else:
-            ack = (
-                "✓ Message received by our team. They'll reply here shortly.\n\n"
-                "To return to the AI assistant, just say \"back to bot\"."
-            )
+        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+        ack = msgs["ack_brief"] if already_acked else msgs["ack_full"]
         await reply_message(reply_token, [ack], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
@@ -416,10 +447,7 @@ async def _handle_text_message(
             visitor_email=f"line:{line_user_id}",
             details=details,
         )
-        confirm_msg = (
-            "Our team has been notified and will reply to you here shortly.\n\n"
-            "Reply \"back to bot\" anytime to return to the AI assistant."
-        )
+        confirm_msg = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])["confirm"]
         await reply_message(reply_token, [confirm_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
@@ -430,7 +458,7 @@ async def _handle_text_message(
         return
 
     # ── Escalation request ───────────────────────────────────────────
-    if _wants_escalation(text):
+    if _wants_escalation(text) or _is_escalate_quick_reply(text, suggested_messages or []):
         _line_user_session_repo.set_awaiting_escalation_msg(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
@@ -442,10 +470,7 @@ async def _handle_text_message(
             role="user",
             content=text,
         )
-        prompt_msg = (
-            "I'll connect you with our team right away.\n\n"
-            "Would you like to leave a message for them? Type your message below, or reply \"skip\" to connect immediately."
-        )
+        prompt_msg = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])["prompt"]
         await reply_message(reply_token, [prompt_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,

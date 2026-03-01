@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FlowIcon } from './FlowIcon'
@@ -51,7 +51,7 @@ export function SuggestedMessagesEditor({
   const openSuggestionModal = useCallback((item?: SuggestedMessageConfig) => {
     if (!item && !canAdd) return
     const base: SuggestedMessageConfig = item
-      ? { ...item, type: 'ai_response', urls: Array.isArray(item.urls) ? item.urls : [] }
+      ? { ...item, urls: Array.isArray(item.urls) ? item.urls : [] }
       : { id: `suggest_${Date.now()}`, label: '', type: 'ai_response', urls: [] }
     setEditingSuggestion(item || null)
     setSuggestionDraft(base)
@@ -81,7 +81,7 @@ export function SuggestedMessagesEditor({
 
     const next: SuggestedMessageConfig = {
       ...suggestionDraft,
-      type: suggestionDraft.type === 'escalate' ? 'escalate' : 'ai_response',
+      type: suggestionDraft.type === 'escalate' ? 'escalate' : suggestionDraft.type === 'show_menu' ? 'show_menu' : 'ai_response',
       message: undefined,
       urls: suggestionDraft.type === 'ai_response' ? normalizedUrls : undefined,
       prompt: suggestionDraft.type === 'ai_response' ? suggestionDraft.prompt : undefined,
@@ -137,20 +137,25 @@ export function SuggestedMessagesEditor({
           {suggestedMessages.length === 0 && <span className="muted">{t('suggestedMessagesEditor.noneYet', 'No suggested messages yet.')}</span>}
           {suggestedMessages.map((msg) => {
             const urlCount = Array.isArray(msg.urls) ? msg.urls.length : 0
-            const details = urlCount > 0
-              ? `${t('suggestedMessagesEditor.aiResponse', 'AI response')} - ${t(
-                urlCount === 1 ? 'suggestedMessagesEditor.urlSingular' : 'suggestedMessagesEditor.urlPlural',
-                urlCount === 1 ? '{{count}} URL' : '{{count}} URLs',
-                { count: urlCount }
-              )}`
-              : t('suggestedMessagesEditor.aiResponse', 'AI response')
+            const typeLabel =
+              msg.type === 'escalate'
+                ? t('suggestedMessagesEditor.humanSupport', 'Human support')
+                : msg.type === 'show_menu'
+                  ? t('suggestedMessagesEditor.showMenu', 'Show menu')
+                  : urlCount > 0
+                    ? `${t('suggestedMessagesEditor.aiResponse', 'AI response')} - ${t(
+                        urlCount === 1 ? 'suggestedMessagesEditor.urlSingular' : 'suggestedMessagesEditor.urlPlural',
+                        urlCount === 1 ? '{{count}} URL' : '{{count}} URLs',
+                        { count: urlCount }
+                      )}`
+                    : t('suggestedMessagesEditor.aiResponse', 'AI response')
 
             return (
               <div key={msg.id} className="list-row" style={{ background: 'var(--flow-surface, #fff)', border: '1px solid var(--flow-border, #f2d8d2)', borderRadius: 'var(--flow-radius, 10px)' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{msg.label}</div>
                   <div className="muted" style={{ fontSize: '0.85rem' }}>
-                    {details}
+                    {typeLabel}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -217,15 +222,38 @@ export function SuggestedMessagesEditor({
             </div>
 
             <div className="modal-body">
-              <label className="design-form-label">{t('suggestedMessagesEditor.nameLabel', 'Name')}</label>
+              <label className="design-form-label">{t('suggestedMessagesEditor.typeLabel', 'Type')}</label>
+              <select
+                className="design-form-input"
+                value={suggestionDraft.type}
+                onChange={(e) =>
+                  setSuggestionDraft((prev) =>
+                    prev ? { ...prev, type: e.target.value as SuggestedMessageConfig['type'] } : prev
+                  )
+                }
+              >
+                <option value="ai_response">{t('suggestedMessagesEditor.aiResponse', 'AI response')}</option>
+                <option value="show_menu">{t('suggestedMessagesEditor.showMenu', 'Show menu')}</option>
+                <option value="escalate">{t('suggestedMessagesEditor.humanSupport', 'Human support')}</option>
+              </select>
+
+              <label className="design-form-label" style={{ marginTop: '1rem' }}>{t('suggestedMessagesEditor.nameLabel', 'Name')}</label>
               <input
                 type="text"
                 className="design-form-input"
                 value={suggestionDraft.label}
                 onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
-                placeholder={t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')}
+                placeholder={
+                  suggestionDraft.type === 'show_menu'
+                    ? t('suggestedMessagesEditor.namePlaceholderMenu', 'Menu')
+                    : suggestionDraft.type === 'escalate'
+                      ? t('suggestedMessagesEditor.namePlaceholderSupport', 'Request human support')
+                      : t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')
+                }
               />
 
+              {suggestionDraft.type === 'ai_response' && (
+                <>
               <label className="design-form-label" style={{ marginTop: '1rem' }}>
                 {t('suggestedMessagesEditor.promptLabel', 'Prompt')}
               </label>
@@ -254,6 +282,8 @@ export function SuggestedMessagesEditor({
               <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
                 {t('suggestedMessagesEditor.urlsHelper', 'One URL per line.')}
               </div>
+                </>
+              )}
             </div>
 
             <div className="modal-actions">

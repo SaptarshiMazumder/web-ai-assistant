@@ -1568,12 +1568,25 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
     bot = bot_service().get_bot_record(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
-    widget_config = None
+    widget_config: Optional[Dict[str, Any]] = None
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
         try:
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
+    # When suggestedMessages is empty, merge platform config so dashboard shows Menu, Reservation, etc.
+    if isinstance(widget_config, dict):
+        wc_suggested = widget_config.get("suggestedMessages")
+        if not (isinstance(wc_suggested, list) and wc_suggested):
+            lang = _get_language_from_widget_config_dict(widget_config)
+            resolved = get_suggested_messages_for_widget(widget_config, lang=lang)
+            if resolved:
+                # Convert to dashboard format: id, label, type, prompt
+                widget_config = dict(widget_config)
+                widget_config["suggestedMessages"] = [
+                    {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
+                    for m in resolved
+                ]
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,
@@ -2034,10 +2047,11 @@ Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 chara
             existing_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    # Preserve any existing escalate-type messages (e.g. "Request human support")
+    # Preserve existing escalate and show_menu messages
     prev_messages = existing_config.get("suggestedMessages") or []
-    escalate_messages = [m for m in prev_messages if isinstance(m, dict) and m.get("type") == "escalate"]
-    existing_config["suggestedMessages"] = suggested_messages + escalate_messages
+    preserve_types = {"escalate", "show_menu"}
+    preserved = [m for m in prev_messages if isinstance(m, dict) and m.get("type") in preserve_types]
+    existing_config["suggestedMessages"] = suggested_messages + preserved
     bot_service().update_widget_config(bot_id, json.dumps(existing_config))
 
     return {"suggestedMessages": existing_config.get("suggestedMessages") or []}
@@ -2934,9 +2948,6 @@ async def v1_pk_escalate_support(
     visitor_email = (payload.visitor_email or "").strip().lower()
     if not visitor_email or "@" not in visitor_email:
         raise HTTPException(status_code=400, detail="visitor_email is required")
-    cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
-    if not cfg.get("enabled"):
-        raise HTTPException(status_code=400, detail="Escalations are disabled for this bot")
     record = conversation_service().create_escalation(
         bot_id=bot.bot_id,
         session_id=session.session_id,

@@ -93,9 +93,7 @@
         .then(function (r) { return r.ok ? r.json() : {}; })
         .then(function (esc) {
           config = config || {};
-          if (esc && typeof esc.enabled === "boolean") {
-            config.escalationsEnabled = esc.enabled;
-          }
+          config.escalationsEnabled = true;
           return config;
         })
         .catch(function () { return config || {}; });

@@ -107,7 +107,6 @@ function withOrg(path: string, orgId: string | null): string {
 function buildWidgetIframeSrc(
   publishableKey: string,
   widgetConfig: Record<string, unknown> | null,
-  escalationsEnabled: boolean,
   siteUrl: string,
   siteTitle: string
 ): string {
@@ -116,7 +115,6 @@ function buildWidgetIframeSrc(
   params.set('apiBase', API_BASE)
   params.set('siteUrl', siteUrl)
   params.set('siteTitle', siteTitle)
-  params.set('escalationsEnabled', escalationsEnabled ? 'true' : 'false')
   const merged = widgetConfig && typeof widgetConfig === 'object' ? { ...widgetConfig } : {}
   for (const key of Object.keys(merged)) {
     const v = merged[key]
@@ -163,7 +161,6 @@ export default function BotTestingTab() {
     selectedBotWidgetConfig,
     domains,
     sources,
-    getEscalationConfig,
     startAvailabilityJob,
     listAvailabilityJobs,
     getAvailabilityJob,
@@ -206,7 +203,6 @@ export default function BotTestingTab() {
   const [rawAvailabilityContent, setRawAvailabilityContent] = useState<string | null>(null)
   const [rawAvailabilityLoading, setRawAvailabilityLoading] = useState(false)
 
-  const [escalationsEnabled, setEscalationsEnabled] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
 
   const languageFallbackPrompt = useMemo(
@@ -258,32 +254,15 @@ export default function BotTestingTab() {
     if (url) setAvailabilityUrl((prev) => prev || url.trim())
   }, [availabilityUrl, siteUrl, selectedBotWidgetConfig])
 
-  useEffect(() => {
-    let cancelled = false
-    const botKey = selectedBot?.bot_id
-    if (!botKey) {
-      setEscalationsEnabled(false)
-      return
-    }
-    void (async () => {
-      const cfg = await getEscalationConfig(botKey)
-      if (!cancelled) setEscalationsEnabled(Boolean(cfg?.enabled))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedBot?.bot_id, getEscalationConfig])
-
   const widgetIframeSrc = useMemo(() => {
     if (!selectedBot?.publishable_key) return ''
     return buildWidgetIframeSrc(
       selectedBot.publishable_key,
       selectedBotWidgetConfig ?? null,
-      escalationsEnabled,
       siteUrl,
       siteTitle
     )
-  }, [selectedBot?.publishable_key, selectedBotWidgetConfig, escalationsEnabled, siteUrl, siteTitle])
+  }, [selectedBot?.publishable_key, selectedBotWidgetConfig, siteUrl, siteTitle])
 
   const widgetSize = (selectedBotWidgetConfig?.size as 'small' | 'medium' | 'large') || 'medium'
   const widgetDims = WIDGET_SIZE_DIMENSIONS[widgetSize] ?? WIDGET_SIZE_DIMENSIONS.medium

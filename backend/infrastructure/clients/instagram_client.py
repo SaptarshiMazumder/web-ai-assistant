@@ -59,11 +59,16 @@ def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
 # ── Quick replies ─────────────────────────────────────────────────────
 
 
+_IG_MENU_PAYLOAD = "SHOW_FULL_MENU"
+
+
 def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
     """Convert widget suggestedMessages config into Instagram quick_replies format.
 
     Labels are hard-capped to Instagram's 20-char title limit.
-    The payload carries the full label so taps still send the full intent.
+    - show_menu: payload SHOW_FULL_MENU (triggers menu flow)
+    - escalate: payload = label (triggers escalation)
+    - ai_response: payload = prompt or label (sent to AI)
     """
     if not suggested_messages:
         return None
@@ -72,10 +77,16 @@ def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
         label = (sm.get("label") or "").strip()
         if not label:
             continue
+        msg_type = str(sm.get("type") or "ai_response").strip()
+        if msg_type == "show_menu":
+            payload = _IG_MENU_PAYLOAD
+        else:
+            payload = (sm.get("prompt") or sm.get("label") or "").strip() or label
+            payload = payload[:1000]
         items.append({
             "content_type": "text",
             "title": label[:20],
-            "payload": label[:1000],
+            "payload": payload,
         })
     return items if items else None
 

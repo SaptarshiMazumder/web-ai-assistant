@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export type BotSummary = {
@@ -623,8 +623,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
-  // Track which bots have already had suggested messages auto-generated (prevent duplicates)
-  const autoGenSuggestionsTriggered = useRef<Set<string>>(new Set())
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
 
   const { getAccessTokenSilently, getIdTokenClaims, user, logout, isAuthenticated, loginWithRedirect } = useAuth0()
@@ -2111,29 +2109,6 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       const status = await fetchAuthedJson<IndexStatus>(path)
       setIndexStatus(status)
 
-      // Auto-generate suggested messages when indexing completes (once per bot)
-      if (
-        status.stage === 'done' &&
-        !autoGenSuggestionsTriggered.current.has(selectedBot.bot_id)
-      ) {
-        const existing = selectedBotWidgetConfig?.suggestedMessages
-        const hasExisting = Array.isArray(existing) && existing.length > 0
-        if (!hasExisting) {
-          autoGenSuggestionsTriggered.current.add(selectedBot.bot_id)
-          try {
-            const genPath = withOrgParam(`/v1/org/bots/${selectedBot.bot_id}/generate-suggested-messages`, orgOverride)
-            const genResult = await fetchAuthedJson<{ suggestedMessages: unknown[] }>(genPath, { method: 'POST' })
-            if (genResult.suggestedMessages?.length) {
-              setSelectedBotWidgetConfig((prev) => ({
-                ...(prev || {}),
-                suggestedMessages: genResult.suggestedMessages,
-              }))
-            }
-          } catch {
-            // Non-critical: don't block the UI if auto-generation fails
-          }
-        }
-      }
     } catch (err) {
       setError((err as Error).message)
     }

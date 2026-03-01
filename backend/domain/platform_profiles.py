@@ -276,11 +276,11 @@ def get_suggested_messages_for_widget(
     lang: str = "en",
 ) -> List[Dict[str, Any]]:
     """
-    Get suggested messages for a bot from its platform profile or default.
-    Used across Line, Instagram, web widget. Fully config-driven.
+    Get suggested messages for a bot. Used across Line, Instagram, web widget.
 
-    - If the active profile has suggested_messages → use it (resolved by lang).
-    - Else → use DEFAULT_SUGGESTED_MESSAGES (2 items: What can you do?, Ask a question).
+    Always config-driven (platform_profiles.yml):
+    - If bot matches a platform (Tabelog, HotPepper, TableCheck): use that platform's suggested_messages
+    - Else: use default_suggested_messages (fallback for all other bots)
 
     Returns list of dicts with id, label (string), prompt (string), type.
     """
@@ -296,14 +296,18 @@ def get_suggested_messages_for_widget(
             if not label:
                 continue
             prompt = _resolve_label_or_prompt(raw.get("prompt"), lang) or label
+            raw_type = str(raw.get("type") or "ai_response").strip() or "ai_response"
+            if raw_type not in ("ai_response", "show_menu", "escalate"):
+                raw_type = "ai_response"
             out.append({
                 "id": str(raw.get("id") or "").strip() or f"suggest_{len(out) + 1}",
                 "label": label,
                 "prompt": prompt,
-                "type": str(raw.get("type") or "ai_response").strip() or "ai_response",
+                "type": raw_type,
             })
         return out
 
+    # Platform profile (Tabelog, HotPepper, TableCheck) or default
     features = get_platform_features_from_widget(widget_config)
     if features and features.get("suggested_messages"):
         return resolve_items(features["suggested_messages"])

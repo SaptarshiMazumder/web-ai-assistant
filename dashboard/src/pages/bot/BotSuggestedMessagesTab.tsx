@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Check, Loader2, Save, Sparkles } from 'lucide-react'
+import { Check, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
@@ -23,8 +23,6 @@ export default function BotSuggestedMessagesTab() {
     selectedBotWidgetConfig,
     saveWidgetConfig,
     loading,
-    generateSuggestedMessages,
-    generatingSuggestions,
   } = useDashboardData()
   const [state, setState] = useState<WidgetDesignState>(() => DEFAULT_WIDGET_DESIGN_STATE)
   const [saving, setSaving] = useState(false)
@@ -38,12 +36,8 @@ export default function BotSuggestedMessagesTab() {
     setState((prev) => ({ ...prev, [key]: value }))
   }, [])
 
-  // Only ai_response messages go into the editor; escalate is managed in the Human Support tab.
-  const aiMessages = state.suggestedMessages.filter((m) => m.type !== 'escalate')
-  const escalateMessages = state.suggestedMessages.filter((m) => m.type === 'escalate')
-
-  const handleAiMessagesChange = (next: SuggestedMessageConfig[]) => {
-    update('suggestedMessages', [...next, ...escalateMessages])
+  const handleSuggestedMessagesChange = (next: SuggestedMessageConfig[]) => {
+    update('suggestedMessages', next)
   }
 
   const handleToggleEnabled = async (enabled: boolean) => {
@@ -71,42 +65,18 @@ export default function BotSuggestedMessagesTab() {
     }
   }
 
-  const handleAutoGenerate = async () => {
-    if (!botId || generatingSuggestions) return
-    await generateSuggestedMessages(botId)
-  }
-
   if (!botId) return <div className="empty-panel">{t('botSuggestedMessages.selectBot', 'Select a bot.')}</div>
   if (loading && !selectedBot) return <div className="empty-panel">{t('common.working', 'Working...')}</div>
   if (selectedBot?.bot_id !== botId) return <div className="empty-panel">{t('common.working', 'Working...')}</div>
 
-  const isGenerating = generatingSuggestions
   const isEnabled = state.suggestedMessagesEnabled
 
   const saveAction = (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
       <UiButton
-        variant="secondary"
-        onClick={() => void handleAutoGenerate()}
-        disabled={isGenerating || saving || !isEnabled}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-      >
-        {isGenerating ? (
-          <>
-            <Loader2 size={15} className="spin" />
-            {t('botSuggestedMessages.generating', 'Generating...')}
-          </>
-        ) : (
-          <>
-            <Sparkles size={15} />
-            {t('botSuggestedMessages.autoGenerate', 'Auto-generate')}
-          </>
-        )}
-      </UiButton>
-      <UiButton
         variant="primary"
         onClick={() => void handleSave()}
-        disabled={saving || savedJustNow || isGenerating || !isEnabled}
+        disabled={saving || savedJustNow || !isEnabled}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
       >
         {saving ? (
@@ -130,7 +100,7 @@ export default function BotSuggestedMessagesTab() {
     <AnimatedPage>
       <SectionHeader
         title={t('botSuggestedMessages.title', 'Suggested messages')}
-        subtitle={t('botSuggestedMessages.subtitle', 'Quick actions shown when the chat opens. Auto-generate from your trained content or add manually.')}
+        subtitle={t('botSuggestedMessages.subtitle', 'Quick actions shown when the chat opens. Configured per platform in config YAML (e.g. Tabelog: Menu, Human support).')}
       />
 
       <GlassCard style={{ marginTop: '1rem' }}>
@@ -152,30 +122,10 @@ export default function BotSuggestedMessagesTab() {
           </label>
         </div>
 
-        {isGenerating && (
-          <div
-            style={{
-              marginTop: '1rem',
-              padding: '0.75rem 1rem',
-              background: 'var(--flow-surface-alt, #fef3f0)',
-              border: '1px solid var(--flow-border, #f2d8d2)',
-              borderRadius: 'var(--flow-radius, 10px)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              fontSize: '0.9rem',
-              color: 'var(--flow-text, #1e293b)',
-            }}
-          >
-            <Loader2 size={18} className="spin" style={{ color: 'var(--flow-primary, #e8614d)' }} />
-            {t('botSuggestedMessages.generatingFromContent', 'Generating suggested messages from your trained content...')}
-          </div>
-        )}
-
         <div style={{ marginTop: '1rem', opacity: isEnabled ? 1 : 0.45, pointerEvents: isEnabled ? 'auto' : 'none' }}>
           <SuggestedMessagesEditor
-            suggestedMessages={aiMessages}
-            onChange={handleAiMessagesChange}
+            suggestedMessages={state.suggestedMessages}
+            onChange={handleSuggestedMessagesChange}
             title=""
             subtitle=""
             addButtonPlacement="bottom"

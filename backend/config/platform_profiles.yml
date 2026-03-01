@@ -72,17 +72,15 @@ platforms:
           ja: "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。"
       suggested_messages:
         - id: suggest_menu
-          type: ai_response
-          label: { en: Menu, ja: メニュー }
-          prompt: { en: Menu, ja: メニュー }
+          type: show_menu
+          label: { en: "Menu", ja: "メニュー" }
         - id: suggest_reservation
           type: ai_response
-          label: { en: Reservation, ja: 予約 }
-          prompt: { en: Reservation, ja: 予約 }
-        - id: suggest_question
-          type: ai_response
-          label: { en: "Ask a question", ja: 質問する }
-          prompt: { en: "Ask a question", ja: 質問する }
+          label: { en: "Reservation", ja: "予約" }
+          prompt: { en: "Reservation", ja: "予約" }
+        - id: suggest_support
+          type: escalate
+          label: { en: "Human support", ja: "サポートに相談" }
       asset_instructions:
         en: |
           ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
