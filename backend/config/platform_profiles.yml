@@ -1,0 +1,137 @@
+# Platform profiles for restaurant booking and other business types.
+# All behavior (prompts, rules, suggested messages, menu tabs, etc.) is defined here.
+# Edit this file to add or change platforms - no code changes needed.
+#
+# Schema:
+#   reservation_platform_config: maps platform_id -> widget_key, domain_key
+#   default_suggested_messages: fallback when no platform defines suggested_messages
+#   platforms: per-domain config (crawl, menu extraction, prompts, etc.)
+
+reservation_platform_config:
+  tabelog:
+    widget_key: tabelogUrl
+    domain_key: tabelog.com
+  hotpepper:
+    widget_key: hotPepperUrl
+    domain_key: hotpepper.jp
+  tablecheck:
+    widget_key: tableCheckUrl
+    domain_key: tablecheck.com
+
+default_suggested_messages:
+  - id: suggest_1
+    type: ai_response
+    label: { en: "What can you do?", ja: "何ができますか？" }
+    prompt: { en: "What can you do?", ja: "何ができますか？" }
+  - id: suggest_2
+    type: ai_response
+    label: { en: "Ask a question", ja: "質問する" }
+    prompt: { en: "Ask a question", ja: "質問する" }
+
+platforms:
+  tabelog.com:
+    domain_pattern: "tabelog\\.com"
+    include_paths: []
+    exclude_paths:
+      - "/peripheral_map(?:/|$)"
+      - "/dtlphotolst(?:/|$)"
+      - "/dtlrvwlst(?:/|$)"
+      - "/dtlmap(?:/|$)"
+    priority: 10
+    strip_query_params: true
+    menu_url_patterns:
+      - "/party(?:/|$)"
+      - "/dtlmenu(?:/|$)"
+    menu_extraction_rules:
+      enabled: true
+      mode: deterministic
+      extractor: tabelog_v1
+      allowed_path_patterns:
+        - "^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\\d+/A\\d+/\\d+/?$"
+        - "^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\\d+/A\\d+/\\d+/(?:party|dtlmenu)(?:/|$)"
+      path_category_patterns:
+        - pattern: "/party(?:/|$)"
+          category: course
+        - pattern: "/dtlmenu/drink(?:/|$)"
+          category: drink
+        - pattern: "/dtlmenu/lunch(?:/|$)"
+          category: lunch
+        - pattern: "/dtlmenu(?:/|$)"
+          category: dish
+    metadata:
+      platform_type: restaurant_reservation
+      country: JP
+      service_name: Tabelog
+      reservation:
+        enabled: true
+        link_label:
+          en: "Tabelog Online Reservation"
+          ja: "食べログ ネット予約"
+        instruction_template:
+          en: "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant."
+          ja: "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。"
+      suggested_messages:
+        - id: suggest_menu
+          type: ai_response
+          label: { en: Menu, ja: メニュー }
+          prompt: { en: Menu, ja: メニュー }
+        - id: suggest_reservation
+          type: ai_response
+          label: { en: Reservation, ja: 予約 }
+          prompt: { en: Reservation, ja: 予約 }
+        - id: suggest_question
+          type: ai_response
+          label: { en: "Ask a question", ja: 質問する }
+          prompt: { en: "Ask a question", ja: 質問する }
+      asset_instructions:
+        en: |
+          ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
+          - Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset_ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.
+          - Menu/dish/course intent: Use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
+          - Other questions: Use {{asset_ID}} only when the asset is directly relevant to the answer.
+        ja: |
+          アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:
+          - 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset_ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。
+          - メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。
+          - その他の質問: アセットが回答に直接関連する場合のみ{{asset_ID}}を使用してください。
+
+  hotpepper.jp:
+    domain_pattern: "hotpepper\\.jp"
+    include_paths: []
+    exclude_paths:
+      - "/report"
+      - "/favorite"
+    priority: 10
+    strip_query_params: true
+    menu_url_patterns:
+      - "/course"
+    metadata:
+      platform_type: restaurant_reservation
+      country: JP
+      service_name: HotPepper Gourmet
+      reservation:
+        enabled: true
+        link_label:
+          en: "HotPepper Gourmet"
+          ja: "ホットペッパーグルメ"
+        instruction_template:
+          en: "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant."
+          ja: "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。"
+
+  tablecheck.com:
+    domain_pattern: "tablecheck\\.com"
+    include_paths: []
+    exclude_paths: []
+    priority: 10
+    metadata:
+      platform_type: restaurant_reservation
+      country: JP
+      service_name: TableCheck
+      reservation:
+        enabled: true
+        link_label:
+          en: "TableCheck Reservation"
+          ja: "TableCheck予約"
+        instruction_template:
+          en: "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant."
+          ja: "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。"

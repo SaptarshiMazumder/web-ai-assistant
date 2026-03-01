@@ -1,22 +1,41 @@
 """
 Platform-specific profiles for restaurant booking platforms and other domains.
 
-A PlatformProfile defines behavior for a domain (e.g., tabelog.com). The same config
-drives all channels (web widget, Line, Instagram); only the presentation layer differs.
-
-Tabelog profile defines:
-- reservation: URL, instruction template, link labels (EN/JA)
-- suggested_messages: Menu, Reservation, Ask a question
-- asset_instructions: when to show menu assets vs reservation link
-- menu_extraction_rules: enabled, paths, categories
+All platform config (Tabelog, HotPepper, TableCheck, etc.) is loaded from
+config/platform_profiles.yml. Edit that file to add or change platforms -
+no code changes needed.
 
 Helpers (get_reservation_config_from_widget, get_suggested_messages_for_widget, etc.)
 read from the active profile. Web, Line, and Instagram all use these; each channel
 renders the result in its own UI (quick replies, flex buttons, etc.).
 """
 
+import logging
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
+
+logger = logging.getLogger(__name__)
+
+# Path to config file (backend/config/platform_profiles.yml)
+_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+_CONFIG_PATH = _CONFIG_DIR / "platform_profiles.yml"
+
+
+def _load_platform_config() -> Dict[str, Any]:
+    """Load platform profiles from YAML. Returns empty dict if file missing or invalid."""
+    if not _CONFIG_PATH.exists():
+        logger.warning("Platform config not found: %s", _CONFIG_PATH)
+        return {}
+    try:
+        with open(_CONFIG_PATH, encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.exception("Failed to load platform config from %s: %s", _CONFIG_PATH, e)
+        return {}
 
 
 @dataclass
@@ -73,150 +92,69 @@ class PlatformProfile:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# RESTAURANT PLATFORMS
+# LOAD FROM CONFIG (config/platform_profiles.yml)
 # ═══════════════════════════════════════════════════════════════════════════
 
-HOTPEPPER_PROFILE = PlatformProfile(
-    domain_pattern=r"hotpepper\.jp",
-    include_paths=[],
-    exclude_paths=[
-        r"/report",
-        r"/favorite",
-    ],
-    priority=10,
-    strip_query_params=True,  # ?RDT=YYYYMMDD is UI state, not separate pages
-    menu_url_patterns=[
-        r"/course",
-    ],
-    metadata={
-        "platform_type": "restaurant_reservation",
-        "country": "JP",
-        "service_name": "HotPepper Gourmet",
-        "reservation": {
-            "enabled": True,
-            "link_label": {"en": "HotPepper Gourmet", "ja": "ホットペッパーグルメ"},
-            "instruction_template": {
-                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
-                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
-            },
-        },
-    },
-)
 
-TABELOG_PROFILE = PlatformProfile(
-    domain_pattern=r"tabelog\.com",
-    include_paths=[],
-    exclude_paths=[
-        r"/peripheral_map(?:/|$)",
-        r"/dtlphotolst(?:/|$)",
-        r"/dtlrvwlst(?:/|$)",
-        r"/dtlmap(?:/|$)",
-    ],
-    priority=10,
-    strip_query_params=True,  # query params are UI state, not separate pages
-    menu_url_patterns=[
-        r"/party(?:/|$)",
-        r"/dtlmenu(?:/|$)",
-    ],
-    menu_extraction_rules={
-        "enabled": True,
-        "mode": "deterministic",
-        "extractor": "tabelog_v1",
-        "allowed_path_patterns": [
-            r"^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\d+/A\d+/\d+/?$",
-            r"^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\d+/A\d+/\d+/(?:party|dtlmenu)(?:/|$)",
-        ],
-        "path_category_patterns": [
-            {"pattern": r"/party(?:/|$)", "category": "course"},
-            {"pattern": r"/dtlmenu/drink(?:/|$)", "category": "drink"},
-            {"pattern": r"/dtlmenu/lunch(?:/|$)", "category": "lunch"},
-            {"pattern": r"/dtlmenu(?:/|$)", "category": "dish"},
-        ],
-    },
-    metadata={
-        "platform_type": "restaurant_reservation",
-        "country": "JP",
-        "service_name": "Tabelog",
-        "reservation": {
-            "enabled": True,
-            "link_label": {
-                "en": "Tabelog Online Reservation",
-                "ja": "食べログ ネット予約",
-            },
-            "instruction_template": {
-                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
-                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
-            },
-        },
-        "suggested_messages": [
-            {"id": "suggest_menu", "type": "ai_response", "label": {"en": "Menu", "ja": "メニュー"}, "prompt": {"en": "Menu", "ja": "メニュー"}},
-            {"id": "suggest_reservation", "type": "ai_response", "label": {"en": "Reservation", "ja": "予約"}, "prompt": {"en": "Reservation", "ja": "予約"}},
-            {"id": "suggest_question", "type": "ai_response", "label": {"en": "Ask a question", "ja": "質問する"}, "prompt": {"en": "Ask a question", "ja": "質問する"}},
-        ],
-        "asset_instructions": {
-            "en": (
-                "ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:\n"
-                "- Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset:ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.\n"
-                "- Menu/dish/course intent: Use {{asset:ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.\n"
-                "- Other questions: Use {{asset:ID}} only when the asset is directly relevant to the answer."
-            ),
-            "ja": (
-                "アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:\n"
-                "- 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset:ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。\n"
-                "- メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset:ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。\n"
-                "- その他の質問: アセットが回答に直接関連する場合のみ{{asset:ID}}を使用してください。"
-            ),
-        },
-    },
-)
-
-TABLECHECK_PROFILE = PlatformProfile(
-    domain_pattern=r"tablecheck\.com",
-    include_paths=[],
-    exclude_paths=[],
-    priority=10,
-    metadata={
-        "platform_type": "restaurant_reservation",
-        "country": "JP",
-        "service_name": "TableCheck",
-        "reservation": {
-            "enabled": True,
-            "link_label": {"en": "TableCheck Reservation", "ja": "TableCheck予約"},
-            "instruction_template": {
-                "en": "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence; use this URL whenever reservation is relevant.",
-                "ja": "お客様が予約・ご予約についてお問い合わせの際は、このリンクを含めてください: {url}。証拠に基づいて自然に回答し、予約に関連する場合はこのURLを使用してください。",
-            },
-        },
-    },
-)
+def _dict_to_platform_profile(domain_key: str, data: Dict[str, Any]) -> PlatformProfile:
+    """Build PlatformProfile from YAML dict."""
+    raw = data or {}
+    return PlatformProfile(
+        domain_pattern=str(raw.get("domain_pattern") or domain_key.replace(".", r"\.")),
+        include_paths=list(raw.get("include_paths") or []),
+        exclude_paths=list(raw.get("exclude_paths") or []),
+        max_depth=int(raw.get("max_depth", 2)),
+        priority=int(raw.get("priority", 0)),
+        strip_query_params=bool(raw.get("strip_query_params", False)),
+        menu_url_patterns=list(raw.get("menu_url_patterns") or []),
+        menu_extraction_rules=raw.get("menu_extraction_rules") if isinstance(raw.get("menu_extraction_rules"), dict) else None,
+        image_extraction_enabled=bool(raw.get("image_extraction_enabled", True)),
+        image_url_patterns=list(raw.get("image_url_patterns") or []),
+        image_extraction_rules=raw.get("image_extraction_rules") if isinstance(raw.get("image_extraction_rules"), dict) else None,
+        metadata=dict(raw.get("metadata") or {}),
+    )
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# PLATFORM REGISTRY
-# ═══════════════════════════════════════════════════════════════════════════
+def _build_platform_registry() -> tuple[
+    Dict[str, PlatformProfile],
+    Dict[str, Tuple[str, str]],
+    List[Dict[str, Any]],
+]:
+    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES."""
+    cfg = _load_platform_config()
+    profiles: Dict[str, PlatformProfile] = {}
+    reservation_config: Dict[str, Tuple[str, str]] = {}
+    default_suggested: List[Dict[str, Any]] = []
 
-PLATFORM_PROFILES = {
-    "hotpepper.jp": HOTPEPPER_PROFILE,
-    "tabelog.com": TABELOG_PROFILE,
-    "tablecheck.com": TABLECHECK_PROFILE,
-}
-"""
-Central registry mapping domain patterns to platform profiles.
-Used to look up crawl/extraction rules when processing a URL.
-"""
+    # Reservation platform mapping
+    rpc = cfg.get("reservation_platform_config") or {}
+    for pid, entry in rpc.items():
+        if isinstance(entry, dict):
+            wk = str(entry.get("widget_key") or "").strip()
+            dk = str(entry.get("domain_key") or "").strip()
+            if wk and dk:
+                reservation_config[str(pid).strip().lower()] = (wk, dk)
 
-# One profile per restaurant agent. Maps platform id -> (widget_config URL key, domain_key)
-RESERVATION_PLATFORM_CONFIG: Dict[str, Tuple[str, str]] = {
-    "tabelog": ("tabelogUrl", "tabelog.com"),
-    "hotpepper": ("hotPepperUrl", "hotpepper.jp"),
-    "tablecheck": ("tableCheckUrl", "tablecheck.com"),
-}
+    # Default suggested messages
+    dsm = cfg.get("default_suggested_messages")
+    if isinstance(dsm, list):
+        default_suggested = [m for m in dsm if isinstance(m, dict)]
 
-# Default suggested messages when no profile defines them. Used across Line, Instagram, web widget.
-DEFAULT_SUGGESTED_MESSAGES: List[Dict[str, Any]] = [
-    {"id": "suggest_1", "type": "ai_response", "label": {"en": "What can you do?", "ja": "何ができますか？"}, "prompt": {"en": "What can you do?", "ja": "何ができますか？"}},
-    {"id": "suggest_2", "type": "ai_response", "label": {"en": "Ask a question", "ja": "質問する"}, "prompt": {"en": "Ask a question", "ja": "質問する"}},
-]
+    # Platform profiles
+    platforms = cfg.get("platforms") or {}
+    if isinstance(platforms, dict):
+        for domain_key, pdata in platforms.items():
+            if isinstance(pdata, dict) and domain_key:
+                profiles[str(domain_key).strip()] = _dict_to_platform_profile(domain_key, pdata)
+
+    return profiles, reservation_config, default_suggested
+
+
+(
+    PLATFORM_PROFILES,
+    RESERVATION_PLATFORM_CONFIG,
+    DEFAULT_SUGGESTED_MESSAGES,
+) = _build_platform_registry()
 
 
 def get_reservation_config_from_widget(

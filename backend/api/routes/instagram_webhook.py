@@ -40,7 +40,7 @@ from infrastructure.clients.instagram_client import (
     show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
-from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
+from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_instruction, resolve_asset_markers
 from infrastructure.db.repositories import (
     PostgresBotSourceRepository,
     PostgresInstagramChannelRepository,
@@ -1306,11 +1306,8 @@ async def _handle_text_message(
 
     asset_cards: list = []
 
-    # Inject business assets as evidence and system instruction
+    # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     extra_evidence: list[dict[str, str]] = []
-    asset_evidence = build_asset_evidence(bot.bot_id)
-    if asset_evidence:
-        extra_evidence.extend(asset_evidence)
     asset_instruction = build_asset_instruction(bot.bot_id)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction

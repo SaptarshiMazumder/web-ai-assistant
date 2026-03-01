@@ -1064,12 +1064,16 @@ def run_vertex_rag(
         }
 
     # Step 4: Reranking — score chunks by relevance, keep best 15
-    if len(evidence) > 4:
+    # Asset evidence (_skip_rerank) is never dropped; only corpus evidence is reranked.
+    asset_evidence = [e for e in evidence if e.get("_skip_rerank")]
+    corpus_evidence = [e for e in evidence if not e.get("_skip_rerank")]
+    if len(corpus_evidence) > 4:
         if ENABLE_LLM_RERANK:
-            evidence = rerank_evidence(client, question, evidence, top_n=15)
+            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=15)
         else:
-            evidence = heuristic_rerank(question, evidence, top_n=15)
-        _dbg({"type": "reranking_done", "evidence_count": len(evidence), "llm_enabled": ENABLE_LLM_RERANK})
+            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(corpus_evidence), "llm_enabled": ENABLE_LLM_RERANK})
+    evidence = asset_evidence + corpus_evidence
 
     # Step 5: Synthesize grounded answer from top-ranked snippets.
     # Actual system + user prompts sent to Gemini are logged via gemini_prompt in synthesize_with_evidence.
@@ -1200,13 +1204,16 @@ def run_vertex_rag_stream(
         }
         return
 
-    # Step 4: Reranking
-    if len(evidence) > 4:
+    # Step 4: Reranking — asset evidence (_skip_rerank) is never dropped
+    asset_evidence = [e for e in evidence if e.get("_skip_rerank")]
+    corpus_evidence = [e for e in evidence if not e.get("_skip_rerank")]
+    if len(corpus_evidence) > 4:
         if ENABLE_LLM_RERANK:
-            evidence = rerank_evidence(client, question, evidence, top_n=15)
+            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=15)
         else:
-            evidence = heuristic_rerank(question, evidence, top_n=15)
-        _dbg({"type": "reranking_done", "evidence_count": len(evidence), "llm_enabled": ENABLE_LLM_RERANK})
+            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=15)
+        _dbg({"type": "reranking_done", "evidence_count": len(corpus_evidence), "llm_enabled": ENABLE_LLM_RERANK})
+    evidence = asset_evidence + corpus_evidence
 
     answer_parts: List[str] = []
     for delta in synthesize_with_evidence_stream(

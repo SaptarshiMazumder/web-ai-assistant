@@ -310,7 +310,7 @@ def _normalize_http_url(value: Any) -> str:
 
 
 from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
-from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
+from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_instruction, resolve_asset_markers
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.reset_service import delete_gcs_objects, delete_rag_corpora
 from infrastructure.db.repositories import PostgresBookingLinkJobRepository, PostgresDiscoveryJobRepository, PostgresIndexJobRepository, PostgresBotRepository
@@ -905,10 +905,7 @@ async def v1_widget_chat(
             else reservation_cfg["instruction"]
         )
 
-    # Inject business assets as evidence and system instruction
-    asset_evidence = build_asset_evidence(bot.bot_id)
-    if asset_evidence:
-        extra_evidence.extend(asset_evidence)
+    # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     asset_instruction = build_asset_instruction(bot.bot_id)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
@@ -1169,10 +1166,7 @@ async def v1_widget_chat_stream(
             else reservation_cfg_stream["instruction"]
         )
 
-    # Inject business assets as evidence and system instruction
-    asset_evidence_stream = build_asset_evidence(bot.bot_id)
-    if asset_evidence_stream:
-        extra_evidence_stream.extend(asset_evidence_stream)
+    # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     asset_instruction_stream = build_asset_instruction(bot.bot_id)
     if asset_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
@@ -2111,9 +2105,6 @@ async def v1_org_test_chat(
             else reservation_cfg_test["instruction"]
         )
 
-    asset_evidence_test = build_asset_evidence(bot.bot_id)
-    if asset_evidence_test:
-        extra_evidence_test.extend(asset_evidence_test)
     asset_instruction_test = build_asset_instruction(bot.bot_id)
     if asset_instruction_test:
         system_instruction = (

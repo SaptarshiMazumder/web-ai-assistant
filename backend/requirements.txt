@@ -27,3 +27,4 @@ pymupdf
 pypdfium2
 Pillow
 pytesseract
+PyYAML>=6.0
