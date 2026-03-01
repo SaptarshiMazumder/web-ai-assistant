@@ -185,8 +185,12 @@ async def reply_message(
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
 
-    # 1. Text messages first
-    messages: List[dict] = [_text_message(t) for t in texts[:4]] # Leave room for carousel + suggested
+    # LINE allows max 5 message objects per reply.
+    has_assets = bool(asset_cards)
+    has_suggestions = suggested_flex is not None
+    reserved_slots = (1 if has_assets else 0) + (1 if has_suggestions else 0)
+    max_text_slots = max(1, 5 - reserved_slots)
+    messages: List[dict] = [_text_message(t) for t in texts[:max_text_slots]]
 
     # 2. Asset Carousel
     if asset_cards:
@@ -210,12 +214,12 @@ async def reply_message(
                     "contents": bubbles
                 }
             }
-            # Ensure we don't exceed 5 messages total
+            # Ensure we don't exceed 5 messages total.
             if len(messages) >= 5:
                 messages = messages[:4]
             messages.append(carousel_message)
 
-    # 3. Suggested messages as a separate flex message with vertical buttons
+    # 3. Suggested messages as a separate flex message with vertical buttons.
     if suggested_flex and len(messages) < 5:
         messages.append(suggested_flex)
 
@@ -243,7 +247,11 @@ async def push_message(
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
 
-    messages: List[dict] = [_text_message(t) for t in texts[:4]]
+    has_assets = bool(asset_cards)
+    has_suggestions = suggested_flex is not None
+    reserved_slots = (1 if has_assets else 0) + (1 if has_suggestions else 0)
+    max_text_slots = max(1, 5 - reserved_slots)
+    messages: List[dict] = [_text_message(t) for t in texts[:max_text_slots]]
 
     if asset_cards:
         bubbles = []

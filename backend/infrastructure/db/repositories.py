@@ -4122,23 +4122,37 @@ class PostgresAssetExtractionJobRepository:
         finally:
             con.close()
 
-    def get_latest_job_for_bot(self, bot_id: str) -> Optional[AssetExtractionJob]:
+    def get_latest_job_for_bot(self, bot_id: str, prefix: Optional[str] = None) -> Optional[AssetExtractionJob]:
         if not bot_id:
             return None
         con = _connect()
         try:
-            row = con.execute(
-                """
-                SELECT job_id, bot_id, org_id, status, gcs_prefix, page_urls,
-                       assets_discovered, assets_downloaded, assets_created,
-                       error, celery_task_id, created_at, updated_at
-                FROM asset_extraction_jobs
-                WHERE bot_id = %s
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (bot_id,),
-            ).fetchone()
+            if prefix:
+                row = con.execute(
+                    """
+                    SELECT job_id, bot_id, org_id, status, gcs_prefix, page_urls,
+                           assets_discovered, assets_downloaded, assets_created,
+                           error, celery_task_id, created_at, updated_at
+                    FROM asset_extraction_jobs
+                    WHERE bot_id = %s AND job_id LIKE %s
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (bot_id, prefix + "%"),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    """
+                    SELECT job_id, bot_id, org_id, status, gcs_prefix, page_urls,
+                           assets_discovered, assets_downloaded, assets_created,
+                           error, celery_task_id, created_at, updated_at
+                    FROM asset_extraction_jobs
+                    WHERE bot_id = %s
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (bot_id,),
+                ).fetchone()
             if not row:
                 return None
             
@@ -4167,26 +4181,31 @@ class PostgresAssetExtractionJobRepository:
 
 
 class PostgresBotAssetRepository:
-    """CRUD for bot_assets (business image cards)."""
+    """CRUD for bot_assets (business image cards and menu items)."""
+
+    _SELECT_COLS = """asset_id, bot_id, org_id, name, description,
+                      image_gcs_uri, image_public_url, link_url,
+                      keywords, metadata_json, is_active, created_at, updated_at, asset_type"""
 
     def create_asset(self, asset: BotAsset) -> None:
         con = _connect()
         try:
             kw_json = json.dumps(asset.keywords if isinstance(asset.keywords, list) else [])
+            metadata_json = json.dumps(asset.metadata if isinstance(asset.metadata, dict) else {})
             con.execute(
                 """
                 INSERT INTO bot_assets
                   (asset_id, bot_id, org_id, name, description,
                    image_gcs_uri, image_public_url, link_url,
-                   keywords, is_active, created_at, updated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   keywords, metadata_json, is_active, created_at, updated_at, asset_type)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """,
                 (
                     asset.asset_id, asset.bot_id, asset.org_id,
                     asset.name, asset.description,
                     asset.image_gcs_uri, asset.image_public_url, asset.link_url,
-                    kw_json, asset.is_active,
-                    asset.created_at, asset.updated_at,
+                    kw_json, metadata_json, asset.is_active,
+                    asset.created_at, asset.updated_at, asset.asset_type,
                 ),
             )
             con.commit()
@@ -4200,19 +4219,20 @@ class PostgresBotAssetRepository:
         con = _connect()
         try:
             kw_json = json.dumps(asset.keywords if isinstance(asset.keywords, list) else [])
+            metadata_json = json.dumps(asset.metadata if isinstance(asset.metadata, dict) else {})
             now = asset.updated_at or _utc_now()
             con.execute(
                 """
                 UPDATE bot_assets
                 SET name=%s, description=%s, image_gcs_uri=%s,
                     image_public_url=%s, link_url=%s, keywords=%s,
-                    is_active=%s, updated_at=%s
+                    metadata_json=%s, is_active=%s, updated_at=%s
                 WHERE asset_id=%s
                 """,
                 (
                     asset.name, asset.description,
                     asset.image_gcs_uri, asset.image_public_url, asset.link_url,
-                    kw_json, asset.is_active, now, aid,
+                    kw_json, metadata_json, asset.is_active, now, aid,
                 ),
             )
             con.commit()
@@ -4226,12 +4246,7 @@ class PostgresBotAssetRepository:
         con = _connect()
         try:
             row = con.execute(
-                """
-                SELECT asset_id, bot_id, org_id, name, description,
-                       image_gcs_uri, image_public_url, link_url,
-                       keywords, is_active, created_at, updated_at
-                FROM bot_assets WHERE asset_id=%s
-                """,
+                f"SELECT {self._SELECT_COLS} FROM bot_assets WHERE asset_id=%s",
                 (aid,),
             ).fetchone()
             if not row:
@@ -4240,34 +4255,25 @@ class PostgresBotAssetRepository:
         finally:
             con.close()
 
-    def list_assets_for_bot(self, bot_id: str, *, active_only: bool = False) -> List[BotAsset]:
+    def list_assets_for_bot(
+        self, bot_id: str, *, active_only: bool = False, asset_type: Optional[str] = None,
+    ) -> List[BotAsset]:
         bid = (bot_id or "").strip()
         if not bid:
             return []
         con = _connect()
         try:
+            where = "bot_id=%s"
+            params: list = [bid]
             if active_only:
-                rows = con.execute(
-                    """
-                    SELECT asset_id, bot_id, org_id, name, description,
-                           image_gcs_uri, image_public_url, link_url,
-                           keywords, is_active, created_at, updated_at
-                    FROM bot_assets WHERE bot_id=%s AND is_active=TRUE
-                    ORDER BY created_at ASC
-                    """,
-                    (bid,),
-                ).fetchall()
-            else:
-                rows = con.execute(
-                    """
-                    SELECT asset_id, bot_id, org_id, name, description,
-                           image_gcs_uri, image_public_url, link_url,
-                           keywords, is_active, created_at, updated_at
-                    FROM bot_assets WHERE bot_id=%s
-                    ORDER BY created_at ASC
-                    """,
-                    (bid,),
-                ).fetchall()
+                where += " AND is_active=TRUE"
+            if asset_type:
+                where += " AND asset_type=%s"
+                params.append(asset_type)
+            rows = con.execute(
+                f"SELECT {self._SELECT_COLS} FROM bot_assets WHERE {where} ORDER BY created_at ASC",
+                tuple(params),
+            ).fetchall()
             return [self._row_to_asset(r) for r in rows]
         finally:
             con.close()
@@ -4293,6 +4299,12 @@ class PostgresBotAssetRepository:
             kw = json.loads(row[8]) if isinstance(row[8], str) else (row[8] or [])
         except (TypeError, ValueError):
             kw = []
+        try:
+            metadata = json.loads(row[9]) if isinstance(row[9], str) else (row[9] or {})
+        except (TypeError, ValueError):
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
         return BotAsset(
             asset_id=row[0],
             bot_id=row[1],
@@ -4303,7 +4315,9 @@ class PostgresBotAssetRepository:
             image_public_url=row[6] or "",
             link_url=row[7],
             keywords=kw if isinstance(kw, list) else [],
-            is_active=bool(row[9]),
-            created_at=row[10],
-            updated_at=row[11],
+            metadata=metadata,
+            is_active=bool(row[10]),
+            asset_type=row[13] if len(row) > 13 and row[13] else "image",
+            created_at=row[11],
+            updated_at=row[12],
         )

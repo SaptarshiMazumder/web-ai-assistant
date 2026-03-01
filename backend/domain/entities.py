@@ -286,6 +286,8 @@ class BotAsset:
     image_public_url: str
     link_url: Optional[str] = None
     keywords: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
     is_active: bool = True
+    asset_type: str = "image"  # "image" or "menu_item"
     created_at: str = ""
     updated_at: str = ""

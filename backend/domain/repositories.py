@@ -310,7 +310,13 @@ class BotAssetRepository(Protocol):
     def get_asset(self, asset_id: str) -> Optional[BotAsset]:
         ...
 
-    def list_assets_for_bot(self, bot_id: str, *, active_only: bool = False) -> List[BotAsset]:
+    def list_assets_for_bot(
+        self,
+        bot_id: str,
+        *,
+        active_only: bool = False,
+        asset_type: Optional[str] = None,
+    ) -> List[BotAsset]:
         ...
 
     def delete_asset(self, bot_id: str, asset_id: str) -> None:

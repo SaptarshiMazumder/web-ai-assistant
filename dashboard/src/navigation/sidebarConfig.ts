@@ -21,6 +21,7 @@ import {
   History,
   Briefcase,
   AlertCircle,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { LineIcon } from '../assets/icons/LineIcon'
 
@@ -79,6 +80,7 @@ export const botTabSecondaryItems = (botId: string): SecondaryNavItem[] => [
   { id: 'knowledge', label: 'nav.sources', to: `/bots/${botId}/knowledge`, icon: BookOpen, header: 'nav.agentKnowledge' },
 
   { id: 'image-assets', label: 'nav.imageAssets', to: `/bots/${botId}/image-assets`, icon: Briefcase, header: 'nav.agentKnowledge' },
+  { id: 'menu-list', label: 'nav.menuList', to: `/bots/${botId}/menu-list`, icon: UtensilsCrossed, header: 'nav.agentKnowledge' },
 
   // Appearance section (was Design)
   { id: 'design', label: 'nav.appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'nav.agentDesign' },

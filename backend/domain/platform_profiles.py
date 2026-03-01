@@ -80,6 +80,9 @@ HOTPEPPER_PROFILE = PlatformProfile(
     ],
     priority=10,
     strip_query_params=True,  # ?RDT=YYYYMMDD is UI state, not separate pages
+    menu_url_patterns=[
+        r"/course",
+    ],
     metadata={
         "platform_type": "restaurant_reservation",
         "country": "JP",
@@ -94,13 +97,69 @@ TABELOG_PROFILE = PlatformProfile(
         r"/peripheral_map(?:/|$)",
         r"/dtlphotolst(?:/|$)",
         r"/dtlrvwlst(?:/|$)",
+        r"/dtlmap(?:/|$)",
     ],
     priority=10,
     strip_query_params=True,  # query params are UI state, not separate pages
+    menu_url_patterns=[
+        r"/party(?:/|$)",
+        r"/dtlmenu(?:/|$)",
+    ],
+    menu_extraction_rules={
+        "enabled": True,
+        "mode": "deterministic",
+        "extractor": "tabelog_v1",
+        "allowed_path_patterns": [
+            r"^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\d+/A\d+/\d+/?$",
+            r"^/(?:[a-z]{2}(?:-[a-z]{2})?/)?[A-Za-z0-9._-]+/A\d+/A\d+/\d+/(?:party|dtlmenu)(?:/|$)",
+        ],
+        "path_category_patterns": [
+            {"pattern": r"/party(?:/|$)", "category": "course"},
+            {"pattern": r"/dtlmenu/drink(?:/|$)", "category": "drink"},
+            {"pattern": r"/dtlmenu/lunch(?:/|$)", "category": "lunch"},
+            {"pattern": r"/dtlmenu(?:/|$)", "category": "dish"},
+        ],
+    },
     metadata={
         "platform_type": "restaurant_reservation",
         "country": "JP",
         "service_name": "Tabelog",
+        "reservation": {
+            "enabled": True,
+            "link_label": {
+                "en": "Tabelog Online Reservation",
+                "ja": "食べログ ネット予約",
+            },
+            "intent_keywords": {
+                "en": [
+                    "reservation",
+                    "reserve",
+                    "booking",
+                    "book a table",
+                    "book table",
+                    "online reservation",
+                ],
+                "ja": [
+                    "予約",
+                    "ネット予約",
+                    "オンライン予約",
+                    "席予約",
+                    "予約したい",
+                ],
+            },
+            "response_templates": {
+                "en": "For online reservations, please use [{label}]({url}).",
+                "ja": "オンライン予約はこちらをご利用ください: [{label}]({url})",
+            },
+        },
+        "suggested_messages": [
+            {
+                "id": "suggest_menu",
+                "type": "ai_response",
+                "label": {"en": "Menu", "ja": "メニュー"},
+                "prompt": {"en": "Menu", "ja": "メニュー"},
+            }
+        ],
     },
 )
 

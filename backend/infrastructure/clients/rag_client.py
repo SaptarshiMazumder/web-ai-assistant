@@ -1,4 +1,4 @@
-import os, json, re, asyncio
+import os, json, re, asyncio, time
 from google import genai
 from google.genai import types
 
@@ -199,6 +199,24 @@ def sanitize_answer_citations(text: str) -> str:
     # Clean up double spaces
     text = re.sub(r"  +", " ", text)
     return text.strip()
+
+
+def is_quota_exhausted_error(exc: Exception) -> bool:
+    """True when Gemini/Vertex responds with quota/rate-limit exhaustion."""
+    try:
+        status_code = int(getattr(exc, "status_code", 0) or 0)
+        if status_code == 429:
+            return True
+    except Exception:
+        pass
+    msg = f"{type(exc).__name__}: {exc}".upper()
+    return (
+        "RESOURCE_EXHAUSTED" in msg
+        or "RATE LIMIT" in msg
+        or "TOO MANY REQUESTS" in msg
+        or "QUOTA" in msg
+        or " 429" in msg
+    )
 
 
 def dedupe_evidence(evidence: List[Dict[str, str]]) -> List[Dict[str, str]]:
@@ -848,12 +866,28 @@ def synthesize_with_evidence(
     if ENABLE_THINKING:
         cfg.thinking_config = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
     model = (model_name or "").strip() or MODEL_NAME
-    resp = client.models.generate_content(
-        model=model,
-        contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_block)])],
-        config=cfg,
-    )
-    return (resp.text or "").strip()
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=user_block)])]
+    try:
+        resp = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=cfg,
+        )
+        if debug_cb:
+            debug_cb({"type": "gemini_model_used", "model": model, "kind": "primary", "attempt": 1})
+        return (resp.text or "").strip()
+    except Exception as exc:
+        if debug_cb:
+            debug_cb(
+                {
+                    "type": "gemini_call_error",
+                    "model": model,
+                    "attempt": 1,
+                    "quota_error": is_quota_exhausted_error(exc),
+                    "error": f"{type(exc).__name__}: {str(exc)[:240]}",
+                }
+            )
+        raise
 
 
 def synthesize_with_evidence_stream(
@@ -893,13 +927,30 @@ def synthesize_with_evidence_stream(
     if ENABLE_THINKING:
         cfg.thinking_config = types.ThinkingConfig(thinking_budget=THINK_BUDGET)
     model = (model_name or "").strip() or MODEL_NAME
-    for ch in client.models.generate_content_stream(
-        model=model,
-        contents=[types.Content(role="user", parts=[types.Part.from_text(text=user_block)])],
-        config=cfg,
-    ):
-        if ch.candidates and ch.candidates[0].content and ch.candidates[0].content.parts and ch.text:
-            yield ch.text
+    contents = [types.Content(role="user", parts=[types.Part.from_text(text=user_block)])]
+    try:
+        if debug_cb:
+            debug_cb({"type": "gemini_model_used", "model": model, "kind": "primary", "attempt": 1})
+        for ch in client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=cfg,
+        ):
+            if ch.candidates and ch.candidates[0].content and ch.candidates[0].content.parts and ch.text:
+                yield ch.text
+        return
+    except Exception as exc:
+        if debug_cb:
+            debug_cb(
+                {
+                    "type": "gemini_call_error",
+                    "model": model,
+                    "attempt": 1,
+                    "quota_error": is_quota_exhausted_error(exc),
+                    "error": f"{type(exc).__name__}: {str(exc)[:240]}",
+                }
+            )
+        raise
 
 # =========================
 # Main

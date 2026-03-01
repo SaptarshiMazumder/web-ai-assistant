@@ -56,11 +56,7 @@
         if (normalized.length) return normalized;
       } catch (e) {}
     }
-    return [
-      { id: "default_1", label: "What can you do?", type: "ai_response", prompt: "What can you do?" },
-      { id: "default_2", label: "Ask a question", type: "ai_response", prompt: "Ask a question" },
-      { id: "default_3", label: "Request human support", type: "escalate", message: "" },
-    ];
+    return [];
   }
 
   if (sessionId) {
@@ -826,10 +822,12 @@
       card.appendChild(img);
       var body = document.createElement("div");
       body.className = "asset-card-body";
+      var topRow = document.createElement("div");
+      topRow.className = "asset-card-top";
       var title = document.createElement("span");
       title.className = "asset-card-title";
       title.textContent = a.name || "";
-      body.appendChild(title);
+      topRow.appendChild(title);
       if (a.link_url) {
         var link = document.createElement("a");
         link.className = "asset-card-link";
@@ -838,7 +836,14 @@
         link.rel = "noopener noreferrer";
         link.textContent = "View \u2192";
         link.onclick = function (e) { e.stopPropagation(); };
-        body.appendChild(link);
+        topRow.appendChild(link);
+      }
+      body.appendChild(topRow);
+      if (a.description) {
+        var desc = document.createElement("span");
+        desc.className = "asset-card-desc";
+        desc.textContent = a.description;
+        body.appendChild(desc);
       }
       card.appendChild(body);
       wrap.appendChild(card);

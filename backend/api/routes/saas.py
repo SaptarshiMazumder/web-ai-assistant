@@ -86,6 +86,7 @@ from api.schemas import (
     PersonaListResponse,
 )
 from domain.personas import list_personas, list_categories, get_persona, get_persona_system_prompt, get_default_persona_id
+from domain.platform_profiles import resolve_platform_profile
 from application.services.default_prompt_service import (
     build_default_system_instruction,
     extract_business_type_from_widget_config,
@@ -276,6 +277,118 @@ def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) ->
         if len(out) >= limit:
             break
     return out
+
+
+def _normalize_lang_value(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    return "ja" if raw in ("ja", "jp") else "en"
+
+
+def _normalize_http_url(value: Any) -> str:
+    url = str(value or "").strip()
+    if not url:
+        return ""
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    return url
+
+
+def _is_same_suggested_message(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+    if not isinstance(a, dict) or not isinstance(b, dict):
+        return False
+    a_id = str(a.get("id") or "").strip().lower()
+    b_id = str(b.get("id") or "").strip().lower()
+    if a_id and b_id and a_id == b_id:
+        return True
+    a_label = str(a.get("label") or "").strip().lower()
+    b_label = str(b.get("label") or "").strip().lower()
+    a_prompt = str(a.get("prompt") or "").strip().lower()
+    b_prompt = str(b.get("prompt") or "").strip().lower()
+    return a_label == b_label and a_prompt == b_prompt
+
+
+def _profile_candidate_urls_from_widget_config(config: Dict[str, Any]) -> List[str]:
+    candidates: List[str] = []
+    for key in ("tabelogUrl", "hotPepperUrl", "tableCheckUrl"):
+        normalized = _normalize_http_url(config.get(key))
+        if normalized:
+            candidates.append(normalized)
+
+    raw_bank = config.get("urlBank")
+    if isinstance(raw_bank, list):
+        for item in raw_bank:
+            if not isinstance(item, dict):
+                continue
+            normalized = _normalize_http_url(item.get("url"))
+            if normalized:
+                candidates.append(normalized)
+
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for url in candidates:
+        key = url.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(url)
+    return deduped
+
+
+def _resolve_profile_suggested_messages(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    lang = _normalize_lang_value(config.get("language"))
+    out: List[Dict[str, Any]] = []
+
+    for url in _profile_candidate_urls_from_widget_config(config):
+        profile, _ = resolve_platform_profile(url)
+        if profile is None:
+            continue
+        metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+        raw_items = metadata.get("suggested_messages")
+        if not isinstance(raw_items, list):
+            continue
+
+        for raw in raw_items:
+            if not isinstance(raw, dict):
+                continue
+            raw_label = raw.get("label")
+            if isinstance(raw_label, dict):
+                label = str(raw_label.get(lang) or raw_label.get("en") or "").strip()
+            else:
+                label = str(raw_label or "").strip()
+            if not label:
+                continue
+
+            raw_prompt = raw.get("prompt")
+            if isinstance(raw_prompt, dict):
+                prompt = str(raw_prompt.get(lang) or raw_prompt.get("en") or "").strip()
+            else:
+                prompt = str(raw_prompt or "").strip()
+
+            candidate = {
+                "id": str(raw.get("id") or "").strip() or str(uuid.uuid4())[:8],
+                "label": label,
+                "type": str(raw.get("type") or "ai_response").strip() or "ai_response",
+                "prompt": prompt or label,
+            }
+            if any(_is_same_suggested_message(existing, candidate) for existing in out):
+                continue
+            out.append(candidate)
+    return out
+
+
+def _ensure_profile_suggested_messages(config: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(config, dict):
+        return config
+    raw_messages = config.get("suggestedMessages")
+    messages: List[Dict[str, Any]] = []
+    if isinstance(raw_messages, list):
+        messages = [m for m in raw_messages if isinstance(m, dict)]
+    for candidate in _resolve_profile_suggested_messages(config):
+        if any(_is_same_suggested_message(existing, candidate) for existing in messages):
+            continue
+        messages.append(candidate)
+    config["suggestedMessages"] = messages
+    return config
 
 
 # ── Restaurant reservation prompt templates ─────────────────────────────────
@@ -1540,6 +1653,7 @@ async def v1_org_update_bot_widget_config(
         existing = {}
 
     merged = {**existing, **incoming}
+    merged = _ensure_profile_suggested_messages(merged)
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
 
@@ -1932,9 +2046,10 @@ Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 chara
     prev_messages = existing_config.get("suggestedMessages") or []
     escalate_messages = [m for m in prev_messages if isinstance(m, dict) and m.get("type") == "escalate"]
     existing_config["suggestedMessages"] = suggested_messages + escalate_messages
+    existing_config = _ensure_profile_suggested_messages(existing_config)
     bot_service().update_widget_config(bot_id, json.dumps(existing_config))
 
-    return {"suggestedMessages": suggested_messages + escalate_messages}
+    return {"suggestedMessages": existing_config.get("suggestedMessages") or []}
 
 
 @router.get("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
@@ -2038,6 +2153,58 @@ async def v1_org_test_chat(
     )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
+
+    # Keep dashboard test-chat behavior aligned with live chat routes.
+    extra_evidence_test: List[Dict[str, str]] = []
+    availability_summary_test, _ = maybe_run_chat_availability(bot.bot_id, msg, widget_config_test)
+    if availability_summary_test and _is_real_availability_summary(availability_summary_test):
+        extra_evidence_test.append({"url": "Live availability check", "snippet": availability_summary_test})
+
+    booking_url_test = _get_booking_url_for_chat(widget_config_test)
+    if booking_url_test:
+        extra_evidence_test.append({"url": booking_url_test, "snippet": f"To book or check availability, visit: {booking_url_test}"})
+
+    url_bank_test = _get_url_bank_for_chat(widget_config_test)
+    if url_bank_test:
+        for it in url_bank_test:
+            label = it["label"]
+            url = it["url"]
+            extra_evidence_test.append(
+                {
+                    "url": url,
+                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                }
+            )
+        bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_test])
+        bank_instruction_test = (
+            "Answer links (use only when they match the customer’s question):\n"
+            f"{bank_lines}\n\n"
+            "If the question matches one of these topics, include the matching link in your response.\n"
+            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+        )
+        system_instruction = (
+            f"{system_instruction}\n\n{bank_instruction_test}" if system_instruction else bank_instruction_test
+        )
+
+    restaurant_instruction_test = _get_restaurant_reservation_instruction(
+        widget_config_test, lang=_get_bot_language(bot)
+    )
+    if restaurant_instruction_test:
+        system_instruction = (
+            f"{system_instruction}\n\n{restaurant_instruction_test}"
+            if system_instruction
+            else restaurant_instruction_test
+        )
+
+    asset_evidence_test = build_asset_evidence(bot.bot_id)
+    if asset_evidence_test:
+        extra_evidence_test.extend(asset_evidence_test)
+    asset_instruction_test = build_asset_instruction(bot.bot_id)
+    if asset_instruction_test:
+        system_instruction = (
+            f"{system_instruction}\n\n{asset_instruction_test}" if system_instruction else asset_instruction_test
+        )
+
     result = run_vertex_rag(
         msg,
         rag_corpus=corpus,
@@ -2046,11 +2213,23 @@ async def v1_org_test_chat(
         model_name=model_name,
         temperature=temperature,
         conversation_context=conversation_context or None,
+        extra_evidence=extra_evidence_test if extra_evidence_test else None,
         bot_display_name=getattr(bot, "display_name", None),
     )
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
     answer = str(result.get("answer") or "")
+    answer, marker_cards = resolve_asset_markers(answer, bot.bot_id, session.session_id)
+    if marker_cards:
+        asset_cards = marker_cards
+    else:
+        answer, asset_cards = process_answer_assets(
+            answer,
+            bot.bot_id,
+            user_query=msg,
+            session_id=session.session_id,
+        )
+    assets = [AssetCard(**c) for c in asset_cards]
     conversation_service().add_message(
         session_id=session.session_id,
         bot_id=bot.bot_id,
@@ -2058,7 +2237,7 @@ async def v1_org_test_chat(
         content=answer,
         citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
     )
-    return TestChatResponse(answer=answer, citations=citations, session_id=session.session_id)
+    return TestChatResponse(answer=answer, citations=citations, assets=assets, session_id=session.session_id)
 
 
 @router.post("/v1/org/bots/{bot_id}/analytics/recompute", response_model=RecomputeResponse)
@@ -4210,3 +4389,4 @@ async def v1_admin_reset_gcs(user=Depends(require_super_admin)):
 async def v1_admin_reset_rag(user=Depends(require_super_admin)):
     deleted = delete_rag_corpora()
     return {"status": "ok", "deleted_corpora": deleted}
+

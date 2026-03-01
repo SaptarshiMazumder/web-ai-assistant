@@ -29,7 +29,7 @@ from infrastructure.clients.line_client import (
     build_suggested_flex,
     show_typing as line_show_typing,
 )
-from infrastructure.clients.rag_client import run_vertex_rag
+from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_evidence, build_asset_instruction, resolve_asset_markers
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
@@ -96,6 +96,15 @@ def _wants_de_escalation(text: str) -> bool:
 def _wants_skip_message(text: str) -> bool:
     lower = text.lower().strip()
     return any(lower == kw or lower.startswith(kw) for kw in SKIP_KEYWORDS)
+
+def _is_truthy(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return False
 
 
 # ── Helper: format conversation context ──────────────────────────────
@@ -263,8 +272,12 @@ async def _handle_text_message(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    suggested_messages_enabled = widget_config.get("suggestedMessagesEnabled", False) if isinstance(widget_config, dict) else False
-    suggested_messages = widget_config.get("suggestedMessages") if isinstance(widget_config, dict) and suggested_messages_enabled else None
+    suggested_messages_enabled = _is_truthy(widget_config.get("suggestedMessagesEnabled")) if isinstance(widget_config, dict) else False
+    suggested_messages = (
+        widget_config.get("suggestedMessages")
+        if isinstance(widget_config, dict) and suggested_messages_enabled
+        else None
+    )
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
 
@@ -364,7 +377,7 @@ async def _handle_text_message(
                 "✓ Message received by our team. They'll reply here shortly.\n\n"
                 "To return to the AI assistant, just say \"back to bot\"."
             )
-        await reply_message(reply_token, [ack], access_token)
+        await reply_message(reply_token, [ack], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -403,7 +416,7 @@ async def _handle_text_message(
             "Our team has been notified and will reply to you here shortly.\n\n"
             "Reply \"back to bot\" anytime to return to the AI assistant."
         )
-        await reply_message(reply_token, [confirm_msg], access_token)
+        await reply_message(reply_token, [confirm_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -429,7 +442,7 @@ async def _handle_text_message(
             "I'll connect you with our team right away.\n\n"
             "Would you like to leave a message for them? Type your message below, or reply \"skip\" to connect immediately."
         )
-        await reply_message(reply_token, [prompt_msg], access_token)
+        await reply_message(reply_token, [prompt_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -505,9 +518,13 @@ async def _handle_text_message(
                 user_query=text,
                 session_id=session.session_id,
             )
-    except Exception:
-        logger.exception("RAG error for LINE message bot_id=%s", bot.bot_id)
-        answer = "I'm sorry, something went wrong. Please try again in a moment."
+    except Exception as e:
+        if is_quota_exhausted_error(e):
+            logger.warning("RAG quota exhausted for LINE message bot_id=%s", bot.bot_id)
+            answer = "We're experiencing high demand right now. Please try again in about a minute."
+        else:
+            logger.exception("RAG error for LINE message bot_id=%s", bot.bot_id)
+            answer = "I'm sorry, something went wrong. Please try again in a moment."
 
     # Save bot response
     conversation_service().add_message(

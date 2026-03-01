@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ===========================
@@ -284,6 +284,7 @@ class TestChatRequest(BaseModel):
 class TestChatResponse(BaseModel):
     answer: str
     citations: List[Citation] = []
+    assets: List["AssetCard"] = []
     session_id: Optional[str] = None
 
 
@@ -772,6 +773,8 @@ class AssetCard(BaseModel):
     name: str
     image_url: str
     link_url: Optional[str] = None
+    description: Optional[str] = None
+    asset_type: Optional[str] = None
 
 
 class BotAssetResponse(BaseModel):
@@ -783,7 +786,9 @@ class BotAssetResponse(BaseModel):
     image_url: str
     link_url: Optional[str] = None
     keywords: List[str] = []
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     is_active: bool = True
+    asset_type: str = "image"
     created_at: str
     updated_at: str
 

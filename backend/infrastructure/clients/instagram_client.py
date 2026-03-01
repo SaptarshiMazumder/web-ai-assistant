@@ -62,8 +62,8 @@ def verify_signature(body: bytes, signature: str, app_secret: str) -> bool:
 def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
     """Convert widget suggestedMessages config into Instagram quick_replies format.
 
-    Labels are generated to fit within 20 chars. The payload carries the
-    full label so tapping sends the correct message even if truncated.
+    Labels are hard-capped to Instagram's 20-char title limit.
+    The payload carries the full label so taps still send the full intent.
     """
     if not suggested_messages:
         return None
@@ -74,10 +74,35 @@ def build_ig_quick_replies(suggested_messages: list) -> Optional[List[dict]]:
             continue
         items.append({
             "content_type": "text",
-            "title": label[:20] if len(label) <= 20 else label[:17] + "...",
-            "payload": label,
+            "title": label[:20],
+            "payload": label[:1000],
         })
     return items if items else None
+
+
+def _normalize_quick_replies(quick_replies: Optional[List[dict]]) -> Optional[List[dict]]:
+    if not quick_replies:
+        return None
+    out: List[dict] = []
+    for qr in quick_replies[:13]:
+        if not isinstance(qr, dict):
+            continue
+        title = str(qr.get("title") or "").strip()
+        payload = str(qr.get("payload") or "").strip()
+        if not title or not payload:
+            continue
+        if len(title) > 20:
+            title = title[:20]
+        if len(payload) > 1000:
+            payload = payload[:1000]
+        out.append(
+            {
+                "content_type": "text",
+                "title": title,
+                "payload": payload,
+            }
+        )
+    return out if out else None
 
 
 
@@ -116,8 +141,9 @@ async def send_message(
     formatted_text = format_for_messaging(text)
     base = _api_base(page_access_token)
     message_obj: dict = {"text": formatted_text}
-    if quick_replies:
-        message_obj["quick_replies"] = quick_replies
+    normalized_qr = _normalize_quick_replies(quick_replies)
+    if normalized_qr:
+        message_obj["quick_replies"] = normalized_qr
     payload = {
         "recipient": {"id": recipient_id},
         "message": message_obj,

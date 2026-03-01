@@ -39,6 +39,11 @@ from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 logger = logging.getLogger(__name__)
 
 _MAX_CRAWL_DURATION_SEC = 600  # HARD 10-MINUTE LIMIT for training/crawl to GCS/RAG
+try:
+    _MENU_EXTRACTION_SOFT_LIMIT_SEC = max(120, int((os.environ.get("MENU_EXTRACTION_SOFT_LIMIT_SEC") or "600").strip()))
+except ValueError:
+    _MENU_EXTRACTION_SOFT_LIMIT_SEC = 600
+_MENU_EXTRACTION_HARD_LIMIT_SEC = _MENU_EXTRACTION_SOFT_LIMIT_SEC + 20
 
 
 def _asset_limit() -> int:
@@ -541,6 +546,86 @@ def asset_extraction_task(
                 pass
 
         logger.warning(f"Asset extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+        return {"status": "error", "error": str(e)[:200]}
+
+
+@celery_app.task(
+    name="infrastructure.tasks.crawl_tasks.menu_extraction_task",
+    bind=True,
+    time_limit=_MENU_EXTRACTION_HARD_LIMIT_SEC,
+    soft_time_limit=_MENU_EXTRACTION_SOFT_LIMIT_SEC,
+)
+def menu_extraction_task(
+    self: Task,
+    bot_id: str,
+    org_id: str,
+    gcs_prefix: str,
+    job_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Extract menu items from crawled restaurant pages using LLM."""
+    job_repo = None
+    current_job = None
+    if job_id:
+        try:
+            from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
+            job_repo = PostgresAssetExtractionJobRepository()
+            current_job = job_repo.get_job(job_id)
+            if current_job and current_job.status != "cancelled":
+                current_job.status = "running"
+                job_repo.update_job(current_job)
+        except Exception as e:
+            logger.warning(f"Failed to update menu extraction job status: {e}")
+
+    try:
+        limit = int((os.environ.get("MENU_MAX_PER_BOT") or os.environ.get("ASSET_MAX_PER_BOT") or "500").strip() or 500)
+        repo = PostgresBotAssetRepository()
+        existing_count = len(repo.list_assets_for_bot(bot_id, active_only=False, asset_type="menu_item"))
+        remaining = max(0, limit - existing_count)
+        if remaining <= 0:
+            if job_repo and current_job:
+                current_job.status = "done"
+                job_repo.update_job(current_job)
+            return {"status": "done", "items_count": 0, "items_total": existing_count, "items_limit": limit}
+
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {"status": "cancelled", "items_count": 0, "items_total": existing_count, "items_limit": limit}
+
+        from application.services.menu_extraction_service import menu_extraction_service
+        service = menu_extraction_service()
+        count = service.extract_from_gcs_prefix(
+            org_id=org_id,
+            bot_id=bot_id,
+            gcs_prefix=gcs_prefix,
+            max_items=remaining,
+            page_urls=(current_job.page_urls if current_job else None),
+            job_id=job_id,
+        )
+        total_count = len(repo.list_assets_for_bot(bot_id, active_only=False, asset_type="menu_item"))
+
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {"status": "cancelled", "items_count": count, "items_total": total_count, "items_limit": limit}
+            current_job.status = "done"
+            job_repo.update_job(current_job)
+
+        logger.info(f"Menu extraction completed for bot {bot_id}: {count} items created")
+        return {"status": "done", "items_count": count, "items_total": total_count, "items_limit": limit}
+    except Exception as e:
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {"status": "cancelled"}
+        if job_repo and current_job:
+            current_job.status = "error"
+            current_job.error = str(e)[:200]
+            try:
+                job_repo.update_job(current_job)
+            except Exception:
+                pass
+        logger.warning(f"Menu extraction failed for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
         return {"status": "error", "error": str(e)[:200]}
 
 

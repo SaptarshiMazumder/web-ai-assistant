@@ -414,6 +414,7 @@ _SCHEMA_SQL: Iterable[str] = (
       image_public_url TEXT NOT NULL DEFAULT '',
       link_url TEXT,
       keywords TEXT NOT NULL DEFAULT '[]',
+      metadata_json TEXT NOT NULL DEFAULT '{}',
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -421,6 +422,9 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS bot_assets_bot_id ON bot_assets (bot_id)",
     "CREATE INDEX IF NOT EXISTS bot_assets_org_bot ON bot_assets (org_id, bot_id)",
+    "ALTER TABLE bot_assets ADD COLUMN IF NOT EXISTS asset_type TEXT NOT NULL DEFAULT 'image'",
+    "ALTER TABLE bot_assets ADD COLUMN IF NOT EXISTS metadata_json TEXT NOT NULL DEFAULT '{}'",
+    "CREATE INDEX IF NOT EXISTS bot_assets_type ON bot_assets (bot_id, asset_type)",
     """
     CREATE TABLE IF NOT EXISTS asset_extraction_jobs (
       job_id TEXT PRIMARY KEY,

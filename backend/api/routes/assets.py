@@ -84,7 +84,9 @@ def _asset_to_response(a: BotAsset) -> BotAssetResponse:
         image_url=a.image_public_url,
         link_url=a.link_url,
         keywords=a.keywords,
+        metadata=a.metadata if isinstance(a.metadata, dict) else {},
         is_active=a.is_active,
+        asset_type=a.asset_type,
         created_at=a.created_at,
         updated_at=a.updated_at,
     )
@@ -110,7 +112,7 @@ async def create_asset(
     _assert_bot_org(bot_id, resolved_org)
 
     limit = _asset_limit()
-    existing_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False)
+    existing_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False, asset_type="image")
     if len(existing_assets) >= limit:
         raise HTTPException(status_code=400, detail=f"Asset limit reached ({limit}).")
 
@@ -166,7 +168,7 @@ async def list_assets(
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
-    assets = asset_repo().list_assets_for_bot(bot_id)
+    assets = asset_repo().list_assets_for_bot(bot_id, asset_type="image")
     limit = _asset_limit()
     return BotAssetListResponse(
         bot_id=bot_id,
@@ -303,10 +305,10 @@ async def auto_extract_assets(
         )
 
     limit = _asset_limit()
-    current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False)
+    current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False, asset_type="image")
     current_count = len(current_assets)
     remaining = max(0, limit - current_count)
-    
+
     if remaining <= 0:
         return BotAssetAutoExtractResponse(
             ok=True,
@@ -371,9 +373,9 @@ async def get_asset_extraction_status(
 
     from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
     repo = PostgresAssetExtractionJobRepository()
-    job = repo.get_latest_job_for_bot(bot_id)
-    
-    current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False)
+    job = repo.get_latest_job_for_bot(bot_id, prefix="extract_")
+
+    current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False, asset_type="image")
     limit = _asset_limit()
 
     if not job:

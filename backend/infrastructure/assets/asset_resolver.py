@@ -22,10 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
-_MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "2")), 5))
+_MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "3")), 5))
 _MAX_ASSET_CARDS_EXPLICIT_REQUEST = max(
     _MAX_ASSET_CARDS_PER_ANSWER,
-    min(int(os.environ.get("ASSET_MAX_CARDS_EXPLICIT_REQUEST", "4")), 8),
+    min(int(os.environ.get("ASSET_MAX_CARDS_EXPLICIT_REQUEST", "6")), 8),
+)
+_ASSET_MATCH_CANDIDATE_POOL = max(
+    _MAX_ASSET_CARDS_EXPLICIT_REQUEST * 5,
+    _MAX_ASSET_CARDS_PER_ANSWER * 5,
 )
 _ASSET_SESSION_DEDUPE_TTL_SECONDS = max(
     300,
@@ -46,6 +50,13 @@ _VISUAL_REQUEST_TERMS = {
     "share",
     "let me see",
     "what it looks like",
+    # Japanese
+    "写真",
+    "画像",
+    "見せて",
+    "見たい",
+    "見せてください",
+    "見たいです",
 }
 _VISUAL_REQUEST_MANY_TERMS = {
     "all",
@@ -58,6 +69,12 @@ _VISUAL_REQUEST_MANY_TERMS = {
     "entire menu",
     "more photos",
     "more images",
+    # Japanese
+    "全部",
+    "もっと",
+    "全メニュー",
+    "メニュー全部",
+    "一覧",
 }
 _VISUAL_SUPPRESS_TERMS = {
     "no image",
@@ -70,6 +87,11 @@ _VISUAL_SUPPRESS_TERMS = {
     "without images",
     "without photo",
     "without photos",
+    # Japanese
+    "画像なし",
+    "写真なし",
+    "画像不要",
+    "写真不要",
 }
 _ASSET_INTENT_TERMS = {
     "menu",
@@ -109,6 +131,29 @@ _ASSET_INTENT_TERMS = {
     "options",
     "catalog",
     "collection",
+    # Japanese
+    "メニュー",
+    "料理",
+    "コース",
+    "食べ物",
+    "飲み物",
+    "ドリンク",
+    "商品",
+    "サービス",
+    "プラン",
+    "部屋",
+    "施設",
+    "おすすめ",
+    "人気",
+    "定番",
+    "ランチ",
+    "ディナー",
+    "デザート",
+    "前菜",
+    "刺身",
+    "寿司",
+    "焼肉",
+    "セット",
 }
 _SPECIAL_SHORT_TOKENS = {"xl", "xxl", "xs"}
 _GENERIC_TOKENS = {
@@ -191,7 +236,21 @@ def _asset_to_card(asset: BotAsset) -> Dict[str, str]:
         "name": asset.name,
         "image_url": asset.image_public_url,
         "link_url": asset.link_url or "",
+        "description": asset.description or "",
+        "asset_type": getattr(asset, "asset_type", "image"),
     }
+
+
+def _menu_fields(asset: BotAsset) -> tuple[str, str, str]:
+    metadata = asset.metadata if isinstance(getattr(asset, "metadata", None), dict) else {}
+    price_text = str(metadata.get("price_text") or "").strip()
+    details = str(metadata.get("details") or "").strip()
+    category = str(metadata.get("category") or "").strip()
+    if not price_text and isinstance(metadata.get("price"), dict):
+        price_text = str((metadata.get("price") or {}).get("text") or "").strip()
+    if not details:
+        details = (asset.description or "").strip()
+    return price_text, details, category
 
 
 def _asset_session_key(bot_id: str, session_id: str) -> str:
@@ -215,6 +274,13 @@ def _normalize_card_image_url(url: str) -> str:
     return lowered[:cut]
 
 
+_CJK_RE = re.compile(r"[\u3000-\u9fff\uf900-\ufaff\uff00-\uffef]")
+
+
+def _is_cjk(text: str) -> bool:
+    return bool(_CJK_RE.search(text))
+
+
 def _contains_any_term(text_norm: str, terms: Set[str]) -> bool:
     if not text_norm:
         return False
@@ -223,6 +289,11 @@ def _contains_any_term(text_norm: str, terms: Set[str]) -> bool:
         if not t:
             continue
         if " " in t:
+            if t in text_norm:
+                return True
+            continue
+        # CJK characters don't have word boundaries, use substring match
+        if _is_cjk(t):
             if t in text_norm:
                 return True
             continue
@@ -273,7 +344,10 @@ def _max_cards_for_query(user_query: Optional[str], cards: List[Dict[str, str]])
 def _normalize_text(text: str) -> str:
     t = (text or "").lower().strip()
     t = re.sub(r"\bbed\s+room(s)?\b", r"bedroom\1", t)
-    t = re.sub(r"[^a-z0-9\s]+", " ", t)
+    # Preserve CJK characters (Japanese, Chinese, Korean) alongside ASCII alphanumerics
+    t = re.sub(r"[^a-z0-9\s\u3000-\u9fff\uf900-\ufaff\uff00-\uffef]+", " ", t)
+    # Normalize fullwidth/ideographic spaces to regular spaces
+    t = t.replace("\u3000", " ")
     t = re.sub(r"\s+", " ", t).strip()
     return t
 
@@ -295,6 +369,14 @@ def _tokenize(text: str) -> Set[str]:
         return set()
     out: Set[str] = set()
     for raw in norm.split():
+        if _is_cjk(raw):
+            # Keep CJK tokens as-is (no stemming, no length filter)
+            out.add(raw)
+            # Also add individual CJK characters as tokens for partial matching
+            for ch in raw:
+                if _CJK_RE.match(ch):
+                    out.add(ch)
+            continue
         tok = _stem_token(raw)
         if len(tok) < 3 and tok not in _SPECIAL_SHORT_TOKENS:
             continue
@@ -434,6 +516,108 @@ def _match_assets_from_answer(
     return out
 
 
+def _asset_query_score(
+    asset: BotAsset,
+    query_norm: str,
+    query_tokens: Set[str],
+) -> int:
+    if not query_norm:
+        return 0
+    text = " ".join([asset.name or "", asset.description or "", " ".join(asset.keywords or [])]).strip()
+    asset_tokens = _tokenize(text)
+    if not asset_tokens:
+        return 0
+
+    score = 0
+    name_phrase = _contains_phrase(query_norm, asset.name or "")
+    if name_phrase:
+        score += 12
+
+    keyword_phrase = False
+    for kw in asset.keywords or []:
+        if _contains_phrase(query_norm, kw):
+            keyword_phrase = True
+            score += 6
+            break
+
+    overlap = query_tokens & asset_tokens
+    non_generic_overlap = [t for t in overlap if t not in _GENERIC_TOKENS]
+    if non_generic_overlap:
+        score += 3 + len(non_generic_overlap)
+
+    # Menu-aware boost to improve restaurant recall when user asks for menu details.
+    if getattr(asset, "asset_type", "image") == "menu_item":
+        if any(tok in query_norm for tok in ("menu", "dish", "drink", "lunch", "course", "party")):
+            score += 3
+        _, _, category = _menu_fields(asset)
+        if category and category in query_norm:
+            score += 4
+
+    if not (name_phrase or keyword_phrase or non_generic_overlap):
+        return 0
+    return score
+
+
+def _match_assets_from_query(
+    user_query: Optional[str],
+    assets: List[BotAsset],
+    *,
+    max_cards: int = _ASSET_MATCH_CANDIDATE_POOL,
+) -> List[Dict[str, str]]:
+    query_norm = _normalize_text(user_query or "")
+    query_tokens = _tokenize(query_norm)
+    if not query_norm:
+        return []
+
+    scored: List[Tuple[int, str, BotAsset]] = []
+    for a in assets:
+        s = _asset_query_score(a, query_norm, query_tokens)
+        if s <= 0:
+            continue
+        scored.append((s, a.asset_id, a))
+
+    scored.sort(key=lambda it: (-it[0], it[1]))
+    out: List[Dict[str, str]] = []
+    seen_image_urls: Set[str] = set()
+    for _, _, a in scored:
+        card = _asset_to_card(a)
+        image_key = _normalize_card_image_url(card.get("image_url", ""))
+        if image_key and image_key in seen_image_urls:
+            continue
+        if image_key:
+            seen_image_urls.add(image_key)
+        out.append(card)
+        if len(out) >= max_cards:
+            break
+    return out
+
+
+def _merge_cards_unique(*groups: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    seen_asset_ids: Set[str] = set()
+    seen_images: Set[str] = set()
+    for group in groups:
+        for card in group or []:
+            aid = str(card.get("asset_id") or "").strip()
+            image_key = _normalize_card_image_url(card.get("image_url", ""))
+            if aid and aid in seen_asset_ids:
+                continue
+            if image_key and image_key in seen_images:
+                continue
+            if aid:
+                seen_asset_ids.add(aid)
+            if image_key:
+                seen_images.add(image_key)
+            out.append(card)
+    return out
+
+
+_MAX_ASSETS_IN_INSTRUCTION = max(
+    10,
+    min(int(os.environ.get("ASSET_MAX_IN_INSTRUCTION", "30")), 60),
+)
+
+
 def build_asset_instruction(bot_id: str) -> str:
     """
     Build a system instruction block that tells the LLM about available
@@ -447,23 +631,44 @@ def build_asset_instruction(bot_id: str) -> str:
     if not assets:
         return ""
 
-    lines: list[str] = []
-    for a in assets:
+    # Group by asset_type for clearer LLM context
+    image_assets = [a for a in assets if getattr(a, "asset_type", "image") == "image"]
+    menu_items = [a for a in assets if getattr(a, "asset_type", "image") == "menu_item"]
+
+    def _format_asset(a) -> str:
         desc = (a.description or "").strip()
         kw = ", ".join(a.keywords or [])
         parts = [f"- **{a.name}** (ID: `{a.asset_id}`)"]
+        if getattr(a, "asset_type", "image") == "menu_item":
+            price_text, details, category = _menu_fields(a)
+            if category:
+                parts.append(f"  Category: {category}")
+            if price_text:
+                parts.append(f"  Price: {price_text}")
+            if details:
+                parts.append(f"  Details: {details}")
         if desc:
             parts.append(f"  Description: {desc}")
         if kw:
             parts.append(f"  Keywords: {kw}")
-        if a.link_url:
-            parts.append(f"  Link: {a.link_url}")
-        lines.append("\n".join(parts))
+        return "\n".join(parts)
 
-    asset_list = "\n".join(lines)
+    sections: list[str] = []
+    remaining = _MAX_ASSETS_IN_INSTRUCTION
+    if image_assets:
+        batch = image_assets[:remaining]
+        remaining -= len(batch)
+        lines = [_format_asset(a) for a in batch]
+        sections.append("IMAGE ASSETS (products/services with images):\n" + "\n".join(lines))
+    if menu_items and remaining > 0:
+        batch = menu_items[:remaining]
+        lines = [_format_asset(a) for a in batch]
+        header = f"MENU ITEMS ({len(menu_items)} total, showing {len(batch)}):" if len(menu_items) > len(batch) else "MENU ITEMS (dishes, courses, food offerings):"
+        sections.append(f"{header}\n" + "\n".join(lines))
+
+    asset_list = "\n\n".join(sections)
     return (
-        "\n\nAVAILABLE BUSINESS ASSETS (products/services with images):\n"
-        f"{asset_list}\n\n"
+        f"\n\nAVAILABLE BUSINESS ASSETS:\n{asset_list}\n\n"
         "ASSET IMAGE RULES (CRITICAL):\n"
         "- When your answer mentions or discusses any of the above products/services for the first time, "
         "include the marker {{asset:ASSET_ID}}.\n"
@@ -475,6 +680,12 @@ def build_asset_instruction(bot_id: str) -> str:
     )
 
 
+_MAX_ASSETS_IN_EVIDENCE = max(
+    5,
+    min(int(os.environ.get("ASSET_MAX_IN_EVIDENCE", "20")), 50),
+)
+
+
 def build_asset_evidence(bot_id: str) -> list[dict[str, str]]:
     """
     Convert active business assets into evidence snippets that can be
@@ -482,16 +693,26 @@ def build_asset_evidence(bot_id: str) -> list[dict[str, str]]:
 
     Each asset becomes an evidence snippet so the LLM can discover and
     reference products/services it wouldn't otherwise know about.
+    Capped to avoid overwhelming the RAG context.
     """
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
     if not assets:
         return []
 
     evidence: list[dict[str, str]] = []
-    for a in assets:
+    for a in assets[:_MAX_ASSETS_IN_EVIDENCE]:
         desc = (a.description or "").strip()
         kw = ", ".join(a.keywords or [])
-        snippet_parts = [f"Product/Service: {a.name}."]
+        label = "Menu Item" if getattr(a, "asset_type", "image") == "menu_item" else "Product/Service"
+        snippet_parts = [f"{label}: {a.name}."]
+        if getattr(a, "asset_type", "image") == "menu_item":
+            price_text, details, category = _menu_fields(a)
+            if category:
+                snippet_parts.append(f"Category: {category}.")
+            if price_text:
+                snippet_parts.append(f"Price: {price_text}.")
+            if details:
+                snippet_parts.append(f"Details: {details}.")
         if desc:
             snippet_parts.append(f"Description: {desc}.")
         if kw:
@@ -563,6 +784,7 @@ def resolve_asset_markers(
     answer: str,
     bot_id: str,
     session_id: Optional[str] = None,
+    allowed_asset_types: Optional[Set[str]] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
     Parse {{asset:ID}} markers from the LLM answer.
@@ -578,6 +800,17 @@ def resolve_asset_markers(
     cards = []
     # Fetch all active assets for lookup
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
+    normalized_allowed = {
+        str(t or "").strip().lower()
+        for t in (allowed_asset_types or set())
+        if str(t or "").strip()
+    }
+    if normalized_allowed:
+        assets = [
+            a
+            for a in assets
+            if str(getattr(a, "asset_type", "image") or "image").strip().lower() in normalized_allowed
+        ]
     asset_map = {a.asset_id: a for a in assets}
 
     cleaned_answer = answer
@@ -611,25 +844,58 @@ def process_answer_assets(
     bot_id: str,
     user_query: Optional[str] = None,
     session_id: Optional[str] = None,
+    allowed_asset_types: Optional[Set[str]] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
     Match assets after answer generation.
     - No pre-generation asset influence.
     - Cards are selected only from answer content matches.
     """
-    cleaned, marker_cards = resolve_asset_markers(answer, bot_id, session_id)
+    cleaned, marker_cards = resolve_asset_markers(
+        answer,
+        bot_id,
+        session_id,
+        allowed_asset_types=allowed_asset_types,
+    )
     if marker_cards:
+        logger.info("[AssetResolver] Marker cards found: %d", len(marker_cards))
         return cleaned, marker_cards
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
+    normalized_allowed = {
+        str(t or "").strip().lower()
+        for t in (allowed_asset_types or set())
+        if str(t or "").strip()
+    }
+    if normalized_allowed:
+        assets = [
+            a
+            for a in assets
+            if str(getattr(a, "asset_type", "image") or "image").strip().lower() in normalized_allowed
+        ]
     if not assets:
+        logger.info("[AssetResolver] No active assets for bot %s", bot_id)
         return cleaned, []
-    cards = _match_assets_from_answer(cleaned, assets, max_cards=_MAX_ASSET_CARDS_PER_ANSWER)
+    logger.info("[AssetResolver] Loaded %d active assets for bot %s", len(assets), bot_id)
+    answer_cards = _match_assets_from_answer(
+        cleaned,
+        assets,
+        max_cards=_ASSET_MATCH_CANDIDATE_POOL,
+    )
+    logger.info(
+        "[AssetResolver] Answer matched %d candidate cards (query=%s)",
+        len(answer_cards),
+        (user_query or "")[:80],
+    )
+    cards = answer_cards
+    if not cards:
+        return cleaned, []
     max_cards_for_query = _max_cards_for_query(user_query, cards)
+    logger.info("[AssetResolver] max_cards_for_query=%d", max_cards_for_query)
     if max_cards_for_query <= 0:
         return cleaned, []
-    cards = cards[:max_cards_for_query]
 
     sid = (session_id or "").strip()
     if sid and cards:
         cards = _filter_and_record_session_assets(cards, bot_id, sid)
-    return cleaned, cards
+        logger.info("[AssetResolver] After session dedupe: %d cards", len(cards))
+    return cleaned, cards[:max_cards_for_query]
