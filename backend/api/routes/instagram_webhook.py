@@ -1043,6 +1043,15 @@ async def instagram_webhook_global(request: Request):
                 if not channel:
                     channel = _ig_channel_repo.get_by_page_id(ig_sender_id)
                 if channel and channel.is_active and not _did_we_recently_send(ig_recipient_id, channel.bot_id):
+                    passed = await pass_thread_control_to_inbox(
+                        ig_user_id=ig_recipient_id,
+                        page_access_token=channel.page_access_token,
+                    )
+                    if not passed:
+                        logger.debug(
+                            "pass_thread_control on echo failed for ig_user=%s (may already have control)",
+                            ig_recipient_id,
+                        )
                     _ig_user_session_repo.set_escalated(
                         ig_user_id=ig_recipient_id,
                         bot_id=channel.bot_id,
@@ -1188,6 +1197,15 @@ async def instagram_webhook(bot_id: str, request: Request):
             # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
             if message.get("is_echo"):
                 if not _did_we_recently_send(ig_recipient_id, bot_id):
+                    passed = await pass_thread_control_to_inbox(
+                        ig_user_id=ig_recipient_id,
+                        page_access_token=channel.page_access_token,
+                    )
+                    if not passed:
+                        logger.debug(
+                            "pass_thread_control on echo failed for ig_user=%s (may already have control)",
+                            ig_recipient_id,
+                        )
                     _ig_user_session_repo.set_escalated(
                         ig_user_id=ig_recipient_id,
                         bot_id=bot_id,
@@ -1221,8 +1239,12 @@ async def _handle_text_message(
     """Core handler for a single text DM from Instagram."""
     access_token = channel.page_access_token
 
-    # Show typing indicator immediately while processing
-    await ig_show_typing(ig_user_id, access_token)
+    effective_text = (text or "").strip() or (quick_payload or "").strip()
+    mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
+    # Don't show typing when escalated and we won't reply (user didn't say "cancel")
+    skip_typing = mapping and mapping.is_escalated and not _wants_cancel_escalation(effective_text)
+    if not skip_typing:
+        await ig_show_typing(ig_user_id, access_token)
 
     # Load suggested messages from platform profile or default (config-driven)
     ig_quick_replies = None
@@ -1238,7 +1260,6 @@ async def _handle_text_message(
     if suggested_messages:
         ig_quick_replies = build_ig_quick_replies(suggested_messages)
     logger.info("Instagram quick replies bot_id=%s quick_reply_count=%s", bot.bot_id, len(ig_quick_replies or []))
-    effective_text = (text or "").strip() or (quick_payload or "").strip()
 
     # Get or create session mapping
     mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
