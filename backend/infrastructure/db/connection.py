@@ -446,6 +446,8 @@ _SCHEMA_SQL: Iterable[str] = (
     # ── Escalation optional-message flow ──
     "ALTER TABLE instagram_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE instagram_user_sessions ADD COLUMN IF NOT EXISTS awaiting_staff_takeover BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_staff_takeover BOOLEAN NOT NULL DEFAULT FALSE",
 )
 
 _SCHEMA_INITIALIZED = False

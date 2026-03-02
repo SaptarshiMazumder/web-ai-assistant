@@ -40,6 +40,7 @@ from infrastructure.clients.instagram_client import (
     build_ig_quick_replies,
     get_conversation_id_for_user,
     get_instagram_user_profile,
+    pass_thread_control_to_inbox,
     show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
@@ -221,6 +222,7 @@ _IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "If you wish to cancel and return to the AI assistant, say \"cancel\" at any time.",
         "cancel_ack": "Cancelled. How can I help you?",
         "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
+        "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
     },
     "ja": {
         "prompt": "スタッフにおつなぎいたします。\n\n"
@@ -228,6 +230,7 @@ _IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "AIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。",
         "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
         "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
+        "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
     },
 }
 
@@ -1346,11 +1349,6 @@ async def _handle_text_message(
             bot_id=bot.bot_id,
             awaiting=False,
         )
-        _ig_user_session_repo.set_escalated(
-            ig_user_id=ig_user_id,
-            bot_id=bot.bot_id,
-            escalated=True,
-        )
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1403,6 +1401,22 @@ async def _handle_text_message(
             bot_id=bot.bot_id,
             role="bot",
             content=ack_msg,
+        )
+        # Pass thread control to Meta Inbox so client sees it and can reply from Instagram/Meta Business Suite.
+        passed = await pass_thread_control_to_inbox(
+            ig_user_id=ig_user_id,
+            page_access_token=access_token,
+        )
+        if not passed:
+            logger.warning(
+                "pass_thread_control_to_inbox failed for ig_user=%s bot_id=%s; falling back to echo-based takeover",
+                ig_user_id,
+                bot.bot_id,
+            )
+        _ig_user_session_repo.set_escalated(
+            ig_user_id=ig_user_id,
+            bot_id=bot.bot_id,
+            escalated=True,
         )
         return
 
@@ -1639,7 +1653,7 @@ async def _handle_text_message(
                 if not sent:
                     await _send_images_fallback(
                         ig_user_id=ig_user_id,
-                        bot_id=bot_id,
+                        bot_id=bot.bot_id,
                         access_token=access_token,
                         image_urls=[str(e.get("image_url") or "").strip() for e in elements],
                         max_images=5,
@@ -1651,7 +1665,7 @@ async def _handle_text_message(
     # 1) assets (if any) 2) text 3) suggested messages (quick replies on text)
     await _send_answer_text_with_quick_replies(
         ig_user_id=ig_user_id,
-        bot_id=bot_id,
+        bot_id=bot.bot_id,
         answer=answer,
         access_token=access_token,
         quick_replies=ig_quick_replies,

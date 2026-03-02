@@ -83,6 +83,7 @@ _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "ack_full": "✓ Message received by our team. They'll reply here shortly.\n\n"
         "To return to the AI assistant, just say \"back to bot\".",
         "de_esc": "You're now back with our AI assistant. How can I help you?",
+        "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
     },
     "ja": {
         "prompt": "スタッフにおつなぎいたします。\n\n"
@@ -94,6 +95,7 @@ _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "ack_full": "✓ スタッフが受け取りました。まもなくご返信いたします。\n\n"
         "AIアシスタントに戻るには「back to bot」と送信してください。",
         "de_esc": "AIアシスタントに戻りました。何かお手伝いできますか？",
+        "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
     },
 }
 

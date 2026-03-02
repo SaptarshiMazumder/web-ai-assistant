@@ -15,12 +15,11 @@ export default function BotConversationsTab() {
   const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
   const isJa = lang.startsWith('ja') || lang.startsWith('jp')
   const tr = (en: string, ja: string) => (isJa ? ja : en)
-  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, takeOverConversation, getEscalationForSession } =
+  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
   const [escalation, setEscalation] = useState<EscalationRecord | null>(null)
-  const [takeoverLoading, setTakeoverLoading] = useState(false)
   const [escalatedSessionIds, setEscalatedSessionIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
@@ -156,19 +155,6 @@ export default function BotConversationsTab() {
     setMobileView('list')
     setMessages([])
     await loadSessions()
-  }
-
-  async function handleTakeOver() {
-    if (!selectedBot || !selectedSession || !selectedSessionRecord) return
-    const ch = (selectedSessionRecord.channel || '').toLowerCase()
-    if (ch !== 'instagram' && ch !== 'line') return
-    setTakeoverLoading(true)
-    try {
-      await takeOverConversation(selectedBot.bot_id, selectedSession)
-      setEscalatedSessionIds((prev) => new Set([...prev, selectedSession]))
-    } finally {
-      setTakeoverLoading(false)
-    }
   }
 
   function channelLabel(ch?: string | null): { emoji: string; label: string } {
@@ -335,16 +321,6 @@ export default function BotConversationsTab() {
                   <ArrowLeft size={14} />
                   {tr('Back to list', '一覧に戻る')}
                 </UiButton>
-                {(selectedSessionRecord?.channel || '').toLowerCase() === 'instagram' || (selectedSessionRecord?.channel || '').toLowerCase() === 'line' ? (
-                  <UiButton
-                    variant="primary"
-                    onClick={() => void handleTakeOver()}
-                    disabled={takeoverLoading || escalatedSessionIds.has(selectedSession)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                  >
-                    {escalatedSessionIds.has(selectedSession) ? tr('Taken over', '引き継ぎ済み') : tr('Take over', '引き継ぐ')}
-                  </UiButton>
-                ) : null}
                 <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <XCircle size={14} />
                   {tr('End session', 'セッションを終了')}

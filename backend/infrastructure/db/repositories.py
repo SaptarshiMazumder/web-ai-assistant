@@ -3895,7 +3895,8 @@ class PostgresInstagramUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg,
+                       COALESCE(awaiting_staff_takeover, FALSE)
                 FROM instagram_user_sessions
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
@@ -3910,11 +3911,12 @@ class PostgresInstagramUserSessionRepository:
                     created_at=row[4],
                     updated_at=row[5],
                     awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                    awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
                 )
             con.execute(
                 """
-                INSERT INTO instagram_user_sessions(ig_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, created_at, updated_at)
-                VALUES (%s, %s, %s, FALSE, FALSE, %s, %s)
+                INSERT INTO instagram_user_sessions(ig_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, awaiting_staff_takeover, created_at, updated_at)
+                VALUES (%s, %s, %s, FALSE, FALSE, FALSE, %s, %s)
                 """,
                 (uid, bid, session_id, now, now),
             )
@@ -3925,6 +3927,7 @@ class PostgresInstagramUserSessionRepository:
                 session_id=session_id,
                 is_escalated=False,
                 awaiting_escalation_msg=False,
+                awaiting_staff_takeover=False,
                 created_at=now,
                 updated_at=now,
             )
@@ -3940,7 +3943,8 @@ class PostgresInstagramUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg,
+                       COALESCE(awaiting_staff_takeover, FALSE)
                 FROM instagram_user_sessions
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
@@ -3956,6 +3960,7 @@ class PostgresInstagramUserSessionRepository:
                 created_at=row[4],
                 updated_at=row[5],
                 awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
             )
         finally:
             con.close()
@@ -3996,6 +4001,49 @@ class PostgresInstagramUserSessionRepository:
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
                 (awaiting, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def set_awaiting_staff_takeover(self, *, ig_user_id: str, bot_id: str, awaiting: bool) -> bool:
+        uid = (ig_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE instagram_user_sessions
+                SET awaiting_staff_takeover = %s, updated_at = %s
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (awaiting, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def set_escalated_and_clear_awaiting_staff(self, *, ig_user_id: str, bot_id: str) -> bool:
+        """Set is_escalated=True and awaiting_staff_takeover=False (client tapped Take over or replied)."""
+        uid = (ig_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE instagram_user_sessions
+                SET is_escalated = TRUE, awaiting_staff_takeover = FALSE, updated_at = %s
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (now, uid, bid),
             )
             con.commit()
             return result.rowcount > 0

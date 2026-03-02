@@ -243,6 +243,7 @@ class LineUserSession:
     created_at: str
     updated_at: str
     awaiting_escalation_msg: bool = False
+    awaiting_staff_takeover: bool = False
 
 
 @dataclass
@@ -273,6 +274,7 @@ class InstagramUserSession:
     created_at: str
     updated_at: str
     awaiting_escalation_msg: bool = False
+    awaiting_staff_takeover: bool = False
 
 
 @dataclass

@@ -2871,7 +2871,8 @@ async def v1_org_takeover_conversation(
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
-    """Mark conversation as human takeover — bot will stop replying. For Instagram/LINE only."""
+    """Mark conversation as human takeover — bot will stop replying. For Instagram/LINE only.
+    Sends a message to the customer so they know a team member is now assisting."""
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     session = conversation_service().get_session(session_id)
@@ -2880,12 +2881,14 @@ async def v1_org_takeover_conversation(
     ch = (session.channel or "").strip().lower()
     if ch == "instagram":
         from infrastructure.db.repositories import PostgresInstagramUserSessionRepository
+
         repo = PostgresInstagramUserSessionRepository()
         mapping = repo.escalate_by_session_id(session_id)
         if not mapping:
             raise HTTPException(status_code=404, detail="No Instagram session found for this conversation")
     elif ch == "line":
         from infrastructure.db.repositories import PostgresLineUserSessionRepository
+
         repo = PostgresLineUserSessionRepository()
         mapping = repo.escalate_by_session_id(session_id)
         if not mapping:
