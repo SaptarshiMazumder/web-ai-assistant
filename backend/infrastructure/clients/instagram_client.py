@@ -138,6 +138,23 @@ async def show_typing(recipient_id: str, page_access_token: str) -> None:
         pass  # Non-critical, don't block message handling
 
 
+async def mark_seen(recipient_id: str, page_access_token: str) -> None:
+    """Mark the user's message as seen (read receipt). Call before sending a reply."""
+    try:
+        base = _api_base(page_access_token)
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(
+                f"{base}/me/messages",
+                json={
+                    "recipient": {"id": recipient_id},
+                    "sender_action": "mark_seen",
+                },
+                params={"access_token": page_access_token},
+            )
+    except Exception:
+        pass  # Non-critical
+
+
 # ── Sending messages ──────────────────────────────────────────────────
 
 
@@ -149,6 +166,7 @@ async def send_message(
     quick_replies: Optional[List[dict]] = None,
 ) -> bool:
     """Send a text DM to an Instagram user via the Graph API."""
+    await mark_seen(recipient_id, page_access_token)
     formatted_text = format_for_messaging(text)
     base = _api_base(page_access_token)
     message_obj: dict = {"text": formatted_text}
@@ -177,6 +195,7 @@ async def send_image(
     page_access_token: str,
 ) -> bool:
     """Send an image attachment DM to an Instagram user."""
+    await mark_seen(recipient_id, page_access_token)
     base = _api_base(page_access_token)
     payload = {
         "recipient": {"id": recipient_id},
@@ -205,6 +224,7 @@ async def send_generic_template(
     page_access_token: str,
 ) -> bool:
     """Send a Generic Template with image cards via the Graph API."""
+    await mark_seen(recipient_id, page_access_token)
     base = _api_base(page_access_token)
     payload = {
         "recipient": {"id": recipient_id},
@@ -239,6 +259,7 @@ async def send_button_template(
     quick_replies: Optional[List[dict]] = None,
 ) -> bool:
     """Send a Button Template (text + buttons) via the Graph API. Used for 'View full menu' etc."""
+    await mark_seen(recipient_id, page_access_token)
     base = _api_base(page_access_token)
     formatted_text = format_for_messaging(text)[:640]  # IG limit
     message: dict = {
@@ -371,6 +392,56 @@ async def get_page_info(page_access_token: str) -> Optional[dict]:
 
     logger.warning("Instagram get_page_info failed: %s %s", resp.status_code, resp.text)
     return None
+
+
+async def get_conversation_id_for_user(
+    ig_user_id: str,
+    page_access_token: str,
+    page_id: Optional[str] = None,
+) -> Optional[str]:
+    """Fetch the conversation ID for a given Instagram user via the Conversations API.
+
+    Used to build a direct link to the chat: https://www.instagram.com/direct/t/{conversation_id}
+    Requires instagram_basic and instagram_manage_messages permissions.
+    """
+    base = _api_base(page_access_token)
+    pid = page_id
+    if not pid:
+        info = await get_page_info(page_access_token)
+        if info:
+            pid = info.get("id") or info.get("user_id")
+    if not pid:
+        logger.warning("get_conversation_id_for_user: no page_id available")
+        return None
+    try:
+        if base == GRAPH_API_BASE_IG:
+            url = f"{base}/me/conversations"
+            params = {"user_id": ig_user_id, "access_token": page_access_token}
+        else:
+            url = f"{base}/{pid}/conversations"
+            params = {
+                "platform": "instagram",
+                "user_id": ig_user_id,
+                "access_token": page_access_token,
+            }
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params=params)
+        if resp.status_code != 200:
+            logger.warning(
+                "get_conversation_id_for_user failed: %s %s",
+                resp.status_code,
+                resp.text[:200],
+            )
+            return None
+        data = resp.json()
+        items = data.get("data") or []
+        if not items:
+            return None
+        conv_id = items[0].get("id")
+        return str(conv_id) if conv_id else None
+    except Exception as e:
+        logger.warning("get_conversation_id_for_user error: %s", e)
+        return None
 
 
 # ── OAuth helpers (Business Login for Instagram) ─────────────────────

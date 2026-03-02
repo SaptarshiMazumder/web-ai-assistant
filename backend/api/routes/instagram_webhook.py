@@ -38,6 +38,7 @@ from infrastructure.clients.instagram_client import (
     send_generic_template,
     send_button_template,
     build_ig_quick_replies,
+    get_conversation_id_for_user,
     show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
@@ -1292,12 +1293,20 @@ async def _handle_text_message(
         )
         from infrastructure.email import maybe_send_escalation_email
 
+        chat_url = None
+        conv_id = await get_conversation_id_for_user(
+            ig_user_id=ig_user_id,
+            page_access_token=access_token,
+        )
+        if conv_id:
+            chat_url = f"https://www.instagram.com/direct/t/{conv_id}"
         maybe_send_escalation_email(
             bot,
             session_id=session.session_id,
             channel="instagram",
             visitor_email=f"instagram:{ig_user_id}",
             details=details,
+            chat_url=chat_url,
         )
         # Client sees messages in their Instagram inbox and can reply. No bot reply.
         return
