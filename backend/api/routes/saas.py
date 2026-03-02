@@ -50,6 +50,7 @@ from api.schemas import (
     ConversationDetailResponse,
     ConversationEndResponse,
     ConversationListResponse,
+    ConversationTakeoverResponse,
     ConversationMessageResponse,
     ConversationSessionResponse,
     AnalyticsSummaryResponse,
@@ -2861,6 +2862,37 @@ async def v1_org_end_conversation(
         raise HTTPException(status_code=404, detail="Unknown session_id")
     conversation_service().end_session(session_id, status="ended")
     return ConversationEndResponse(session_id=session_id, status="ended")
+
+
+@router.post("/v1/org/bots/{bot_id}/conversations/{session_id}/takeover", response_model=ConversationTakeoverResponse)
+async def v1_org_takeover_conversation(
+    bot_id: str,
+    session_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Mark conversation as human takeover — bot will stop replying. For Instagram/LINE only."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    session = conversation_service().get_session(session_id)
+    if not session or session.bot_id != bot_id:
+        raise HTTPException(status_code=404, detail="Unknown session_id")
+    ch = (session.channel or "").strip().lower()
+    if ch == "instagram":
+        from infrastructure.db.repositories import PostgresInstagramUserSessionRepository
+        repo = PostgresInstagramUserSessionRepository()
+        mapping = repo.escalate_by_session_id(session_id)
+        if not mapping:
+            raise HTTPException(status_code=404, detail="No Instagram session found for this conversation")
+    elif ch == "line":
+        from infrastructure.db.repositories import PostgresLineUserSessionRepository
+        repo = PostgresLineUserSessionRepository()
+        mapping = repo.escalate_by_session_id(session_id)
+        if not mapping:
+            raise HTTPException(status_code=404, detail="No LINE session found for this conversation")
+    else:
+        raise HTTPException(status_code=400, detail="Takeover only supported for Instagram and LINE conversations")
+    return ConversationTakeoverResponse()
 
 
 @router.get("/v1/pk/{publishable_key}/conversations", response_model=ConversationListResponse)

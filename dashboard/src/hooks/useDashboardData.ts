@@ -514,6 +514,7 @@ type DashboardData = {
     limit?: number
   ) => Promise<ConversationMessageRecord[]>
   endConversation: (botId: string, sessionId: string) => Promise<void>
+  takeOverConversation: (botId: string, sessionId: string) => Promise<void>
   getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
   saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
   getEscalationCounts: (botId: string) => Promise<{ total: number; open: number } | null>
@@ -1623,6 +1624,21 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function takeOverConversation(botId: string, sessionId: string): Promise<void> {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(
+        `/v1/org/bots/${botId}/conversations/${encodeURIComponent(sessionId)}/takeover`,
+        orgOverride
+      )
+      await fetchAuthedJson(path, { method: 'POST' })
+    } catch (err) {
+      setError((err as Error).message)
+      throw err
+    }
+  }
+
   async function getEscalationConfig(botId: string): Promise<EscalationConfig | null> {
     if (isSuperAdmin && !activeOrgId) return null
     try {
@@ -2364,6 +2380,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     exportConversationsCsv,
     getConversation,
     endConversation,
+    takeOverConversation,
     recomputeAnalytics,
     getAnalyticsSummary,
     getAnalyticsTimeseries,

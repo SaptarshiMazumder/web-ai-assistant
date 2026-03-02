@@ -394,6 +394,34 @@ async def get_page_info(page_access_token: str) -> Optional[dict]:
     return None
 
 
+async def get_instagram_user_profile(
+    ig_user_id: str,
+    page_access_token: str,
+) -> Optional[dict]:
+    """Fetch Instagram user profile (username, name, profile_pic) via User Profile API.
+
+    Requires instagram_basic and instagram_manage_messages. User must have messaged the business.
+    """
+    base = _api_base(page_access_token)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{base}/{ig_user_id}",
+                params={
+                    "fields": "username,name,profile_pic",
+                    "access_token": page_access_token,
+                },
+            )
+        if resp.status_code != 200:
+            logger.debug("get_instagram_user_profile failed: %s %s", resp.status_code, resp.text[:150])
+            return None
+        data = resp.json()
+        return data if data else None
+    except Exception as e:
+        logger.warning("get_instagram_user_profile error: %s", e)
+        return None
+
+
 async def get_conversation_id_for_user(
     ig_user_id: str,
     page_access_token: str,

@@ -17,7 +17,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse
@@ -39,6 +39,7 @@ from infrastructure.clients.instagram_client import (
     send_button_template,
     build_ig_quick_replies,
     get_conversation_id_for_user,
+    get_instagram_user_profile,
     show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
@@ -174,6 +175,30 @@ _rl_state: Dict[str, tuple] = {}
 _rl_window_s = 60
 _rl_max_per_window = 120
 
+# Track outbound sends so we don't treat our own echoes as client takeover
+_outbound_send_times: Dict[Tuple[str, str], float] = {}
+_OUTBOUND_SEND_WINDOW = 15  # seconds
+
+
+def _record_outbound_send(ig_user_id: str, bot_id: str) -> None:
+    """Record that we sent a message to this user (to ignore our own echoes)."""
+    key = (ig_user_id, bot_id)
+    _outbound_send_times[key] = time.time()
+    # Prune old entries
+    cutoff = time.time() - _OUTBOUND_SEND_WINDOW
+    to_del = [k for k, v in _outbound_send_times.items() if v < cutoff]
+    for k in to_del:
+        del _outbound_send_times[k]
+
+
+def _did_we_recently_send(ig_user_id: str, bot_id: str) -> bool:
+    """True if we sent to this user in the last N seconds (our echo, not client)."""
+    key = (ig_user_id, bot_id)
+    ts = _outbound_send_times.get(key)
+    if not ts:
+        return False
+    return (time.time() - ts) < _OUTBOUND_SEND_WINDOW
+
 
 def _rate_limit(bot_id: str) -> None:
     now = time.time()
@@ -195,12 +220,14 @@ _IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "When you send your message, we'll forward it to our team. The next reply you receive will be from our staff — please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\n"
         "If you wish to cancel and return to the AI assistant, say \"cancel\" at any time.",
         "cancel_ack": "Cancelled. How can I help you?",
+        "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
     },
     "ja": {
         "prompt": "スタッフにおつなぎいたします。\n\n"
         "送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\n"
         "AIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。",
         "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
+        "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
     },
 }
 
@@ -393,12 +420,14 @@ def _build_line_chunks(lines: List[str], max_chars: int = 900) -> List[str]:
 async def _send_text_chunks(
     *,
     ig_user_id: str,
+    bot_id: str,
     access_token: str,
     lines: List[str],
 ) -> bool:
     chunks = _build_line_chunks(lines, max_chars=400)
     sent_any = False
     for chunk in chunks:
+        _record_outbound_send(ig_user_id, bot_id)
         ok = await send_message(ig_user_id, chunk, access_token)
         sent_any = sent_any or bool(ok)
     return sent_any
@@ -534,6 +563,7 @@ def _absolute_public_url(raw_url: str, request: Request) -> str:
 async def _send_images_fallback(
     *,
     ig_user_id: str,
+    bot_id: str,
     access_token: str,
     image_urls: List[str],
     max_images: int = 5,
@@ -544,6 +574,7 @@ async def _send_images_fallback(
         if not url:
             continue
         try:
+            _record_outbound_send(ig_user_id, bot_id)
             ok = await send_image(ig_user_id, url, access_token)
             sent_any = sent_any or bool(ok)
         except Exception:
@@ -615,6 +646,7 @@ def _split_text_for_instagram(text: str, max_chars: int = 400) -> List[str]:
 async def _send_answer_text_with_quick_replies(
     *,
     ig_user_id: str,
+    bot_id: str,
     answer: str,
     access_token: str,
     quick_replies: Optional[List[dict]],
@@ -624,6 +656,7 @@ async def _send_answer_text_with_quick_replies(
 
     # Send earlier chunks first without quick replies.
     for chunk in chunks[:-1]:
+        _record_outbound_send(ig_user_id, bot_id)
         ok = await send_message(ig_user_id, chunk, access_token, quick_replies=None)
         if not ok:
             logger.warning("Instagram chunk send failed user=%s", ig_user_id)
@@ -631,6 +664,7 @@ async def _send_answer_text_with_quick_replies(
     # Final chunk must carry quick replies (suggested messages).
     final_chunk = chunks[-1]
     for variant in _quick_reply_variants(quick_replies):
+        _record_outbound_send(ig_user_id, bot_id)
         ok = await send_message(
             ig_user_id,
             final_chunk,
@@ -686,6 +720,7 @@ def _menu_text(key: str, lang: str, **kwargs: Any) -> str:
 async def _send_menu_page_content(
     *,
     ig_user_id: str,
+    bot_id: str,
     access_token: str,
     category: str,
     label: str,
@@ -710,6 +745,7 @@ async def _send_menu_page_content(
 
     return await _send_text_chunks(
         ig_user_id=ig_user_id,
+        bot_id=bot_id,
         access_token=access_token,
         lines=lines,
     )
@@ -729,6 +765,7 @@ async def _send_menu_by_category(
 ) -> None:
     items = _get_menu_items_for_bot(bot_id)
     if not items:
+        _record_outbound_send(ig_user_id, bot_id)
         await send_message(
             ig_user_id,
             _menu_text("menu_not_ready", lang),
@@ -750,6 +787,7 @@ async def _send_menu_by_category(
     if menu_page_url and is_initial_menu:
         prompt = _menu_text("view_menu_button_prompt", lang)
         btn_title = _menu_text("view_menu_button_title", lang)
+        _record_outbound_send(ig_user_id, bot_id)
         sent = await send_button_template(
             recipient_id=ig_user_id,
             text=prompt,
@@ -788,6 +826,7 @@ async def _send_menu_by_category(
             next_payload = _make_menu_page_payload(category, next_offset)
         page_sent = await _send_menu_page_content(
             ig_user_id=ig_user_id,
+            bot_id=bot_id,
             access_token=access_token,
             category=category,
             label=label,
@@ -809,6 +848,7 @@ async def _send_menu_by_category(
             if next_payload:
                 merged_qr = _merge_quick_replies(quick_replies, pending_more_qr)
                 if merged_qr:
+                    _record_outbound_send(ig_user_id, bot_id)
                     await send_message(
                         ig_user_id,
                         _menu_text("tap_view_more", lang),
@@ -816,6 +856,7 @@ async def _send_menu_by_category(
                         quick_replies=merged_qr,
                     )
             elif quick_replies:
+                _record_outbound_send(ig_user_id, bot_id)
                 await send_message(
                     ig_user_id,
                     _menu_text("choose_another", lang),
@@ -825,6 +866,7 @@ async def _send_menu_by_category(
             break
 
     if not sent_any:
+        _record_outbound_send(ig_user_id, bot_id)
         await send_message(
             ig_user_id,
             _menu_text("render_error", lang),
@@ -980,8 +1022,6 @@ async def instagram_webhook_global(request: Request):
             quick_payload = str((message.get("quick_reply") or {}).get("payload") or "").strip()
             if not text and not quick_payload:
                 continue
-            if message.get("is_echo"):
-                continue
 
             sender = event.get("sender", {})
             ig_sender_id = str(sender.get("id", ""))
@@ -992,6 +1032,19 @@ async def instagram_webhook_global(request: Request):
             recipient = event.get("recipient", {})
             ig_recipient_id = str(recipient.get("id", ""))
             if not ig_recipient_id:
+                continue
+
+            # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
+            if message.get("is_echo"):
+                channel = _ig_channel_repo.get_by_ig_user_id(ig_sender_id)
+                if not channel:
+                    channel = _ig_channel_repo.get_by_page_id(ig_sender_id)
+                if channel and channel.is_active and not _did_we_recently_send(ig_recipient_id, channel.bot_id):
+                    _ig_user_session_repo.set_escalated(
+                        ig_user_id=ig_recipient_id,
+                        bot_id=channel.bot_id,
+                        escalated=True,
+                    )
                 continue
 
             # Look up which bot owns this IG account
@@ -1011,8 +1064,16 @@ async def instagram_webhook_global(request: Request):
             # (already verified above), but use the channel's token for sending
             bot = bot_service().get_bot_record(channel.bot_id)
             if not bot:
-                logger.warning("Instagram global webhook: unknown bot_id %s", channel.bot_id)
-                continue
+                # Orphaned channel (bot was deleted without disconnecting). Remove it and retry.
+                logger.info("Instagram global webhook: removing orphan channel for deleted bot_id %s", channel.bot_id)
+                _ig_channel_repo.delete_by_bot_id(channel.bot_id)
+                channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id) or _ig_channel_repo.get_by_page_id(ig_recipient_id) or _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
+                if not channel or not channel.is_active:
+                    continue
+                bot = bot_service().get_bot_record(channel.bot_id)
+                if not bot:
+                    logger.warning("Instagram global webhook: no valid channel for recipient %s", ig_recipient_id)
+                    continue
 
             _rate_limit(channel.bot_id)
 
@@ -1114,14 +1175,24 @@ async def instagram_webhook(bot_id: str, request: Request):
             if not text and not quick_payload:
                 continue  # Skip non-text (images, stickers, etc.)
 
-            # Ignore echo messages (messages sent by the page itself)
-            if message.get("is_echo"):
+            sender = event.get("sender", {})
+            recipient = event.get("recipient", {})
+            ig_sender_id = str(sender.get("id", ""))
+            ig_recipient_id = str(recipient.get("id", ""))
+            if not ig_sender_id or not ig_recipient_id:
                 continue
 
-            sender = event.get("sender", {})
-            ig_user_id = str(sender.get("id", ""))
-            if not ig_user_id:
+            # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
+            if message.get("is_echo"):
+                if not _did_we_recently_send(ig_recipient_id, bot_id):
+                    _ig_user_session_repo.set_escalated(
+                        ig_user_id=ig_recipient_id,
+                        bot_id=bot_id,
+                        escalated=True,
+                    )
                 continue
+
+            ig_user_id = ig_sender_id
 
             await _handle_text_message(
                 bot=bot,
@@ -1226,6 +1297,7 @@ async def _handle_text_message(
             )
             lang = _normalize_lang(widget_config)
             cancel_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["cancel_ack"]
+            _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -1259,6 +1331,7 @@ async def _handle_text_message(
             )
             lang = _normalize_lang(widget_config)
             cancel_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["cancel_ack"]
+            _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -1293,13 +1366,23 @@ async def _handle_text_message(
         )
         from infrastructure.email import maybe_send_escalation_email
 
-        chat_url = None
+        chat_url = "https://www.instagram.com/direct/inbox/"
         conv_id = await get_conversation_id_for_user(
             ig_user_id=ig_user_id,
             page_access_token=access_token,
         )
         if conv_id:
             chat_url = f"https://www.instagram.com/direct/t/{conv_id}"
+        profile = await get_instagram_user_profile(ig_user_id, access_token)
+        visitor_username = (profile or {}).get("username")
+        visitor_name = (profile or {}).get("name")
+        visitor_profile_pic_url = None
+        pic = (profile or {}).get("profile_pic")
+        if isinstance(pic, str):
+            visitor_profile_pic_url = pic
+        elif isinstance(pic, dict):
+            data = pic.get("data") or pic
+            visitor_profile_pic_url = data.get("url") if isinstance(data, dict) else None
         maybe_send_escalation_email(
             bot,
             session_id=session.session_id,
@@ -1307,8 +1390,20 @@ async def _handle_text_message(
             visitor_email=f"instagram:{ig_user_id}",
             details=details,
             chat_url=chat_url,
+            visitor_username=visitor_username,
+            visitor_name=visitor_name,
+            visitor_profile_pic_url=visitor_profile_pic_url,
         )
-        # Client sees messages in their Instagram inbox and can reply. No bot reply.
+        lang = _normalize_lang(widget_config)
+        ack_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["escalation_ack"]
+        _record_outbound_send(ig_user_id, bot.bot_id)
+        await send_message(ig_user_id, ack_msg, access_token)
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=ack_msg,
+        )
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Escalation request ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
@@ -1326,6 +1421,7 @@ async def _handle_text_message(
         )
         lang = _normalize_lang(widget_config)
         prompt_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["prompt"]
+        _record_outbound_send(ig_user_id, bot.bot_id)
         await send_message(ig_user_id, prompt_msg, access_token, quick_replies=ig_quick_replies)
         conversation_service().add_message(
             session_id=session.session_id,
@@ -1538,10 +1634,12 @@ async def _handle_text_message(
             elements.append(element)
         if elements:
             try:
+                _record_outbound_send(ig_user_id, bot.bot_id)
                 sent = await send_generic_template(ig_user_id, elements, access_token)
                 if not sent:
                     await _send_images_fallback(
                         ig_user_id=ig_user_id,
+                        bot_id=bot_id,
                         access_token=access_token,
                         image_urls=[str(e.get("image_url") or "").strip() for e in elements],
                         max_images=5,
@@ -1553,6 +1651,7 @@ async def _handle_text_message(
     # 1) assets (if any) 2) text 3) suggested messages (quick replies on text)
     await _send_answer_text_with_quick_replies(
         ig_user_id=ig_user_id,
+        bot_id=bot_id,
         answer=answer,
         access_token=access_token,
         quick_replies=ig_quick_replies,

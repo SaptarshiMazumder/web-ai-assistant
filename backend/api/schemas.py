@@ -331,6 +331,11 @@ class ConversationEndResponse(BaseModel):
     status: str
 
 
+class ConversationTakeoverResponse(BaseModel):
+    ok: bool = True
+    message: str = "Bot will stop replying. You can now reply directly."
+
+
 class AnalyticsSummaryResponse(BaseModel):
     start_day: str
     end_day: str

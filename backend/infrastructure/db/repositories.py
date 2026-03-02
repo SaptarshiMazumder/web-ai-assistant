@@ -292,7 +292,11 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
-            # Delete in order: index_jobs, bot_sources, bot_domains, bot_corpora, bots
+            # Delete in order: sessions, channels, index_jobs, bot_sources, bot_domains, bot_corpora, bots
+            con.execute("DELETE FROM instagram_user_sessions WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM line_user_sessions WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM instagram_channels WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM line_channels WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM availability_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM booking_link_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM topic_jobs WHERE bot_id = %s", (bid,))
@@ -3410,6 +3414,44 @@ class PostgresLineUserSessionRepository:
         finally:
             con.close()
 
+    def escalate_by_session_id(self, session_id: str) -> Optional[LineUserSession]:
+        """Set is_escalated=True for the mapping matching this session_id (client takeover)."""
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE line_user_sessions
+                SET is_escalated = TRUE, awaiting_escalation_msg = FALSE, updated_at = %s
+                WHERE session_id = %s
+                """,
+                (now, sid),
+            )
+            con.commit()
+            row = con.execute(
+                """
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM line_user_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return LineUserSession(
+                line_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+            )
+        finally:
+            con.close()
+
     def de_escalate_by_session_id(self, session_id: str) -> Optional[LineUserSession]:
         """Reset is_escalated=False for the mapping matching this session_id. Returns updated mapping or None."""
         sid = (session_id or "").strip()
@@ -3965,6 +4007,44 @@ class PostgresInstagramUserSessionRepository:
             )
             con.commit()
             return result.rowcount > 0
+        finally:
+            con.close()
+
+    def escalate_by_session_id(self, session_id: str) -> Optional[InstagramUserSession]:
+        """Set is_escalated=True for the mapping matching this session_id (client takeover)."""
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        now = _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE instagram_user_sessions
+                SET is_escalated = TRUE, awaiting_escalation_msg = FALSE, updated_at = %s
+                WHERE session_id = %s
+                """,
+                (now, sid),
+            )
+            con.commit()
+            row = con.execute(
+                """
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                FROM instagram_user_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return InstagramUserSession(
+                ig_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+            )
         finally:
             con.close()
 

@@ -44,6 +44,9 @@ def send_escalation_notification(
     details: Optional[str] = None,
     session_id: str,
     chat_url: Optional[str] = None,
+    visitor_username: Optional[str] = None,
+    visitor_name: Optional[str] = None,
+    visitor_profile_pic_url: Optional[str] = None,
 ) -> bool:
     """
     Send an email notification when a visitor escalates to human support.
@@ -57,44 +60,68 @@ def send_escalation_notification(
 
     channel_label = _CHANNEL_LABELS.get(channel, channel)
     subject = f"[{bot_name}] Human support request via {channel_label}"
-    body_lines = [
-        f"A visitor has requested human support via {channel_label}.",
-        "",
-        f"Visitor contact: {visitor_email}",
-        f"Session ID: {session_id}",
-    ]
-    if details:
-        body_lines.extend(["", "Details:", details])
-
-    # Add clickable link to open chat (use provided chat_url or fallback to channel default)
     if not chat_url:
         chat_url = _CHAT_LINKS.get(channel)
     dashboard_url = os.environ.get("DASHBOARD_URL", "").strip().rstrip("/")
-    if chat_url:
-        body_lines.extend(["", "Open inbox to reply:", chat_url])
-    if dashboard_url and bot_id:
-        body_lines.extend(["", "View in dashboard:", f"{dashboard_url}/bots/{bot_id}/conversations?session={session_id}"])
+    dash_link = f"{dashboard_url}/bots/{bot_id}/conversations?session={session_id}" if (dashboard_url and bot_id) else None
 
+    # For Instagram: show visitor profile, make Instagram link primary
+    profile_line = None
+    if channel == "instagram" and (visitor_username or visitor_name):
+        parts = []
+        if visitor_name:
+            parts.append(visitor_name)
+        if visitor_username:
+            parts.append(f"@{visitor_username}")
+        profile_line = " · ".join(parts) if parts else None
+
+    # Plain text body
+    body_lines = [f"A visitor has requested human support via {channel_label}."]
+    if profile_line:
+        body_lines.extend(["", f"Visitor: {profile_line}"])
+    if details:
+        body_lines.extend(["", "What they said:", details])
+    body_lines.append("")
+    if chat_url:
+        link_label = "Open Instagram messages to reply" if channel == "instagram" else f"Open {channel_label} to reply"
+        body_lines.extend([f"{link_label}:", chat_url])
+    if profile_line and visitor_username:
+        body_lines.extend(["", f"View their profile: https://www.instagram.com/{visitor_username}"])
+    if dash_link:
+        body_lines.extend(["", f"View in dashboard: {dash_link}"])
     body = "\n".join(body_lines)
 
-    # HTML version with prominent button for the chat link
-    html_parts = [
-        f"<p>A visitor has requested human support via {channel_label}.</p>",
-        f"<p><strong>Visitor contact:</strong> {html.escape(visitor_email)}</p>",
-        f"<p><strong>Session ID:</strong> {html.escape(session_id)}</p>",
-    ]
+    # HTML version - Instagram primary: profile + Open messages button
+    html_parts = [f"<p>A visitor has requested human support via {channel_label}.</p>"]
+    if channel == "instagram" and (visitor_username or visitor_name or visitor_profile_pic_url):
+        html_parts.append('<p style="display:flex;align-items:center;gap:12px;margin:16px 0;">')
+        if visitor_profile_pic_url:
+            html_parts.append(
+                f'<img src="{html.escape(visitor_profile_pic_url)}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;" />'
+            )
+        html_parts.append("<span>")
+        if visitor_name:
+            html_parts.append(f"<strong>{html.escape(visitor_name)}</strong> ")
+        if visitor_username:
+            profile_url = f"https://www.instagram.com/{visitor_username}"
+            html_parts.append(f'<a href="{html.escape(profile_url)}" style="color:#0095f6;">@{html.escape(visitor_username)}</a>')
+        html_parts.append("</span></p>")
     if details:
         safe_details = html.escape(details).replace("\n", "<br>")
-        html_parts.append(f"<p><strong>Details:</strong><br>{safe_details}</p>")
+        html_parts.append(f"<p><strong>What they said:</strong><br>{safe_details}</p>")
     if chat_url:
+        btn_text = "Open Instagram messages" if channel == "instagram" else f"Open {channel_label} to reply"
         html_parts.append(
             f'<p style="margin-top:20px;">'
-            f'<a href="{chat_url}" style="background:#0095f6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">Open inbox to reply</a>'
+            f'<a href="{chat_url}" style="background:#0095f6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">{btn_text}</a>'
             f"</p>"
         )
-    if dashboard_url and bot_id:
-        dash_link = f"{dashboard_url}/bots/{bot_id}/conversations?session={session_id}"
-        html_parts.append(f'<p><a href="{dash_link}">View conversation in dashboard</a></p>')
+    if profile_line and visitor_username:
+        html_parts.append(
+            f'<p><a href="https://www.instagram.com/{html.escape(visitor_username)}" style="color:#0095f6;">View their profile</a></p>'
+        )
+    if dash_link:
+        html_parts.append(f'<p><a href="{dash_link}" style="color:#666;">View in dashboard</a></p>')
     html_body = "".join(html_parts)
 
     msg = MIMEMultipart("alternative")
@@ -125,6 +152,9 @@ def maybe_send_escalation_email(
     visitor_email: str,
     details: Optional[str] = None,
     chat_url: Optional[str] = None,
+    visitor_username: Optional[str] = None,
+    visitor_name: Optional[str] = None,
+    visitor_profile_pic_url: Optional[str] = None,
 ) -> None:
     """
     Send escalation notification if configured for this channel.
@@ -158,4 +188,7 @@ def maybe_send_escalation_email(
         details=details,
         session_id=session_id,
         chat_url=chat_url,
+        visitor_username=visitor_username,
+        visitor_name=visitor_name,
+        visitor_profile_pic_url=visitor_profile_pic_url,
     )
