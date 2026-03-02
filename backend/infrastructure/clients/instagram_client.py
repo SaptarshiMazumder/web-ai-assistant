@@ -270,6 +270,65 @@ async def send_button_template(
     return True
 
 
+# Meta Inbox app ID – pass thread control to this so the page owner gets the conversation
+# and is notified in their Instagram app.
+META_INBOX_APP_ID = "263902037430996"
+
+
+async def pass_thread_control_to_inbox(
+    ig_user_id: str,
+    page_access_token: str,
+    page_id: Optional[str] = None,
+    metadata: Optional[str] = None,
+) -> bool:
+    """Pass conversation control to Meta Inbox so the page owner gets notified.
+
+    When a user escalates, call this to hand the thread to the client's Instagram inbox.
+    The page owner will see the conversation and get a notification.
+    """
+    pid = page_id
+    if not pid:
+        # Resolve page/account ID from token. IGAA tokens use graph.instagram.com; EAA use graph.facebook.com
+        base = _api_base(page_access_token)
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{base}/me",
+                params={"fields": "id", "access_token": page_access_token},
+            )
+            if resp.status_code != 200:
+                logger.warning("pass_thread_control: could not get page id: %s %s", resp.status_code, resp.text)
+                return False
+            data = resp.json()
+            pid = data.get("id")
+    if not pid:
+        logger.warning("pass_thread_control: no page_id available")
+        return False
+    # IGAA tokens (Instagram Login) require graph.instagram.com; EAA tokens (FB Page) use graph.facebook.com
+    api_base = _api_base(page_access_token)
+    payload: dict = {
+        "recipient": {"id": ig_user_id},
+        "target_app_id": META_INBOX_APP_ID,
+    }
+    if metadata:
+        payload["metadata"] = metadata[:1000]  # API limit
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{api_base}/{pid}/pass_thread_control",
+            json=payload,
+            params={"access_token": page_access_token},
+        )
+    if resp.status_code != 200:
+        logger.warning(
+            "pass_thread_control failed: %s %s (page_id=%s)",
+            resp.status_code,
+            resp.text,
+            pid,
+        )
+        return False
+    logger.info("pass_thread_control: handed thread to Meta Inbox for ig_user=%s", ig_user_id)
+    return True
+
+
 # ── Page info (connection test) ───────────────────────────────────────
 
 

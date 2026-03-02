@@ -229,6 +229,9 @@ export type ConversationMessageRecord = {
 export type EscalationConfig = {
   enabled: boolean
   notify_enabled: boolean
+  notify_website: boolean
+  notify_instagram: boolean
+  notify_line: boolean
   notification_emails: string
 }
 

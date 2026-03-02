@@ -75,6 +75,14 @@ class Config:
     # Redis (pubsub for conversations). Defaults to Celery broker if not set.
     REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 
+    # Escalation email notifications (SMTP)
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
+    SMTP_FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", "").strip()
+    SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").strip().lower() in ("1", "true", "yes", "y")
+
     # Conversation stream (Redis Streams)
     CONVERSATION_STREAM_KEY = os.environ.get("CONVERSATION_STREAM_KEY", "webai:conversation_events").strip()
     CONVERSATION_STREAM_MAXLEN = os.environ.get("CONVERSATION_STREAM_MAXLEN", "10000").strip()

@@ -75,7 +75,8 @@ def _rate_limit(bot_id: str) -> None:
 _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
     "en": {
         "prompt": "I'll connect you with our team right away.\n\n"
-        "Would you like to leave a message for them? Type your message below, or reply \"skip\" to connect immediately.",
+        "When you send your message, we'll forward it to our team. The next reply you receive will be from our staff — please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\n"
+        "Would you like to leave a message for them? Type your message below, or tap \"Connect now\" to connect immediately.",
         "confirm": "Our team has been notified and will reply to you here shortly.\n\n"
         'Reply "back to bot" anytime to return to the AI assistant.',
         "ack_brief": "✓ Sent. (Say \"back to bot\" to return to the AI assistant.)",
@@ -84,12 +85,13 @@ _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "de_esc": "You're now back with our AI assistant. How can I help you?",
     },
     "ja": {
-        "prompt": "担当者におつなぎいたします。\n\n"
-        "メッセージを残しますか？下に入力するか、「skip」と返信するとすぐにつなぎます。",
-        "confirm": "担当者に連絡しました。こちらからご返信いたします。\n\n"
+        "prompt": "スタッフにおつなぎいたします。\n\n"
+        "送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\n"
+        "メッセージを残しますか？下に入力するか、「すぐにつなぐ」と返信するとすぐにつなぎます。",
+        "confirm": "スタッフに連絡しました。こちらからご返信いたします。\n\n"
         "AIアシスタントに戻るには「back to bot」と送信してください。",
         "ack_brief": "✓ 送信しました。（AIアシスタントに戻るには「back to bot」と送信してください。）",
-        "ack_full": "✓ 担当者が受け取りました。まもなくご返信いたします。\n\n"
+        "ack_full": "✓ スタッフが受け取りました。まもなくご返信いたします。\n\n"
         "AIアシスタントに戻るには「back to bot」と送信してください。",
         "de_esc": "AIアシスタントに戻りました。何かお手伝いできますか？",
     },
@@ -103,6 +105,7 @@ ESCALATION_KEYWORDS = {
 SKIP_KEYWORDS = {
     "skip", "s", "/skip", "no", "nope", "never mind", "cancel",
     "スキップ", "いいえ", "キャンセル",
+    "すぐにつなぐ", "connect now",
 }
 
 # Matches any intent to return to the AI/bot, case-insensitive
@@ -395,29 +398,13 @@ async def _handle_text_message(
         )
         return
 
-    # ── Escalated: log message + throttled acknowledgment ────────────
+    # ── Escalated: log message only, no bot reply — human will respond ───
     if mapping and mapping.is_escalated:
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
-        )
-        # Only send the full ack once; after that send a brief "✓ Sent." to
-        # avoid spamming the user with the same long message on every reply.
-        recent = conversation_service().list_recent_messages(session.session_id, limit=20)
-        already_acked = any(
-            (m.role or "").lower() == "bot" and "back to bot" in (m.content or "")
-            for m in recent
-        )
-        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
-        ack = msgs["ack_brief"] if already_acked else msgs["ack_full"]
-        await reply_message(reply_token, [ack], access_token, suggested_flex=suggested_flex)
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=ack,
         )
         return
 
@@ -447,18 +434,20 @@ async def _handle_text_message(
             visitor_email=f"line:{line_user_id}",
             details=details,
         )
-        confirm_msg = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])["confirm"]
-        await reply_message(reply_token, [confirm_msg], access_token, suggested_flex=suggested_flex)
-        conversation_service().add_message(
+        from infrastructure.email import maybe_send_escalation_email
+
+        maybe_send_escalation_email(
+            bot,
             session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=confirm_msg,
+            channel="line",
+            visitor_email=f"line:{line_user_id}",
+            details=details,
         )
+        # No bot reply — human will respond. User was told in the prompt to wait.
         return
 
     # ── Escalation request ───────────────────────────────────────────
-    if _wants_escalation(text) or _is_escalate_quick_reply(text, suggested_messages or []):
+    if _is_escalate_quick_reply(text, suggested_messages or []):
         _line_user_session_repo.set_awaiting_escalation_msg(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,

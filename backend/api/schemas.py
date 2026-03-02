@@ -402,12 +402,18 @@ class ConversationSearchResponse(BaseModel):
 class EscalationConfigPayload(BaseModel):
     enabled: Optional[bool] = None
     notify_enabled: Optional[bool] = None
+    notify_website: Optional[bool] = None
+    notify_instagram: Optional[bool] = None
+    notify_line: Optional[bool] = None
     notification_emails: Optional[str] = None
 
 
 class EscalationConfigResponse(BaseModel):
     enabled: bool = False
     notify_enabled: bool = False
+    notify_website: bool = False
+    notify_instagram: bool = False
+    notify_line: bool = False
     notification_emails: str = ""
 
 

@@ -360,14 +360,32 @@ def _require_admin_key(x_admin_key: Optional[str]) -> None:
 
 def _parse_escalation_config(raw: Optional[str]) -> Dict[str, Any]:
     if not raw or not raw.strip():
-        return {"enabled": False, "notify_enabled": False, "notification_emails": ""}
+        return {
+            "enabled": False,
+            "notify_enabled": False,
+            "notify_website": False,
+            "notify_instagram": False,
+            "notify_line": False,
+            "notification_emails": "",
+        }
     try:
         data = json.loads(raw)
     except (TypeError, ValueError):
-        return {"enabled": False, "notify_enabled": False, "notification_emails": ""}
+        return {
+            "enabled": False,
+            "notify_enabled": False,
+            "notify_website": False,
+            "notify_instagram": False,
+            "notify_line": False,
+            "notification_emails": "",
+        }
+    legacy = bool(data.get("notify_enabled"))
     return {
         "enabled": bool(data.get("enabled")),
-        "notify_enabled": bool(data.get("notify_enabled")),
+        "notify_enabled": legacy,
+        "notify_website": bool(data.get("notify_website")) if "notify_website" in data else legacy,
+        "notify_instagram": bool(data.get("notify_instagram")) if "notify_instagram" in data else legacy,
+        "notify_line": bool(data.get("notify_line")) if "notify_line" in data else legacy,
         "notification_emails": str(data.get("notification_emails") or ""),
     }
 
@@ -823,6 +841,9 @@ async def v1_pk_escalation_config(publishable_key: str):
     return EscalationConfigResponse(
         enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
+        notify_website=cfg["notify_website"],
+        notify_instagram=cfg["notify_instagram"],
+        notify_line=cfg["notify_line"],
         notification_emails=cfg["notification_emails"],
     )
 
@@ -2072,6 +2093,9 @@ async def v1_org_get_escalation_config(
     return EscalationConfigResponse(
         enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
+        notify_website=cfg["notify_website"],
+        notify_instagram=cfg["notify_instagram"],
+        notify_line=cfg["notify_line"],
         notification_emails=cfg["notification_emails"],
     )
 
@@ -2093,12 +2117,21 @@ async def v1_org_update_escalation_config(
         cfg["enabled"] = bool(payload.enabled)
     if payload.notify_enabled is not None:
         cfg["notify_enabled"] = bool(payload.notify_enabled)
+    if payload.notify_website is not None:
+        cfg["notify_website"] = bool(payload.notify_website)
+    if payload.notify_instagram is not None:
+        cfg["notify_instagram"] = bool(payload.notify_instagram)
+    if payload.notify_line is not None:
+        cfg["notify_line"] = bool(payload.notify_line)
     if payload.notification_emails is not None:
         cfg["notification_emails"] = str(payload.notification_emails)
     bot_service().update_escalation_config(bot_id, json.dumps(cfg))
     return EscalationConfigResponse(
         enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
+        notify_website=cfg["notify_website"],
+        notify_instagram=cfg["notify_instagram"],
+        notify_line=cfg["notify_line"],
         notification_emails=cfg["notification_emails"],
     )
 
@@ -2954,7 +2987,15 @@ async def v1_pk_escalate_support(
         visitor_email=visitor_email,
         details=(payload.details or "").strip() or None,
     )
-    # TODO: send email notification when notify_enabled is true.
+    from infrastructure.email import maybe_send_escalation_email
+
+    maybe_send_escalation_email(
+        bot,
+        session_id=session.session_id,
+        channel="chat",
+        visitor_email=visitor_email,
+        details=(payload.details or "").strip() or None,
+    )
     return EscalationRecordResponse(
         escalation_id=record.escalation_id,
         bot_id=record.bot_id,
