@@ -286,13 +286,13 @@ class PostgresBotRepository:
             con.close()
 
     def delete_bot(self, bot_id: str) -> None:
-        """Delete a bot and all related data (domains, corpus mappings, index jobs)."""
+        """Delete a bot and all related data (channels, sessions, jobs, conversations, assets, etc.)."""
         bid = (bot_id or "").strip()
         if not bid:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
-            # Delete in order: sessions, channels, index_jobs, bot_sources, bot_domains, bot_corpora, bots
+            # Delete in dependency order (children before parents)
             con.execute("DELETE FROM instagram_user_sessions WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM line_user_sessions WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM instagram_channels WHERE bot_id = %s", (bid,))
@@ -301,9 +301,22 @@ class PostgresBotRepository:
             con.execute("DELETE FROM booking_link_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM topic_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM index_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM discovery_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM asset_extraction_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM conversation_messages WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM conversation_escalations WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM conversation_feedback WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM conversation_sessions WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM topic_question_mappings WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_extracted_topics WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_usage_daily WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_sources_daily WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_topics_daily WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_assets WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_sources WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_domains WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_corpora WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM rollup_watermarks WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bots WHERE bot_id = %s", (bid,))
             con.commit()
         finally:
