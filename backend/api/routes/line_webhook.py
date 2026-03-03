@@ -9,9 +9,10 @@ Endpoints:
 
 import json
 import logging
+import os
 import re
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
@@ -22,12 +23,17 @@ from api.schemas import (
     LineChannelDeleteResponse,
 )
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
-from common.di.container import bot_service, conversation_service
+from common.di.container import asset_repo, bot_service, conversation_service
 from infrastructure.clients.line_client import (
     verify_signature,
     reply_message,
+    reply_with_messages,
     build_suggested_flex,
+    build_buttons_template,
+    build_text_with_quick_replies,
     show_typing as line_show_typing,
+    LINE_MENU_QUICK_PAYLOAD,
+    LINE_MENU_PAGE_PAYLOAD_PREFIX,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from domain.platform_profiles import (
@@ -75,32 +81,26 @@ def _rate_limit(bot_id: str) -> None:
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
 
-# ── Escalation keyword detection ─────────────────────────────────────
+# ── Escalation keyword detection (matches Instagram) ───────────────────
 
 _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
     "en": {
-        "prompt": "I'll connect you with our team right away.\n\n"
+        "prompt": "I'll connect you with our staff right away.\n\n"
         "When you send your message, we'll forward it to our team. The next reply you receive will be from our staff — please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\n"
-        "Would you like to leave a message for them? Type your message below, or tap \"Connect now\" to connect immediately.",
-        "confirm": "Our team has been notified and will reply to you here shortly.\n\n"
-        'Reply "back to bot" anytime to return to the AI assistant.',
-        "ack_brief": "✓ Sent. (Say \"back to bot\" to return to the AI assistant.)",
-        "ack_full": "✓ Message received by our team. They'll reply here shortly.\n\n"
-        "To return to the AI assistant, just say \"back to bot\".",
-        "de_esc": "You're now back with our AI assistant. How can I help you?",
+        "If you wish to cancel and return to the AI assistant, say \"cancel\" at any time.",
+        "cancel_ack": "Cancelled. How can I help you?",
+        "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
         "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
+        "email_details_no_message": "User requested human assistance via LINE.",
     },
     "ja": {
         "prompt": "スタッフにおつなぎいたします。\n\n"
         "送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\n"
-        "メッセージを残しますか？下に入力するか、「すぐにつなぐ」と返信するとすぐにつなぎます。",
-        "confirm": "スタッフに連絡しました。こちらからご返信いたします。\n\n"
-        "AIアシスタントに戻るには「back to bot」と送信してください。",
-        "ack_brief": "✓ 送信しました。（AIアシスタントに戻るには「back to bot」と送信してください。）",
-        "ack_full": "✓ スタッフが受け取りました。まもなくご返信いたします。\n\n"
-        "AIアシスタントに戻るには「back to bot」と送信してください。",
-        "de_esc": "AIアシスタントに戻りました。何かお手伝いできますか？",
+        "AIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。",
+        "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
+        "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
         "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
+        "email_details_no_message": "LINE経由でサポートを依頼されました。",
     },
 }
 
@@ -109,20 +109,8 @@ ESCALATION_KEYWORDS = {
     "talk to someone", "スタッフ", "人間", "担当者",
 }
 
-SKIP_KEYWORDS = {
-    "skip", "s", "/skip", "no", "nope", "never mind", "cancel",
-    "スキップ", "いいえ", "キャンセル",
-    "すぐにつなぐ", "connect now",
-}
-
-# Matches any intent to return to the AI/bot, case-insensitive
-_DE_ESCALATION_PATTERN = re.compile(
-    r"\b(back|return|switch|go back|exit|leave|end|stop|quit)\b.{0,20}\b(bot|ai|assistant|robot|auto)\b"
-    r"|\b(bot|ai|assistant|robot)\b.{0,20}\b(mode|again|please|now)\b"
-    r"|\b(back to (bot|ai|assistant|auto|robot))\b"
-    r"|\b(ボット|戻る|ai に戻る|botに戻る)\b",
-    re.IGNORECASE,
-)
+# Cancel escalation (matches Instagram — no skip, no back-to-bot)
+_CANCEL_KEYWORDS = {"cancel", "キャンセル"}
 
 
 def _wants_escalation(text: str) -> bool:
@@ -145,13 +133,11 @@ def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
     return False
 
 
-def _wants_de_escalation(text: str) -> bool:
-    return bool(_DE_ESCALATION_PATTERN.search(text))
+def _wants_cancel_escalation(text: str) -> bool:
+    """True if user wants to cancel escalation and stay with AI (matches Instagram)."""
+    lower = (text or "").strip().lower()
+    return any(lower == kw or lower.startswith(kw) for kw in _CANCEL_KEYWORDS)
 
-
-def _wants_skip_message(text: str) -> bool:
-    lower = text.lower().strip()
-    return any(lower == kw or lower.startswith(kw) for kw in SKIP_KEYWORDS)
 
 def _is_truthy(value: Any) -> bool:
     if isinstance(value, bool):
@@ -161,6 +147,327 @@ def _is_truthy(value: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return False
+
+
+# ── Menu flow (matches Instagram) ───────────────────────────────────
+
+def _safe_int_env(name: str, default: int) -> int:
+    try:
+        return int((os.environ.get(name) or str(default)).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+_LINE_MENU_PAGE_SIZE = max(1, min(_safe_int_env("LINE_MENU_PAGE_SIZE", 500), 500))
+_MENU_REQUEST_PATTERN = re.compile(
+    r"^\s*(?:show|view|see|open|browse|check)?\s*(?:the\s*)?(?:full\s*)?"
+    r"(?:menu|menus|course|courses|dish|dishes|drinks?|party|parties|lunch)\s*$",
+    re.IGNORECASE,
+)
+_MENU_REQUEST_EXACT = {
+    "menu", "full menu", "show menu", "view menu", "view the menu",
+    "show me the menu", "see menu", "course menu", "party menu", "party",
+    "lunch menu", "lunch",
+    "メニュー", "メニュー見せて", "メニューを見せて", "メニューを見たい",
+    "コース", "料理メニュー", "ドリンクメニュー", "ランチ", "ランチメニュー",
+}
+_MENU_CATEGORY_ORDER = ("course", "dish", "drink", "lunch", "menu")
+_MENU_CATEGORY_LABELS: Dict[str, Dict[str, str]] = {
+    "en": {"course": "Party/Course menu", "dish": "Dish menu", "drink": "Drink menu", "lunch": "Lunch menu", "menu": "Menu"},
+    "ja": {"course": "コース", "dish": "料理", "drink": "ドリンク", "lunch": "ランチ", "menu": "メニュー"},
+}
+_MENU_TEXT_BY_LANG: Dict[str, Dict[str, str]] = {
+    "en": {
+        "view_full_menu": "View full menu: {url}",
+        "view_menu_button_prompt": "Tap the button below to view our full menu.",
+        "view_menu_button_title": "View full menu",
+        "menu_not_ready": "Our menu isn't ready yet. Please try again shortly after menu extraction completes.",
+        "tap_view_more": "Tap 'View more' to continue.",
+        "choose_another": "You can choose another option.",
+        "render_error": "I found menu items, but couldn't render menu text right now. Please try again.",
+        "more_items_prompt": "More items are available. Tap 'View more' to continue.",
+    },
+    "ja": {
+        "view_full_menu": "メニュー一覧: {url}",
+        "view_menu_button_prompt": "下のボタンでメニューをご覧いただけます。",
+        "view_menu_button_title": "メニューを見る",
+        "menu_not_ready": "メニューの準備中です。メニュー抽出完了後にもう一度お試しください。",
+        "tap_view_more": "「もっと見る」で続きを表示できます。",
+        "choose_another": "他の候補も選べます。",
+        "render_error": "メニューは見つかりましたが、現在表示できません。少ししてから再度お試しください。",
+        "more_items_prompt": "続きのメニューがあります。「もっと見る」で表示できます。",
+    },
+}
+_PUBLIC_BASE_URL = (
+    os.environ.get("PUBLIC_BASE_URL")
+    or os.environ.get("BACKEND_PUBLIC_BASE_URL")
+    or os.environ.get("API_BASE_URL")
+    or os.environ.get("EXTERNAL_BASE_URL")
+    or os.environ.get("PUBLIC_API_BASE_URL")
+    or ""
+).strip()
+
+
+def _get_menu_items_for_bot(bot_id: str) -> List[Any]:
+    try:
+        return asset_repo().list_assets_for_bot(bot_id, active_only=True, asset_type="menu_item")
+    except Exception:
+        logger.exception("Failed to load menu items for bot_id=%s", bot_id)
+        return []
+
+
+def _menu_category_for_item(item: Any) -> str:
+    metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
+    raw = str(metadata.get("category") or "").strip().lower()
+    aliases = {"party": "course", "plan": "course", "set": "course", "beverage": "drink", "food": "dish", "lunch_set": "lunch"}
+    category = aliases.get(raw, raw)
+    return category if category in _MENU_CATEGORY_ORDER else "menu"
+
+
+def _is_full_menu_request(text: str, payload: Optional[str]) -> bool:
+    # LINE sends text directly (no separate payload); quick reply taps send "SHOW_FULL_MENU"
+    raw_text = (text or "").strip().upper()
+    if raw_text == LINE_MENU_QUICK_PAYLOAD:
+        return True
+    raw_payload = (payload or "").strip().upper()
+    if raw_payload == LINE_MENU_QUICK_PAYLOAD:
+        return True
+    normalized = (text or "").strip().lower()
+    if not normalized:
+        return False
+    if normalized in _MENU_REQUEST_EXACT:
+        return True
+    return bool(_MENU_REQUEST_PATTERN.match(normalized))
+
+
+def _parse_menu_page_payload(payload: Optional[str]) -> Optional[Tuple[str, int]]:
+    raw = (payload or "").strip()
+    if not raw.upper().startswith(LINE_MENU_PAGE_PAYLOAD_PREFIX):
+        return None
+    rest = raw[len(LINE_MENU_PAGE_PAYLOAD_PREFIX):]
+    parts = rest.split(":", 1)
+    if len(parts) != 2:
+        return None
+    category = parts[0].strip().lower()
+    if category not in _MENU_CATEGORY_ORDER:
+        return None
+    try:
+        offset = int(parts[1].strip())
+    except ValueError:
+        return None
+    return (category, offset) if offset >= 0 else None
+
+
+def _menu_text(key: str, lang: str, **kwargs: Any) -> str:
+    table = _MENU_TEXT_BY_LANG.get(lang) or _MENU_TEXT_BY_LANG["en"]
+    template = table.get(key) or ""
+    return template.format(**kwargs) if template and kwargs else template
+
+
+def _menu_category_label(category: str, lang: str) -> str:
+    return (_MENU_CATEGORY_LABELS.get(lang) or _MENU_CATEGORY_LABELS["en"]).get(category, category.title())
+
+
+def _view_more_title(category: str, lang: str) -> str:
+    titles_ja = {"course": "コース続き", "dish": "料理続き", "drink": "ドリンク続き", "lunch": "ランチ続き", "menu": "メニュー続き"}
+    titles_en = {"course": "More Course", "dish": "More Dish", "drink": "More Drink", "lunch": "More Lunch", "menu": "More Menu"}
+    t = titles_ja if lang == "ja" else titles_en
+    return t.get(category, "もっと見る" if lang == "ja" else "View more")
+
+
+def _menu_price_and_details(item: Any) -> Tuple[str, str]:
+    metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
+    price_text = str(metadata.get("price_text") or "").strip()
+    if not price_text and isinstance(metadata.get("price"), dict):
+        price_text = str((metadata.get("price") or {}).get("text") or "").strip()
+    details = str(metadata.get("details") or (item.description or "")).strip()
+    return price_text, details
+
+
+def _menu_item_source_url(item: Any) -> str:
+    metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
+    u = str(metadata.get("source_url") or getattr(item, "link_url", "") or "").strip()
+    return u if u.startswith("http") else ""
+
+
+def _menu_view_all_url_for_category(category: str, items: List[Any]) -> str:
+    tokens = {"course": ("/party",), "dish": ("/dtlmenu",), "drink": ("/dtlmenu/drink",), "lunch": ("/dtlmenu/lunch",)}
+    urls = list({_menu_item_source_url(i) for i in items if _menu_item_source_url(i)})
+    for u in urls:
+        low = u.lower()
+        for t in tokens.get(category, ()):
+            if t in low:
+                return u
+    return urls[0] if urls else ""
+
+
+def _resolve_public_base_url(request: Optional[Request] = None) -> str:
+    if _PUBLIC_BASE_URL:
+        return _PUBLIC_BASE_URL.rstrip("/") if _PUBLIC_BASE_URL.startswith(("http://", "https://")) else f"https://{_PUBLIC_BASE_URL}".rstrip("/")
+    if not request:
+        return ""
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    proto = (request.headers.get("x-forwarded-proto") or "https").split(",")[0].strip()
+    return f"{proto}://{host}".rstrip("/") if host else ""
+
+
+def _menu_page_url(publishable_key: str, request: Optional[Request] = None) -> str:
+    base = _resolve_public_base_url(request)
+    return f"{base}/v1/pk/{publishable_key}/menu" if base and publishable_key else ""
+
+
+def _build_line_text_chunks(lines: List[str], max_chars: int = 4500) -> List[str]:
+    chunks, current = [], ""
+    for line in (str(l or "") for l in lines):
+        if len(line) > max_chars:
+            if current:
+                chunks.append(current)
+                current = ""
+            for i in range(0, len(line), max_chars):
+                c = line[i:i + max_chars]
+                if c:
+                    chunks.append(c)
+            continue
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) <= max_chars:
+            current = candidate
+        else:
+            if current:
+                chunks.append(current)
+            current = line
+    if current:
+        chunks.append(current)
+    return [c for c in chunks if c.strip()]
+
+
+def _make_menu_page_payload(category: str, offset: int) -> str:
+    return f"{LINE_MENU_PAGE_PAYLOAD_PREFIX}{category}:{offset}"
+
+
+async def _send_menu_by_category_line(
+    *,
+    bot_id: str,
+    line_user_id: str,
+    reply_token: str,
+    access_token: str,
+    suggested_flex: Optional[dict],
+    page_category: Optional[str] = None,
+    page_offset: int = 0,
+    lang: str = "en",
+    publishable_key: Optional[str] = None,
+    request: Optional[Request] = None,
+) -> None:
+    """Send menu by category (matches Instagram flow, adapted for LINE)."""
+    items = _get_menu_items_for_bot(bot_id)
+    logger.info("LINE menu flow bot_id=%s items=%d page_category=%s", bot_id, len(items), page_category)
+    if not items:
+        await reply_message(
+            reply_token,
+            [_menu_text("menu_not_ready", lang)],
+            access_token,
+            suggested_flex=suggested_flex,
+        )
+        return
+
+    menu_page_url = _menu_page_url(publishable_key, request) if publishable_key else None
+    is_initial_menu = page_category is None and page_offset == 0
+    if publishable_key and (not menu_page_url or not menu_page_url.startswith("https://")):
+        logger.info(
+            "LINE menu: menu_page_url empty or invalid (set PUBLIC_BASE_URL?). bot_id=%s pk=%s url=%s",
+            bot_id, publishable_key, menu_page_url or "(empty)",
+        )
+
+    # Button to view full menu in-app (matches Instagram) — send button ONLY, never text list
+    if menu_page_url and is_initial_menu and menu_page_url.lower().startswith("https://") and len(menu_page_url) > 12:
+        prompt = _menu_text("view_menu_button_prompt", lang)
+        btn_title = _menu_text("view_menu_button_title", lang)
+        tmpl = build_buttons_template(
+            "View full menu",
+            prompt,
+            [{"type": "uri", "label": btn_title[:20], "uri": menu_page_url}],
+        )
+        # Send button only (no suggested_flex — combo caused LINE 400)
+        ok = await reply_with_messages(reply_token, [tmpl], access_token)
+        if ok:
+            return
+        # Fallback: plain text with clickable URL (LINE renders URLs as links)
+        fallback = f"{prompt}\n\n{menu_page_url}"
+        ok2 = await reply_message(reply_token, [fallback], access_token, suggested_flex=suggested_flex)
+        if ok2:
+            return
+        logger.warning("LINE menu button and fallback failed bot_id=%s", bot_id)
+        raise RuntimeError("LINE menu send failed")
+
+    grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
+    for item in items:
+        grouped[_menu_category_for_item(item)].append(item)
+
+    categories = [page_category] if page_category and page_category in _MENU_CATEGORY_ORDER else list(_MENU_CATEGORY_ORDER)
+    pending_more_qr: List[dict] = []
+    text_parts: List[str] = []
+
+    for category in categories:
+        category_items = grouped.get(category) or []
+        if not category_items:
+            continue
+        label = _menu_category_label(category, lang)
+        start = page_offset if page_category else 0
+        page_items = category_items[start:start + _LINE_MENU_PAGE_SIZE]
+        if not page_items:
+            continue
+
+        view_url = menu_page_url or _menu_view_all_url_for_category(category, category_items)
+        text_parts.append(label)
+        if view_url:
+            text_parts.append(_menu_text("view_full_menu", lang, url=view_url))
+        for idx, item in enumerate(page_items, start=start + 1):
+            name = str(item.name or "Menu item").strip()
+            price_text, _ = _menu_price_and_details(item)
+            text_parts.append(f"{idx}. {name}" + (f" - {price_text}" if price_text else ""))
+
+        next_offset = start + _LINE_MENU_PAGE_SIZE
+        if next_offset < len(category_items):
+            payload = _make_menu_page_payload(category, next_offset)
+            pending_more_qr.append({"label": _view_more_title(category, lang), "text": payload})
+        if page_category:
+            break
+
+    if not text_parts:
+        await reply_message(
+            reply_token,
+            [_menu_text("render_error", lang)],
+            access_token,
+            suggested_flex=suggested_flex,
+        )
+        return
+
+    chunks = _build_line_text_chunks(text_parts)
+    if not chunks:
+        await reply_message(
+            reply_token,
+            [_menu_text("render_error", lang)],
+            access_token,
+            suggested_flex=suggested_flex,
+        )
+        return
+
+    messages: List[dict] = []
+    for i, chunk in enumerate(chunks[:-1]):
+        messages.append({"type": "text", "text": chunk})
+    last_chunk = chunks[-1]
+    if pending_more_qr:
+        msg_with_qr = build_text_with_quick_replies(last_chunk, pending_more_qr)
+        messages.append(msg_with_qr)
+        prompt = _menu_text("more_items_prompt", lang) if len(pending_more_qr) > 1 else _menu_text("tap_view_more", lang)
+        messages.append({"type": "text", "text": prompt})
+    else:
+        messages.append({"type": "text", "text": last_chunk})
+    if suggested_flex and len(messages) < 5:
+        messages.append(suggested_flex)
+    ok = await reply_with_messages(reply_token, messages[:5], access_token)
+    if not ok:
+        logger.warning("LINE menu text list send failed bot_id=%s, falling back to RAG", bot_id)
+        raise RuntimeError("LINE menu text list send failed (400 or network error)")
 
 
 # ── Helper: format conversation context ──────────────────────────────
@@ -317,6 +624,35 @@ async def _handle_text_message(
     """Core handler for a single text message from LINE."""
     access_token = channel.line_channel_access_token
 
+    # ── Early menu path: send button BEFORE session/typing (reply token expires in ~30s) ──
+    if _is_full_menu_request(text, None):
+        try:
+            menu_url = _menu_page_url(getattr(bot, "publishable_key", None), request)
+            if menu_url and menu_url.lower().startswith("https://") and len(menu_url) > 12:
+                items = _get_menu_items_for_bot(bot.bot_id)
+                if items:
+                    wc = {}
+                    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+                        try:
+                            wc = json.loads(bot.widget_config)
+                        except (TypeError, ValueError):
+                            pass
+                    lang = "ja" if str(wc.get("language") or "").lower() in ("ja", "jp") else "en"
+                    prompt = _menu_text("view_menu_button_prompt", lang)
+                    btn_title = _menu_text("view_menu_button_title", lang)
+                    tmpl = build_buttons_template(
+                        "View full menu",
+                        prompt,
+                        [{"type": "uri", "label": btn_title[:20], "uri": menu_url}],
+                    )
+                    ok = await reply_with_messages(reply_token, [tmpl], access_token)
+                    if ok:
+                        logger.info("LINE menu button sent early bot_id=%s", bot.bot_id)
+                        return
+                    logger.warning("LINE menu button failed early bot_id=%s (see LINE reply failed log)", bot.bot_id)
+        except Exception as e:
+            logger.warning("LINE menu early path failed bot_id=%s: %s", bot.bot_id, e)
+
     # Show typing indicator immediately while processing
     await line_show_typing(line_user_id, access_token)
 
@@ -387,21 +723,27 @@ async def _handle_text_message(
             )
             mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
 
-    # ── De-escalation check ──────────────────────────────────────────
-    if mapping and mapping.is_escalated and _wants_de_escalation(text):
+    # ── De-escalation check (cancel only, matches Instagram) ───────────
+    if mapping and mapping.is_escalated and _wants_cancel_escalation(text):
         _line_user_session_repo.set_escalated(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
             escalated=False,
         )
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=text,
+        )
         msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
-        de_esc_msg = msgs["de_esc"]
-        await reply_message(reply_token, [de_esc_msg], access_token, suggested_flex=suggested_flex)
+        cancel_msg = msgs["cancel_ack"]
+        await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
-            content=de_esc_msg,
+            content=cancel_msg,
         )
         return
 
@@ -417,7 +759,29 @@ async def _handle_text_message(
 
     # ── Awaiting optional escalation message ─────────────────────────
     if mapping and mapping.awaiting_escalation_msg:
-        user_msg = None if _wants_skip_message(text) else text.strip()
+        if _wants_cancel_escalation(text):
+            _line_user_session_repo.set_awaiting_escalation_msg(
+                line_user_id=line_user_id,
+                bot_id=bot.bot_id,
+                awaiting=False,
+            )
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text,
+            )
+            msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+            cancel_msg = msgs["cancel_ack"]
+            await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=cancel_msg,
+            )
+            return
+        user_msg = text.strip()
         _line_user_session_repo.set_awaiting_escalation_msg(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
@@ -434,7 +798,8 @@ async def _handle_text_message(
             role="user",
             content=text,
         )
-        details = f"Message from user: {user_msg}" if user_msg else "User requested human assistance via LINE."
+        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+        details = user_msg if user_msg else msgs["email_details_no_message"]
         conversation_service().create_escalation(
             bot_id=bot.bot_id,
             session_id=session.session_id,
@@ -450,7 +815,19 @@ async def _handle_text_message(
             visitor_email=f"line:{line_user_id}",
             details=details,
         )
-        # No bot reply — human will respond. User was told in the prompt to wait.
+        ack_msg = msgs["escalation_ack"]
+        await reply_message(reply_token, [ack_msg], access_token)
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=ack_msg,
+        )
+        _line_user_session_repo.set_escalated(
+            line_user_id=line_user_id,
+            bot_id=bot.bot_id,
+            escalated=True,
+        )
         return
 
     # ── Escalation request ───────────────────────────────────────────
@@ -475,6 +852,76 @@ async def _handle_text_message(
             content=prompt_msg,
         )
         return
+
+    # ── Menu flow (matches Instagram) ─────────────────────────────────
+    platform_features = get_platform_features_from_widget(widget_config)
+    menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
+    quick_payload = None  # LINE only has text; show_menu sends SHOW_FULL_MENU as text
+    effective_text = text
+    menu_fallback_skip_assets = False  # set True when menu flow fails and we fall back to RAG
+
+    # Parse pagination payload (SHOW_MENU_PAGE:category:offset) whenever sent
+    page_req = _parse_menu_page_payload(effective_text)
+    if page_req:
+        category, offset = page_req
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=text or "View more menu",
+        )
+        await _send_menu_by_category_line(
+            bot_id=bot.bot_id,
+            line_user_id=line_user_id,
+            reply_token=reply_token,
+            access_token=access_token,
+            suggested_flex=suggested_flex,
+            page_category=category,
+            page_offset=offset,
+            lang=lang,
+            publishable_key=getattr(bot, "publishable_key", None),
+            request=request,
+        )
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=f"Shared more {category} menu items.",
+        )
+        return
+
+    # Run menu flow when user explicitly requests menu (Menu/SHOW_FULL_MENU),
+    # regardless of platform — ensures Menu button always responds
+    if _is_full_menu_request(effective_text, quick_payload):
+        try:
+            await _send_menu_by_category_line(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                reply_token=reply_token,
+                access_token=access_token,
+                suggested_flex=suggested_flex,
+                lang=lang,
+                publishable_key=getattr(bot, "publishable_key", None),
+                request=request,
+            )
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=effective_text,
+            )
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content="Shared the categorized menu.",
+            )
+            return
+        except Exception as e:
+            logger.warning("LINE menu flow failed for bot_id=%s, falling back to RAG: %s", bot.bot_id, e)
+            menu_fallback_skip_assets = True  # skip asset carousel to avoid invalid hero/url errors
+            # Fall through to normal AI flow with "Menu" as query
+            pass
 
     # ── Normal AI flow ───────────────────────────────────────────────
     # Save user message
@@ -534,10 +981,14 @@ async def _handle_text_message(
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
     allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
 
+    ai_query = text
+    if text == LINE_MENU_QUICK_PAYLOAD or _is_full_menu_request(text, None):
+        ai_query = "Menu"
+
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
         result = run_vertex_rag(
-            text,
+            ai_query,
             rag_corpus=corpus,
             allowed_host=None,
             debug_cb=None,
@@ -567,7 +1018,7 @@ async def _handle_text_message(
             answer, asset_cards = process_answer_assets(
                 answer,
                 bot.bot_id,
-                user_query=text,
+                user_query=ai_query,
                 session_id=session.session_id,
                 allowed_asset_types=allowed_asset_types,
                 asset_term_config=asset_rules.get("asset_term_config"),
@@ -601,11 +1052,13 @@ async def _handle_text_message(
         logger.info(f"LINE bot_id={bot.bot_id} asset_cards: {asset_cards}")
 
     # LINE has a 5000 char limit per message; split if needed
+    # Skip asset carousel when falling back from menu flow (avoids invalid hero/url errors)
+    reply_asset_cards = None if menu_fallback_skip_assets else asset_cards
     if len(answer) > 5000:
         chunks = [answer[i:i + 5000] for i in range(0, len(answer), 5000)]
-        await reply_message(reply_token, chunks[:5], access_token, asset_cards=asset_cards, suggested_flex=suggested_flex)
+        await reply_message(reply_token, chunks[:5], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
     else:
-        await reply_message(reply_token, [answer], access_token, asset_cards=asset_cards, suggested_flex=suggested_flex)
+        await reply_message(reply_token, [answer], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
 
 
 # ══════════════════════════════════════════════════════════════════════

@@ -11,6 +11,7 @@ Endpoints:
   POST /v1/org/bots/{bot_id}/instagram-channel/test -- Test connection (authenticated)
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -228,6 +229,7 @@ _IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "cancel_ack": "Cancelled. How can I help you?",
         "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
         "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
+        "email_details_no_message": "User requested human assistance via Instagram.",
     },
     "ja": {
         "prompt": "スタッフにおつなぎいたします。\n\n"
@@ -236,6 +238,7 @@ _IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
         "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
         "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
         "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
+        "email_details_no_message": "Instagram経由でサポートを依頼されました。",
     },
 }
 
@@ -1252,6 +1255,9 @@ async def _handle_text_message(
         logger.info("Instagram typing: showing for ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
         print(f"[Instagram typing] showing for ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
         await ig_show_typing(ig_user_id, access_token)
+        # Brief delay so typing indicator can render before reply; Meta docs warn against
+        # typing_on + reply in rapid succession (indicator may not show)
+        await asyncio.sleep(0.5)
     else:
         logger.info("Instagram typing: skipped (escalated) ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
         print(f"[Instagram typing] SKIPPED (escalated) ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
@@ -1386,7 +1392,9 @@ async def _handle_text_message(
             role="user",
             content=effective_text,
         )
-        details = f"Message from user: {user_msg}" if user_msg else "User requested human assistance via Instagram."
+        lang = _normalize_lang(widget_config)
+        msgs = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])
+        details = user_msg if user_msg else msgs["email_details_no_message"]
         conversation_service().create_escalation(
             bot_id=bot.bot_id,
             session_id=session.session_id,
@@ -1423,8 +1431,7 @@ async def _handle_text_message(
             visitor_name=visitor_name,
             visitor_profile_pic_url=visitor_profile_pic_url,
         )
-        lang = _normalize_lang(widget_config)
-        ack_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["escalation_ack"]
+        ack_msg = msgs["escalation_ack"]
         _record_outbound_send(ig_user_id, bot.bot_id)
         await send_message(ig_user_id, ack_msg, access_token)
         conversation_service().add_message(

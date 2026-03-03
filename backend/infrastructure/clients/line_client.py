@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 LINE_API_BASE = "https://api.line.me/v2/bot"
 LINE_API_DATA = "https://api-data.line.me/v2/bot"
 
+# Menu flow (matches Instagram)
+LINE_MENU_QUICK_PAYLOAD = "SHOW_FULL_MENU"
+LINE_MENU_PAGE_PAYLOAD_PREFIX = "SHOW_MENU_PAGE:"
+
 # ── Signature verification ────────────────────────────────────────────
 
 
@@ -58,9 +62,51 @@ async def show_typing(user_id: str, access_token: str) -> None:
 # ── Sending messages ──────────────────────────────────────────────────
 
 
-def _text_message(text: str) -> dict:
+def _text_message(text: str, quick_reply_items: Optional[List[dict]] = None) -> dict:
     formatted_text = format_for_messaging(text)
-    return {"type": "text", "text": formatted_text}
+    msg: dict = {"type": "text", "text": formatted_text}
+    if quick_reply_items:
+        msg["quickReply"] = {
+            "items": [
+                {
+                    "type": "action",
+                    "action": {
+                        "type": "message",
+                        "label": (item.get("label") or item.get("title") or "")[:20],
+                        "text": str(item.get("text") or item.get("payload") or "")[:1000],
+                    },
+                }
+                for item in quick_reply_items[:13]
+                if item.get("text") or item.get("payload")
+            ]
+        }
+    return msg
+
+
+def build_text_with_quick_replies(text: str, quick_reply_items: List[dict]) -> dict:
+    """Build a text message with quick reply buttons (for menu 'View more' etc)."""
+    return _text_message(text, quick_reply_items)
+
+
+def build_buttons_template(alt_text: str, text: str, buttons: List[dict]) -> dict:
+    """Build a LINE buttons template (e.g. View full menu)."""
+    actions = []
+    for btn in buttons[:3]:
+        if btn.get("type") == "uri":
+            actions.append({
+                "type": "uri",
+                "label": (btn.get("label") or "View")[:20],
+                "uri": btn.get("uri", ""),
+            })
+    return {
+        "type": "template",
+        "altText": alt_text[:400],
+        "template": {
+            "type": "buttons",
+            "text": format_for_messaging(text)[:160],
+            "actions": actions,
+        },
+    }
 
 
 def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
@@ -68,7 +114,7 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
 
     Uses box components with text inside (no char limit on display) and
     a message action on the box (label is just for accessibility, not shown).
-    Tapping a row sends the full label text as a user message.
+    Tapping a row sends the label text (Menu, メニュー, etc.) — user sees normal text, not code.
     """
     if not suggested_messages:
         return None
@@ -77,6 +123,8 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
         label = (sm.get("label") or "").strip()
         if not label:
             continue
+        msg_type = str(sm.get("type") or "ai_response").strip()
+        action_text = label  # Always send label so user sees "Menu"/"メニュー", not SHOW_FULL_MENU
         rows.append({
             "type": "box",
             "layout": "vertical",
@@ -93,7 +141,7 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
             "action": {
                 "type": "message",
                 "label": label[:20],
-                "text": label,
+                "text": action_text,
             },
             "paddingAll": "md",
             "cornerRadius": "md",
@@ -116,6 +164,18 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
             },
         },
     }
+
+
+def _is_valid_image_url(url: Optional[str]) -> bool:
+    """LINE requires non-empty, https (or http) image URLs with a valid host."""
+    if not url or not str(url).strip():
+        return False
+    s = str(url).strip().lower()
+    if s.startswith("https://"):
+        return len(s) > 8 and s[8] != "/"  # need host after "https://"
+    if s.startswith("http://"):
+        return len(s) > 7 and s[7] != "/"  # need host after "http://"
+    return False
 
 
 def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
@@ -192,15 +252,15 @@ async def reply_message(
     max_text_slots = max(1, 5 - reserved_slots)
     messages: List[dict] = [_text_message(t) for t in texts[:max_text_slots]]
 
-    # 2. Asset Carousel
+    # 2. Asset Carousel (skip cards with invalid/empty image URLs — LINE rejects them)
     if asset_cards:
         bubbles = []
-        # Max bubbles in a carousel is 12
-        for card in asset_cards[:12]:
+        valid_cards = [c for c in asset_cards[:12] if _is_valid_image_url(c.get("image_url"))]
+        for card in valid_cards:
             bubbles.append(
                 _create_image_bubble(
                     card.get("name", ""),
-                    card.get("image_url", ""),
+                    (card.get("image_url") or "").strip(),
                     card.get("link_url") or None,
                 )
             )
@@ -224,6 +284,20 @@ async def reply_message(
         messages.append(suggested_flex)
 
     logger.info(f"LINE reply_message: sending {len(messages)} messages (text + carousel)")
+    return await _send_reply(reply_token, messages, access_token)
+
+
+async def reply_with_messages(
+    reply_token: str,
+    messages: List[dict],
+    access_token: str,
+) -> bool:
+    """Reply with a custom list of messages (e.g. for menu flow). Max 5 messages."""
+    msgs = messages[:5]
+    return await _send_reply(reply_token, msgs, access_token)
+
+
+async def _send_reply(reply_token: str, messages: List[dict], access_token: str) -> bool:
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             f"{LINE_API_BASE}/message/reply",
@@ -231,7 +305,7 @@ async def reply_message(
             headers={"Authorization": f"Bearer {access_token}"},
         )
     if resp.status_code != 200:
-        logger.error("LINE reply_message failed: %s %s", resp.status_code, resp.text)
+        logger.error("LINE reply failed: %s %s", resp.status_code, resp.text)
         return False
     return True
 
@@ -255,11 +329,12 @@ async def push_message(
 
     if asset_cards:
         bubbles = []
-        for card in asset_cards[:12]:
+        valid_cards = [c for c in asset_cards[:12] if _is_valid_image_url(c.get("image_url"))]
+        for card in valid_cards:
             bubbles.append(
                 _create_image_bubble(
                     card.get("name", ""),
-                    card.get("image_url", ""),
+                    (card.get("image_url") or "").strip(),
                     card.get("link_url") or None,
                 )
             )
