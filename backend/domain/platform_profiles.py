@@ -119,12 +119,32 @@ def _build_platform_registry() -> tuple[
     Dict[str, PlatformProfile],
     Dict[str, Tuple[str, str]],
     List[Dict[str, Any]],
+    Dict[str, str],
+    Dict[str, List[str]],
 ]:
-    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES."""
+    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES, DEFAULT_ASSET_RULES, DEFAULT_ASSET_TERM_CONFIG."""
     cfg = _load_platform_config()
     profiles: Dict[str, PlatformProfile] = {}
     reservation_config: Dict[str, Tuple[str, str]] = {}
     default_suggested: List[Dict[str, Any]] = []
+    default_asset_rules: Dict[str, str] = {}
+    default_asset_term_config: Dict[str, List[str]] = {}
+
+    if isinstance(cfg.get("default_asset_rules"), dict):
+        dar = cfg["default_asset_rules"]
+        marker = str(dar.get("marker_rule") or "").strip()
+        evidence = str(dar.get("evidence_template") or "").strip()
+        if marker:
+            default_asset_rules["marker_rule"] = marker
+        if evidence:
+            default_asset_rules["evidence_template"] = evidence
+
+    if isinstance(cfg.get("default_asset_term_config"), dict):
+        datc = cfg["default_asset_term_config"]
+        for key in ("generic_tokens", "asset_intent_terms", "visual_request_terms", "visual_request_many_terms", "visual_suppress_terms"):
+            val = datc.get(key)
+            if isinstance(val, list):
+                default_asset_term_config[key] = [str(v).strip() for v in val if str(v).strip()]
 
     # Reservation platform mapping
     rpc = cfg.get("reservation_platform_config") or {}
@@ -147,14 +167,50 @@ def _build_platform_registry() -> tuple[
             if isinstance(pdata, dict) and domain_key:
                 profiles[str(domain_key).strip()] = _dict_to_platform_profile(domain_key, pdata)
 
-    return profiles, reservation_config, default_suggested
+    return profiles, reservation_config, default_suggested, default_asset_rules, default_asset_term_config
 
 
 (
     PLATFORM_PROFILES,
     RESERVATION_PLATFORM_CONFIG,
     DEFAULT_SUGGESTED_MESSAGES,
+    DEFAULT_ASSET_RULES,
+    DEFAULT_ASSET_TERM_CONFIG,
 ) = _build_platform_registry()
+
+
+def get_asset_rules_from_widget(widget_config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Get asset rules and term config from platform profile or default.
+    Config-driven: no hardcoding in asset_resolver.
+    Returns dict with marker_rule, evidence_template, asset_term_config.
+    """
+    out: Dict[str, Any] = dict(DEFAULT_ASSET_RULES)
+    out["asset_term_config"] = dict(DEFAULT_ASSET_TERM_CONFIG)
+
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return out
+    domain_key = cfg.get("domain_key")
+    if not domain_key or domain_key not in PLATFORM_PROFILES:
+        return out
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    rules = metadata.get("asset_rules")
+    if isinstance(rules, dict):
+        marker = str(rules.get("marker_rule") or "").strip()
+        evidence = str(rules.get("evidence_template") or "").strip()
+        if marker:
+            out["marker_rule"] = marker
+        if evidence:
+            out["evidence_template"] = evidence
+        term_cfg = rules.get("asset_term_config")
+        if isinstance(term_cfg, dict):
+            for key in ("generic_tokens", "asset_intent_terms", "visual_request_terms", "visual_request_many_terms", "visual_suppress_terms"):
+                val = term_cfg.get(key)
+                if isinstance(val, list):
+                    out["asset_term_config"][key] = [str(v).strip() for v in val if str(v).strip()]
+    return out
 
 
 def get_reservation_config_from_widget(
@@ -312,6 +368,30 @@ def get_suggested_messages_for_widget(
     if features and features.get("suggested_messages"):
         return resolve_items(features["suggested_messages"])
     return resolve_items(DEFAULT_SUGGESTED_MESSAGES)
+
+
+def get_asset_filter_from_widget(widget_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Get asset filter config from the active platform profile.
+    Used to suppress assets for reservation-only queries (config-driven, no hardcoding).
+    Returns dict with reservation_suppress_terms, menu_food_intent_terms; or None.
+    """
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return None
+    domain_key = cfg.get("domain_key")
+    if not domain_key or domain_key not in PLATFORM_PROFILES:
+        return None
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    asset_filter = metadata.get("asset_filter")
+    if not isinstance(asset_filter, dict):
+        return None
+    suppress = asset_filter.get("reservation_suppress_terms")
+    menu_terms = asset_filter.get("menu_food_intent_terms")
+    if not isinstance(suppress, list) or not isinstance(menu_terms, list):
+        return None
+    return {"reservation_suppress_terms": suppress, "menu_food_intent_terms": menu_terms}
 
 
 def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:

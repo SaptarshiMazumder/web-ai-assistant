@@ -11,6 +11,8 @@ Single source of truth for all business-type-specific behavior (Tabelog, HotPepp
 | Section | Description |
 |---------|-------------|
 | `reservation_platform_config` | Maps platform_id (tabelog, hotpepper, tablecheck) → `widget_key`, `domain_key` |
+| `default_asset_rules` | `marker_rule`, `evidence_template` — fallback when no platform defines `asset_rules` |
+| `default_asset_term_config` | `generic_tokens`, `asset_intent_terms`, `visual_request_terms`, `visual_request_many_terms`, `visual_suppress_terms` — used for asset matching/scoring |
 | `default_suggested_messages` | Fallback when no platform defines `suggested_messages` |
 | `platforms` | Per-domain config keyed by domain (e.g. `tabelog.com`) |
 
@@ -34,3 +36,5 @@ Single source of truth for all business-type-specific behavior (Tabelog, HotPepp
 | `reservation` | `enabled`, `link_label` (en/ja), `instruction_template` (en/ja) |
 | `suggested_messages` | Quick-reply options (Menu, Reservation, etc.) |
 | `asset_instructions` | LLM prompt rules for when to show menu assets vs reservation link |
+| `asset_rules` | `marker_rule`, `evidence_template`, `asset_term_config` — asset bank instruction, evidence format, and term config (overrides default) |
+| `asset_filter` | `reservation_suppress_terms`, `menu_food_intent_terms` — suppress assets for reservation-only queries |

@@ -44,7 +44,12 @@ from infrastructure.clients.instagram_client import (
     show_typing as ig_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
-from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_instruction, resolve_asset_markers
+from infrastructure.assets.asset_resolver import (
+    build_asset_evidence,
+    build_asset_instruction,
+    process_answer_assets,
+    resolve_asset_markers,
+)
 from infrastructure.db.repositories import (
     PostgresBotSourceRepository,
     PostgresInstagramChannelRepository,
@@ -53,6 +58,7 @@ from infrastructure.db.repositories import (
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
+    get_asset_rules_from_widget,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
     get_reservation_config_from_widget,
@@ -1551,7 +1557,12 @@ async def _handle_text_message(
 
     # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     extra_evidence: list[dict[str, str]] = []
-    asset_instruction = build_asset_instruction(bot.bot_id)
+    asset_rules = get_asset_rules_from_widget(widget_config)
+    # Query-aware asset evidence so LLM discovers menu items for "what's on the menu?" etc.
+    if menu_extraction_enabled:
+        asset_evidence = build_asset_evidence(bot.bot_id, query=ai_query, asset_rules=asset_rules)
+        extra_evidence.extend(asset_evidence)
+    asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
     platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_normalize_lang(widget_config))
@@ -1617,13 +1628,21 @@ async def _handle_text_message(
                     user_query=effective_text,
                     session_id=session.session_id,
                     allowed_asset_types=allowed_asset_types,
+                    asset_term_config=asset_rules.get("asset_term_config"),
                 )
     except Exception as e:
+        err_msg = f"{type(e).__name__}: {e}"
+        # Print to stdout so it shows in terminal when webhook runs (logs often not visible)
+        print(f"[RAG ERROR] bot_id={bot.bot_id} error={err_msg}", flush=True)
         if is_quota_exhausted_error(e):
-            logger.warning("RAG quota exhausted for Instagram message bot_id=%s", bot.bot_id)
+            logger.warning(
+                "RAG quota exhausted for Instagram message bot_id=%s error=%s",
+                bot.bot_id,
+                err_msg[:500],
+            )
             answer = "We're experiencing high demand right now. Please try again in about a minute."
         else:
-            logger.exception("RAG error for Instagram message bot_id=%s", bot.bot_id)
+            logger.exception("RAG error for Instagram message bot_id=%s error=%s", bot.bot_id, err_msg[:500])
             answer = "I'm sorry, something went wrong. Please try again in a moment."
 
     conversation_service().add_message(

@@ -10,7 +10,7 @@ Design:
 import logging
 import os
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
 from common.config import config
@@ -35,172 +35,59 @@ _ASSET_SESSION_DEDUPE_TTL_SECONDS = max(
     300,
     min(int(os.environ.get("ASSET_SESSION_DEDUPE_TTL_SECONDS", "43200")), 604800),
 )
-_VISUAL_REQUEST_TERMS = {
-    "photo",
-    "photos",
-    "image",
-    "images",
-    "picture",
-    "pictures",
-    "pic",
-    "pics",
-    "gallery",
-    "show me",
-    "send me",
-    "share",
-    "let me see",
-    "what it looks like",
-    # Japanese
-    "写真",
-    "画像",
-    "見せて",
-    "見たい",
-    "見せてください",
-    "見たいです",
-}
-_VISUAL_REQUEST_MANY_TERMS = {
-    "all",
-    "more",
-    "many",
-    "several",
-    "multiple",
-    "full menu",
-    "whole menu",
-    "entire menu",
-    "more photos",
-    "more images",
-    # Japanese
-    "全部",
-    "もっと",
-    "全メニュー",
-    "メニュー全部",
-    "一覧",
-}
-_VISUAL_SUPPRESS_TERMS = {
-    "no image",
-    "no images",
-    "no photo",
-    "no photos",
-    "no picture",
-    "no pictures",
-    "without image",
-    "without images",
-    "without photo",
-    "without photos",
-    # Japanese
-    "画像なし",
-    "写真なし",
-    "画像不要",
-    "写真不要",
-}
-_ASSET_INTENT_TERMS = {
-    "menu",
-    "dish",
-    "dishes",
-    "food",
-    "drink",
-    "drinks",
-    "beverage",
-    "beverages",
-    "product",
-    "products",
-    "service",
-    "services",
-    "package",
-    "packages",
-    "plan",
-    "plans",
-    "room",
-    "rooms",
-    "suite",
-    "suites",
-    "facility",
-    "facilities",
-    "amenity",
-    "amenities",
-    "location",
-    "locations",
-    "map",
-    "branch",
-    "branches",
-    "store",
-    "stores",
-    "item",
-    "items",
-    "option",
-    "options",
-    "catalog",
-    "collection",
-    # Japanese
-    "メニュー",
-    "料理",
-    "コース",
-    "食べ物",
-    "飲み物",
-    "ドリンク",
-    "商品",
-    "サービス",
-    "プラン",
-    "部屋",
-    "施設",
-    "おすすめ",
-    "人気",
-    "定番",
-    "ランチ",
-    "ディナー",
-    "デザート",
-    "前菜",
-    "刺身",
-    "寿司",
-    "焼肉",
-    "セット",
+# Base stopwords (universal language stopwords). generic_tokens from config are merged at runtime.
+_BASE_STOPWORDS = {
+    "a", "an", "and", "are", "be", "can", "for", "from", "i", "in", "is", "it",
+    "me", "my", "of", "on", "or", "please", "the", "to", "we", "with", "you", "your",
 }
 _SPECIAL_SHORT_TOKENS = {"xl", "xxl", "xs"}
-_GENERIC_TOKENS = {
-    "about",
-    "available",
-    "booking",
-    "cost",
-    "detail",
-    "details",
-    "info",
-    "information",
-    "item",
-    "items",
-    "option",
-    "options",
-    "price",
-    "product",
-    "products",
-    "service",
-    "services",
-}
-_STOPWORDS = {
-    "a",
-    "an",
-    "and",
-    "are",
-    "be",
-    "can",
-    "for",
-    "from",
-    "i",
-    "in",
-    "is",
-    "it",
-    "me",
-    "my",
-    "of",
-    "on",
-    "or",
-    "please",
-    "the",
-    "to",
-    "we",
-    "with",
-    "you",
-    "your",
-} | _GENERIC_TOKENS
+def _resolve_term_config(asset_term_config: Optional[Dict[str, Any]]) -> Dict[str, Set[str]]:
+    """Build term sets from config. Key present in config = use it (even if empty). Key absent = use fallback."""
+    if asset_term_config is None:
+        asset_term_config = {}
+
+    def _get(key: str, fallback: Set[str]) -> Set[str]:
+        if key not in asset_term_config:
+            return fallback
+        val = asset_term_config.get(key)
+        if not isinstance(val, list):
+            return fallback
+        return set(str(v).strip() for v in val if str(v).strip())
+
+    _generic = {"about", "available", "booking", "cost", "detail", "details", "info", "information",
+                "item", "items", "option", "options", "price", "product", "products", "service", "services"}
+    _intent = {"menu", "dish", "dishes", "food", "drink", "drinks", "beverage", "beverages", "product",
+               "products", "service", "services", "package", "packages", "plan", "plans", "room", "rooms",
+               "suite", "suites", "facility", "facilities", "amenity", "amenities", "location", "locations",
+               "map", "branch", "branches", "store", "stores", "item", "items", "option", "options",
+               "catalog", "collection", "メニュー", "料理", "コース", "食べ物", "飲み物", "ドリンク", "商品",
+               "サービス", "プラン", "部屋", "施設", "おすすめ", "人気", "定番", "ランチ", "ディナー", "デザート",
+               "前菜", "刺身", "寿司", "焼肉", "セット"}
+    _visual = {"photo", "photos", "image", "images", "picture", "pictures", "pic", "pics", "gallery",
+               "show me", "send me", "share", "let me see", "what it looks like",
+               "写真", "画像", "見せて", "見たい", "見せてください", "見たいです"}
+    _visual_many = {"all", "more", "many", "several", "multiple", "full menu", "whole menu", "entire menu",
+                    "more photos", "more images", "全部", "もっと", "全メニュー", "メニュー全部", "一覧"}
+    _suppress = {"no image", "no images", "no photo", "no photos", "no picture", "no pictures",
+                 "without image", "without images", "without photo", "without photos",
+                 "画像なし", "写真なし", "画像不要", "写真不要"}
+
+    generic = _get("generic_tokens", _generic)
+    intent = _get("asset_intent_terms", _intent)
+    visual = _get("visual_request_terms", _visual)
+    visual_many = _get("visual_request_many_terms", _visual_many)
+    suppress = _get("visual_suppress_terms", _suppress)
+    stopwords = _BASE_STOPWORDS | generic
+    return {
+        "generic_tokens": generic,
+        "asset_intent_terms": intent,
+        "visual_request_terms": visual,
+        "visual_request_many_terms": visual_many,
+        "visual_suppress_terms": suppress,
+        "stopwords": stopwords,
+    }
+
+
 _QUALIFIER_GROUPS = (
     {"single", "double", "triple", "quad"},
     {"king", "queen", "twin", "full"},
@@ -302,39 +189,44 @@ def _contains_any_term(text_norm: str, terms: Set[str]) -> bool:
     return False
 
 
-def _query_matches_cards(query_norm: str, cards: List[Dict[str, str]]) -> bool:
-    q_tokens = _tokenize(query_norm)
+def _query_matches_cards(query_norm: str, cards: List[Dict[str, str]], stopwords: Set[str]) -> bool:
+    q_tokens = _tokenize(query_norm, stopwords)
     if not q_tokens:
         return False
     for card in cards:
-        name_tokens = _tokenize(card.get("name", ""))
+        name_tokens = _tokenize(card.get("name", ""), stopwords)
         if q_tokens & name_tokens:
             return True
     return False
 
 
-def _max_cards_for_query(user_query: Optional[str], cards: List[Dict[str, str]]) -> int:
-    query_norm = _normalize_text(user_query or "")
-    if not query_norm:
+def _max_cards_for_query(
+    answer: Optional[str],
+    cards: List[Dict[str, str]],
+    term_sets: Dict[str, Set[str]],
+) -> int:
+    """Decide max cards based on LLM answer content, not user query."""
+    answer_norm = _normalize_text(answer or "")
+    if not answer_norm:
         return 0
-    if _contains_any_term(query_norm, _VISUAL_SUPPRESS_TERMS):
+    if _contains_any_term(answer_norm, term_sets["visual_suppress_terms"]):
         return 0
 
-    explicit_visual = _contains_any_term(query_norm, _VISUAL_REQUEST_TERMS) or bool(
+    explicit_visual = _contains_any_term(answer_norm, term_sets["visual_request_terms"]) or bool(
         re.search(
             r"\b(show|send|share|see|view)\b.*\b(photo|image|picture|pic|gallery|menu|product|service|room|suite|location|map)\b",
-            query_norm,
+            answer_norm,
         )
     )
-    intent_query = _contains_any_term(query_norm, _ASSET_INTENT_TERMS)
-    card_match = _query_matches_cards(query_norm, cards)
+    intent_in_answer = _contains_any_term(answer_norm, term_sets["asset_intent_terms"])
+    card_match = _query_matches_cards(answer_norm, cards, term_sets["stopwords"])
 
-    if not (explicit_visual or intent_query or card_match):
+    if not (explicit_visual or intent_in_answer or card_match):
         return 0
 
     explicit_many = explicit_visual and (
-        _contains_any_term(query_norm, _VISUAL_REQUEST_MANY_TERMS)
-        or bool(re.search(r"\b(all|more|many|several|multiple)\b", query_norm))
+        _contains_any_term(answer_norm, term_sets["visual_request_many_terms"])
+        or bool(re.search(r"\b(all|more|many|several|multiple)\b", answer_norm))
     )
     if explicit_many:
         return _MAX_ASSET_CARDS_EXPLICIT_REQUEST
@@ -363,7 +255,11 @@ def _stem_token(token: str) -> str:
     return t
 
 
-def _tokenize(text: str) -> Set[str]:
+def _tokenize(text: str, stopwords: Optional[Set[str]] = None) -> Set[str]:
+    sw = stopwords if stopwords is not None else _BASE_STOPWORDS | {
+        "about", "available", "booking", "cost", "detail", "details", "info", "information",
+        "item", "items", "option", "options", "price", "product", "products", "service", "services",
+    }
     norm = _normalize_text(text)
     if not norm:
         return set()
@@ -380,7 +276,7 @@ def _tokenize(text: str) -> Set[str]:
         tok = _stem_token(raw)
         if len(tok) < 3 and tok not in _SPECIAL_SHORT_TOKENS:
             continue
-        if tok in _STOPWORDS:
+        if tok in sw:
             continue
         out.add(tok)
     return out
@@ -437,9 +333,12 @@ def _asset_answer_score(
     answer_norm: str,
     answer_tokens: Set[str],
     answer_urls: Set[str],
+    *,
+    generic_tokens: Set[str],
+    stopwords: Set[str],
 ) -> int:
     text = " ".join([asset.name or "", asset.description or "", " ".join(asset.keywords or [])]).strip()
-    asset_tokens = _tokenize(text)
+    asset_tokens = _tokenize(text, stopwords)
     if not asset_tokens:
         return 0
     if _qualifier_conflict(answer_tokens, asset_tokens):
@@ -467,15 +366,12 @@ def _asset_answer_score(
     overlap_count = len(overlap)
     if overlap_count >= 2:
         score += 4 + overlap_count
-    elif overlap_count == 1 and any(t not in _GENERIC_TOKENS for t in overlap):
+    elif overlap_count == 1 and any(t not in generic_tokens for t in overlap):
         score += 1
 
     # Require strong evidence from answer text.
     if not (url_hit or name_phrase or keyword_phrase or overlap_count >= 2):
-        # logger.debug(f"Asset mismatch {asset.asset_id}: url={url_hit} name={name_phrase} kw={keyword_phrase} overlap={overlap_count}")
         return 0
-
-    # logger.debug(f"Asset match {asset.asset_id}: score={score} (url={url_hit} name={name_phrase} kw={keyword_phrase} overlap={overlap_count})")
     return score
 
 
@@ -484,9 +380,11 @@ def _match_assets_from_answer(
     assets: List[BotAsset],
     *,
     max_cards: int = _MAX_ASSET_CARDS_PER_ANSWER,
+    term_sets: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Dict[str, str]]:
+    ts = term_sets or _resolve_term_config(None)
     answer_norm = _normalize_text(answer)
-    answer_tokens = _tokenize(answer)
+    answer_tokens = _tokenize(answer, ts["stopwords"])
     answer_urls = _extract_normalized_urls(answer)
 
     if not answer_norm:
@@ -494,7 +392,10 @@ def _match_assets_from_answer(
 
     scored: List[Tuple[int, str, BotAsset]] = []
     for a in assets:
-        s = _asset_answer_score(a, answer_norm, answer_tokens, answer_urls)
+        s = _asset_answer_score(
+            a, answer_norm, answer_tokens, answer_urls,
+            generic_tokens=ts["generic_tokens"], stopwords=ts["stopwords"],
+        )
         if s <= 0:
             continue
         scored.append((s, a.asset_id, a))
@@ -520,6 +421,9 @@ def _asset_query_score(
     asset: BotAsset,
     query_norm: str,
     query_tokens: Set[str],
+    *,
+    generic_tokens: Set[str],
+    stopwords: Set[str],
 ) -> int:
     if not query_norm:
         return 0
@@ -529,7 +433,7 @@ def _asset_query_score(
         if category:
             parts.append(category)
     text = " ".join(parts).strip()
-    asset_tokens = _tokenize(text)
+    asset_tokens = _tokenize(text, stopwords)
     if not asset_tokens:
         return 0
 
@@ -546,7 +450,7 @@ def _asset_query_score(
             break
 
     overlap = query_tokens & asset_tokens
-    non_generic_overlap = [t for t in overlap if t not in _GENERIC_TOKENS]
+    non_generic_overlap = [t for t in overlap if t not in generic_tokens]
     if non_generic_overlap:
         score += 3 + len(non_generic_overlap)
 
@@ -568,15 +472,20 @@ def _match_assets_from_query(
     assets: List[BotAsset],
     *,
     max_cards: int = _ASSET_MATCH_CANDIDATE_POOL,
+    term_sets: Optional[Dict[str, Set[str]]] = None,
 ) -> List[Dict[str, str]]:
+    ts = term_sets or _resolve_term_config(None)
     query_norm = _normalize_text(user_query or "")
-    query_tokens = _tokenize(query_norm)
+    query_tokens = _tokenize(query_norm, ts["stopwords"])
     if not query_norm:
         return []
 
     scored: List[Tuple[int, str, BotAsset]] = []
     for a in assets:
-        s = _asset_query_score(a, query_norm, query_tokens)
+        s = _asset_query_score(
+            a, query_norm, query_tokens,
+            generic_tokens=ts["generic_tokens"], stopwords=ts["stopwords"],
+        )
         if s <= 0:
             continue
         scored.append((s, a.asset_id, a))
@@ -623,14 +532,30 @@ _ASSET_BANK_LIMIT = max(
 )
 
 
-def build_asset_bank(bot_id: str) -> str:
+_DEFAULT_MARKER_RULE = (
+    "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. "
+    "One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
+)
+_DEFAULT_EVIDENCE_TEMPLATE = "To show this product's image in the response, include {{asset_{asset_id}}} in your answer."
+
+
+def build_asset_bank(
+    bot_id: str,
+    *,
+    asset_rules: Optional[Dict[str, str]] = None,
+) -> str:
     """
     Build a compact asset reference (id, name, price, type, category) for the LLM.
     Up to 150 assets. URLs are resolved server-side from asset IDs after generation.
+    marker_rule from asset_rules (config) controls the instruction text.
     """
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
     if not assets:
         return ""
+
+    marker_rule = (
+        (asset_rules or {}).get("marker_rule") or _DEFAULT_MARKER_RULE
+    ).strip()
 
     # Take up to limit (storage order)
     selected = assets[:_ASSET_BANK_LIMIT]
@@ -645,19 +570,20 @@ def build_asset_bank(bot_id: str) -> str:
     if len(assets) > len(selected):
         header += f" (showing first {len(selected)} of {len(assets)})"
     bank = header + "\n" + "\n".join(lines)
-    return (
-        f"\n\n{bank}\n\n"
-        "ASSET RULES (CRITICAL): Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. "
-        "One marker per item — do not skip any. URLs and images are resolved server-side from the ID.\n"
-    )
+    return f"\n\n{bank}\n\nASSET RULES (CRITICAL): {marker_rule}\n"
 
 
-def build_asset_instruction(bot_id: str) -> str:
+def build_asset_instruction(
+    bot_id: str,
+    *,
+    asset_rules: Optional[Dict[str, str]] = None,
+) -> str:
     """
     Build system instruction with the asset bank (id, name, price, type, category).
     Up to 150 assets. URLs are resolved server-side from {{asset_ID}} markers.
+    marker_rule from asset_rules (config) controls the instruction text.
     """
-    return build_asset_bank(bot_id)
+    return build_asset_bank(bot_id, asset_rules=asset_rules)
 
 
 _MAX_ASSETS_IN_EVIDENCE = max(
@@ -666,8 +592,15 @@ _MAX_ASSETS_IN_EVIDENCE = max(
 )
 
 
-def _asset_to_evidence_snippet(a: BotAsset) -> dict:
+def _asset_to_evidence_snippet(
+    a: BotAsset,
+    *,
+    evidence_template: Optional[str] = None,
+) -> dict:
     """Build a single evidence dict for an asset. _skip_rerank ensures it is not dropped by reranking."""
+    template = (evidence_template or _DEFAULT_EVIDENCE_TEMPLATE).strip()
+    marker_line = template.replace("{asset_id}", str(a.asset_id or ""))
+
     desc = (a.description or "").strip()
     kw = ", ".join(a.keywords or [])
     label = "Menu Item" if getattr(a, "asset_type", "image") == "menu_item" else "Product/Service"
@@ -684,9 +617,7 @@ def _asset_to_evidence_snippet(a: BotAsset) -> dict:
         snippet_parts.append(f"Description: {desc}.")
     if kw:
         snippet_parts.append(f"Related keywords: {kw}.")
-    snippet_parts.append(
-        f"To show this product's image in the response, include {{{{asset_{a.asset_id}}}}} in your answer."
-    )
+    snippet_parts.append(marker_line)
     return {
         "url": a.link_url or f"asset:{a.asset_id}",
         "snippet": " ".join(snippet_parts),
@@ -694,7 +625,12 @@ def _asset_to_evidence_snippet(a: BotAsset) -> dict:
     }
 
 
-def build_asset_evidence(bot_id: str, query: Optional[str] = None) -> list[dict]:
+def build_asset_evidence(
+    bot_id: str,
+    query: Optional[str] = None,
+    *,
+    asset_rules: Optional[Dict[str, Any]] = None,
+) -> list[dict]:
     """
     Convert active business assets into evidence snippets that can be
     injected into the RAG pipeline via extra_evidence.
@@ -712,21 +648,29 @@ def build_asset_evidence(bot_id: str, query: Optional[str] = None) -> list[dict]
         return []
 
     # Query-aware selection: rank by relevance so "wagyu" returns all wagyu items
+    asset_term_config = (asset_rules or {}).get("asset_term_config") if isinstance(asset_rules, dict) else None
+    term_sets = _resolve_term_config(asset_term_config)
     query_norm = _normalize_text(query or "")
-    query_tokens = _tokenize(query_norm)
+    query_tokens = _tokenize(query_norm, term_sets["stopwords"])
     if query_norm:
         scored: List[Tuple[int, str, BotAsset]] = []
         for a in assets:
-            s = _asset_query_score(a, query_norm, query_tokens)
+            s = _asset_query_score(
+                a, query_norm, query_tokens,
+                generic_tokens=term_sets["generic_tokens"], stopwords=term_sets["stopwords"],
+            )
             scored.append((s, a.asset_id or "", a))
         scored.sort(key=lambda it: (-it[0], it[1]))
         selected = [a for _, _, a in scored[:_MAX_ASSETS_IN_EVIDENCE]]
     else:
         selected = assets[:_MAX_ASSETS_IN_EVIDENCE]
 
+    evidence_template = (
+        (asset_rules or {}).get("evidence_template") or _DEFAULT_EVIDENCE_TEMPLATE
+    ).strip()
     evidence: list[dict] = []
     for a in selected:
-        evidence.append(_asset_to_evidence_snippet(a))
+        evidence.append(_asset_to_evidence_snippet(a, evidence_template=evidence_template))
     return evidence
 
 
@@ -898,6 +842,7 @@ def process_answer_assets(
     user_query: Optional[str] = None,
     session_id: Optional[str] = None,
     allowed_asset_types: Optional[Set[str]] = None,
+    asset_term_config: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, List[Dict[str, str]]]:
     """
     Match assets after answer generation.
@@ -928,11 +873,13 @@ def process_answer_assets(
         return cleaned, []
 
     # Merge: marker cards + name-matched cards (assets mentioned in text but without markers)
+    term_sets = _resolve_term_config(asset_term_config)
     marker_ids = {c["asset_id"] for c in marker_cards}
     name_matched = _match_assets_from_answer(
         cleaned,
         assets,
         max_cards=_ASSET_BANK_LIMIT,
+        term_sets=term_sets,
     )
     for c in name_matched:
         if c["asset_id"] not in marker_ids:
@@ -948,7 +895,7 @@ def process_answer_assets(
     if not cards:
         return sanitize_answer_for_display(cleaned), []
 
-    max_cards_for_query = _max_cards_for_query(user_query, cards)
+    max_cards_for_query = _max_cards_for_query(cleaned, cards, term_sets)
     if max_cards_for_query <= 0:
         return sanitize_answer_for_display(cleaned), []
 

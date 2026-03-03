@@ -32,12 +32,17 @@ from infrastructure.clients.line_client import (
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
+    get_asset_rules_from_widget,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
     get_reservation_config_from_widget,
     get_suggested_messages_for_widget,
 )
-from infrastructure.assets.asset_resolver import process_answer_assets, build_asset_instruction, resolve_asset_markers
+from infrastructure.assets.asset_resolver import (
+    build_asset_instruction,
+    process_answer_assets,
+    resolve_asset_markers,
+)
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
     PostgresLineUserSessionRepository,
@@ -502,7 +507,8 @@ async def _handle_text_message(
 
     # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     extra_evidence: list[dict[str, str]] = []
-    asset_instruction = build_asset_instruction(bot.bot_id)
+    asset_rules = get_asset_rules_from_widget(widget_config)
+    asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
     lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
@@ -564,6 +570,7 @@ async def _handle_text_message(
                 user_query=text,
                 session_id=session.session_id,
                 allowed_asset_types=allowed_asset_types,
+                asset_term_config=asset_rules.get("asset_term_config"),
             )
     except Exception as e:
         if is_quota_exhausted_error(e):

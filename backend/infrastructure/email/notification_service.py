@@ -160,12 +160,19 @@ def maybe_send_escalation_email(
     Send escalation notification if configured for this channel.
     Call after create_escalation. bot must have escalation_config and display_name/bot_id.
     """
+    bot_id = getattr(bot, "bot_id", "") or ""
     raw = getattr(bot, "escalation_config", None)
     if not raw or not str(raw).strip():
+        logger.info(
+            "Escalation email skipped: no escalation_config for bot_id=%s channel=%s",
+            bot_id,
+            channel,
+        )
         return
     try:
         data = json.loads(raw)
     except (TypeError, ValueError):
+        logger.warning("Escalation email skipped: invalid escalation_config JSON bot_id=%s", bot_id)
         return
     key = {"chat": "notify_website", "instagram": "notify_instagram", "line": "notify_line"}.get(channel)
     if not key:
@@ -173,12 +180,21 @@ def maybe_send_escalation_email(
     legacy = bool(data.get("notify_enabled"))
     notify = bool(data.get(key)) if key in data else legacy
     if not notify:
+        logger.info(
+            "Escalation email skipped: notify_%s=False (or notify_enabled=False) for bot_id=%s",
+            channel,
+            bot_id,
+        )
         return
     emails = parse_notification_emails(str(data.get("notification_emails") or ""))
     if not emails:
+        logger.info(
+            "Escalation email skipped: notification_emails empty for bot_id=%s channel=%s",
+            bot_id,
+            channel,
+        )
         return
     bot_name = getattr(bot, "display_name", None) or getattr(bot, "bot_id", "Bot")
-    bot_id = getattr(bot, "bot_id", "") or ""
     send_escalation_notification(
         to_emails=emails,
         bot_name=bot_name,

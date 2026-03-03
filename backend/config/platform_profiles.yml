@@ -18,6 +18,20 @@ reservation_platform_config:
     widget_key: tableCheckUrl
     domain_key: tablecheck.com
 
+# Default asset rules (used when no platform or platform doesn't override)
+default_asset_rules:
+  marker_rule: "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
+  evidence_template: "To show this product's image in the response, include {{asset_{asset_id}}} in your answer."
+
+# Default asset term config (used when no platform overrides)
+# Empty = no filters, let the LLM decide when to show assets.
+default_asset_term_config:
+  generic_tokens: []
+  asset_intent_terms: []
+  visual_request_terms: []
+  visual_request_many_terms: []
+  visual_suppress_terms: []
+
 default_suggested_messages:
   - id: suggest_1
     type: ai_response
@@ -81,6 +95,128 @@ platforms:
         - id: suggest_support
           type: escalate
           label: { en: "Human support", ja: "サポートに相談" }
+      asset_filter:
+        reservation_suppress_terms:
+          - reservation
+          - reserve
+          - reserving
+          - book
+          - booking
+          - table
+          - 予約
+          - 席
+        menu_food_intent_terms:
+          - menu
+          - dish
+          - dishes
+          - food
+          - drink
+          - drinks
+          - course
+          - メニュー
+          - 料理
+          - コース
+          - ランチ
+          - ディナー
+          - デザート
+      asset_rules:
+        marker_rule: "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
+        evidence_template: "To show this product's image in the response, include {{asset_{asset_id}}} in your answer."
+        asset_term_config:
+          generic_tokens:
+            - about
+            - available
+            - booking
+            - cost
+            - detail
+            - details
+            - info
+            - information
+            - item
+            - items
+            - option
+            - options
+            - price
+            - product
+            - products
+            - service
+            - services
+          asset_intent_terms:
+            - menu
+            - dish
+            - dishes
+            - food
+            - drink
+            - drinks
+            - beverage
+            - beverages
+            - product
+            - products
+            - service
+            - services
+            - package
+            - packages
+            - plan
+            - plans
+            - room
+            - rooms
+            - suite
+            - suites
+            - facility
+            - facilities
+            - amenity
+            - amenities
+            - location
+            - locations
+            - map
+            - branch
+            - branches
+            - store
+            - stores
+            - item
+            - items
+            - option
+            - options
+            - catalog
+            - collection
+            - メニュー
+            - 料理
+            - コース
+            - 食べ物
+            - 飲み物
+            - ドリンク
+            - 商品
+            - サービス
+            - プラン
+            - 部屋
+            - 施設
+            - おすすめ
+            - 人気
+            - 定番
+            - ランチ
+            - ディナー
+            - デザート
+            - 前菜
+            - 刺身
+            - 寿司
+            - 焼肉
+            - セット
+          visual_request_many_terms:
+            - all
+            - more
+            - many
+            - several
+            - multiple
+            - full menu
+            - whole menu
+            - entire menu
+            - more photos
+            - more images
+            - 全部
+            - もっと
+            - 全メニュー
+            - メニュー全部
+            - 一覧
       asset_instructions:
         en: |
           ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
@@ -104,6 +240,126 @@ platforms:
     menu_url_patterns:
       - "/course"
     metadata:
+      asset_filter:
+        reservation_suppress_terms:
+          - reservation
+          - reserve
+          - reserving
+          - book
+          - booking
+          - table
+          - 予約
+          - 席
+        menu_food_intent_terms:
+          - menu
+          - dish
+          - dishes
+          - food
+          - drink
+          - drinks
+          - course
+          - メニュー
+          - 料理
+          - コース
+          - ランチ
+          - ディナー
+          - デザート
+      asset_rules:
+        asset_term_config:
+          generic_tokens:
+            - about
+            - available
+            - booking
+            - cost
+            - detail
+            - details
+            - info
+            - information
+            - item
+            - items
+            - option
+            - options
+            - price
+            - product
+            - products
+            - service
+            - services
+          asset_intent_terms:
+            - menu
+            - dish
+            - dishes
+            - food
+            - drink
+            - drinks
+            - beverage
+            - beverages
+            - product
+            - products
+            - service
+            - services
+            - package
+            - packages
+            - plan
+            - plans
+            - room
+            - rooms
+            - suite
+            - suites
+            - facility
+            - facilities
+            - amenity
+            - amenities
+            - location
+            - locations
+            - map
+            - branch
+            - branches
+            - store
+            - stores
+            - item
+            - items
+            - option
+            - options
+            - catalog
+            - collection
+            - メニュー
+            - 料理
+            - コース
+            - 食べ物
+            - 飲み物
+            - ドリンク
+            - 商品
+            - サービス
+            - プラン
+            - 部屋
+            - 施設
+            - おすすめ
+            - 人気
+            - 定番
+            - ランチ
+            - ディナー
+            - デザート
+            - 前菜
+            - 刺身
+            - 寿司
+            - 焼肉
+            - セット
+          visual_request_many_terms:
+            - all
+            - more
+            - many
+            - several
+            - multiple
+            - full menu
+            - whole menu
+            - entire menu
+            - more photos
+            - more images
+            - 全部
+            - もっと
+            - 全メニュー
+            - メニュー全部
+            - 一覧
       platform_type: restaurant_reservation
       country: JP
       service_name: HotPepper Gourmet
@@ -122,6 +378,126 @@ platforms:
     exclude_paths: []
     priority: 10
     metadata:
+      asset_filter:
+        reservation_suppress_terms:
+          - reservation
+          - reserve
+          - reserving
+          - book
+          - booking
+          - table
+          - 予約
+          - 席
+        menu_food_intent_terms:
+          - menu
+          - dish
+          - dishes
+          - food
+          - drink
+          - drinks
+          - course
+          - メニュー
+          - 料理
+          - コース
+          - ランチ
+          - ディナー
+          - デザート
+      asset_rules:
+        asset_term_config:
+          generic_tokens:
+            - about
+            - available
+            - booking
+            - cost
+            - detail
+            - details
+            - info
+            - information
+            - item
+            - items
+            - option
+            - options
+            - price
+            - product
+            - products
+            - service
+            - services
+          asset_intent_terms:
+            - menu
+            - dish
+            - dishes
+            - food
+            - drink
+            - drinks
+            - beverage
+            - beverages
+            - product
+            - products
+            - service
+            - services
+            - package
+            - packages
+            - plan
+            - plans
+            - room
+            - rooms
+            - suite
+            - suites
+            - facility
+            - facilities
+            - amenity
+            - amenities
+            - location
+            - locations
+            - map
+            - branch
+            - branches
+            - store
+            - stores
+            - item
+            - items
+            - option
+            - options
+            - catalog
+            - collection
+            - メニュー
+            - 料理
+            - コース
+            - 食べ物
+            - 飲み物
+            - ドリンク
+            - 商品
+            - サービス
+            - プラン
+            - 部屋
+            - 施設
+            - おすすめ
+            - 人気
+            - 定番
+            - ランチ
+            - ディナー
+            - デザート
+            - 前菜
+            - 刺身
+            - 寿司
+            - 焼肉
+            - セット
+          visual_request_many_terms:
+            - all
+            - more
+            - many
+            - several
+            - multiple
+            - full menu
+            - whole menu
+            - entire menu
+            - more photos
+            - more images
+            - 全部
+            - もっと
+            - 全メニュー
+            - メニュー全部
+            - 一覧
       platform_type: restaurant_reservation
       country: JP
       service_name: TableCheck
