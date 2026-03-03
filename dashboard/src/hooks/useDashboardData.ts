@@ -543,6 +543,11 @@ type DashboardData = {
   syncUrlBankTopics: (botId: string, urlBank: Array<{ label: string; url: string }>) => Promise<ExtractedTopicsResponse | null>
   generateSuggestedMessages: (botId: string) => Promise<unknown[] | null>
   generatingSuggestions: boolean
+  fetchPlatformSuggestedMessages: (platform: string, lang?: string) => Promise<Array<{ id: string; label: string; type: string; prompt?: string }>>
+  fetchPlatformConfig: (lang?: string) => Promise<{
+    platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+    defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
+  }>
 }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -2146,6 +2151,42 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function fetchPlatformConfig(
+    lang?: string
+  ): Promise<{
+    platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+    defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
+  }> {
+    try {
+      const langParam = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+      const path = withOrgParam(`/v1/org/platform-config${langParam}`)
+      const result = await fetchAuthedJson<{
+        platforms?: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+        defaultSuggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }>
+      }>(path)
+      return {
+        platforms: result.platforms ?? [],
+        defaultSuggestedMessages: result.defaultSuggestedMessages ?? [],
+      }
+    } catch {
+      return { platforms: [], defaultSuggestedMessages: [] }
+    }
+  }
+
+  async function fetchPlatformSuggestedMessages(
+    platform: string,
+    lang?: string
+  ): Promise<Array<{ id: string; label: string; type: string; prompt?: string }>> {
+    try {
+      const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : ''
+      const path = withOrgParam(`/v1/org/platform-suggested-messages?platform=${encodeURIComponent(platform)}${langParam}`)
+      const result = await fetchAuthedJson<{ suggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }> }>(path)
+      return result.suggestedMessages ?? []
+    } catch {
+      return []
+    }
+  }
+
   async function generateSuggestedMessages(botId: string): Promise<unknown[] | null> {
     if (isSuperAdmin && !activeOrgId) return null
     setGeneratingSuggestions(true)
@@ -2402,6 +2443,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     syncUrlBankTopics,
     generateSuggestedMessages,
     generatingSuggestions,
+    fetchPlatformSuggestedMessages,
+    fetchPlatformConfig,
   }
 
   return React.createElement(DashboardDataContext.Provider, { value }, children)

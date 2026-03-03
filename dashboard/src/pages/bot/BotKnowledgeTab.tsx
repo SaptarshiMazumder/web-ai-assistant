@@ -138,6 +138,7 @@ export default function BotKnowledgeTab() {
     getAvailabilityJob,
     saveWidgetConfig,
     selectedBotWidgetConfig,
+    fetchPlatformConfig,
   } = useDashboardData()
 
   const allowKnowledgeDiscovery = !(
@@ -193,11 +194,14 @@ export default function BotKnowledgeTab() {
   const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
   const [bookingTestUrl, setBookingTestUrl] = useState('')
 
-  // Restaurant reservation: one profile per agent
-  const [reservationPlatform, setReservationPlatform] = useState<'tabelog' | 'hotpepper' | 'tablecheck' | ''>('')
-  const [restaurantTableCheckUrl, setRestaurantTableCheckUrl] = useState('')
-  const [restaurantTabelogUrl, setRestaurantTabelogUrl] = useState('')
-  const [restaurantHotPepperUrl, setRestaurantHotPepperUrl] = useState('')
+  // Restaurant reservation: one profile per agent (from platform_profiles.yml)
+  const [reservationPlatform, setReservationPlatform] = useState('')
+  const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({})
+  const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
+
+  useEffect(() => {
+    fetchPlatformConfig('en').then((r) => setPlatforms(r.platforms))
+  }, [fetchPlatformConfig])
   const [availabilityTestJob, setAvailabilityTestJob] = useState<AvailabilityJobRecord | null>(null)
   const [availabilityTestError, setAvailabilityTestError] = useState<string | null>(null)
   const [availabilityTestRunning, setAvailabilityTestRunning] = useState(false)
@@ -254,18 +258,21 @@ export default function BotKnowledgeTab() {
       const url = cfg.bookingTestUrl
       if (typeof allow === 'boolean') setAllowRealtimeAvailability(allow)
       if (typeof url === 'string' && url) setBookingTestUrl(url)
-      // Restaurant reservation platform (one per agent)
+      // Restaurant reservation platform (from config)
       const platform = String(cfg.reservationPlatform || '').toLowerCase()
-      if (['tabelog', 'hotpepper', 'tablecheck'].includes(platform)) setReservationPlatform(platform as 'tabelog' | 'hotpepper' | 'tablecheck')
-      else if (cfg.tabelogUrl) setReservationPlatform('tabelog')
-      else if (cfg.hotPepperUrl) setReservationPlatform('hotpepper')
-      else if (cfg.tableCheckUrl) setReservationPlatform('tablecheck')
-      else setReservationPlatform('')
-      if (typeof cfg.tableCheckUrl === 'string') setRestaurantTableCheckUrl(cfg.tableCheckUrl)
-      if (typeof cfg.tabelogUrl === 'string') setRestaurantTabelogUrl(cfg.tabelogUrl)
-      if (typeof cfg.hotPepperUrl === 'string') setRestaurantHotPepperUrl(cfg.hotPepperUrl)
+      let inferredPlatform = ''
+      const urls: Record<string, string> = {}
+      for (const p of platforms) {
+        const v = (cfg as Record<string, unknown>)[p.widget_key]
+        if (typeof v === 'string' && v.trim()) {
+          urls[p.id] = v.trim()
+          if (!inferredPlatform) inferredPlatform = p.id
+        }
+      }
+      setPlatformUrls(urls)
+      setReservationPlatform(platform && platforms.some((p) => p.id === platform) ? platform : inferredPlatform)
     }
-  }, [selectedBotWidgetConfig])
+  }, [selectedBotWidgetConfig, platforms])
 
   // Poll availability test job when running
   useEffect(() => {
@@ -701,15 +708,13 @@ export default function BotKnowledgeTab() {
   const handleSaveRestaurantPlatforms = useCallback(async () => {
     if (!selectedBot) return
     const existing = selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object' ? selectedBotWidgetConfig : {}
-    const merged = {
-      ...existing,
-      reservationPlatform: reservationPlatform || undefined,
-      tableCheckUrl: reservationPlatform === 'tablecheck' ? restaurantTableCheckUrl.trim() || undefined : undefined,
-      tabelogUrl: reservationPlatform === 'tabelog' ? restaurantTabelogUrl.trim() || undefined : undefined,
-      hotPepperUrl: reservationPlatform === 'hotpepper' ? restaurantHotPepperUrl.trim() || undefined : undefined,
+    const merged: Record<string, unknown> = { ...existing, reservationPlatform: reservationPlatform || undefined }
+    for (const p of platforms) {
+      const url = (platformUrls[p.id] || '').trim()
+      merged[p.widget_key] = url || undefined
     }
     await saveWidgetConfig(selectedBot.bot_id, merged)
-  }, [selectedBot, selectedBotWidgetConfig, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, saveWidgetConfig])
+  }, [selectedBot, selectedBotWidgetConfig, reservationPlatform, platformUrls, platforms, saveWidgetConfig])
 
   const handleSaveAvailabilitySettings = useCallback(async () => {
     if (!selectedBot) return
@@ -1639,50 +1644,24 @@ export default function BotKnowledgeTab() {
               <select
                 className="design-form-input"
                 value={reservationPlatform}
-                onChange={(e) => setReservationPlatform((e.target.value || '') as 'tabelog' | 'hotpepper' | 'tablecheck' | '')}
+                onChange={(e) => setReservationPlatform(e.target.value || '')}
                 style={{ width: '100%', maxWidth: '700px' }}
               >
                 <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
-                <option value="tabelog">{t('botKnowledge.reservationPlatformTabelog', 'Tabelog')}</option>
-                <option value="hotpepper">{t('botKnowledge.reservationPlatformHotpepper', 'HotPepper')}</option>
-                <option value="tablecheck">{t('botKnowledge.reservationPlatformTablecheck', 'TableCheck')}</option>
+                {platforms.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
               </select>
             </div>
-            {reservationPlatform === 'tabelog' && (
+            {reservationPlatform && platforms.some((p) => p.id === reservationPlatform) && (
               <div className="testing-field">
-                <label className="testing-label">{t('botKnowledge.tabelogUrl', 'Tabelog URL')}</label>
+                <label className="testing-label">{platforms.find((p) => p.id === reservationPlatform)?.label} URL</label>
                 <input
                   type="url"
                   className="design-form-input"
-                  value={restaurantTabelogUrl}
-                  onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
-                  placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
-                  style={{ width: '100%', maxWidth: '700px' }}
-                />
-              </div>
-            )}
-            {reservationPlatform === 'hotpepper' && (
-              <div className="testing-field">
-                <label className="testing-label">{t('botKnowledge.hotPepperUrl', 'HotPepper URL')}</label>
-                <input
-                  type="url"
-                  className="design-form-input"
-                  value={restaurantHotPepperUrl}
-                  onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
-                  placeholder="https://www.hotpepper.jp/strJ001234567/"
-                  style={{ width: '100%', maxWidth: '700px' }}
-                />
-              </div>
-            )}
-            {reservationPlatform === 'tablecheck' && (
-              <div className="testing-field">
-                <label className="testing-label">{t('botKnowledge.tableCheckUrl', 'TableCheck URL')}</label>
-                <input
-                  type="url"
-                  className="design-form-input"
-                  value={restaurantTableCheckUrl}
-                  onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
-                  placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                  value={platformUrls[reservationPlatform] || ''}
+                  onChange={(e) => setPlatformUrls((prev) => ({ ...prev, [reservationPlatform]: e.target.value }))}
+                  placeholder={platforms.find((p) => p.id === reservationPlatform)?.url_placeholder || ''}
                   style={{ width: '100%', maxWidth: '700px' }}
                 />
               </div>

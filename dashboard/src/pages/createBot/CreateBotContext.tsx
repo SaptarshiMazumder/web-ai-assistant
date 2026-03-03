@@ -68,15 +68,12 @@ export type CreateBotStep2Slice = {
   deselectAll: () => void
   startTraining: (selectedDiscoveredUrls?: string[]) => Promise<string | null>
   stopDiscovery: () => void
-  // Restaurant reservation: one profile per agent
-  reservationPlatform: '' | 'tabelog' | 'hotpepper' | 'tablecheck'
-  setReservationPlatform: (value: '' | 'tabelog' | 'hotpepper' | 'tablecheck') => void
-  restaurantTableCheckUrl: string
-  setRestaurantTableCheckUrl: (value: string) => void
-  restaurantTabelogUrl: string
-  setRestaurantTabelogUrl: (value: string) => void
-  restaurantHotPepperUrl: string
-  setRestaurantHotPepperUrl: (value: string) => void
+  // Restaurant reservation: one profile per agent (from platform_profiles.yml)
+  reservationPlatform: string
+  setReservationPlatform: (value: string) => void
+  platformUrls: Record<string, string>
+  setPlatformUrl: (platformId: string, url: string) => void
+  platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
 }
 
 /** Step 3: Training progress. Change only this slice when editing the third step. */
@@ -155,8 +152,6 @@ export type CreateBotStep4Slice = {
   setSourcesLabel: (value: string) => void
   suggestedMessages: SuggestedMessageConfig[]
   setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
-  suggestedMessagesEnabled: boolean
-  setSuggestedMessagesEnabled: (value: boolean) => void
 }
 
 /** Flow navigation. Derived from flowConfig; add/remove steps there. */
@@ -196,6 +191,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const {
     createBot,
     discoverUrls: discoverUrlsFromHook,
+    fetchPlatformConfig,
+    fetchPlatformSuggestedMessages,
     queueCrawlUrls,
     saveWidgetConfig,
     getJobStatus,
@@ -226,10 +223,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [textDocFiles, setTextDocFiles] = useState<File[]>([])
   const [plainTextContent, setPlainTextContent] = useState('')
   const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
-  const [reservationPlatform, setReservationPlatform] = useState<'' | 'tabelog' | 'hotpepper' | 'tablecheck'>('')
-  const [restaurantTableCheckUrl, setRestaurantTableCheckUrl] = useState('')
-  const [restaurantTabelogUrl, setRestaurantTabelogUrl] = useState('')
-  const [restaurantHotPepperUrl, setRestaurantHotPepperUrl] = useState('')
+  const [reservationPlatform, setReservationPlatform] = useState('')
+  const [platformUrls, setPlatformUrlsState] = useState<Record<string, string>>({})
+  const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
+  const [defaultSuggestedMessages, setDefaultSuggestedMessages] = useState<SuggestedMessageConfig[]>([])
+
+  const setPlatformUrl = useCallback((platformId: string, url: string) => {
+    setPlatformUrlsState((prev) => ({ ...prev, [platformId]: url }))
+  }, [])
+
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isStartingTraining, setIsStartingTraining] = useState(false)
   const [discoveryDurationMs, setDiscoveryDurationMs] = useState<number | null>(null)
@@ -253,6 +255,21 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [localErrorType, setLocalErrorType] = useState<'error' | 'warning' | null>(null)
   const [botLanguage, setBotLanguage] = useState<'en' | 'ja'>(appLang)
+
+  useEffect(() => {
+    fetchPlatformConfig(botLanguage).then(({ platforms: p, defaultSuggestedMessages: d }) => {
+      setPlatforms(p)
+      setDefaultSuggestedMessages(
+        d.map((m) => ({
+          id: m.id,
+          label: m.label,
+          type: m.type as 'ai_response' | 'show_menu' | 'escalate',
+          prompt: m.prompt,
+        }))
+      )
+    })
+  }, [botLanguage, fetchPlatformConfig])
+
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#e4587a')
   const [widgetTitle, setWidgetTitle] = useState(initDefaults.widgetTitle)
@@ -276,9 +293,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(
     initDefaults.suggestedMessages
   )
-  const [suggestedMessagesEnabled, setSuggestedMessagesEnabled] = useState(
-    initDefaults.suggestedMessagesEnabled
-  )
   const defaultUrlBankLabel = t('createBot.urlBankLabelOther', 'Other')
   const secondaryUrlBankLabel = t('createBot.urlBankLabelLink', 'Link')
   const isFallbackUrlBankLabel = useCallback(
@@ -301,9 +315,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setSelectedUrls([])
     setSharedUrlRows([{ url: '', label: '' }])
     setReservationPlatform('')
-    setRestaurantTableCheckUrl('')
-    setRestaurantTabelogUrl('')
-    setRestaurantHotPepperUrl('')
+    setPlatformUrlsState({})
     setTrainingUrls([])
     setPdfFiles([])
     setTextDocFiles([])
@@ -346,9 +358,34 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setAutoScrollNewMessages(true)
     setDisplaySourcesInMessages(false)
     setSourcesLabel(defaults.sourcesLabel)
-    setSuggestedMessages(defaults.suggestedMessages)
-    setSuggestedMessagesEnabled(defaults.suggestedMessagesEnabled)
-  }, [appLang])
+    setSuggestedMessages(defaultSuggestedMessages.length > 0 ? defaultSuggestedMessages : defaults.suggestedMessages)
+  }, [appLang, defaultSuggestedMessages])
+
+  // When platform is set, load platform default; else use default from config
+  useEffect(() => {
+    if (!reservationPlatform) {
+      setSuggestedMessages(defaultSuggestedMessages.length > 0 ? defaultSuggestedMessages : getDefaultsForLanguage(botLanguage).suggestedMessages)
+      return
+    }
+    let cancelled = false
+    fetchPlatformSuggestedMessages(reservationPlatform, botLanguage)
+      .then((msgs) => {
+        if (!cancelled && msgs.length > 0) {
+          setSuggestedMessages(
+            msgs.map((m) => ({
+              id: m.id,
+              label: m.label,
+              type: m.type as 'ai_response' | 'show_menu' | 'escalate',
+              prompt: m.prompt,
+            }))
+          )
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [reservationPlatform, botLanguage, fetchPlatformSuggestedMessages, defaultSuggestedMessages])
 
   const discoverUrls = useCallback(async () => {
     setLocalError(null)
@@ -607,12 +644,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         language: botLanguage,
         urlBank: urlBankForSave,
       }
-      // Save restaurant platform URLs from dedicated state fields
-      if (businessType === 'restaurant') {
-        if (reservationPlatform && reservationPlatform === 'tablecheck' && restaurantTableCheckUrl.trim()) widgetPayload.tableCheckUrl = restaurantTableCheckUrl.trim()
-        if (reservationPlatform && reservationPlatform === 'tabelog' && restaurantTabelogUrl.trim()) widgetPayload.tabelogUrl = restaurantTabelogUrl.trim()
-        if (reservationPlatform && reservationPlatform === 'hotpepper' && restaurantHotPepperUrl.trim()) widgetPayload.hotPepperUrl = restaurantHotPepperUrl.trim()
-        if (reservationPlatform) widgetPayload.reservationPlatform = reservationPlatform
+      // Save restaurant platform URLs from config-driven platforms
+      if (businessType === 'restaurant' && reservationPlatform) {
+        widgetPayload.reservationPlatform = reservationPlatform
+        for (const p of platforms) {
+          const url = (platformUrls[p.id] || '').trim()
+          if (url) widgetPayload[p.widget_key] = url
+        }
       }
       await saveWidgetConfig(created.bot_id, widgetPayload)
     } catch {
@@ -626,7 +664,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
+  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, reservationPlatform, platformUrls, platforms, t])
 
   const normalizeOneUrl = useCallback((entry: string): string => {
     const raw = (entry || '').trim()
@@ -721,11 +759,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       ? overrideUrls
       : (contentHosting === 'own' ? selectedUrls : trainingUrls)
     // Collect restaurant platform URLs for discovery + crawl
-    const restaurantPlatformUrls = businessType === 'restaurant'
-      ? (reservationPlatform === 'hotpepper' ? [restaurantHotPepperUrl] : reservationPlatform === 'tabelog' ? [restaurantTabelogUrl] : reservationPlatform === 'tablecheck' ? [restaurantTableCheckUrl] : [])
-          .map((u) => normalizeOneUrl(u))
-          .filter(Boolean)
-          .filter((u) => !finalUrls.includes(u))
+    const restaurantPlatformUrls = businessType === 'restaurant' && reservationPlatform
+      ? [normalizeOneUrl(platformUrls[reservationPlatform] || '')].filter(Boolean).filter((u) => !finalUrls.includes(u))
       : []
     if (restaurantPlatformUrls.length > 0) finalUrls = [...finalUrls, ...restaurantPlatformUrls]
     const hasPdfs = pdfFiles.length > 0
@@ -755,12 +790,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         language: botLanguage,
         urlBank,
       }
-      // Save restaurant platform URLs from dedicated state fields
-      if (businessType === 'restaurant') {
-        if (reservationPlatform === 'tablecheck' && restaurantTableCheckUrl.trim()) widgetPayloadTrain.tableCheckUrl = restaurantTableCheckUrl.trim()
-        if (reservationPlatform === 'tabelog' && restaurantTabelogUrl.trim()) widgetPayloadTrain.tabelogUrl = restaurantTabelogUrl.trim()
-        if (reservationPlatform === 'hotpepper' && restaurantHotPepperUrl.trim()) widgetPayloadTrain.hotPepperUrl = restaurantHotPepperUrl.trim()
-        if (reservationPlatform) widgetPayloadTrain.reservationPlatform = reservationPlatform
+      // Save restaurant platform URLs from config-driven platforms
+      if (businessType === 'restaurant' && reservationPlatform) {
+        widgetPayloadTrain.reservationPlatform = reservationPlatform
+        for (const p of platforms) {
+          const url = (platformUrls[p.id] || '').trim()
+          if (url) widgetPayloadTrain[p.widget_key] = url
+        }
       }
       await saveWidgetConfig(created.bot_id, widgetPayloadTrain)
     } catch {
@@ -866,7 +902,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, t])
+  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, reservationPlatform, platformUrls, platforms, t])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -1018,12 +1054,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         stopDiscovery,
         reservationPlatform,
         setReservationPlatform,
-        restaurantTableCheckUrl,
-        setRestaurantTableCheckUrl,
-        restaurantTabelogUrl,
-        setRestaurantTabelogUrl,
-        restaurantHotPepperUrl,
-        setRestaurantHotPepperUrl,
+        platformUrls,
+        setPlatformUrl,
+        platforms,
       },
       step3: {
         trainingStage,
@@ -1086,8 +1119,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setSourcesLabel,
         suggestedMessages,
         setSuggestedMessages,
-        suggestedMessagesEnabled,
-        setSuggestedMessagesEnabled,
       },
       flow: {
         nextPath,
@@ -1177,8 +1208,6 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setSourcesLabel,
       suggestedMessages,
       setSuggestedMessages,
-      suggestedMessagesEnabled,
-      setSuggestedMessagesEnabled,
       botLanguage,
       setBotLanguage,
       continueWithoutSources,
@@ -1190,9 +1219,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       deselectAll,
       startTraining,
       reservationPlatform,
-      restaurantTableCheckUrl,
-      restaurantTabelogUrl,
-      restaurantHotPepperUrl,
+      platformUrls,
+      platforms,
       resetFlow,
       businessType,
       setBusinessType,

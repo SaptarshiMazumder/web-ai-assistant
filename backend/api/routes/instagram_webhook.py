@@ -45,7 +45,6 @@ from infrastructure.clients.instagram_client import (
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from infrastructure.assets.asset_resolver import (
-    build_asset_evidence,
     build_asset_instruction,
     process_answer_assets,
     resolve_asset_markers,
@@ -1250,7 +1249,12 @@ async def _handle_text_message(
     # Don't show typing when escalated and we won't reply (user didn't say "cancel")
     skip_typing = mapping and mapping.is_escalated and not _wants_cancel_escalation(effective_text)
     if not skip_typing:
+        logger.info("Instagram typing: showing for ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
+        print(f"[Instagram typing] showing for ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
         await ig_show_typing(ig_user_id, access_token)
+    else:
+        logger.info("Instagram typing: skipped (escalated) ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
+        print(f"[Instagram typing] SKIPPED (escalated) ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
 
     # Load suggested messages from platform profile or default (config-driven)
     ig_quick_replies = None
@@ -1558,10 +1562,6 @@ async def _handle_text_message(
     # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
     extra_evidence: list[dict[str, str]] = []
     asset_rules = get_asset_rules_from_widget(widget_config)
-    # Query-aware asset evidence so LLM discovers menu items for "what's on the menu?" etc.
-    if menu_extraction_enabled:
-        asset_evidence = build_asset_evidence(bot.bot_id, query=ai_query, asset_rules=asset_rules)
-        extra_evidence.extend(asset_evidence)
     asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction

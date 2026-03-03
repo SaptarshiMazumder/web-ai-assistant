@@ -27,8 +27,13 @@ function normalizeUrlBankUrl(entry: string): string {
 }
 
 export default function BotInfoLinksTab() {
-  const { selectedBot, selectedBotWidgetConfig, saveWidgetConfig, syncUrlBankTopics } = useDashboardData()
+  const { selectedBot, selectedBotWidgetConfig, saveWidgetConfig, syncUrlBankTopics, fetchPlatformConfig } = useDashboardData()
   const [urlBankRows, setUrlBankRows] = useState<UrlBankRow[]>([{ label: '', url: '' }])
+  const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
+
+  useEffect(() => {
+    fetchPlatformConfig('en').then((r) => setPlatforms(r.platforms))
+  }, [fetchPlatformConfig])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const urlInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
@@ -58,16 +63,16 @@ export default function BotInfoLinksTab() {
       )
     }
     if (businessType === 'restaurant') {
+      for (const p of platforms) {
+        base.unshift({ key: p.id, label: p.label, description: p.url_placeholder || `${p.label} page` })
+      }
       base.unshift(
-        { key: 'tablecheck', label: 'TableCheck', description: 'TableCheck reservation page' },
-        { key: 'tabelog', label: 'Tabelog', description: 'Tabelog restaurant page' },
-        { key: 'hotpepper', label: 'HotPepper', description: 'HotPepper Gourmet restaurant page' },
         { key: 'menu', label: 'Menu', description: 'Food and drink menu' },
         { key: 'reservation', label: 'Reservation', description: 'Reservation or booking page' }
       )
     }
     return base
-  }, [businessType])
+  }, [businessType, platforms])
 
   const bubbleHasFilledUrl = (bubbleLabel: string) => {
     const key = normalizeLabelKey(bubbleLabel)

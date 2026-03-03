@@ -179,6 +179,38 @@ def _build_platform_registry() -> tuple[
 ) = _build_platform_registry()
 
 
+def get_reservation_platforms_list(*, lang: str = "en") -> List[Dict[str, Any]]:
+    """
+    Return list of reservation platforms from config (for dashboard dropdowns).
+    No hardcoding: add platforms in platform_profiles.yml only.
+    """
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+    cfg = _load_platform_config()
+    rpc = cfg.get("reservation_platform_config") or {}
+    out: List[Dict[str, Any]] = []
+    for pid, (widget_key, domain_key) in RESERVATION_PLATFORM_CONFIG.items():
+        label = pid  # fallback
+        if domain_key in PLATFORM_PROFILES:
+            profile = PLATFORM_PROFILES[domain_key]
+            metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+            sn = metadata.get("service_name")
+            if isinstance(sn, dict):
+                label = str(sn.get(lang) or sn.get("en") or pid).strip() or pid
+            elif isinstance(sn, str) and sn.strip():
+                label = sn.strip()
+        entry = rpc.get(pid) if isinstance(rpc, dict) else {}
+        url_placeholder = str(entry.get("url_placeholder") or "").strip() if isinstance(entry, dict) else ""
+        out.append({
+            "id": pid,
+            "widget_key": widget_key,
+            "domain_key": domain_key,
+            "label": label,
+            "url_placeholder": url_placeholder,
+        })
+    return out
+
+
 def get_asset_rules_from_widget(widget_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Get asset rules and term config from platform profile or default.
@@ -305,12 +337,15 @@ def get_platform_features_from_widget(widget_config: Dict[str, Any]) -> Optional
         return None
     profile = PLATFORM_PROFILES[domain_key]
     metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    reservation = metadata.get("reservation") if isinstance(metadata.get("reservation"), dict) else {}
     menu_rules = getattr(profile, "menu_extraction_rules", None)
     menu_enabled = (
         isinstance(menu_rules, dict)
         and menu_rules.get("enabled", True)
     )
-    suggested = metadata.get("suggested_messages")
+    suggested = reservation.get("suggested_messages")
+    if not isinstance(suggested, list):
+        suggested = metadata.get("suggested_messages")  # fallback: top-level
     if not isinstance(suggested, list):
         suggested = None
     return {
@@ -326,6 +361,54 @@ def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
     return str(raw or "").strip()
 
 
+def get_suggested_messages_for_platform(
+    platform_id: str,
+    *,
+    lang: str = "en",
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Get platform default suggested messages (for create-bot initial load).
+    Returns list of {id, label, type, prompt} or None if platform has no suggested_messages.
+    """
+    platform_id = str(platform_id or "").strip().lower()
+    if platform_id not in RESERVATION_PLATFORM_CONFIG:
+        return None
+    _, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
+    if domain_key not in PLATFORM_PROFILES:
+        return None
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    reservation = metadata.get("reservation") if isinstance(metadata.get("reservation"), dict) else {}
+    raw = reservation.get("suggested_messages") or metadata.get("suggested_messages")
+    if not isinstance(raw, list) or not raw:
+        return None
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+
+    def resolve_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        out: List[Dict[str, Any]] = []
+        for r in items:
+            if not isinstance(r, dict):
+                continue
+            label = _resolve_label_or_prompt(r.get("label"), lang)
+            if not label:
+                continue
+            prompt = _resolve_label_or_prompt(r.get("prompt"), lang) or label
+            raw_type = str(r.get("type") or "ai_response").strip() or "ai_response"
+            if raw_type not in ("ai_response", "show_menu", "escalate"):
+                raw_type = "ai_response"
+            out.append({
+                "id": str(r.get("id") or "").strip() or f"suggest_{len(out) + 1}",
+                "label": label,
+                "prompt": prompt,
+                "type": raw_type,
+            })
+        return out
+
+    resolved = resolve_items(raw)
+    return resolved if resolved else None
+
+
 def get_suggested_messages_for_widget(
     widget_config: Dict[str, Any],
     *,
@@ -334,11 +417,10 @@ def get_suggested_messages_for_widget(
     """
     Get suggested messages for a bot. Used across Line, Instagram, web widget.
 
-    Always config-driven (platform_profiles.yml):
-    - If bot matches a platform (Tabelog, HotPepper, TableCheck): use that platform's suggested_messages
-    - Else: use default_suggested_messages (fallback for all other bots)
-
-    Returns list of dicts with id, label (string), prompt (string), type.
+    Priority: DB first, then platform fallback (for first default), then platform_profiles default.
+    - If widget_config has suggestedMessages (saved in DB): use those (edits persist)
+    - Else: use platform profile (Tabelog, HotPepper, TableCheck) as initial default
+    - Else: use default_suggested_messages
     """
     lang = (lang or "en").strip().lower()
     lang = "ja" if lang in ("ja", "jp") else "en"
@@ -363,10 +445,30 @@ def get_suggested_messages_for_widget(
             })
         return out
 
-    # Platform profile (Tabelog, HotPepper, TableCheck) or default
+    # 1. DB first: widget_config.suggestedMessages (saved from dashboard; edits persist)
+    #    Exception: platform bot with generic defaults (Ask a question/質問する) -> use platform
+    wc_suggested = widget_config.get("suggestedMessages")
     features = get_platform_features_from_widget(widget_config)
-    if features and features.get("suggested_messages"):
-        return resolve_items(features["suggested_messages"])
+    platform_suggested = features.get("suggested_messages") if features else None
+
+    if isinstance(wc_suggested, list) and wc_suggested:
+        resolved = resolve_items(wc_suggested)
+        if resolved:
+            # If platform has config and DB has generic default (2nd item = Ask question), use platform
+            generic_second = ("ask a question", "質問する")
+            if platform_suggested and len(resolved) >= 2:
+                second_label = (resolved[1].get("label") or "").strip().lower()
+                if second_label in generic_second:
+                    platform_resolved = resolve_items(platform_suggested)
+                    if platform_resolved and len(platform_resolved) >= 2:
+                        plat_second = (platform_resolved[1].get("label") or "").strip().lower()
+                        if plat_second not in generic_second:  # platform has 予約/Reservation
+                            return platform_resolved
+            return resolved
+
+    # 2. Fallback: platform profile (Tabelog, HotPepper, TableCheck) as initial default
+    if platform_suggested:
+        return resolve_items(platform_suggested)
     return resolve_items(DEFAULT_SUGGESTED_MESSAGES)
 
 

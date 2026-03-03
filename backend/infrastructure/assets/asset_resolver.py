@@ -20,6 +20,14 @@ from redis import Redis
 
 logger = logging.getLogger(__name__)
 
+# When set, duplicate [AssetMenuTrace] to stdout so it shows in terminal (webhook often has no visible logs)
+_TRACE_STDOUT = os.environ.get("ASSET_MENU_TRACE_STDOUT", "").strip().lower() in ("1", "true", "yes")
+
+
+def _trace_stdout(msg: str) -> None:
+    if _TRACE_STDOUT:
+        print(msg, flush=True)
+
 
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
 _MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "3")), 5))
@@ -222,6 +230,9 @@ def _max_cards_for_query(
     card_match = _query_matches_cards(answer_norm, cards, term_sets["stopwords"])
 
     if not (explicit_visual or intent_in_answer or card_match):
+        msg = f"[AssetMenuTrace] _max_cards_for_query=0: explicit_visual={explicit_visual} intent_in_answer={intent_in_answer} card_match={card_match} answer_preview={(answer_norm or '')[:120]!r}"
+        logger.info(msg)
+        _trace_stdout(msg)
         return 0
 
     explicit_many = explicit_visual and (
@@ -536,9 +547,6 @@ _DEFAULT_MARKER_RULE = (
     "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. "
     "One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
 )
-_DEFAULT_EVIDENCE_TEMPLATE = "To show this product's image in the response, include {{asset_{asset_id}}} in your answer."
-
-
 def build_asset_bank(
     bot_id: str,
     *,
@@ -584,94 +592,6 @@ def build_asset_instruction(
     marker_rule from asset_rules (config) controls the instruction text.
     """
     return build_asset_bank(bot_id, asset_rules=asset_rules)
-
-
-_MAX_ASSETS_IN_EVIDENCE = max(
-    5,
-    min(int(os.environ.get("ASSET_MAX_IN_EVIDENCE", "20")), 50),
-)
-
-
-def _asset_to_evidence_snippet(
-    a: BotAsset,
-    *,
-    evidence_template: Optional[str] = None,
-) -> dict:
-    """Build a single evidence dict for an asset. _skip_rerank ensures it is not dropped by reranking."""
-    template = (evidence_template or _DEFAULT_EVIDENCE_TEMPLATE).strip()
-    marker_line = template.replace("{asset_id}", str(a.asset_id or ""))
-
-    desc = (a.description or "").strip()
-    kw = ", ".join(a.keywords or [])
-    label = "Menu Item" if getattr(a, "asset_type", "image") == "menu_item" else "Product/Service"
-    snippet_parts = [f"{label}: {a.name}."]
-    if getattr(a, "asset_type", "image") == "menu_item":
-        price_text, details, category = _menu_fields(a)
-        if category:
-            snippet_parts.append(f"Category: {category}.")
-        if price_text:
-            snippet_parts.append(f"Price: {price_text}.")
-        if details:
-            snippet_parts.append(f"Details: {details}.")
-    if desc:
-        snippet_parts.append(f"Description: {desc}.")
-    if kw:
-        snippet_parts.append(f"Related keywords: {kw}.")
-    snippet_parts.append(marker_line)
-    return {
-        "url": a.link_url or f"asset:{a.asset_id}",
-        "snippet": " ".join(snippet_parts),
-        "_skip_rerank": True,
-    }
-
-
-def build_asset_evidence(
-    bot_id: str,
-    query: Optional[str] = None,
-    *,
-    asset_rules: Optional[Dict[str, Any]] = None,
-) -> list[dict]:
-    """
-    Convert active business assets into evidence snippets that can be
-    injected into the RAG pipeline via extra_evidence.
-
-    Each asset becomes an evidence snippet so the LLM can discover and
-    reference products/services it wouldn't otherwise know about.
-    Capped to avoid overwhelming the RAG context.
-
-    When query is provided, assets are ranked by relevance (name, keywords,
-    description overlap) so that menu questions like "what wagyu dishes?"
-    include ALL matching items instead of the first N in storage order.
-    """
-    assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
-    if not assets:
-        return []
-
-    # Query-aware selection: rank by relevance so "wagyu" returns all wagyu items
-    asset_term_config = (asset_rules or {}).get("asset_term_config") if isinstance(asset_rules, dict) else None
-    term_sets = _resolve_term_config(asset_term_config)
-    query_norm = _normalize_text(query or "")
-    query_tokens = _tokenize(query_norm, term_sets["stopwords"])
-    if query_norm:
-        scored: List[Tuple[int, str, BotAsset]] = []
-        for a in assets:
-            s = _asset_query_score(
-                a, query_norm, query_tokens,
-                generic_tokens=term_sets["generic_tokens"], stopwords=term_sets["stopwords"],
-            )
-            scored.append((s, a.asset_id or "", a))
-        scored.sort(key=lambda it: (-it[0], it[1]))
-        selected = [a for _, _, a in scored[:_MAX_ASSETS_IN_EVIDENCE]]
-    else:
-        selected = assets[:_MAX_ASSETS_IN_EVIDENCE]
-
-    evidence_template = (
-        (asset_rules or {}).get("evidence_template") or _DEFAULT_EVIDENCE_TEMPLATE
-    ).strip()
-    evidence: list[dict] = []
-    for a in selected:
-        evidence.append(_asset_to_evidence_snippet(a, evidence_template=evidence_template))
-    return evidence
 
 
 def _filter_and_record_session_assets(
@@ -872,6 +792,11 @@ def process_answer_assets(
         logger.info("[AssetResolver] No active assets for bot %s", bot_id)
         return cleaned, []
 
+    marker_count = len(marker_cards)
+    msg = f"[AssetMenuTrace] process_answer_assets bot={bot_id} user_query={user_query!r}: marker_cards={marker_count} assets_total={len(assets)}"
+    logger.info(msg)
+    _trace_stdout(msg)
+
     # Merge: marker cards + name-matched cards (assets mentioned in text but without markers)
     term_sets = _resolve_term_config(asset_term_config)
     marker_ids = {c["asset_id"] for c in marker_cards}
@@ -897,9 +822,16 @@ def process_answer_assets(
 
     max_cards_for_query = _max_cards_for_query(cleaned, cards, term_sets)
     if max_cards_for_query <= 0:
+        msg = f"[AssetMenuTrace] process_answer_assets bot={bot_id}: max_cards_for_query={max_cards_for_query} -> returning 0 cards (had {len(cards)} before filter)"
+        logger.info(msg)
+        _trace_stdout(msg)
         return sanitize_answer_for_display(cleaned), []
 
     sid = (session_id or "").strip()
     if sid and cards:
         cards = _filter_and_record_session_assets(cards, bot_id, sid)
+    final_count = len(cards[:_ASSET_BANK_LIMIT])
+    msg = f"[AssetMenuTrace] process_answer_assets bot={bot_id} user_query={user_query!r}: final_cards={final_count} (marker={marker_count} name_matched={len(name_matched)})"
+    logger.info(msg)
+    _trace_stdout(msg)
     return sanitize_answer_for_display(cleaned), cards[:_ASSET_BANK_LIMIT]

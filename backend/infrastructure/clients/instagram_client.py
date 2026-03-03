@@ -126,7 +126,7 @@ async def show_typing(recipient_id: str, page_access_token: str) -> None:
     try:
         base = _api_base(page_access_token)
         async with httpx.AsyncClient(timeout=5) as client:
-            await client.post(
+            resp = await client.post(
                 f"{base}/me/messages",
                 json={
                     "recipient": {"id": recipient_id},
@@ -134,8 +134,15 @@ async def show_typing(recipient_id: str, page_access_token: str) -> None:
                 },
                 params={"access_token": page_access_token},
             )
-    except Exception:
-        pass  # Non-critical, don't block message handling
+            if resp.status_code >= 400:
+                logger.warning("Instagram typing API failed: status=%s body=%s", resp.status_code, resp.text[:200])
+                print(f"[Instagram typing] API FAILED status={resp.status_code} body={resp.text[:200]}", flush=True)
+            else:
+                logger.info("Instagram typing: sent successfully for recipient=%s", recipient_id)
+                print(f"[Instagram typing] sent OK for recipient={recipient_id}", flush=True)
+    except Exception as e:
+        logger.warning("Instagram typing API error: %s", e)
+        print(f"[Instagram typing] API ERROR: {e}", flush=True)
 
 
 async def mark_seen(recipient_id: str, page_access_token: str) -> None:

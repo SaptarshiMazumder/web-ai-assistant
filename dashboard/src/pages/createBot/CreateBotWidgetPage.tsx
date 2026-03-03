@@ -52,7 +52,6 @@ export default function CreateBotWidgetPage() {
     displaySourcesInMessages: step4.displaySourcesInMessages,
     sourcesLabel: step4.sourcesLabel,
     suggestedMessages: step4.suggestedMessages,
-    suggestedMessagesEnabled: step4.suggestedMessagesEnabled,
   }
 
   const onChange = useCallback(<K extends keyof WidgetDesignState>(key: K, val: WidgetDesignState[K]) => {

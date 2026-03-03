@@ -40,18 +40,6 @@ export default function BotSuggestedMessagesTab() {
     update('suggestedMessages', next)
   }
 
-  const handleToggleEnabled = async (enabled: boolean) => {
-    if (!botId) return
-    update('suggestedMessagesEnabled', enabled)
-    setSaving(true)
-    try {
-      const newState = { ...state, suggestedMessagesEnabled: enabled }
-      await saveWidgetConfig(botId, stateToWidgetConfig(newState))
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const handleSave = async () => {
     if (!botId || saving || savedJustNow) return
     setSaving(true)
@@ -69,14 +57,12 @@ export default function BotSuggestedMessagesTab() {
   if (loading && !selectedBot) return <div className="empty-panel">{t('common.working', 'Working...')}</div>
   if (selectedBot?.bot_id !== botId) return <div className="empty-panel">{t('common.working', 'Working...')}</div>
 
-  const isEnabled = state.suggestedMessagesEnabled
-
   const saveAction = (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
       <UiButton
         variant="primary"
         onClick={() => void handleSave()}
-        disabled={saving || savedJustNow || !isEnabled}
+        disabled={saving || savedJustNow}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
       >
         {saving ? (
@@ -104,35 +90,15 @@ export default function BotSuggestedMessagesTab() {
       />
 
       <GlassCard style={{ marginTop: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
-          <div>
-            <div style={{ fontWeight: 600, color: 'var(--ui-flow-text)' }}>{t('botSuggestedMessages.sectionTitle', 'Suggested messages')}</div>
-            <p className="card-subtitle" style={{ margin: 0, fontSize: '0.85rem' }}>
-              {t('botSuggestedMessages.sectionSubtitle', 'Quick actions shown when the chat opens.')}
-            </p>
-          </div>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={isEnabled}
-              onChange={(e) => void handleToggleEnabled(e.target.checked)}
-              disabled={saving}
-            />
-            <span className="toggle-slider" />
-          </label>
-        </div>
-
-        <div style={{ marginTop: '1rem', opacity: isEnabled ? 1 : 0.45, pointerEvents: isEnabled ? 'auto' : 'none' }}>
-          <SuggestedMessagesEditor
-            suggestedMessages={state.suggestedMessages}
-            onChange={handleSuggestedMessagesChange}
-            title=""
-            subtitle=""
-            addButtonPlacement="bottom"
-            maxItems={10}
-            actions={saveAction}
-          />
-        </div>
+        <SuggestedMessagesEditor
+          suggestedMessages={state.suggestedMessages}
+          onChange={handleSuggestedMessagesChange}
+          title=""
+          subtitle=""
+          addButtonPlacement="bottom"
+          maxItems={10}
+          actions={saveAction}
+        />
       </GlassCard>
     </AnimatedPage>
   )

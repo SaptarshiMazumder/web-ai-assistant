@@ -97,6 +97,8 @@ from domain.platform_profiles import (
     get_platform_asset_instructions,
     get_platform_features_from_widget,
     get_reservation_config_from_widget,
+    get_reservation_platforms_list,
+    get_suggested_messages_for_platform,
     get_suggested_messages_for_widget,
 )
 from application.services.default_prompt_service import (
@@ -748,8 +750,8 @@ async def v1_pk_widget_config(publishable_key: str):
     # Inject suggested messages from platform profile or default (config-driven, all channels)
     lang = _get_language_from_widget_config_dict(config)
     config["suggestedMessages"] = get_suggested_messages_for_widget(config, lang=lang)
-    config["suggestedMessagesEnabled"] = True
-    
+    config.pop("suggestedMessagesEnabled", None)  # removed; always show when config has them
+
     return config
 
 
@@ -1559,6 +1561,35 @@ async def v1_org_add_member(org_id: str, payload: OrgMemberAddRequest, user=Depe
     return {"status": "ok"}
 
 
+@router.get("/v1/org/platform-config")
+async def v1_org_platform_config(
+    lang: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Return reservation platforms and default suggested messages from config (no hardcoding)."""
+    platforms = get_reservation_platforms_list(lang=lang or "en")
+    default_suggested = get_suggested_messages_for_widget({}, lang=lang or "en")
+    return {"platforms": platforms, "defaultSuggestedMessages": default_suggested}
+
+
+@router.get("/v1/org/platform-suggested-messages")
+async def v1_org_platform_suggested_messages(
+    platform: str,
+    lang: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Return platform default suggested messages (for create-bot initial load)."""
+    resolved = get_suggested_messages_for_platform(platform, lang=lang or "en")
+    if not resolved:
+        return {"suggestedMessages": []}
+    return {
+        "suggestedMessages": [
+            {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
+            for m in resolved
+        ]
+    }
+
+
 @router.get("/v1/org/bots", response_model=BotListResponse)
 async def v1_org_list_bots(org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
@@ -1605,19 +1636,16 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    # When suggestedMessages is empty, merge platform config so dashboard shows Menu, Reservation, etc.
+    # Resolve suggestedMessages so dashboard shows what widget/Instagram/Line use
     if isinstance(widget_config, dict):
-        wc_suggested = widget_config.get("suggestedMessages")
-        if not (isinstance(wc_suggested, list) and wc_suggested):
-            lang = _get_language_from_widget_config_dict(widget_config)
-            resolved = get_suggested_messages_for_widget(widget_config, lang=lang)
-            if resolved:
-                # Convert to dashboard format: id, label, type, prompt
-                widget_config = dict(widget_config)
-                widget_config["suggestedMessages"] = [
-                    {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
-                    for m in resolved
-                ]
+        lang = _get_language_from_widget_config_dict(widget_config)
+        resolved = get_suggested_messages_for_widget(widget_config, lang=lang)
+        if resolved:
+            widget_config = dict(widget_config)
+            widget_config["suggestedMessages"] = [
+                {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
+                for m in resolved
+            ]
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,

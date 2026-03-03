@@ -36,12 +36,9 @@ export default function CreateBotUrlsPage() {
     localErrorType,
     reservationPlatform,
     setReservationPlatform,
-    restaurantTableCheckUrl,
-    setRestaurantTableCheckUrl,
-    restaurantTabelogUrl,
-    setRestaurantTabelogUrl,
-    restaurantHotPepperUrl,
-    setRestaurantHotPepperUrl,
+    platformUrls,
+    setPlatformUrl,
+    platforms,
   } = step2
   const { businessType } = step1
 
@@ -168,8 +165,8 @@ export default function CreateBotUrlsPage() {
 
     // Add platform URL for restaurants (one profile per agent)
     if (isRestaurant && reservationPlatform) {
-      const platformUrl = reservationPlatform === 'tabelog' ? restaurantTabelogUrl : reservationPlatform === 'hotpepper' ? restaurantHotPepperUrl : restaurantTableCheckUrl
-      const platformUrls = [platformUrl]
+      const platformUrl = platformUrls[reservationPlatform] || ''
+      const platformUrlList = [platformUrl]
         .map((u) => {
           const trimmed = u.trim()
           if (!trimmed) return null
@@ -181,7 +178,7 @@ export default function CreateBotUrlsPage() {
           }
         })
         .filter((u) => u !== null) as string[]
-      allUrlsToDiscover.push(...platformUrls)
+      allUrlsToDiscover.push(...platformUrlList)
     }
 
     // Validate that we have at least one URL to discover
@@ -305,7 +302,7 @@ export default function CreateBotUrlsPage() {
       setIsSharedDiscovering(false)
       sharedDiscoveryAbortRef.current = null
     }
-  }, [sharedDiscoveryUrl, businessType, reservationPlatform, restaurantTableCheckUrl, restaurantTabelogUrl, restaurantHotPepperUrl, discoverUrlsFromHook, discoveryMethod, t])
+  }, [sharedDiscoveryUrl, businessType, reservationPlatform, platformUrls, discoverUrlsFromHook, discoveryMethod, t])
 
   const handleStopSharedDiscovery = useCallback(() => {
     if (sharedDiscovery60sTimerRef.current) {
@@ -607,56 +604,26 @@ export default function CreateBotUrlsPage() {
                       </label>
                       <select
                         value={reservationPlatform}
-                        onChange={(e) => setReservationPlatform((e.target.value || '') as '' | 'tabelog' | 'hotpepper' | 'tablecheck')}
+                        onChange={(e) => setReservationPlatform(e.target.value || '')}
                         disabled={isSharedDiscovering}
                         style={{ width: '100%' }}
                       >
                         <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
-                        <option value="tabelog">{t('botKnowledge.reservationPlatformTabelog', 'Tabelog')}</option>
-                        <option value="hotpepper">{t('botKnowledge.reservationPlatformHotpepper', 'HotPepper')}</option>
-                        <option value="tablecheck">{t('botKnowledge.reservationPlatformTablecheck', 'TableCheck')}</option>
+                        {platforms.map((p) => (
+                          <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
                       </select>
                     </div>
-                    {reservationPlatform === 'tabelog' && (
+                    {reservationPlatform && platforms.some((p) => p.id === reservationPlatform) && (
                       <div>
                         <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                          {t('botKnowledge.tabelogUrl', 'Tabelog URL')}
+                          {platforms.find((p) => p.id === reservationPlatform)?.label} URL
                         </label>
                         <input
                           type="url"
-                          value={restaurantTabelogUrl}
-                          onChange={(e) => setRestaurantTabelogUrl(e.target.value)}
-                          placeholder="https://tabelog.com/tokyo/A1304/A130401/13224546/"
-                          disabled={isSharedDiscovering}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                    )}
-                    {reservationPlatform === 'hotpepper' && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                          {t('botKnowledge.hotPepperUrl', 'HotPepper URL')}
-                        </label>
-                        <input
-                          type="url"
-                          value={restaurantHotPepperUrl}
-                          onChange={(e) => setRestaurantHotPepperUrl(e.target.value)}
-                          placeholder="https://www.hotpepper.jp/strJ001234567/"
-                          disabled={isSharedDiscovering}
-                          style={{ width: '100%' }}
-                        />
-                      </div>
-                    )}
-                    {reservationPlatform === 'tablecheck' && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                          {t('botKnowledge.tableCheckUrl', 'TableCheck URL')}
-                        </label>
-                        <input
-                          type="url"
-                          value={restaurantTableCheckUrl}
-                          onChange={(e) => setRestaurantTableCheckUrl(e.target.value)}
-                          placeholder="https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+                          value={platformUrls[reservationPlatform] || ''}
+                          onChange={(e) => setPlatformUrl(reservationPlatform, e.target.value)}
+                          placeholder={platforms.find((p) => p.id === reservationPlatform)?.url_placeholder || ''}
                           disabled={isSharedDiscovering}
                           style={{ width: '100%' }}
                         />
@@ -674,7 +641,7 @@ export default function CreateBotUrlsPage() {
               <UiButton
                 variant="primary"
                 onClick={() => void handleSharedDiscoverUrls()}
-                disabled={!sharedDiscoveryUrl.trim() && (businessType !== 'restaurant' || !reservationPlatform || (reservationPlatform === 'tabelog' && !restaurantTabelogUrl.trim()) || (reservationPlatform === 'hotpepper' && !restaurantHotPepperUrl.trim()) || (reservationPlatform === 'tablecheck' && !restaurantTableCheckUrl.trim()))}
+                disabled={!sharedDiscoveryUrl.trim() && (businessType !== 'restaurant' || !reservationPlatform || !(platformUrls[reservationPlatform] || '').trim())}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
                 <ScanSearch size={16} />

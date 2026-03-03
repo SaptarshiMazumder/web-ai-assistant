@@ -3,7 +3,7 @@
 # Edit this file to add or change platforms - no code changes needed.
 #
 # Schema:
-#   reservation_platform_config: maps platform_id -> widget_key, domain_key
+#   reservation_platform_config: maps platform_id -> widget_key, domain_key, url_placeholder (optional)
 #   default_suggested_messages: fallback when no platform defines suggested_messages
 #   platforms: per-domain config (crawl, menu extraction, prompts, etc.)
 
@@ -11,12 +11,15 @@ reservation_platform_config:
   tabelog:
     widget_key: tabelogUrl
     domain_key: tabelog.com
+    url_placeholder: "https://tabelog.com/tokyo/A1304/A130401/13224546/"
   hotpepper:
     widget_key: hotPepperUrl
     domain_key: hotpepper.jp
+    url_placeholder: "https://www.hotpepper.jp/strJ001234567/"
   tablecheck:
     widget_key: tableCheckUrl
     domain_key: tablecheck.com
+    url_placeholder: "https://www.tablecheck.com/en/shops/your-restaurant/reserve"
 
 # Default asset rules (used when no platform or platform doesn't override)
 default_asset_rules:

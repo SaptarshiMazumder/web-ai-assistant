@@ -16,6 +16,7 @@ export default function CreateBotSharedUrlsPage() {
     sharedUrlRows,
     setSharedUrlRows,
     localError,
+    platforms,
   } = step2
   const urlInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const normalizeLabelKey = (s: string) => (s || '').trim().toLowerCase()
@@ -73,36 +74,16 @@ export default function CreateBotSharedUrlsPage() {
       )
     }
     if (businessType === 'restaurant') {
+      for (const p of platforms) {
+        base.unshift({ key: p.id, label: p.label, description: p.url_placeholder || `${p.label} page` })
+      }
       base.unshift(
-        {
-          key: 'hotpepper',
-          label: t('createBot.quickTopicHotPepper', 'HotPepper'),
-          description: t('createBot.quickTopicHotPepperDesc', 'HotPepper Gourmet restaurant page'),
-        },
-        {
-          key: 'tabelog',
-          label: t('createBot.quickTopicTabelog', 'Tabelog'),
-          description: t('createBot.quickTopicTabelogDesc', 'Tabelog restaurant page'),
-        },
-        {
-          key: 'tablecheck',
-          label: t('createBot.quickTopicTableCheck', 'TableCheck'),
-          description: t('createBot.quickTopicTableCheckDesc', 'TableCheck reservation page'),
-        },
-        {
-          key: 'menu',
-          label: t('createBot.quickTopicMenu', 'Menu'),
-          description: t('createBot.quickTopicMenuDesc', 'Food and drink menu'),
-        },
-        {
-          key: 'reservation',
-          label: t('createBot.quickTopicReservation', 'Reservation'),
-          description: t('createBot.quickTopicReservationDesc', 'Reservation or booking page'),
-        }
+        { key: 'menu', label: t('createBot.quickTopicMenu', 'Menu'), description: t('createBot.quickTopicMenuDesc', 'Food and drink menu') },
+        { key: 'reservation', label: t('createBot.quickTopicReservation', 'Reservation'), description: t('createBot.quickTopicReservationDesc', 'Reservation or booking page') }
       )
     }
     return base
-  }, [businessType, t])
+  }, [businessType, platforms, t])
 
   const bubbleHasFilledUrl = (bubbleLabel: string) => {
     const k = normalizeLabelKey(bubbleLabel)

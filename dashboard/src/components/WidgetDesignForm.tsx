@@ -31,7 +31,6 @@ export type WidgetDesignState = {
   displaySourcesInMessages: boolean
   sourcesLabel: string
   suggestedMessages: SuggestedMessageConfig[]
-  suggestedMessagesEnabled: boolean
 }
 
 export type SuggestedMessageConfig = {
@@ -70,7 +69,6 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
     { id: 'suggest_2', label: 'Ask a question', type: 'ai_response', prompt: 'Ask a question' },
     { id: 'suggest_3', label: 'Request human support', type: 'escalate' },
   ],
-  suggestedMessagesEnabled: false,
 }
 
 const DEFAULT_WIDGET_DESIGN_JA: Partial<WidgetDesignState> = {
@@ -125,7 +123,6 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   if (typeof config.autoScroll === 'boolean') d.autoScrollNewMessages = config.autoScroll
   if (typeof config.displaySources === 'boolean') d.displaySourcesInMessages = config.displaySources
   if (typeof config.sourcesLabel === 'string') d.sourcesLabel = config.sourcesLabel
-  if (typeof config.suggestedMessagesEnabled === 'boolean') d.suggestedMessagesEnabled = config.suggestedMessagesEnabled
   if (Array.isArray((config as Record<string, unknown>).suggestedMessages)) {
     const raw = (config as Record<string, unknown>).suggestedMessages as SuggestedMessageConfig[]
     d.suggestedMessages = raw
@@ -172,7 +169,6 @@ export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknow
     displaySources: s.displaySourcesInMessages,
     sourcesLabel: s.sourcesLabel,
     suggestedMessages: s.suggestedMessages,
-    suggestedMessagesEnabled: s.suggestedMessagesEnabled,
   }
 }
 
