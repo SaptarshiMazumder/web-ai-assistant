@@ -780,7 +780,14 @@
     "promptPlaceholder": "ユーザーの成功事例を見せてもらえますか？",
     "urlsLabel": "URL（任意）",
     "urlsPlaceholder": "https://example.com/pricing\\nhttps://example.com/faq",
-    "urlsHelper": "1行に1つのURLを入力してください。"
+    "urlsHelper": "1行に1つのURLを入力してください。",
+    "humanSupport": "サポートに相談",
+    "showMenu": "メニュー",
+    "namePlaceholderMenu": "メニュー",
+    "namePlaceholderSupport": "サポートに相談",
+    "typeLabel": "タイプ",
+    "configureSupportHint": "メール通知とボタンラベルはヒューマンサポート設定で設定してください。",
+    "openSupportSettings": "ヒューマンサポート設定を開く"
   },
   "botPersona": {
     "selectBot": "ペルソナを設定するボットを選択してください。",

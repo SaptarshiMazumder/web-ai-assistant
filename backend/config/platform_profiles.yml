@@ -38,10 +38,6 @@ default_asset_term_config:
 default_suggested_messages:
   - id: suggest_1
     type: ai_response
-    label: { en: "What can you do?", ja: "何ができますか？" }
-    prompt: { en: "What can you do?", ja: "何ができますか？" }
-  - id: suggest_2
-    type: ai_response
     label: { en: "Ask a question", ja: "質問する" }
     prompt: { en: "Ask a question", ja: "質問する" }
 

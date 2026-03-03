@@ -94,6 +94,7 @@ from domain.platform_profiles import (
     RESERVATION_PLATFORM_CONFIG,
     ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
+    get_available_suggested_message_types,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
     get_reservation_config_from_widget,
@@ -1566,10 +1567,19 @@ async def v1_org_platform_config(
     lang: Optional[str] = None,
     user=Depends(get_current_user),
 ):
-    """Return reservation platforms and default suggested messages from config (no hardcoding)."""
-    platforms = get_reservation_platforms_list(lang=lang or "en")
+    """Return reservation platforms, default suggested messages, and available types from config (no hardcoding)."""
+    platforms_raw = get_reservation_platforms_list(lang=lang or "en")
     default_suggested = get_suggested_messages_for_widget({}, lang=lang or "en")
-    return {"platforms": platforms, "defaultSuggestedMessages": default_suggested}
+    default_available_types = get_available_suggested_message_types(None)
+    platforms = [
+        {**p, "availableSuggestedMessageTypes": get_available_suggested_message_types(p.get("id"))}
+        for p in platforms_raw
+    ]
+    return {
+        "platforms": platforms,
+        "defaultSuggestedMessages": default_suggested,
+        "defaultAvailableSuggestedMessageTypes": default_available_types,
+    }
 
 
 @router.get("/v1/org/platform-suggested-messages")

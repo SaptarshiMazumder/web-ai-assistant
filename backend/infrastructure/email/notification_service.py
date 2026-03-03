@@ -25,6 +25,43 @@ _CHAT_LINKS = {
     "line": "https://business.line.biz/",  # LINE Official Account Manager
 }
 
+# Escalation email copy by language (bot language)
+_EMAIL_STRINGS = {
+    "en": {
+        "subject": "[{bot_name}] Human support request via {channel_label}",
+        "intro": "A visitor has requested human support via {channel_label}.",
+        "visitor": "Visitor",
+        "what_they_said": "What they said",
+        "open_instagram": "Open Instagram messages to reply",
+        "open_channel": "Open {channel_label} to reply",
+        "view_profile": "View their profile",
+        "view_dashboard": "View in dashboard",
+    },
+    "ja": {
+        "subject": "[{bot_name}] {channel_label}経由でサポート依頼がありました",
+        "intro": "お客様が{channel_label}経由でサポートを依頼しています。",
+        "visitor": "お客様",
+        "what_they_said": "お客様のメッセージ",
+        "open_instagram": "Instagramメッセージを開いて返信",
+        "open_channel": "{channel_label}を開いて返信",
+        "view_profile": "プロフィールを見る",
+        "view_dashboard": "ダッシュボードで見る",
+    },
+}
+
+
+def _get_bot_lang(bot) -> str:
+    """Derive bot language from widget_config. Returns 'ja' or 'en'."""
+    raw = getattr(bot, "widget_config", None)
+    if not raw or not str(raw).strip():
+        return "en"
+    try:
+        wc = json.loads(raw)
+        lang = str(wc.get("language") or wc.get("botLanguage") or "en").strip().lower()
+        return "ja" if lang in ("ja", "jp") else "en"
+    except (TypeError, ValueError):
+        return "en"
+
 
 def parse_notification_emails(raw: str) -> List[str]:
     """Parse semicolon- or comma-separated emails, strip whitespace."""
@@ -47,10 +84,12 @@ def send_escalation_notification(
     visitor_username: Optional[str] = None,
     visitor_name: Optional[str] = None,
     visitor_profile_pic_url: Optional[str] = None,
+    lang: str = "en",
 ) -> bool:
     """
     Send an email notification when a visitor escalates to human support.
     Returns True if sent successfully, False otherwise.
+    lang: bot language ('ja' or 'en') — email content is localized.
     """
     if not to_emails:
         return False
@@ -58,8 +97,9 @@ def send_escalation_notification(
         logger.warning("Escalation email skipped: SMTP_HOST or SMTP_FROM_EMAIL not configured")
         return False
 
+    t = _EMAIL_STRINGS.get(lang, _EMAIL_STRINGS["en"])
     channel_label = _CHANNEL_LABELS.get(channel, channel)
-    subject = f"[{bot_name}] Human support request via {channel_label}"
+    subject = t["subject"].format(bot_name=bot_name, channel_label=channel_label)
     if not chat_url:
         chat_url = _CHAT_LINKS.get(channel)
     dashboard_url = os.environ.get("DASHBOARD_URL", "").strip().rstrip("/")
@@ -75,24 +115,25 @@ def send_escalation_notification(
             parts.append(f"@{visitor_username}")
         profile_line = " · ".join(parts) if parts else None
 
-    # Plain text body
-    body_lines = [f"A visitor has requested human support via {channel_label}."]
+    # Plain text body (localized)
+    intro = t["intro"].format(channel_label=channel_label)
+    body_lines = [intro]
     if profile_line:
-        body_lines.extend(["", f"Visitor: {profile_line}"])
+        body_lines.extend(["", f"{t['visitor']}: {profile_line}"])
     if details:
-        body_lines.extend(["", "What they said:", details])
+        body_lines.extend(["", f"{t['what_they_said']}:", details])
     body_lines.append("")
     if chat_url:
-        link_label = "Open Instagram messages to reply" if channel == "instagram" else f"Open {channel_label} to reply"
+        link_label = t["open_instagram"] if channel == "instagram" else t["open_channel"].format(channel_label=channel_label)
         body_lines.extend([f"{link_label}:", chat_url])
     if profile_line and visitor_username:
-        body_lines.extend(["", f"View their profile: https://www.instagram.com/{visitor_username}"])
+        body_lines.extend(["", f"{t['view_profile']}: https://www.instagram.com/{visitor_username}"])
     if dash_link:
-        body_lines.extend(["", f"View in dashboard: {dash_link}"])
+        body_lines.extend(["", f"{t['view_dashboard']}: {dash_link}"])
     body = "\n".join(body_lines)
 
-    # HTML version - Instagram primary: profile + Open messages button
-    html_parts = [f"<p>A visitor has requested human support via {channel_label}.</p>"]
+    # HTML version - Instagram primary: profile + Open messages button (localized)
+    html_parts = [f"<p>{intro}</p>"]
     if channel == "instagram" and (visitor_username or visitor_name or visitor_profile_pic_url):
         html_parts.append('<p style="display:flex;align-items:center;gap:12px;margin:16px 0;">')
         if visitor_profile_pic_url:
@@ -108,9 +149,9 @@ def send_escalation_notification(
         html_parts.append("</span></p>")
     if details:
         safe_details = html.escape(details).replace("\n", "<br>")
-        html_parts.append(f"<p><strong>What they said:</strong><br>{safe_details}</p>")
+        html_parts.append(f"<p><strong>{t['what_they_said']}:</strong><br>{safe_details}</p>")
     if chat_url:
-        btn_text = "Open Instagram messages" if channel == "instagram" else f"Open {channel_label} to reply"
+        btn_text = t["open_instagram"] if channel == "instagram" else t["open_channel"].format(channel_label=channel_label)
         html_parts.append(
             f'<p style="margin-top:20px;">'
             f'<a href="{chat_url}" style="background:#0095f6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">{btn_text}</a>'
@@ -118,10 +159,10 @@ def send_escalation_notification(
         )
     if profile_line and visitor_username:
         html_parts.append(
-            f'<p><a href="https://www.instagram.com/{html.escape(visitor_username)}" style="color:#0095f6;">View their profile</a></p>'
+            f'<p><a href="https://www.instagram.com/{html.escape(visitor_username)}" style="color:#0095f6;">{t["view_profile"]}</a></p>'
         )
     if dash_link:
-        html_parts.append(f'<p><a href="{dash_link}" style="color:#666;">View in dashboard</a></p>')
+        html_parts.append(f'<p><a href="{dash_link}" style="color:#666;">{t["view_dashboard"]}</a></p>')
     html_body = "".join(html_parts)
 
     msg = MIMEMultipart("alternative")
@@ -195,6 +236,7 @@ def maybe_send_escalation_email(
         )
         return
     bot_name = getattr(bot, "display_name", None) or getattr(bot, "bot_id", "Bot")
+    lang = _get_bot_lang(bot)
     send_escalation_notification(
         to_emails=emails,
         bot_name=bot_name,
@@ -207,4 +249,5 @@ def maybe_send_escalation_email(
         visitor_username=visitor_username,
         visitor_name=visitor_name,
         visitor_profile_pic_url=visitor_profile_pic_url,
+        lang=lang,
     )

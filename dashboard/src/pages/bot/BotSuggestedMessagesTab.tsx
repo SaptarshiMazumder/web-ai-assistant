@@ -22,15 +22,30 @@ export default function BotSuggestedMessagesTab() {
     selectedBot,
     selectedBotWidgetConfig,
     saveWidgetConfig,
+    fetchPlatformConfig,
     loading,
   } = useDashboardData()
   const [state, setState] = useState<WidgetDesignState>(() => DEFAULT_WIDGET_DESIGN_STATE)
   const [saving, setSaving] = useState(false)
   const [savedJustNow, setSavedJustNow] = useState(false)
+  const [availableTypes, setAvailableTypes] = useState<Array<'ai_response' | 'show_menu' | 'escalate'>>(['ai_response'])
 
   useEffect(() => {
     setState(widgetConfigToState(selectedBotWidgetConfig ?? null))
   }, [selectedBotWidgetConfig])
+
+  useEffect(() => {
+    fetchPlatformConfig().then((r) => {
+      const platformId = String((selectedBotWidgetConfig as Record<string, unknown>)?.reservationPlatform ?? '').toLowerCase()
+      if (platformId) {
+        const platform = r.platforms.find((p) => p.id.toLowerCase() === platformId)
+        const types = (platform?.availableSuggestedMessageTypes ?? r.defaultAvailableSuggestedMessageTypes) as Array<'ai_response' | 'show_menu' | 'escalate'>
+        setAvailableTypes(types.length ? types : ['ai_response'])
+      } else {
+        setAvailableTypes(r.defaultAvailableSuggestedMessageTypes as Array<'ai_response' | 'show_menu' | 'escalate'>)
+      }
+    })
+  }, [fetchPlatformConfig, selectedBotWidgetConfig])
 
   const update = useCallback(<K extends keyof WidgetDesignState>(key: K, value: WidgetDesignState[K]) => {
     setState((prev) => ({ ...prev, [key]: value }))
@@ -98,6 +113,8 @@ export default function BotSuggestedMessagesTab() {
           addButtonPlacement="bottom"
           maxItems={10}
           actions={saveAction}
+          availableTypes={availableTypes}
+          botId={botId}
         />
       </GlassCard>
     </AnimatedPage>

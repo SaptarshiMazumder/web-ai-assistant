@@ -361,6 +361,46 @@ def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
     return str(raw or "").strip()
 
 
+_VALID_SUGGESTED_TYPES = ("ai_response", "show_menu", "escalate")
+
+
+def get_available_suggested_message_types(platform_id: Optional[str] = None) -> List[str]:
+    """
+    Return the types of suggested messages available for a platform (or default).
+    Config-driven: only types present in platform's suggested_messages are allowed.
+    Default (no platform): only ai_response.
+    """
+    if not platform_id or not str(platform_id).strip():
+        # Default: only types from default_suggested_messages
+        types_seen: set = set()
+        for m in DEFAULT_SUGGESTED_MESSAGES:
+            if isinstance(m, dict):
+                t = str(m.get("type") or "ai_response").strip() or "ai_response"
+                if t in _VALID_SUGGESTED_TYPES:
+                    types_seen.add(t)
+        return list(types_seen) if types_seen else ["ai_response"]
+
+    platform_id = str(platform_id).strip().lower()
+    if platform_id not in RESERVATION_PLATFORM_CONFIG:
+        return ["ai_response"]
+    _, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
+    if domain_key not in PLATFORM_PROFILES:
+        return ["ai_response"]
+    profile = PLATFORM_PROFILES[domain_key]
+    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+    reservation = metadata.get("reservation") if isinstance(metadata.get("reservation"), dict) else {}
+    raw = reservation.get("suggested_messages") or metadata.get("suggested_messages")
+    if not isinstance(raw, list) or not raw:
+        return ["ai_response"]
+    types_seen = set()
+    for r in raw:
+        if isinstance(r, dict):
+            t = str(r.get("type") or "ai_response").strip() or "ai_response"
+            if t in _VALID_SUGGESTED_TYPES:
+                types_seen.add(t)
+    return list(types_seen) if types_seen else ["ai_response"]
+
+
 def get_suggested_messages_for_platform(
     platform_id: str,
     *,

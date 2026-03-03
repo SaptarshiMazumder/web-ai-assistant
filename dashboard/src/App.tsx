@@ -32,7 +32,6 @@ import BotInstagramSettingsTab from './pages/bot/BotInstagramSettingsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
 
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
-import BotPersonaTab from './pages/bot/BotPersonaTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
 import BotHumanSupportTab from './pages/bot/BotHumanSupportTab'
 import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
@@ -119,7 +118,6 @@ export default function App() {
               <Route path="design" element={<BotDesignTab />} />
               <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
               <Route path="human-support" element={<BotHumanSupportTab />} />
-              <Route path="persona" element={<BotPersonaTab />} />
 
               <Route path="testing" element={<BotTestingTab />} />
               <Route path="conversations" element={<BotConversationsTab />} />

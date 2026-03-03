@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Plus, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FlowIcon } from './FlowIcon'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
@@ -12,7 +13,13 @@ type SuggestedMessagesEditorProps = {
   addButtonPlacement?: 'top' | 'bottom'
   maxItems?: number
   actions?: React.ReactNode
+  /** Config-driven: only these types appear in the dropdown. Default: all (ai_response, show_menu, escalate). */
+  availableTypes?: Array<'ai_response' | 'show_menu' | 'escalate'>
+  /** When set, shows a link to Human Support settings when editing an escalate-type message. */
+  botId?: string
 }
+
+const ALL_TYPES: Array<'ai_response' | 'show_menu' | 'escalate'> = ['ai_response', 'show_menu', 'escalate']
 
 export function SuggestedMessagesEditor({
   suggestedMessages,
@@ -22,6 +29,8 @@ export function SuggestedMessagesEditor({
   addButtonPlacement = 'top',
   maxItems,
   actions,
+  availableTypes = ALL_TYPES,
+  botId,
 }: SuggestedMessagesEditorProps) {
   const { t } = useTranslation()
   const resolvedTitle = title ?? t('suggestedMessagesEditor.title', 'Suggested messages')
@@ -50,13 +59,18 @@ export function SuggestedMessagesEditor({
 
   const openSuggestionModal = useCallback((item?: SuggestedMessageConfig) => {
     if (!item && !canAdd) return
+    const defaultType = (availableTypes[0] || 'ai_response') as SuggestedMessageConfig['type']
     const base: SuggestedMessageConfig = item
-      ? { ...item, urls: Array.isArray(item.urls) ? item.urls : [] }
-      : { id: `suggest_${Date.now()}`, label: '', type: 'ai_response', urls: [] }
+      ? {
+          ...item,
+          urls: Array.isArray(item.urls) ? item.urls : [],
+          type: availableTypes.includes(item.type) ? item.type : defaultType,
+        }
+      : { id: `suggest_${Date.now()}`, label: '', type: defaultType, urls: [] }
     setEditingSuggestion(item || null)
     setSuggestionDraft(base)
     setIsSuggestionModalOpen(true)
-  }, [canAdd])
+  }, [canAdd, availableTypes])
 
   const closeSuggestionModal = useCallback(() => {
     setIsSuggestionModalOpen(false)
@@ -225,16 +239,22 @@ export function SuggestedMessagesEditor({
               <label className="design-form-label">{t('suggestedMessagesEditor.typeLabel', 'Type')}</label>
               <select
                 className="design-form-input"
-                value={suggestionDraft.type}
+                value={availableTypes.includes(suggestionDraft.type) ? suggestionDraft.type : availableTypes[0]}
                 onChange={(e) =>
                   setSuggestionDraft((prev) =>
                     prev ? { ...prev, type: e.target.value as SuggestedMessageConfig['type'] } : prev
                   )
                 }
               >
-                <option value="ai_response">{t('suggestedMessagesEditor.aiResponse', 'AI response')}</option>
-                <option value="show_menu">{t('suggestedMessagesEditor.showMenu', 'Show menu')}</option>
-                <option value="escalate">{t('suggestedMessagesEditor.humanSupport', 'Human support')}</option>
+                {availableTypes.includes('ai_response') && (
+                  <option value="ai_response">{t('suggestedMessagesEditor.aiResponse', 'AI response')}</option>
+                )}
+                {availableTypes.includes('show_menu') && (
+                  <option value="show_menu">{t('suggestedMessagesEditor.showMenu', 'Show menu')}</option>
+                )}
+                {availableTypes.includes('escalate') && (
+                  <option value="escalate">{t('suggestedMessagesEditor.humanSupport', 'Human support')}</option>
+                )}
               </select>
 
               <label className="design-form-label" style={{ marginTop: '1rem' }}>{t('suggestedMessagesEditor.nameLabel', 'Name')}</label>
@@ -251,6 +271,21 @@ export function SuggestedMessagesEditor({
                       : t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')
                 }
               />
+
+              {suggestionDraft.type === 'escalate' && botId && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: 8, background: 'rgba(255,241,239,0.5)', border: '1px solid var(--ui-flow-border)' }}>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ui-flow-text)' }}>
+                    {t('suggestedMessagesEditor.configureSupportHint', 'Configure email notifications and button label in Human Support settings.')}
+                  </p>
+                  <Link
+                    to={`/bots/${botId}/human-support`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--ui-flow-accent)' }}
+                  >
+                    <Settings size={14} />
+                    {t('suggestedMessagesEditor.openSupportSettings', 'Open Human Support settings')}
+                  </Link>
+                </div>
+              )}
 
               {suggestionDraft.type === 'ai_response' && (
                 <>

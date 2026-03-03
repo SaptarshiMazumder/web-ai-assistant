@@ -545,8 +545,16 @@ type DashboardData = {
   generatingSuggestions: boolean
   fetchPlatformSuggestedMessages: (platform: string, lang?: string) => Promise<Array<{ id: string; label: string; type: string; prompt?: string }>>
   fetchPlatformConfig: (lang?: string) => Promise<{
-    platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+    platforms: Array<{
+      id: string
+      widget_key: string
+      domain_key: string
+      label: string
+      url_placeholder?: string
+      availableSuggestedMessageTypes?: string[]
+    }>
     defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
+    defaultAvailableSuggestedMessageTypes: string[]
   }>
 }
 
@@ -2154,22 +2162,39 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function fetchPlatformConfig(
     lang?: string
   ): Promise<{
-    platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+    platforms: Array<{
+      id: string
+      widget_key: string
+      domain_key: string
+      label: string
+      url_placeholder?: string
+      availableSuggestedMessageTypes?: string[]
+    }>
     defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
+    defaultAvailableSuggestedMessageTypes: string[]
   }> {
     try {
       const langParam = lang ? `?lang=${encodeURIComponent(lang)}` : ''
       const path = withOrgParam(`/v1/org/platform-config${langParam}`)
       const result = await fetchAuthedJson<{
-        platforms?: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
+        platforms?: Array<{
+          id: string
+          widget_key: string
+          domain_key: string
+          label: string
+          url_placeholder?: string
+          availableSuggestedMessageTypes?: string[]
+        }>
         defaultSuggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }>
+        defaultAvailableSuggestedMessageTypes?: string[]
       }>(path)
       return {
         platforms: result.platforms ?? [],
         defaultSuggestedMessages: result.defaultSuggestedMessages ?? [],
+        defaultAvailableSuggestedMessageTypes: result.defaultAvailableSuggestedMessageTypes ?? ['ai_response'],
       }
     } catch {
-      return { platforms: [], defaultSuggestedMessages: [] }
+      return { platforms: [], defaultSuggestedMessages: [], defaultAvailableSuggestedMessageTypes: ['ai_response'] }
     }
   }
 

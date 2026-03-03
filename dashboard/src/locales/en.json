@@ -780,7 +780,14 @@
     "promptPlaceholder": "Can you show me some user success stories?",
     "urlsLabel": "URLs (optional)",
     "urlsPlaceholder": "https://example.com/pricing\\nhttps://example.com/faq",
-    "urlsHelper": "One URL per line."
+    "urlsHelper": "One URL per line.",
+    "humanSupport": "Human support",
+    "showMenu": "Show menu",
+    "namePlaceholderMenu": "Menu",
+    "namePlaceholderSupport": "Request human support",
+    "typeLabel": "Type",
+    "configureSupportHint": "Configure email notifications and button label in Human Support settings.",
+    "openSupportSettings": "Open Human Support settings"
   },
   "botPersona": {
     "selectBot": "Select a bot to configure personas.",

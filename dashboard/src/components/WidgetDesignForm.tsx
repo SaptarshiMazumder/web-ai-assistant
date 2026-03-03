@@ -64,11 +64,7 @@ export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {
   autoScrollNewMessages: true,
   displaySourcesInMessages: false,
   sourcesLabel: 'Sources',
-  suggestedMessages: [
-    { id: 'suggest_1', label: 'Menu', type: 'show_menu' },
-    { id: 'suggest_2', label: 'Ask a question', type: 'ai_response', prompt: 'Ask a question' },
-    { id: 'suggest_3', label: 'Request human support', type: 'escalate' },
-  ],
+  suggestedMessages: [{ id: 'suggest_1', label: 'Ask a question', type: 'ai_response', prompt: 'Ask a question' }],
 }
 
 const DEFAULT_WIDGET_DESIGN_JA: Partial<WidgetDesignState> = {
@@ -79,11 +75,7 @@ const DEFAULT_WIDGET_DESIGN_JA: Partial<WidgetDesignState> = {
   footerMessage: 'Powered by WebAI',
   launcherText: 'ヘルプ',
   sourcesLabel: 'ソース',
-  suggestedMessages: [
-    { id: 'suggest_1', label: 'メニュー', type: 'show_menu' },
-    { id: 'suggest_2', label: '質問する', type: 'ai_response', prompt: '質問する' },
-    { id: 'suggest_3', label: 'サポートに相談', type: 'escalate' },
-  ],
+  suggestedMessages: [{ id: 'suggest_1', label: '質問する', type: 'ai_response', prompt: '質問する' }],
 }
 
 export function getDefaultsForLanguage(lang: 'en' | 'ja'): WidgetDesignState {
