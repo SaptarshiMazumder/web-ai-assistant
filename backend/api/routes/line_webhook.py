@@ -653,10 +653,8 @@ async def _handle_text_message(
         except Exception as e:
             logger.warning("LINE menu early path failed bot_id=%s: %s", bot.bot_id, e)
 
-    # Show typing indicator immediately while processing
-    await line_show_typing(line_user_id, access_token)
-
-    # Load suggested messages from platform profile or default (config-driven)
+    # Load suggested messages and session BEFORE typing — we must not show typing when
+    # user is escalated and we won't reply (avoids typing bubble stuck until timeout)
     suggested_flex = None
     widget_config: Dict[str, Any] = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
@@ -671,7 +669,6 @@ async def _handle_text_message(
         suggested_flex = build_suggested_flex(suggested_messages)
 
     # Get or create session mapping
-    # First check if mapping exists
     mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
 
     if mapping is None:
@@ -723,6 +720,19 @@ async def _handle_text_message(
             )
             mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
 
+    # ── Escalated: log message only, no bot reply — return BEFORE typing ───
+    if mapping and mapping.is_escalated and not _wants_cancel_escalation(text):
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=text,
+        )
+        return
+
+    # Show typing only when we will send a reply (avoids stuck typing when escalated)
+    await line_show_typing(line_user_id, access_token)
+
     # ── De-escalation check (cancel only, matches Instagram) ───────────
     if mapping and mapping.is_escalated and _wants_cancel_escalation(text):
         _line_user_session_repo.set_escalated(
@@ -744,16 +754,6 @@ async def _handle_text_message(
             bot_id=bot.bot_id,
             role="bot",
             content=cancel_msg,
-        )
-        return
-
-    # ── Escalated: log message only, no bot reply — human will respond ───
-    if mapping and mapping.is_escalated:
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=text,
         )
         return
 
