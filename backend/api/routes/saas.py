@@ -97,6 +97,8 @@ from domain.platform_profiles import (
     get_available_suggested_message_types,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
+    get_platform_json_response_enabled,
+    get_platform_json_response_instruction,
     get_reservation_config_from_widget,
     get_reservation_platforms_list,
     get_suggested_messages_for_platform,
@@ -1029,6 +1031,9 @@ async def v1_widget_chat(
     platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_get_bot_language(bot))
     if platform_asset_instruction:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=_get_bot_language(bot))
+    if json_response_instruction:
+        system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
 
     result = run_vertex_rag(
         query,
@@ -1041,6 +1046,7 @@ async def v1_widget_chat(
         conversation_context=conversation_context or None,
         extra_evidence=extra_evidence if extra_evidence else None,
         bot_display_name=getattr(bot, "display_name", None),
+        parse_json_response=get_platform_json_response_enabled(widget_config),
     )
     chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
     sources = result.get("sources") or []
@@ -1091,23 +1097,25 @@ async def v1_widget_chat(
     platform_features = get_platform_features_from_widget(widget_config)
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
     allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
+    show_assets = result.get("show_assets")
 
-    # Extract {{asset:ID}} markers from the LLM answer first
-    answer, marker_cards = resolve_asset_markers(
-        answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
-    )
-    if marker_cards:
-        asset_cards = marker_cards
+    if show_assets is False:
+        asset_cards = []
     else:
-        # Fallback to keyword-based matching
-        answer, asset_cards = process_answer_assets(
-            answer,
-            bot.bot_id,
-            user_query=msg,
-            session_id=session.session_id,
-            allowed_asset_types=allowed_asset_types,
-            asset_term_config=asset_rules.get("asset_term_config"),
+        answer, marker_cards = resolve_asset_markers(
+            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
         )
+        if marker_cards:
+            asset_cards = marker_cards
+        else:
+            answer, asset_cards = process_answer_assets(
+                answer,
+                bot.bot_id,
+                user_query=msg,
+                session_id=session.session_id,
+                allowed_asset_types=allowed_asset_types,
+                asset_term_config=asset_rules.get("asset_term_config"),
+            )
     assets = [AssetCard(**c) for c in asset_cards]
 
     conversation_service().add_message(
@@ -1292,6 +1300,9 @@ async def v1_widget_chat_stream(
     platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=_get_bot_language(bot))
     if platform_asset_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
+    json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=_get_bot_language(bot))
+    if json_response_instruction_stream:
+        system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
 
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
@@ -1307,6 +1318,7 @@ async def v1_widget_chat_stream(
                 conversation_context=conversation_context or None,
                 extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
                 bot_display_name=getattr(bot, "display_name", None),
+                parse_json_response=get_platform_json_response_enabled(widget_config_stream),
             ):
                 if evt.get("type") == "delta":
                     yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
@@ -1352,22 +1364,24 @@ async def v1_widget_chat_stream(
                         platform_features_stream = get_platform_features_from_widget(widget_config_stream)
                         menu_extraction_enabled_stream = platform_features_stream.get("menu_extraction_enabled") if platform_features_stream else False
                         allowed_asset_types_stream = {"menu_item"} if menu_extraction_enabled_stream else None
-                        # Extract {{asset:ID}} markers from the LLM answer first
-                        answer, marker_cards_stream = resolve_asset_markers(
-                            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_stream
-                        )
-                        if marker_cards_stream:
-                            asset_cards_stream = marker_cards_stream
+                        show_assets_stream = evt.get("show_assets")
+                        if show_assets_stream is False:
+                            asset_cards_stream = []
                         else:
-                            # Fallback to keyword-based matching
-                            answer, asset_cards_stream = process_answer_assets(
-                                answer,
-                                bot.bot_id,
-                                user_query=msg,
-                                session_id=session.session_id,
-                                allowed_asset_types=allowed_asset_types_stream,
-                                asset_term_config=asset_rules_stream.get("asset_term_config"),
+                            answer, marker_cards_stream = resolve_asset_markers(
+                                answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_stream
                             )
+                            if marker_cards_stream:
+                                asset_cards_stream = marker_cards_stream
+                            else:
+                                answer, asset_cards_stream = process_answer_assets(
+                                    answer,
+                                    bot.bot_id,
+                                    user_query=msg,
+                                    session_id=session.session_id,
+                                    allowed_asset_types=allowed_asset_types_stream,
+                                    asset_term_config=asset_rules_stream.get("asset_term_config"),
+                                )
                         chat_debug_emit(
                             {
                                 "type": "chat_response",
@@ -2311,6 +2325,11 @@ async def v1_org_test_chat(
         system_instruction = (
             f"{system_instruction}\n\n{platform_asset_instruction_test}" if system_instruction else platform_asset_instruction_test
         )
+    json_response_instruction_test = get_platform_json_response_instruction(widget_config_test, lang=_get_bot_language(bot))
+    if json_response_instruction_test:
+        system_instruction = (
+            f"{system_instruction}\n\n{json_response_instruction_test}" if system_instruction else json_response_instruction_test
+        )
 
     result = run_vertex_rag(
         msg,
@@ -2322,6 +2341,7 @@ async def v1_org_test_chat(
         conversation_context=conversation_context or None,
         extra_evidence=extra_evidence_test if extra_evidence_test else None,
         bot_display_name=getattr(bot, "display_name", None),
+        parse_json_response=get_platform_json_response_enabled(widget_config_test),
     )
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
@@ -2333,20 +2353,24 @@ async def v1_org_test_chat(
     platform_features_test = get_platform_features_from_widget(widget_config_test)
     menu_extraction_enabled_test = platform_features_test.get("menu_extraction_enabled") if platform_features_test else False
     allowed_asset_types_test = {"menu_item"} if menu_extraction_enabled_test else None
-    answer, marker_cards = resolve_asset_markers(
-        answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_test
-    )
-    if marker_cards:
-        asset_cards = marker_cards
+    show_assets_test = result.get("show_assets")
+    if show_assets_test is False:
+        asset_cards = []
     else:
-        answer, asset_cards = process_answer_assets(
-            answer,
-            bot.bot_id,
-            user_query=msg,
-            session_id=session.session_id,
-            allowed_asset_types=allowed_asset_types_test,
-            asset_term_config=asset_rules_test.get("asset_term_config"),
+        answer, marker_cards = resolve_asset_markers(
+            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_test
         )
+        if marker_cards:
+            asset_cards = marker_cards
+        else:
+            answer, asset_cards = process_answer_assets(
+                answer,
+                bot.bot_id,
+                user_query=msg,
+                session_id=session.session_id,
+                allowed_asset_types=allowed_asset_types_test,
+                asset_term_config=asset_rules_test.get("asset_term_config"),
+            )
     assets = [AssetCard(**c) for c in asset_cards]
     conversation_service().add_message(
         session_id=session.session_id,

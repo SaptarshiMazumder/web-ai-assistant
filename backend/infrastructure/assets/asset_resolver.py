@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 from common.config import config
 from domain.entities import BotAsset
+from domain.platform_profiles import get_default_marker_rule
 from infrastructure.db.repositories import PostgresBotAssetRepository
 from redis import Redis
 
@@ -543,10 +544,6 @@ _ASSET_BANK_LIMIT = max(
 )
 
 
-_DEFAULT_MARKER_RULE = (
-    "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. "
-    "One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
-)
 def build_asset_bank(
     bot_id: str,
     *,
@@ -562,7 +559,7 @@ def build_asset_bank(
         return ""
 
     marker_rule = (
-        (asset_rules or {}).get("marker_rule") or _DEFAULT_MARKER_RULE
+        (asset_rules or {}).get("marker_rule") or get_default_marker_rule()
     ).strip()
 
     # Take up to limit (storage order)

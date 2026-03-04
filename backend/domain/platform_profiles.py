@@ -121,8 +121,17 @@ def _build_platform_registry() -> tuple[
     List[Dict[str, Any]],
     Dict[str, str],
     Dict[str, List[str]],
+    Optional[Dict[str, Any]],
+    Optional[Dict[str, Any]],
+    Optional[Dict[str, Any]],
+    List[str],
+    List[str],
+    str,
+    str,
+    str,
+    str,
 ]:
-    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES, DEFAULT_ASSET_RULES, DEFAULT_ASSET_TERM_CONFIG."""
+    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES, DEFAULT_ASSET_RULES, DEFAULT_ASSET_TERM_CONFIG, DEFAULT_JSON_RESPONSE_FORMAT, DEFAULT_RAG_INSTRUCTION, DEFAULT_MENU_TEXTS."""
     cfg = _load_platform_config()
     profiles: Dict[str, PlatformProfile] = {}
     reservation_config: Dict[str, Tuple[str, str]] = {}
@@ -167,7 +176,34 @@ def _build_platform_registry() -> tuple[
             if isinstance(pdata, dict) and domain_key:
                 profiles[str(domain_key).strip()] = _dict_to_platform_profile(domain_key, pdata)
 
-    return profiles, reservation_config, default_suggested, default_asset_rules, default_asset_term_config
+    default_json = cfg.get("default_json_response_format") if isinstance(cfg.get("default_json_response_format"), dict) else None
+    default_rag = cfg.get("default_rag_instruction") if isinstance(cfg.get("default_rag_instruction"), dict) else None
+    default_menu_texts = cfg.get("default_menu_texts") if isinstance(cfg.get("default_menu_texts"), dict) else None
+    default_menu_keywords = cfg.get("default_menu_keywords")
+    default_menu_category_order = cfg.get("default_menu_category_order")
+    default_menu_request_pattern = str(cfg.get("default_menu_request_pattern") or "").strip()
+    line_menu_payload = str(cfg.get("line_menu_quick_payload") or "SHOW_FULL_MENU").strip()
+    line_menu_prefix = str(cfg.get("line_menu_page_payload_prefix") or "SHOW_MENU_PAGE:").strip()
+    ig_menu_payload = str(cfg.get("instagram_menu_quick_payload") or "SHOW_FULL_MENU").strip()
+    ig_menu_prefix = str(cfg.get("instagram_menu_page_payload_prefix") or "SHOW_MENU_PAGE:").strip()
+
+    return (
+        profiles,
+        reservation_config,
+        default_suggested,
+        default_asset_rules,
+        default_asset_term_config,
+        default_json,
+        default_rag,
+        default_menu_texts,
+        default_menu_keywords if isinstance(default_menu_keywords, list) else [],
+        default_menu_category_order if isinstance(default_menu_category_order, list) else ["course", "dish", "drink", "lunch", "menu"],
+        default_menu_request_pattern,
+        line_menu_payload,
+        line_menu_prefix,
+        ig_menu_payload,
+        ig_menu_prefix,
+    )
 
 
 (
@@ -176,6 +212,16 @@ def _build_platform_registry() -> tuple[
     DEFAULT_SUGGESTED_MESSAGES,
     DEFAULT_ASSET_RULES,
     DEFAULT_ASSET_TERM_CONFIG,
+    DEFAULT_JSON_RESPONSE_FORMAT,
+    DEFAULT_RAG_INSTRUCTION,
+    DEFAULT_MENU_TEXTS,
+    DEFAULT_MENU_KEYWORDS,
+    DEFAULT_MENU_CATEGORY_ORDER,
+    DEFAULT_MENU_REQUEST_PATTERN,
+    LINE_MENU_QUICK_PAYLOAD,
+    LINE_MENU_PAGE_PAYLOAD_PREFIX,
+    INSTAGRAM_MENU_QUICK_PAYLOAD,
+    INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX,
 ) = _build_platform_registry()
 
 
@@ -556,6 +602,149 @@ def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str 
     lang = "ja" if lang in ("ja", "jp") else "en"
     text = str(instructions.get(lang) or instructions.get("en") or "").strip()
     return text if text else None
+
+
+def _build_json_instruction_from_jrf(jrf: Dict[str, Any], lang: str) -> Optional[str]:
+    """Build JSON response instruction from a jrf dict (default or platform)."""
+    if not isinstance(jrf, dict):
+        return None
+    schema_dict = jrf.get("schema")
+    if not isinstance(schema_dict, dict):
+        return None
+    if "show_assets" in schema_dict:
+        true_rules = jrf.get("show_assets_true_when")
+        false_rules = jrf.get("show_assets_false_when")
+        true_txt = str((true_rules or {}).get("en") or "").strip() if isinstance(true_rules, dict) else ""
+        false_txt = str((false_rules or {}).get("en") or "").strip() if isinstance(false_rules, dict) else ""
+        if not true_txt or not false_txt:
+            return None
+
+    schema_items = [f'"{k}": {v}' for k, v in schema_dict.items() if isinstance(v, str) and v.strip()]
+    if not schema_items:
+        return None
+    schema_line = "{" + ", ".join(schema_items) + "}"
+    parts: List[str] = [
+        "\n\nRESPONSE FORMAT (CRITICAL): You MUST respond with valid JSON only. No other text before or after.\n"
+        f"Schema: {schema_line}\n"
+    ]
+    for key, desc in schema_dict.items():
+        if isinstance(desc, str) and desc.strip():
+            parts.append(f"- {key}: {desc}\n")
+
+    true_rules = jrf.get("show_assets_true_when")
+    false_rules = jrf.get("show_assets_false_when")
+    true_txt = str((true_rules or {}).get(lang) or (true_rules or {}).get("en") or "").strip() if isinstance(true_rules, dict) else ""
+    false_txt = str((false_rules or {}).get(lang) or (false_rules or {}).get("en") or "").strip() if isinstance(false_rules, dict) else ""
+    if true_txt and false_txt:
+        parts.append(
+            "- show_assets: boolean. Follow these rules exactly:\n"
+            f"  WHEN TRUE: {true_txt}\n"
+            f"  WHEN FALSE: {false_txt}\n"
+        )
+
+    intent_when = jrf.get("intent_when")
+    if isinstance(intent_when, dict):
+        intent_txt = str(intent_when.get(lang) or intent_when.get("en") or "").strip()
+        if intent_txt:
+            parts.append(f"- intent: Follow these rules:\n{intent_txt}\n")
+
+    parts.append("Output ONLY the JSON object, no markdown code fences.")
+    return "".join(parts)
+
+
+def get_platform_json_response_instruction(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:
+    """
+    Get JSON response format instruction. Uses default for all bots; platforms (Tabelog, HotPepper)
+    add extra keys like intent via their json_response_format config.
+    """
+    lang = (lang or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+
+    jrf: Optional[Dict[str, Any]] = None
+    cfg = get_reservation_config_from_widget(widget_config)
+    if cfg:
+        domain_key = cfg.get("domain_key")
+        if domain_key and domain_key in PLATFORM_PROFILES:
+            profile = PLATFORM_PROFILES[domain_key]
+            metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+            platform_jrf = metadata.get("json_response_format")
+            if isinstance(platform_jrf, dict) and platform_jrf.get("enabled"):
+                jrf = platform_jrf
+
+    if jrf is None and DEFAULT_JSON_RESPONSE_FORMAT:
+        jrf = DEFAULT_JSON_RESPONSE_FORMAT
+
+    return _build_json_instruction_from_jrf(jrf, lang) if jrf else None
+
+
+def get_platform_json_response_enabled(widget_config: Dict[str, Any]) -> bool:
+    """Return True when JSON response format is configured (default or platform)."""
+    return get_platform_json_response_instruction(widget_config, lang="en") is not None
+
+
+def get_default_rag_instruction() -> Dict[str, Any]:
+    """Return default RAG/LLM instruction config (default_system, grounding_suffix, etc.)."""
+    return dict(DEFAULT_RAG_INSTRUCTION) if DEFAULT_RAG_INSTRUCTION else {}
+
+
+def get_default_marker_rule() -> str:
+    """Return default marker rule for asset bank (from config)."""
+    return str(DEFAULT_ASSET_RULES.get("marker_rule") or "").strip()
+
+
+def get_menu_texts(lang: str, *, widget_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Get menu flow texts for the given lang. Platform can override via metadata.menu_texts."""
+    lang = "ja" if (lang or "").strip().lower() in ("ja", "jp") else "en"
+    base = (DEFAULT_MENU_TEXTS or {}).get(lang) or (DEFAULT_MENU_TEXTS or {}).get("en") or {}
+    if widget_config:
+        cfg = get_reservation_config_from_widget(widget_config)
+        if cfg:
+            domain_key = cfg.get("domain_key")
+            if domain_key and domain_key in PLATFORM_PROFILES:
+                profile = PLATFORM_PROFILES[domain_key]
+                metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
+                platform_texts = metadata.get("menu_texts")
+                if isinstance(platform_texts, dict):
+                    platform_lang = (platform_texts.get(lang) or platform_texts.get("en") or {})
+                    if isinstance(platform_lang, dict):
+                        base = dict(base)
+                        base.update(platform_lang)
+    return base
+
+
+def get_menu_keywords() -> List[str]:
+    """Get menu request keywords from config."""
+    return list(DEFAULT_MENU_KEYWORDS) if DEFAULT_MENU_KEYWORDS else []
+
+
+def get_menu_category_order() -> Tuple[str, ...]:
+    """Get menu category order from config."""
+    return tuple(DEFAULT_MENU_CATEGORY_ORDER) if DEFAULT_MENU_CATEGORY_ORDER else ("course", "dish", "drink", "lunch", "menu")
+
+
+def get_menu_request_pattern() -> Optional[str]:
+    """Get menu request regex pattern from config."""
+    return (DEFAULT_MENU_REQUEST_PATTERN or "").strip() or None
+
+
+def get_line_menu_quick_payload() -> str:
+    """Get LINE menu quick reply payload from config."""
+    return LINE_MENU_QUICK_PAYLOAD or "SHOW_FULL_MENU"
+
+
+def get_line_menu_page_payload_prefix() -> str:
+    """Get LINE menu page payload prefix from config."""
+    return LINE_MENU_PAGE_PAYLOAD_PREFIX or "SHOW_MENU_PAGE:"
+
+
+def get_instagram_menu_quick_payload() -> str:
+    """Get Instagram menu quick reply payload from config."""
+    return INSTAGRAM_MENU_QUICK_PAYLOAD or "SHOW_FULL_MENU"
+
+
+def get_instagram_menu_page_payload_prefix() -> str:
+    """Get Instagram menu page payload prefix from config."""
+    return INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX or "SHOW_MENU_PAGE:"
 
 
 def ensure_canonical_reservation_url_in_text(text: str, canonical_url: str, domain_key: str) -> str:

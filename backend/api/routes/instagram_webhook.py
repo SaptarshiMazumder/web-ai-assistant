@@ -59,8 +59,16 @@ from infrastructure.services.indexing_service import ensure_bot_corpus
 from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
+    get_instagram_menu_page_payload_prefix,
+    get_instagram_menu_quick_payload,
+    get_menu_category_order,
+    get_menu_keywords,
+    get_menu_request_pattern,
+    get_menu_texts,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
+    get_platform_json_response_enabled,
+    get_platform_json_response_instruction,
     get_reservation_config_from_widget,
     get_suggested_messages_for_widget,
 )
@@ -76,8 +84,6 @@ _bot_source_repo = PostgresBotSourceRepository()
 
 # Global webhook verify token (set in Meta App Dashboard, stored in env)
 _GLOBAL_WEBHOOK_VERIFY_TOKEN = os.environ.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN", "").strip()
-_IG_MENU_QUICK_PAYLOAD = "SHOW_FULL_MENU"
-_IG_MENU_PAGE_PAYLOAD_PREFIX = "SHOW_MENU_PAGE:"
 
 
 def _safe_int_env(name: str, default: int) -> int:
@@ -98,74 +104,15 @@ _DEFAULT_MENU_PLACEHOLDER_IMAGE_URL = os.environ.get(
     "IG_MENU_PLACEHOLDER_IMAGE_URL",
     "https://placehold.co/600x400/png?text=Menu",
 ).strip()
-_MENU_REQUEST_PATTERN = re.compile(
-    r"^\s*(?:show|view|see|open|browse|check)?\s*(?:the\s*)?(?:full\s*)?"
-    r"(?:menu|menus|course|courses|dish|dishes|drinks?|party|parties|lunch)\s*$",
-    re.IGNORECASE,
-)
-_MENU_REQUEST_EXACT = {
-    "menu",
-    "full menu",
-    "show menu",
-    "view menu",
-    "view the menu",
-    "show me the menu",
-    "see menu",
-    "course menu",
-    "party menu",
-    "party",
-    "lunch menu",
-    "lunch",
-    # Japanese
-    "\u30e1\u30cb\u30e5\u30fc",
-    "\u30e1\u30cb\u30e5\u30fc\u898b\u305b\u3066",
-    "\u30e1\u30cb\u30e5\u30fc\u3092\u898b\u305b\u3066",
-    "\u30e1\u30cb\u30e5\u30fc\u3092\u898b\u305f\u3044",
-    "\u30b3\u30fc\u30b9",
-    "\u6599\u7406\u30e1\u30cb\u30e5\u30fc",
-    "\u30c9\u30ea\u30f3\u30af\u30e1\u30cb\u30e5\u30fc",
-    "\u30e9\u30f3\u30c1",
-    "\u30e9\u30f3\u30c1\u30e1\u30cb\u30e5\u30fc",
-}
-_MENU_CATEGORY_ORDER = ("course", "dish", "drink", "lunch", "menu")
-_MENU_CATEGORY_LABELS_BY_LANG: Dict[str, Dict[str, str]] = {
-    "en": {
-        "course": "Party/Course menu",
-        "dish": "Dish menu",
-        "drink": "Drink menu",
-        "lunch": "Lunch menu",
-        "menu": "Menu",
-    },
-    "ja": {
-        "course": "コース",
-        "dish": "料理",
-        "drink": "ドリンク",
-        "lunch": "ランチ",
-        "menu": "メニュー",
-    },
-}
-_MENU_TEXT_BY_LANG: Dict[str, Dict[str, str]] = {
-    "en": {
-        "view_full_menu": "View full menu: {url}",
-        "view_menu_button_prompt": "Tap the button below to view our full menu.",
-        "view_menu_button_title": "View full menu",
-        "menu_not_ready": "Our menu isn't ready yet. Please try again shortly after menu extraction completes.",
-        "tap_view_more": "Tap 'View more' to continue.",
-        "choose_another": "You can choose another option.",
-        "render_error": "I found menu items, but couldn't render menu text right now. Please try again.",
-        "more_items_prompt": "More items are available. Tap 'View more' to continue.",
-    },
-    "ja": {
-        "view_full_menu": "メニュー一覧: {url}",
-        "view_menu_button_prompt": "下のボタンでメニューをご覧いただけます。",
-        "view_menu_button_title": "メニューを見る",
-        "menu_not_ready": "メニューの準備中です。メニュー抽出完了後にもう一度お試しください。",
-        "tap_view_more": "「もっと見る」で続きを表示できます。",
-        "choose_another": "他の候補も選べます。",
-        "render_error": "メニューは見つかりましたが、現在表示できません。少ししてから再度お試しください。",
-        "more_items_prompt": "続きのメニューがあります。「もっと見る」で表示できます。",
-    },
-}
+def _get_menu_request_exact_ig() -> set:
+    return {k.strip().lower() for k in get_menu_keywords() if k.strip()}
+
+
+def _get_menu_request_pattern_compiled_ig():
+    pat = get_menu_request_pattern()
+    return re.compile(pat, re.IGNORECASE) if pat else None
+
+
 _MENU_LABEL_CACHE: Dict[str, str] = {}
 _PUBLIC_BASE_URL = (
     os.environ.get("PUBLIC_BASE_URL")
@@ -286,6 +233,14 @@ def _get_menu_items_for_bot(bot_id: str) -> List[Any]:
         return []
 
 
+def _ig_menu_quick_payload() -> str:
+    return get_instagram_menu_quick_payload()
+
+
+def _ig_menu_page_prefix() -> str:
+    return get_instagram_menu_page_payload_prefix()
+
+
 def _menu_category_for_item(item: Any) -> str:
     metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
     raw_category = str(metadata.get("category") or "").strip().lower()
@@ -298,39 +253,41 @@ def _menu_category_for_item(item: Any) -> str:
         "lunch_set": "lunch",
     }
     category = aliases.get(raw_category, raw_category)
-    if category in _MENU_CATEGORY_ORDER:
+    if category in get_menu_category_order():
         return category
     return "menu"
 
 
 def _is_full_menu_request(text: str, payload: Optional[str]) -> bool:
     raw_payload = (payload or "").strip().upper()
-    if raw_payload == _IG_MENU_QUICK_PAYLOAD:
+    if raw_payload == _ig_menu_quick_payload():
         return True
     normalized = (text or "").strip().lower()
     if not normalized:
         return False
-    if normalized in _MENU_REQUEST_EXACT:
+    if normalized in _get_menu_request_exact_ig():
         return True
-    return bool(_MENU_REQUEST_PATTERN.match(normalized))
+    pat = _get_menu_request_pattern_compiled_ig()
+    return bool(pat and pat.match(normalized))
 
 
 def _make_menu_page_payload(category: str, offset: int) -> str:
-    return f"{_IG_MENU_PAGE_PAYLOAD_PREFIX}{category}:{offset}"
+    return f"{_ig_menu_page_prefix()}{category}:{offset}"
 
 
 def _parse_menu_page_payload(payload: Optional[str]) -> Optional[tuple[str, int]]:
     raw = (payload or "").strip()
     if not raw:
         return None
-    if not raw.upper().startswith(_IG_MENU_PAGE_PAYLOAD_PREFIX):
+    prefix = _ig_menu_page_prefix()
+    if not raw.upper().startswith(prefix):
         return None
-    rest = raw[len(_IG_MENU_PAGE_PAYLOAD_PREFIX):]
+    rest = raw[len(prefix):]
     parts = rest.split(":", 1)
     if len(parts) != 2:
         return None
     category = parts[0].strip().lower()
-    if category not in _MENU_CATEGORY_ORDER:
+    if category not in get_menu_category_order():
         return None
     try:
         offset = int(parts[1].strip())
@@ -712,14 +669,15 @@ def _view_more_title(category: str, lang: str) -> str:
     return titles.get(category, "View more")
 
 
-def _menu_category_label(category: str, lang: str) -> str:
-    table = _MENU_CATEGORY_LABELS_BY_LANG.get(lang) or _MENU_CATEGORY_LABELS_BY_LANG["en"]
-    return table.get(category, category.title())
+def _menu_category_label(category: str, lang: str, widget_config: Optional[Dict[str, Any]] = None) -> str:
+    table = get_menu_texts(lang, widget_config=widget_config)
+    labels = table.get("category_labels") or {}
+    return str(labels.get(category) or category.title())
 
 
-def _menu_text(key: str, lang: str, **kwargs: Any) -> str:
-    table = _MENU_TEXT_BY_LANG.get(lang) or _MENU_TEXT_BY_LANG["en"]
-    template = table.get(key) or _MENU_TEXT_BY_LANG["en"].get(key) or ""
+def _menu_text(key: str, lang: str, widget_config: Optional[Dict[str, Any]] = None, **kwargs: Any) -> str:
+    table = get_menu_texts(lang, widget_config=widget_config)
+    template = str(table.get(key) or "").strip()
     if not template:
         return ""
     try:
@@ -810,15 +768,16 @@ async def _send_menu_by_category(
             return
         logger.warning("Instagram menu button failed, falling back to text list")
 
-    grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
+    order = get_menu_category_order()
+    grouped: Dict[str, List[Any]] = {k: [] for k in order}
     for item in items:
         grouped[_menu_category_for_item(item)].append(item)
 
     sent_any = False
     if page_category:
-        categories = [page_category] if page_category in _MENU_CATEGORY_ORDER else []
+        categories = [page_category] if page_category in order else []
     else:
-        categories = list(_MENU_CATEGORY_ORDER)
+        categories = list(order)
 
     pending_more_qr: List[dict] = []
     for category in categories:
@@ -1539,7 +1498,7 @@ async def _handle_text_message(
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Normal AI flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
     # If show_menu tapped but menu disabled, use "Menu" for RAG query
     ai_query = effective_text
-    if effective_text == _IG_MENU_QUICK_PAYLOAD and not menu_extraction_enabled:
+    if effective_text == _ig_menu_quick_payload() and not menu_extraction_enabled:
         ai_query = "Menu"
 
     conversation_service().add_message(
@@ -1575,6 +1534,9 @@ async def _handle_text_message(
     platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_normalize_lang(widget_config))
     if platform_asset_instruction:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=_normalize_lang(widget_config))
+    if json_response_instruction:
+        system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
 
     # Reservation: config-driven from widget_config + platform profiles (Tabelog, HotPepper, TableCheck).
     reservation_config = get_reservation_config_from_widget(
@@ -1605,6 +1567,7 @@ async def _handle_text_message(
             temperature=temperature,
             conversation_context=conversation_context or None,
             extra_evidence=extra_evidence if extra_evidence else None,
+            parse_json_response=get_platform_json_response_enabled(widget_config),
         )
         answer = str(result.get("answer") or "").strip()
         if not answer:
@@ -1618,25 +1581,27 @@ async def _handle_text_message(
                     reservation_config["domain_key"],
                 )
             allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
-            # Extract {{asset:ID}} markers from the LLM answer first
-            answer, marker_cards = resolve_asset_markers(
-                answer,
-                bot.bot_id,
-                session.session_id,
-                allowed_asset_types=allowed_asset_types,
-            )
-            if marker_cards:
-                asset_cards = marker_cards
+            show_assets = result.get("show_assets")
+            if show_assets is False:
+                asset_cards = []
             else:
-                # Fallback to keyword-based matching
-                answer, asset_cards = process_answer_assets(
+                answer, marker_cards = resolve_asset_markers(
                     answer,
                     bot.bot_id,
-                    user_query=effective_text,
-                    session_id=session.session_id,
+                    session.session_id,
                     allowed_asset_types=allowed_asset_types,
-                    asset_term_config=asset_rules.get("asset_term_config"),
                 )
+                if marker_cards:
+                    asset_cards = marker_cards
+                else:
+                    answer, asset_cards = process_answer_assets(
+                        answer,
+                        bot.bot_id,
+                        user_query=effective_text,
+                        session_id=session.session_id,
+                        allowed_asset_types=allowed_asset_types,
+                        asset_term_config=asset_rules.get("asset_term_config"),
+                    )
     except Exception as e:
         err_msg = f"{type(e).__name__}: {e}"
         # Print to stdout so it shows in terminal when webhook runs (logs often not visible)

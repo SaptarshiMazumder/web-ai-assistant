@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 
 from common.config import config
+from domain.platform_profiles import get_default_rag_instruction
 from infrastructure.rag.url_map import resolve_evidence_urls
 
 # =========================
@@ -90,6 +91,38 @@ def format_evidence_block(evidence: List[Dict[str, str]], limit: int = 60) -> st
         lines.append(f"{header}\n{snip}")
     return "\n\n".join(lines)
 
+def parse_structured_llm_response(raw: str) -> Dict[str, Any]:
+    """
+    Parse LLM response that may be JSON with answer, intent, show_assets.
+    Returns {"answer": str, "intent": str|None, "show_assets": bool|None}.
+    If JSON parse fails, returns answer as raw text with intent/show_assets None.
+    """
+    if not (raw or "").strip():
+        return {"answer": "", "intent": None, "show_assets": None}
+    text = raw.strip()
+    # Try to extract JSON from markdown code block if present
+    code_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if code_match:
+        text = (code_match.group(1) or "").strip()
+    # Try parsing as JSON
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            answer = str(data.get("answer") or "").strip()
+            intent = str(data.get("intent") or "").strip() or None
+            show_assets = data.get("show_assets")
+            if show_assets is not None:
+                show_assets = bool(show_assets)
+            return {
+                "answer": answer or text,
+                "intent": intent,
+                "show_assets": show_assets,
+            }
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return {"answer": raw.strip(), "intent": None, "show_assets": None}
+
+
 def sanitize_answer_citations(text: str) -> str:
     """Post-process LLM answer to strip forbidden citation patterns.
 
@@ -123,27 +156,9 @@ def sanitize_answer_citations(text: str) -> str:
                 return "this page"
             if re.fullmatch(r"[a-f0-9]{6,}", seg):  # looks like a hex hash
                 return "this page"
-            common = {
-                "about": "about page",
-                "contact": "contact page",
-                "faq": "faq page",
-                "faqs": "faq page",
-                "hours": "hours page",
-                "pricing": "pricing page",
-                "prices": "pricing page",
-                "price": "pricing page",
-                "menu": "menu page",
-                "services": "services page",
-                "service": "services page",
-                "booking": "booking page",
-                "reserve": "booking page",
-                "reservation": "booking page",
-                "reservations": "booking page",
-                "location": "location page",
-                "access": "location page",
-            }
-            if seg in common:
-                return common[seg]
+            mappings = get_default_rag_instruction().get("link_text_mappings") or {}
+            if isinstance(mappings, dict) and seg in mappings:
+                return str(mappings[seg])
             if 1 <= len(seg) <= 28:
                 return f"{seg} page"
         except Exception:
@@ -156,11 +171,8 @@ def sanitize_answer_citations(text: str) -> str:
         s = re.sub(r"\s+", " ", label).strip().lower()
         if not s:
             return True
-        generic = {
-            "source", "sources", "link", "links", "here", "this", "page", "this page", "the page",
-            "website", "the website", "site", "this site", "more", "details", "info", "information",
-            "click here", "learn more", "read more",
-        }
+        generic_list = get_default_rag_instruction().get("generic_link_texts") or []
+        generic = {str(x).strip().lower() for x in generic_list if str(x).strip()}
         if s in generic:
             return True
         if "http://" in s or "https://" in s:
@@ -741,58 +753,30 @@ def analyze_with_evidence(client: genai.Client, question: str, evidence: List[Di
 # =========================
 # Simple (non-streaming) synthesis
 # =========================
-DEFAULT_SYSTEM = (
-    "Answer the user's question using ONLY the provided evidence snippets.\n"
-    "Base your answer on whatever relevant content the snippets contain. "
-    "Only say you cannot find the information if NONE of the snippets mention the topic at all.\n"
-    "Keep it concise.\n\n"
-    "CITATION LINK RULES (follow exactly):\n"
-    "- Cite sources ONLY as inline markdown hyperlinks woven naturally into sentences: [link text](URL).\n"
-    "- NEVER use 'source' or 'sources' as the markdown link text.\n"
-    "- NEVER include bracket citations like [Some_File.pdf page 1] or [Document page 5].\n"
-    "- NEVER mention PDF filenames or page numbers in the answer.\n"
-    "- NEVER put URL, hostname, or domain inside the brackets. WRONG: [chocozap.jp](URL), [example.com/about](URL).\n"
-    "- For root URL (ends with / or has no path): use exactly 'the website'. Example: [the website](https://example.com/).\n"
-    "- For other pages: use one of 'here', 'this page', or a phrase from the path (e.g. /about -> 'about page', /products -> 'product page', /parking -> 'parking page').\n"
-    "- Valid link text examples: 'here', 'this page', 'the website', 'about page', 'product page', 'parking page'.\n"
-    "- ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35, 75]. Never refer to sources by number.\n"
-    "- ABSOLUTELY FORBIDDEN: appending a list of URLs or bullet-point citations at the end of the answer.\n"
-    "- ABSOLUTELY FORBIDDEN: showing raw URLs as plain text anywhere in the answer.\n"
-    "- Every source reference MUST be an inline [descriptive text](URL) hyperlink within a sentence."
-)
 
-# Appended to custom system instructions so the model still stays grounded and cites sources.
-GROUNDING_SUFFIX = (
-    "\n\nYou must answer using ONLY the provided evidence snippets and cite sources via inline markdown hyperlinks woven into sentences. "
-    "CITATION RULES: Link text must be 'the website' for root URLs; for other pages use 'here', 'this page', or path-based phrases like 'about page', 'product page'. "
-    "NEVER use 'source' or 'sources' as the markdown link text. "
-    "NEVER include bracket citations like [Some_File.pdf page 1]. NEVER mention PDF filenames or page numbers. "
-    "NEVER use URL or domain as link text. "
-    "ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35]. Never refer to sources by number. "
-    "ABSOLUTELY FORBIDDEN: appending bullet-point URL lists at the end. "
-    "ABSOLUTELY FORBIDDEN: showing raw URLs as plain text. "
-    "Every source reference must be an inline [descriptive text](URL) link. "
-    "Base your answer on whatever relevant content the snippets contain; only say you don't know if the snippets contain no relevant information at all. Keep responses concise."
-)
+
+def _get_rag_config() -> Dict[str, Any]:
+    """Get RAG instruction config from platform_profiles. Fallback to minimal if config empty."""
+    cfg = get_default_rag_instruction()
+    if not cfg:
+        return {
+            "default_system": "Answer using ONLY the provided evidence snippets. Cite sources as [link text](URL). Keep it concise.",
+            "grounding_suffix": "Answer using ONLY the provided evidence. Cite via [descriptive text](URL).",
+            "universal_rules_template": "\n\nSpeak in first person (We/Our). Never make up information.",
+            "task_line_custom": "TASK: Answer using the evidence above.",
+            "task_line_default": "TASK: Write the best possible grounded answer.",
+        }
+    return cfg
 
 
 def _build_universal_rules(bot_display_name: str) -> str:
-    """
-    Universal rules that are appended to EVERY system prompt, regardless of persona.
-    Enforces first-person 'we' voice and bans robotic evidence-speak.
-    """
+    """Universal rules from config. Uses {bot_name} placeholder."""
+    cfg = _get_rag_config()
+    template = str(cfg.get("universal_rules_template") or "").strip()
+    if not template:
+        return ""
     name = (bot_display_name or "").strip() or "us"
-    return (
-        f"\n\nUNIVERSAL RESPONSE RULES (always follow, override any other style instructions if there is a conflict):\n"
-        f"- Always speak in first person plural on behalf of the business. "
-        f"Say 'We' or 'Our' (e.g. 'We offer...', 'Our team...', 'You can reach us at...'). "
-        f"NEVER refer to {name} in third person (e.g. NEVER say '{name} offers...' — say 'We offer...' instead).\n"
-        f"- NEVER use phrases like 'the evidence provided', 'based on the context', 'according to the documents', "
-        f"'the provided text', 'the context shows', 'from the information given'. These sound robotic and unnatural.\n"
-        f"- If you do not have enough information to answer, say: \"I don't have that information right now — "
-        f"for the most up-to-date details, please check our website or get in touch with us directly.\"\n"
-        f"- Never make up information. If something is not in the evidence, say you don't have it rather than guessing."
-    )
+    return "\n\n" + template.replace("{bot_name}", name)
 
 
 def _build_grounded_prompt(
@@ -803,14 +787,20 @@ def _build_grounded_prompt(
     conversation_context: Optional[str] = None,
     bot_display_name: Optional[str] = None,
 ) -> Dict[str, str]:
+    cfg = _get_rag_config()
+    default_system = str(cfg.get("default_system") or "").strip()
+    grounding_suffix = str(cfg.get("grounding_suffix") or "").strip()
+    task_custom = str(cfg.get("task_line_custom") or "TASK: Answer using the evidence above.").strip()
+    task_default = str(cfg.get("task_line_default") or "TASK: Write the best possible grounded answer.").strip()
+
     universal = _build_universal_rules(bot_display_name or "")
     custom = (system_instruction or "").strip()
     if custom:
-        system = custom + GROUNDING_SUFFIX + universal
-        task_line = "TASK: Answer using the evidence above. Use the tone, style, and persona from your system instructions."
+        system = custom + ("\n\n" + grounding_suffix if grounding_suffix else "") + universal
+        task_line = task_custom
     else:
-        system = DEFAULT_SYSTEM + universal
-        task_line = "TASK: Write the best possible grounded answer."
+        system = (default_system or "Answer using the provided evidence.") + universal
+        task_line = task_default
     question_section = (
         f"RECENT CONVERSATION:\n{conversation_context}\n\nQUESTION:\n{question}\n\n"
         if (conversation_context or "").strip()
@@ -962,6 +952,7 @@ def run_vertex_rag(
     conversation_context: Optional[str] = None,
     extra_evidence: Optional[List[Dict[str, str]]] = None,
     bot_display_name: Optional[str] = None,
+    parse_json_response: bool = False,
 ) -> Dict[str, Any]:
     """Minimal callable wrapper that reuses the script logic and returns structured output.
 
@@ -1086,18 +1077,17 @@ def run_vertex_rag(
     answer = sanitize_answer_citations(answer)
     _dbg({"type": "model_answer", "answer": answer})
 
-    # Prepare sources from evidence
-    for e in evidence:
-        sources.append({"excerpt": e.get("snippet", ""), "url": e.get("url", "")})
+    # Parse structured JSON response when expected (answer, intent, show_assets)
+    result = {"answer": answer, "sources": sources, "sufficient": True, "selected_links": [], "visited_urls": []}
+    if parse_json_response:
+        parsed = parse_structured_llm_response(answer)
+        result["answer"] = parsed["answer"]
+        result["intent"] = parsed["intent"]
+        result["show_assets"] = parsed["show_assets"]
+        _dbg({"type": "parsed_json_response", "intent": parsed["intent"], "show_assets": parsed["show_assets"]})
 
     _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
-    return {
-        "answer": answer,
-        "sources": sources,
-        "sufficient": True,
-        "selected_links": [],
-        "visited_urls": [],
-    }
+    return result
 
 
 def run_vertex_rag_stream(
@@ -1112,6 +1102,7 @@ def run_vertex_rag_stream(
     conversation_context: Optional[str] = None,
     extra_evidence: Optional[List[Dict[str, str]]] = None,
     bot_display_name: Optional[str] = None,
+    parse_json_response: bool = False,
 ):
     """Stream deltas as they are generated, then emit a final done event with sources."""
     def _dbg(evt: Dict[str, Any]) -> None:
@@ -1228,11 +1219,16 @@ def run_vertex_rag_stream(
     answer = sanitize_answer_citations("".join(answer_parts).strip())
     _dbg({"type": "model_answer", "answer": answer})
 
+    parsed = None
+    if parse_json_response:
+        parsed = parse_structured_llm_response(answer)
+        answer = parsed["answer"]
+        _dbg({"type": "parsed_json_response", "intent": parsed["intent"], "show_assets": parsed["show_assets"]})
+
     for e in evidence:
         sources.append({"excerpt": e.get("snippet", ""), "url": e.get("url", "")})
 
-    _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
-    yield {
+    done_payload = {
         "type": "done",
         "answer": answer,
         "sources": sources,
@@ -1240,6 +1236,11 @@ def run_vertex_rag_stream(
         "selected_links": [],
         "visited_urls": [],
     }
+    if parsed is not None:
+        done_payload["intent"] = parsed["intent"]
+        done_payload["show_assets"] = parsed["show_assets"]
+    _dbg({"type": "rag_done", "sources": sources, "sources_count": len(sources)})
+    yield done_payload
 
 def extract_topics_from_titles(titles: List[str]) -> Dict[str, int]:
     """

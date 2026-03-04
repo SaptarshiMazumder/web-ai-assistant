@@ -32,15 +32,21 @@ from infrastructure.clients.line_client import (
     build_buttons_template,
     build_text_with_quick_replies,
     show_typing as line_show_typing,
-    LINE_MENU_QUICK_PAYLOAD,
-    LINE_MENU_PAGE_PAYLOAD_PREFIX,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
+    get_line_menu_page_payload_prefix,
+    get_line_menu_quick_payload,
+    get_menu_category_order,
+    get_menu_keywords,
+    get_menu_request_pattern,
+    get_menu_texts,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
+    get_platform_json_response_enabled,
+    get_platform_json_response_instruction,
     get_reservation_config_from_widget,
     get_suggested_messages_for_widget,
 )
@@ -159,45 +165,15 @@ def _safe_int_env(name: str, default: int) -> int:
 
 
 _LINE_MENU_PAGE_SIZE = max(1, min(_safe_int_env("LINE_MENU_PAGE_SIZE", 500), 500))
-_MENU_REQUEST_PATTERN = re.compile(
-    r"^\s*(?:show|view|see|open|browse|check)?\s*(?:the\s*)?(?:full\s*)?"
-    r"(?:menu|menus|course|courses|dish|dishes|drinks?|party|parties|lunch)\s*$",
-    re.IGNORECASE,
-)
-_MENU_REQUEST_EXACT = {
-    "menu", "full menu", "show menu", "view menu", "view the menu",
-    "show me the menu", "see menu", "course menu", "party menu", "party",
-    "lunch menu", "lunch",
-    "メニュー", "メニュー見せて", "メニューを見せて", "メニューを見たい",
-    "コース", "料理メニュー", "ドリンクメニュー", "ランチ", "ランチメニュー",
-}
-_MENU_CATEGORY_ORDER = ("course", "dish", "drink", "lunch", "menu")
-_MENU_CATEGORY_LABELS: Dict[str, Dict[str, str]] = {
-    "en": {"course": "Party/Course menu", "dish": "Dish menu", "drink": "Drink menu", "lunch": "Lunch menu", "menu": "Menu"},
-    "ja": {"course": "コース", "dish": "料理", "drink": "ドリンク", "lunch": "ランチ", "menu": "メニュー"},
-}
-_MENU_TEXT_BY_LANG: Dict[str, Dict[str, str]] = {
-    "en": {
-        "view_full_menu": "View full menu: {url}",
-        "view_menu_button_prompt": "Tap the button below to view our full menu.",
-        "view_menu_button_title": "View full menu",
-        "menu_not_ready": "Our menu isn't ready yet. Please try again shortly after menu extraction completes.",
-        "tap_view_more": "Tap 'View more' to continue.",
-        "choose_another": "You can choose another option.",
-        "render_error": "I found menu items, but couldn't render menu text right now. Please try again.",
-        "more_items_prompt": "More items are available. Tap 'View more' to continue.",
-    },
-    "ja": {
-        "view_full_menu": "メニュー一覧: {url}",
-        "view_menu_button_prompt": "下のボタンでメニューをご覧いただけます。",
-        "view_menu_button_title": "メニューを見る",
-        "menu_not_ready": "メニューの準備中です。メニュー抽出完了後にもう一度お試しください。",
-        "tap_view_more": "「もっと見る」で続きを表示できます。",
-        "choose_another": "他の候補も選べます。",
-        "render_error": "メニューは見つかりましたが、現在表示できません。少ししてから再度お試しください。",
-        "more_items_prompt": "続きのメニューがあります。「もっと見る」で表示できます。",
-    },
-}
+
+
+def _get_menu_request_exact() -> set:
+    return {k.strip().lower() for k in get_menu_keywords() if k.strip()}
+
+
+def _get_menu_request_pattern_compiled():
+    pat = get_menu_request_pattern()
+    return re.compile(pat, re.IGNORECASE) if pat else None
 _PUBLIC_BASE_URL = (
     os.environ.get("PUBLIC_BASE_URL")
     or os.environ.get("BACKEND_PUBLIC_BASE_URL")
@@ -221,35 +197,37 @@ def _menu_category_for_item(item: Any) -> str:
     raw = str(metadata.get("category") or "").strip().lower()
     aliases = {"party": "course", "plan": "course", "set": "course", "beverage": "drink", "food": "dish", "lunch_set": "lunch"}
     category = aliases.get(raw, raw)
-    return category if category in _MENU_CATEGORY_ORDER else "menu"
+    order = get_menu_category_order()
+    return category if category in order else "menu"
 
 
 def _is_full_menu_request(text: str, payload: Optional[str]) -> bool:
     # LINE sends text directly (no separate payload); quick reply taps send "SHOW_FULL_MENU"
     raw_text = (text or "").strip().upper()
-    if raw_text == LINE_MENU_QUICK_PAYLOAD:
+    if raw_text == get_line_menu_quick_payload():
         return True
     raw_payload = (payload or "").strip().upper()
-    if raw_payload == LINE_MENU_QUICK_PAYLOAD:
+    if raw_payload == get_line_menu_quick_payload():
         return True
     normalized = (text or "").strip().lower()
     if not normalized:
         return False
-    if normalized in _MENU_REQUEST_EXACT:
+    if normalized in _get_menu_request_exact():
         return True
-    return bool(_MENU_REQUEST_PATTERN.match(normalized))
+    pat = _get_menu_request_pattern_compiled()
+    return bool(pat and pat.match(normalized))
 
 
 def _parse_menu_page_payload(payload: Optional[str]) -> Optional[Tuple[str, int]]:
     raw = (payload or "").strip()
-    if not raw.upper().startswith(LINE_MENU_PAGE_PAYLOAD_PREFIX):
+    if not raw.upper().startswith(get_line_menu_page_payload_prefix()):
         return None
-    rest = raw[len(LINE_MENU_PAGE_PAYLOAD_PREFIX):]
+    rest = raw[len(get_line_menu_page_payload_prefix()):]
     parts = rest.split(":", 1)
     if len(parts) != 2:
         return None
     category = parts[0].strip().lower()
-    if category not in _MENU_CATEGORY_ORDER:
+    if category not in get_menu_category_order():
         return None
     try:
         offset = int(parts[1].strip())
@@ -258,21 +236,22 @@ def _parse_menu_page_payload(payload: Optional[str]) -> Optional[Tuple[str, int]
     return (category, offset) if offset >= 0 else None
 
 
-def _menu_text(key: str, lang: str, **kwargs: Any) -> str:
-    table = _MENU_TEXT_BY_LANG.get(lang) or _MENU_TEXT_BY_LANG["en"]
-    template = table.get(key) or ""
+def _menu_text(key: str, lang: str, widget_config: Optional[Dict[str, Any]] = None, **kwargs: Any) -> str:
+    table = get_menu_texts(lang, widget_config=widget_config)
+    template = str(table.get(key) or "").strip()
     return template.format(**kwargs) if template and kwargs else template
 
 
-def _menu_category_label(category: str, lang: str) -> str:
-    return (_MENU_CATEGORY_LABELS.get(lang) or _MENU_CATEGORY_LABELS["en"]).get(category, category.title())
+def _menu_category_label(category: str, lang: str, widget_config: Optional[Dict[str, Any]] = None) -> str:
+    table = get_menu_texts(lang, widget_config=widget_config)
+    labels = table.get("category_labels") or {}
+    return str(labels.get(category) or category.title())
 
 
-def _view_more_title(category: str, lang: str) -> str:
-    titles_ja = {"course": "コース続き", "dish": "料理続き", "drink": "ドリンク続き", "lunch": "ランチ続き", "menu": "メニュー続き"}
-    titles_en = {"course": "More Course", "dish": "More Dish", "drink": "More Drink", "lunch": "More Lunch", "menu": "More Menu"}
-    t = titles_ja if lang == "ja" else titles_en
-    return t.get(category, "もっと見る" if lang == "ja" else "View more")
+def _view_more_title(category: str, lang: str, widget_config: Optional[Dict[str, Any]] = None) -> str:
+    table = get_menu_texts(lang, widget_config=widget_config)
+    titles = table.get("view_more_titles") or {}
+    return str(titles.get(category) or ("もっと見る" if lang == "ja" else "View more"))
 
 
 def _menu_price_and_details(item: Any) -> Tuple[str, str]:
@@ -341,7 +320,7 @@ def _build_line_text_chunks(lines: List[str], max_chars: int = 4500) -> List[str
 
 
 def _make_menu_page_payload(category: str, offset: int) -> str:
-    return f"{LINE_MENU_PAGE_PAYLOAD_PREFIX}{category}:{offset}"
+    return f"{get_line_menu_page_payload_prefix()}{category}:{offset}"
 
 
 async def _send_menu_by_category_line(
@@ -398,11 +377,12 @@ async def _send_menu_by_category_line(
         logger.warning("LINE menu button and fallback failed bot_id=%s", bot_id)
         raise RuntimeError("LINE menu send failed")
 
-    grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
+    order = get_menu_category_order()
+    grouped: Dict[str, List[Any]] = {k: [] for k in order}
     for item in items:
         grouped[_menu_category_for_item(item)].append(item)
 
-    categories = [page_category] if page_category and page_category in _MENU_CATEGORY_ORDER else list(_MENU_CATEGORY_ORDER)
+    categories = [page_category] if page_category and page_category in order else list(order)
     pending_more_qr: List[dict] = []
     text_parts: List[str] = []
 
@@ -963,6 +943,9 @@ async def _handle_text_message(
     platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=lang)
     if platform_asset_instruction:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=lang)
+    if json_response_instruction:
+        system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
 
     # Reservation: config-driven from platform profiles (Tabelog, HotPepper, TableCheck)
     reservation_config = get_reservation_config_from_widget(widget_config, lang=lang)
@@ -982,7 +965,7 @@ async def _handle_text_message(
     allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
 
     ai_query = text
-    if text == LINE_MENU_QUICK_PAYLOAD or _is_full_menu_request(text, None):
+    if text == get_line_menu_quick_payload() or _is_full_menu_request(text, None):
         ai_query = "Menu"
 
     try:
@@ -997,6 +980,7 @@ async def _handle_text_message(
             temperature=temperature,
             conversation_context=conversation_context or None,
             extra_evidence=extra_evidence if extra_evidence else None,
+            parse_json_response=get_platform_json_response_enabled(widget_config),
         )
         answer = str(result.get("answer") or "").strip()
         if not answer:
@@ -1007,22 +991,24 @@ async def _handle_text_message(
                 answer, reservation_config["url"], reservation_config["domain_key"]
             )
 
-        # Extract {{asset:ID}} markers from the LLM answer
-        answer, marker_cards = resolve_asset_markers(
-            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
-        )
-        if marker_cards:
-            asset_cards = marker_cards
+        show_assets = result.get("show_assets")
+        if show_assets is False:
+            asset_cards = []
         else:
-            # Fallback to keyword-based matching
-            answer, asset_cards = process_answer_assets(
-                answer,
-                bot.bot_id,
-                user_query=ai_query,
-                session_id=session.session_id,
-                allowed_asset_types=allowed_asset_types,
-                asset_term_config=asset_rules.get("asset_term_config"),
+            answer, marker_cards = resolve_asset_markers(
+                answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
             )
+            if marker_cards:
+                asset_cards = marker_cards
+            else:
+                answer, asset_cards = process_answer_assets(
+                    answer,
+                    bot.bot_id,
+                    user_query=ai_query,
+                    session_id=session.session_id,
+                    allowed_asset_types=allowed_asset_types,
+                    asset_term_config=asset_rules.get("asset_term_config"),
+                )
     except Exception as e:
         if is_quota_exhausted_error(e):
             logger.warning("RAG quota exhausted for LINE message bot_id=%s", bot.bot_id)

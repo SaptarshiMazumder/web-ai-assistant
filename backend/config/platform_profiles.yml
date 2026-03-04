@@ -41,6 +41,180 @@ default_suggested_messages:
     label: { en: "Ask a question", ja: "質問する" }
     prompt: { en: "Ask a question", ja: "質問する" }
 
+# Default RAG/LLM instructions (grounding, citations, universal rules). Used when no custom persona.
+default_rag_instruction:
+  default_system: |
+    Answer the user's question using ONLY the provided evidence snippets.
+    Base your answer on whatever relevant content the snippets contain.
+    Only say you cannot find the information if NONE of the snippets mention the topic at all.
+    Keep it concise.
+
+    CITATION LINK RULES (follow exactly):
+    - Cite sources ONLY as inline markdown hyperlinks woven naturally into sentences: [link text](URL).
+    - NEVER use 'source' or 'sources' as the markdown link text.
+    - NEVER include bracket citations like [Some_File.pdf page 1] or [Document page 5].
+    - NEVER mention PDF filenames or page numbers in the answer.
+    - NEVER put URL, hostname, or domain inside the brackets. WRONG: [chocozap.jp](URL), [example.com/about](URL).
+    - For root URL (ends with / or has no path): use exactly 'the website'. Example: [the website](https://example.com/).
+    - For other pages: use one of 'here', 'this page', or a phrase from the path (e.g. /about -> 'about page', /products -> 'product page', /parking -> 'parking page').
+    - Valid link text examples: 'here', 'this page', 'the website', 'about page', 'product page', 'parking page'.
+    - ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35, 75]. Never refer to sources by number.
+    - ABSOLUTELY FORBIDDEN: appending a list of URLs or bullet-point citations at the end of the answer.
+    - ABSOLUTELY FORBIDDEN: showing raw URLs as plain text anywhere in the answer.
+    - Every source reference MUST be an inline [descriptive text](URL) hyperlink within a sentence.
+  grounding_suffix: |
+    You must answer using ONLY the provided evidence snippets and cite sources via inline markdown hyperlinks woven into sentences.
+    CITATION RULES: Link text must be 'the website' for root URLs; for other pages use 'here', 'this page', or path-based phrases like 'about page', 'product page'.
+    NEVER use 'source' or 'sources' as the markdown link text.
+    NEVER include bracket citations like [Some_File.pdf page 1]. NEVER mention PDF filenames or page numbers.
+    NEVER use URL or domain as link text.
+    ABSOLUTELY FORBIDDEN: numbered references like [1], [2], [1, 2], [1, 11, 35]. Never refer to sources by number.
+    ABSOLUTELY FORBIDDEN: appending bullet-point URL lists at the end.
+    ABSOLUTELY FORBIDDEN: showing raw URLs as plain text.
+    Every source reference must be an inline [descriptive text](URL) link.
+    Base your answer on whatever relevant content the snippets contain; only say you don't know if the snippets contain no relevant information at all. Keep responses concise.
+  universal_rules_template: |
+    UNIVERSAL RESPONSE RULES (always follow, override any other style instructions if there is a conflict):
+    - Always speak in first person plural on behalf of the business. Say 'We' or 'Our' (e.g. 'We offer...', 'Our team...', 'You can reach us at...'). NEVER refer to {bot_name} in third person (e.g. NEVER say '{bot_name} offers...' — say 'We offer...' instead).
+    - NEVER use phrases like 'the evidence provided', 'based on the context', 'according to the documents', 'the provided text', 'the context shows', 'from the information given'. These sound robotic and unnatural.
+    - If you do not have enough information to answer, say: "I don't have that information right now — for the most up-to-date details, please check our website or get in touch with us directly."
+    - Never make up information. If something is not in the evidence, say you don't have it rather than guessing.
+  task_line_custom: "TASK: Answer using the evidence above. Use the tone, style, and persona from your system instructions."
+  task_line_default: "TASK: Write the best possible grounded answer."
+  link_text_mappings:
+    about: "about page"
+    contact: "contact page"
+    faq: "faq page"
+    faqs: "faq page"
+    hours: "hours page"
+    pricing: "pricing page"
+    prices: "pricing page"
+    price: "pricing page"
+    menu: "menu page"
+    services: "services page"
+    service: "services page"
+    booking: "booking page"
+    reserve: "booking page"
+    reservation: "booking page"
+    reservations: "booking page"
+    location: "location page"
+    access: "location page"
+  generic_link_texts:
+    - source
+    - sources
+    - link
+    - links
+    - here
+    - this
+    - page
+    - this page
+    - the page
+    - website
+    - the website
+    - site
+    - this site
+    - more
+    - details
+    - info
+    - information
+    - click here
+    - learn more
+    - read more
+
+# Default menu flow texts (LINE, Instagram). Platforms can override via metadata.menu_texts.
+default_menu_texts:
+  en:
+    view_full_menu: "View full menu: {url}"
+    view_menu_button_prompt: "Tap the button below to view our full menu."
+    view_menu_button_title: "View full menu"
+    menu_not_ready: "Our menu isn't ready yet. Please try again shortly after menu extraction completes."
+    tap_view_more: "Tap to view more"
+    choose_another: "You can choose another option."
+    more_items_prompt: "Tap a category to view more"
+    render_error: "I found menu items, but couldn't render menu text right now. Please try again."
+    category_labels:
+      course: "Party/Course menu"
+      dish: "Dish menu"
+      drink: "Drink menu"
+      lunch: "Lunch menu"
+      menu: "Menu"
+    view_more_titles:
+      course: "More Course"
+      dish: "More Dish"
+      drink: "More Drink"
+      lunch: "More Lunch"
+      menu: "More Menu"
+  ja:
+    view_full_menu: "メニュー一覧: {url}"
+    view_menu_button_prompt: "下のボタンでメニューをご覧いただけます。"
+    view_menu_button_title: "メニューを見る"
+    menu_not_ready: "メニューの準備中です。メニュー抽出完了後にもう一度お試しください。"
+    tap_view_more: "続きを見る"
+    choose_another: "他の候補も選べます。"
+    more_items_prompt: "カテゴリをタップして続きを見る"
+    render_error: "メニュー項目は見つかりましたが、表示できませんでした。しばらくしてからお試しください。"
+    category_labels:
+      course: "コース"
+      dish: "料理"
+      drink: "ドリンク"
+      lunch: "ランチ"
+      menu: "メニュー"
+    view_more_titles:
+      course: "コース続き"
+      dish: "料理続き"
+      drink: "ドリンク続き"
+      lunch: "ランチ続き"
+      menu: "メニュー続き"
+default_menu_keywords:
+  - "menu"
+  - "full menu"
+  - "show menu"
+  - "view menu"
+  - "view the menu"
+  - "show me the menu"
+  - "see menu"
+  - "course menu"
+  - "party menu"
+  - "party"
+  - "lunch menu"
+  - "lunch"
+  - "メニュー"
+  - "メニュー見せて"
+  - "メニューを見せて"
+  - "メニューを見たい"
+  - "コース"
+  - "料理メニュー"
+  - "ドリンクメニュー"
+  - "ランチ"
+  - "ランチメニュー"
+default_menu_category_order:
+  - course
+  - dish
+  - drink
+  - lunch
+  - menu
+default_menu_request_pattern: "^(?:show|view|see|open|browse|check)?\\s*(?:the\\s*)?(?:full\\s*)?(?:menu|menus|course|courses|dish|dishes|drinks?|party|parties|lunch)\\s*$"
+line_menu_quick_payload: "SHOW_FULL_MENU"
+line_menu_page_payload_prefix: "SHOW_MENU_PAGE:"
+instagram_menu_quick_payload: "SHOW_FULL_MENU"
+instagram_menu_page_payload_prefix: "SHOW_MENU_PAGE:"
+
+# Default JSON response format for ALL bots. Platforms (Tabelog, HotPepper) add extra keys like intent.
+default_json_response_format:
+  schema:
+    answer: "Plain text answer for the customer (markdown links allowed)"
+    show_assets: "boolean"
+  show_assets_true_when:
+    en: |
+      Set show_assets to TRUE when the question is about products, services, menu, items, offerings, or anything the business sells or provides.
+    ja: |
+      show_assetsをTRUEにする場合: 商品、サービス、メニュー、品目、提供内容など、事業が販売・提供するものについての質問。
+  show_assets_false_when:
+    en: |
+      Set show_assets to FALSE when the question is about contact, hours, location, booking, or general info.
+    ja: |
+      show_assetsをFALSEにする場合: 連絡先、営業時間、場所、予約、または一般的な情報についての質問。
+
 platforms:
   tabelog.com:
     domain_pattern: "tabelog\\.com"
@@ -218,15 +392,34 @@ platforms:
             - 一覧
       asset_instructions:
         en: |
-          ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
-          - Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset_ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.
-          - Menu/dish/course intent: Use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
-          - Other questions: Use {{asset_ID}} only when the asset is directly relevant to the answer.
+          ASSET USAGE RULES (menu items). When show_assets is true, use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
         ja: |
-          アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:
-          - 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset_ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。
-          - メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。
-          - その他の質問: アセットが回答に直接関連する場合のみ{{asset_ID}}を使用してください。
+          アセット使用ルール（メニュー項目）。show_assetsがtrueの場合、質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用してください。
+      json_response_format:
+        enabled: true
+        schema:
+          answer: "Plain text answer for the customer (markdown links allowed)"
+          intent: "reservation | menu | other"
+          show_assets: "boolean"
+        show_assets_true_when:
+          en: |
+            Set show_assets to TRUE when the question is about: menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list").
+          ja: |
+            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。
+        show_assets_false_when:
+          en: |
+            Set show_assets to FALSE when the question is about: reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
+          ja: |
+            show_assetsをFALSEにする場合: 予約、席、営業時間、場所、連絡先、または一般的な情報についての質問。回答は予約・場所・連絡先にのみ焦点を当ててください。
+        intent_when:
+          en: |
+            reservation: when the question is about booking, tables, hours, location, contact, or how to reserve.
+            menu: when the question is about dishes, food, drinks, courses, lunch, dinner, desserts, or specific items.
+            other: for any other question.
+          ja: |
+            reservation: 予約、席、営業時間、場所、連絡先、予約方法についての質問。
+            menu: 料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、特定の品目についての質問。
+            other: その他の質問。
 
   hotpepper.jp:
     domain_pattern: "hotpepper\\.jp"
@@ -398,26 +591,34 @@ platforms:
             - 一覧
       asset_instructions:
         en: |
-          ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
-          - Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset_ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.
-          - Menu/dish/course intent: Use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
-          - Other questions: Use {{asset_ID}} only when the asset is directly relevant to the answer.
+          ASSET USAGE RULES (menu items). When show_assets is true, use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
         ja: |
-          アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:
-          - 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset_ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。
-          - メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。
-          - その他の質問: アセットが回答に直接関連する場合のみ{{asset_ID}}を使用してください。
-            - multiple
-            - full menu
-            - whole menu
-            - entire menu
-            - more photos
-            - more images
-            - 全部
-            - もっと
-            - 全メニュー
-            - メニュー全部
-            - 一覧
+          アセット使用ルール（メニュー項目）。show_assetsがtrueの場合、質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用してください。
+      json_response_format:
+        enabled: true
+        schema:
+          answer: "Plain text answer for the customer (markdown links allowed)"
+          intent: "reservation | menu | other"
+          show_assets: "boolean"
+        show_assets_true_when:
+          en: |
+            Set show_assets to TRUE when the question is about: menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list").
+          ja: |
+            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。
+        show_assets_false_when:
+          en: |
+            Set show_assets to FALSE when the question is about: reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
+          ja: |
+            show_assetsをFALSEにする場合: 予約、席、営業時間、場所、連絡先、または一般的な情報についての質問。回答は予約・場所・連絡先にのみ焦点を当ててください。
+        intent_when:
+          en: |
+            reservation: when the question is about booking, tables, hours, location, contact, or how to reserve.
+            menu: when the question is about dishes, food, drinks, courses, lunch, dinner, desserts, or specific items.
+            other: for any other question.
+          ja: |
+            reservation: 予約、席、営業時間、場所、連絡先、予約方法についての質問。
+            menu: 料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、特定の品目についての質問。
+            other: その他の質問。
       platform_type: restaurant_reservation
       country: JP
       service_name: HotPepper Gourmet
