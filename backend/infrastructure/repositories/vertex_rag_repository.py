@@ -17,23 +17,71 @@ VERTEX_LOCATION = (config.LOCATION or "us-central1").strip()
 
 
 class VertexRAGRepository(RAGRepository):
+
+    @staticmethod
+    def _is_not_found_error(exc: Exception) -> bool:
+        """Check if an exception indicates the resource genuinely does not exist (404/NOT_FOUND)."""
+        msg = str(exc).lower()
+        return "404" in msg or "not_found" in msg or "not found" in msg
+
     def ensure_corpus(self, bot_id: str, *, force_new: bool = False) -> str:
-        """Ensure a RAG corpus exists for the bot, return corpus resource name."""
+        """Ensure a RAG corpus exists for the bot, return corpus resource name.
+
+        SAFETY: Only creates a new corpus if:
+          - No corpus reference exists in the DB, OR
+          - force_new=True, OR
+          - The existing corpus was genuinely deleted (404 from Vertex AI).
+
+        Transient errors (network, auth, timeout) are retried with backoff.
+        If retries are exhausted, the existing ref is returned — we NEVER
+        silently create a new empty corpus and lose indexed data.
+        """
+        import logging
+        _log = logging.getLogger("VertexRAGRepository.ensure_corpus")
+
         from infrastructure.db.repositories import PostgresBotCorpusRepository
 
         corpus_repo = PostgresBotCorpusRepository()
         existing = corpus_repo.get_bot_corpus(bot_id)
-        if existing and not force_new:
-            try:
-                vertexai.init(project=PROJECT_ID, location=VERTEX_LOCATION)
-                try:
-                    vx_rag.get_corpus(existing)
-                    return existing
-                except Exception:
-                    pass
-            except Exception:
-                pass
 
+        if existing and not force_new:
+            max_retries = 3
+            backoff = 2.0
+            last_err: Exception | None = None
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    vertexai.init(project=PROJECT_ID, location=VERTEX_LOCATION)
+                    vx_rag.get_corpus(existing)
+                    return existing  # ✅ Corpus exists and is accessible
+                except Exception as exc:
+                    last_err = exc
+                    if self._is_not_found_error(exc):
+                        _log.warning(
+                            "Corpus %s for bot %s was deleted (404). Will create a new one.",
+                            existing, bot_id,
+                        )
+                        break
+                    _log.warning(
+                        "ensure_corpus: transient error verifying corpus %s for bot %s "
+                        "(attempt %d/%d): %s",
+                        existing, bot_id, attempt, max_retries, exc,
+                    )
+                    if attempt < max_retries:
+                        time.sleep(backoff)
+                        backoff *= 2
+            else:
+                # All retries exhausted and NOT a 404 — refuse to recreate.
+                _log.error(
+                    "ensure_corpus: REFUSING to create new corpus for bot %s. "
+                    "Existing corpus ref %s could not be verified after %d attempts. "
+                    "Last error: %s. Returning existing ref to avoid data loss.",
+                    bot_id, existing, max_retries, last_err,
+                )
+                return existing
+
+        _log.info("Creating new RAG corpus for bot %s (force_new=%s, had_existing=%s)",
+                  bot_id, force_new, bool(existing))
         vertexai.init(project=PROJECT_ID, location=VERTEX_LOCATION)
         from infrastructure.rag.crawl_service import _slugify
         from infrastructure.services.indexing_service import _rag_display_name
@@ -49,6 +97,7 @@ class VertexRAGRepository(RAGRepository):
             backend_config=vx_rag.RagVectorDbConfig(rag_embedding_model_config=emb_cfg),
         )
         corpus_repo.upsert_bot_corpus(bot_id, corpus.name)
+        _log.info("Created new corpus %s for bot %s", corpus.name, bot_id)
         return corpus.name
 
     def import_documents(self, corpus_resource: str, storage_prefix: str) -> None:

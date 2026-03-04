@@ -744,8 +744,116 @@ def _extract_tabelog_menu_items(page_url: str) -> List[Dict[str, Any]]:
     return _dedupe_menu_items(course_items + menu_items)
 
 
+def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
+    html_text = _fetch_html(page_url)
+    if not html_text:
+        return []
+        
+    try:
+        from bs4 import BeautifulSoup  # type: ignore
+    except Exception:
+        return []
+
+    soup = BeautifulSoup(html_text, "html.parser")
+    if not soup:
+        return []
+
+    items: List[Dict[str, Any]] = []
+
+    # Hotpepper typically uses .courseList .courseItem or .course-cassette for courses
+    # and .itemWrapper or similar for dishes.
+    # We will try a few common Hotpepper CSS selectors.
+    
+    # 1. Course items
+    course_blocks = soup.select(".course-list .course-item, .courseList .courseItem, .courseList li, .course-cassette")
+    for block in course_blocks:
+        name_el = block.select_one(".course-title, .courseTitle, .course-name, h3, .courseList-name, .courseList-title, .course-cassette__title")
+        name = _strip_html(name_el.get_text(" ", strip=True) if name_el else "")
+        if not name:
+            continue
+            
+        price_el = block.select_one(".price, .course-price, .courseList-price, .courseList-priceIn, .course-cassette__price")
+        price = _strip_html(price_el.get_text(" ", strip=True) if price_el else "")
+        
+        desc_el = block.select_one(".course-desc, .courseDesc, .courseList-desc, .course-cassette__desc")
+        body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
+        description = _format_menu_description(price, body)
+        
+        link_el = block.select_one("a[href]")
+        href = str(link_el.get("href") or "").strip() if link_el else ""
+        resolved_link = urljoin(page_url, href) if href else page_url
+        
+        img_el = block.select_one("img")
+        image_src = ""
+        if img_el:
+            for attr in ("src", "data-src", "data-original"):
+                candidate = str(img_el.get(attr) or "").strip()
+                if candidate:
+                    image_src = candidate
+                    break
+        resolved_image = urljoin(page_url, image_src) if image_src else None
+        
+        items.append(
+            {
+                "name": name,
+                "price_text": price,
+                "details": body,
+                "description": description,
+                "link_url": resolved_link,
+                "image_url": resolved_image,
+                "category": "course",
+                "keywords": _keywords_for_menu_item(name, description),
+            }
+        )
+        
+    # 2. Dish/Drink items (food/drink pages)
+    item_blocks = soup.select(".itemWrapper, .foodWrapper, .drinkWrapper, .menu-item, .menuItem, .detailList li")
+    for block in item_blocks:
+        name_el = block.select_one(".itemName, .item-name, .menuTitle, .detailList-name, h3")
+        name = _strip_html(name_el.get_text(" ", strip=True) if name_el else "")
+        if not name:
+            continue
+            
+        price_el = block.select_one(".itemPrice, .item-price, .price, .detailList-price")
+        price = _strip_html(price_el.get_text(" ", strip=True) if price_el else "")
+        
+        desc_el = block.select_one(".itemDesc, .item-desc, .detailList-desc")
+        body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
+        description = _format_menu_description(price, body)
+        
+        img_el = block.select_one("img")
+        image_src = ""
+        if img_el:
+            for attr in ("src", "data-src", "data-original"):
+                candidate = str(img_el.get(attr) or "").strip()
+                if candidate:
+                    image_src = candidate
+                    break
+        resolved_image = urljoin(page_url, image_src) if image_src else None
+        
+        category = "dish"
+        if "/drink" in page_url:
+            category = "drink"
+            
+        items.append(
+            {
+                "name": name,
+                "price_text": price,
+                "details": body,
+                "description": description,
+                "link_url": page_url,
+                "image_url": resolved_image,
+                "category": category,
+                "keywords": _keywords_for_menu_item(name, description),
+            }
+        )
+
+    return _dedupe_menu_items(items)
+
+
 _DETERMINISTIC_MENU_EXTRACTORS: Dict[str, Callable[[str], List[Dict[str, Any]]]] = {
     "tabelog_v1": _extract_tabelog_menu_items,
+    "hotpepper_v1": _extract_hotpepper_menu_items,
 }
 
 

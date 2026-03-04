@@ -1656,6 +1656,20 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
                 {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
                 for m in resolved
             ]
+            
+        # Also resolve menu extraction patterns if a platform is configured
+        from domain.platform_profiles import resolve_platform_profile
+        platform_name = widget_config.get("reservationPlatform")
+        platform_url = None
+        if platform_name == "hotpepper":
+            platform_url = widget_config.get("hotPepperUrl")
+        elif platform_name == "tabelog":
+            platform_url = widget_config.get("tabelogUrl")
+            
+        if platform_url:
+            profile, _ = resolve_platform_profile(platform_url)
+            if profile and profile.menu_url_patterns:
+                widget_config["menuUrlPatterns"] = profile.menu_url_patterns
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,

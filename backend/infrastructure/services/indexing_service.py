@@ -159,21 +159,72 @@ def _bot_base_prefix(base_prefix_root: str, bot_id: str) -> str:
     return f"{tenant}/bots/{bot_id}"
 
 
+def _is_not_found_error(exc: Exception) -> bool:
+    """Check if an exception indicates the resource genuinely does not exist (404/NOT_FOUND)."""
+    msg = str(exc).lower()
+    return "404" in msg or "not_found" in msg or "not found" in msg
+
+
 def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
+    """Ensure a RAG corpus exists for the bot, return corpus resource name.
+
+    SAFETY: Only creates a new corpus if:
+      - No corpus reference exists in the DB, OR
+      - force_new=True, OR
+      - The existing corpus was genuinely deleted (404 from Vertex AI).
+
+    Transient errors (network, auth, timeout) are retried with backoff.
+    If retries are exhausted, the error is raised — we NEVER silently
+    create a new empty corpus and lose the reference to indexed data.
+    """
+    import logging
+    _log = logging.getLogger("ensure_bot_corpus")
+
     existing = _bot_corpus_repo.get_bot_corpus(bot_id)
+
     if existing and not force_new:
-        # Verify the corpus still exists (it might have been deleted manually).
-        try:
-            vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
+        # Verify the corpus still exists — but distinguish 404 from transient errors.
+        max_retries = 3
+        backoff = 2.0
+        last_err: Exception | None = None
+
+        for attempt in range(1, max_retries + 1):
             try:
+                vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
                 vx_rag.get_corpus(existing)
-                return existing
-            except Exception:
-                # Fall through to recreate
-                pass
-        except Exception:
-            # If validation fails, fall back to creating a new corpus.
-            pass
+                return existing  # ✅ Corpus exists and is accessible
+            except Exception as exc:
+                last_err = exc
+                if _is_not_found_error(exc):
+                    # Corpus was genuinely deleted — safe to recreate.
+                    _log.warning(
+                        "Corpus %s for bot %s was deleted (404). Will create a new one.",
+                        existing, bot_id,
+                    )
+                    break
+                # Transient error — retry
+                _log.warning(
+                    "ensure_bot_corpus: transient error verifying corpus %s for bot %s "
+                    "(attempt %d/%d): %s",
+                    existing, bot_id, attempt, max_retries, exc,
+                )
+                if attempt < max_retries:
+                    import time
+                    time.sleep(backoff)
+                    backoff *= 2
+        else:
+            # All retries exhausted and it was NOT a 404 — refuse to recreate.
+            _log.error(
+                "ensure_bot_corpus: REFUSING to create new corpus for bot %s. "
+                "Existing corpus ref %s could not be verified after %d attempts. "
+                "Last error: %s. Returning existing ref to avoid data loss.",
+                bot_id, existing, max_retries, last_err,
+            )
+            return existing  # Return the existing ref — better than destroying it
+
+    # No existing corpus, or force_new, or existing was genuinely deleted (404).
+    _log.info("Creating new RAG corpus for bot %s (force_new=%s, had_existing=%s)",
+              bot_id, force_new, bool(existing))
     vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
     display_name = _rag_display_name(bot_id)
     from infrastructure.rag.crawl_service import EMBEDDING_PUBLISHER_MODEL
@@ -187,6 +238,7 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
         backend_config=vx_rag.RagVectorDbConfig(rag_embedding_model_config=emb_cfg),
     )
     _bot_corpus_repo.upsert_bot_corpus(bot_id, corpus.name)
+    _log.info("Created new corpus %s for bot %s", corpus.name, bot_id)
     return corpus.name
 
 

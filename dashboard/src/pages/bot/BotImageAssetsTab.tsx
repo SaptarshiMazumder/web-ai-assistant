@@ -201,11 +201,44 @@ export default function BotImageAssetsTab() {
       }
 
       setExtractPages(urls)
+
+      // Fetch bot details to get menuUrlPatterns
+      let patterns: string[] = []
+      try {
+        const botResp = await authedFetch(`/v1/org/bots/${botId}`)
+        if (botResp.ok) {
+          const botData = await botResp.json()
+          if (botData.widget_config && Array.isArray(botData.widget_config.menuUrlPatterns)) {
+            patterns = botData.widget_config.menuUrlPatterns
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch bot config for patterns", e)
+      }
+
       setSelectedExtractPages((prev) => {
-        if (!prev.size) return new Set(urls)
+        // Only set default selection if we haven't selected anything yet
+        if (prev.size > 0 && urls.length === prev.size) {
+          return prev
+        }
+
         const next = new Set<string>()
-        prev.forEach((url) => {
-          if (seen.has(url)) next.add(url)
+        urls.forEach((url) => {
+          if (patterns.length === 0) {
+            // No platform patterns configured (e.g. normal bot), default to unchecked
+            return
+          }
+          // If patterns exist, try to match
+          const matched = patterns.some(p => {
+            try {
+              return new RegExp(p).test(url)
+            } catch {
+              return false
+            }
+          })
+          if (matched) {
+            next.add(url)
+          }
         })
         return next
       })

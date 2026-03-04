@@ -232,12 +232,32 @@ platforms:
     domain_pattern: "hotpepper\\.jp"
     include_paths: []
     exclude_paths:
-      - "/report"
-      - "/favorite"
+      - "/report(?:/|$)"
+      - "/favorite(?:/|$)"
+      - "/\\$\\("       # Malformed JS links like /$(this).attr(/
+      - "/\\d+/?$"      # Numeric pagination/photo paths like /4/, /5/, etc.
     priority: 10
     strip_query_params: true
     menu_url_patterns:
-      - "/course"
+      - "/course(?:/|$)"
+      - "/drink(?:/|$)"
+      - "/lunch(?:/|$)"
+      - "/food(?:/|$)"
+    menu_extraction_rules:
+      enabled: true
+      mode: deterministic
+      extractor: hotpepper_v1
+      allowed_path_patterns:
+        - "^/(?:[a-z]{2}/)?strJ\\d+/(?:food|drink|course|lunch)(?:/|$)"
+      path_category_patterns:
+        - pattern: "/course(?:/|$)"
+          category: course
+        - pattern: "/drink(?:/|$)"
+          category: drink
+        - pattern: "/lunch(?:/|$)"
+          category: lunch
+        - pattern: "/food(?:/|$)"
+          category: dish
     metadata:
       asset_filter:
         reservation_suppress_terms:
@@ -263,6 +283,17 @@ platforms:
           - ランチ
           - ディナー
           - デザート
+      suggested_messages:
+        - id: suggest_menu
+          type: show_menu
+          label: { en: "Menu", ja: "メニュー" }
+        - id: suggest_reservation
+          type: ai_response
+          label: { en: "Reservation", ja: "予約" }
+          prompt: { en: "Reservation", ja: "予約" }
+        - id: suggest_support
+          type: escalate
+          label: { en: "Human support", ja: "サポートに相談" }
       asset_rules:
         asset_term_config:
           generic_tokens:
@@ -348,6 +379,28 @@ platforms:
             - more
             - many
             - several
+            - multiple
+            - full menu
+            - whole menu
+            - entire menu
+            - more photos
+            - more images
+            - 全部
+            - もっと
+            - 全メニュー
+            - メニュー全部
+            - 一覧
+      asset_instructions:
+        en: |
+          ASSET USAGE RULES (menu items). You decide when to use assets based on the user's intent:
+          - Reservation/booking intent: Answer with reservation information (link, hours, policies, how to reserve, etc.). Do NOT use {{asset_ID}}. Do NOT mention menu, dishes, courses, or products. Keep the response focused on reservation only.
+          - Menu/dish/course intent: Use {{asset_ID}} only for items that directly match their question. Be precise: e.g. 'butter chicken curry' means cite only the butter chicken curry item, not chicken curry.
+          - Other questions: Use {{asset_ID}} only when the asset is directly relevant to the answer.
+        ja: |
+          アセット使用ルール（メニュー項目）。ユーザーの意図に応じて判断してください:
+          - 予約・ご予約の意図: 予約情報（リンク、営業時間、ポリシー、予約方法など）で回答してください。{{asset_ID}}は使用しないでください。メニュー、料理、コース、商品には触れないでください。予約にのみ焦点を当ててください。
+          - メニュー・料理・コースの意図: 質問に直接一致する項目のみ{{asset_ID}}を使用してください。正確に: 例「バターチキンカレー」はバターチキンカレーの項目のみを引用し、チキンカレーは含めない。
+          - その他の質問: アセットが回答に直接関連する場合のみ{{asset_ID}}を使用してください。
             - multiple
             - full menu
             - whole menu

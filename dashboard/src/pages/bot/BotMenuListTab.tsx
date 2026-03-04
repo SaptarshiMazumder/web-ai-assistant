@@ -247,11 +247,44 @@ export default function BotMenuListTab() {
       }
 
       setExtractPages(urls)
+
+      // Fetch bot details to get menuUrlPatterns
+      let patterns: string[] = []
+      try {
+        const botResp = await authedFetch(`/v1/org/bots/${botId}`)
+        if (botResp.ok) {
+          const botData = await botResp.json()
+          if (botData.widget_config && Array.isArray(botData.widget_config.menuUrlPatterns)) {
+            patterns = botData.widget_config.menuUrlPatterns
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch bot config for patterns", e)
+      }
+
       setSelectedExtractPages((prev) => {
-        if (!prev.size) return new Set(urls)
+        // Only set default selection if we haven't selected anything yet
+        if (prev.size > 0 && urls.length === prev.size) {
+          return prev
+        }
+
         const next = new Set<string>()
-        prev.forEach((url) => {
-          if (seen.has(url)) next.add(url)
+        urls.forEach((url) => {
+          if (patterns.length === 0) {
+            // No platform patterns configured (e.g. normal bot), default to unchecked
+            return
+          }
+          // If patterns exist, try to match
+          const matched = patterns.some(p => {
+            try {
+              return new RegExp(p).test(url)
+            } catch {
+              return false
+            }
+          })
+          if (matched) {
+            next.add(url)
+          }
         })
         return next
       })
@@ -1113,298 +1146,298 @@ export default function BotMenuListTab() {
           !loading && items.length > 0 && (
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
               {items.map((a) => {
-                  const isEditing = editingId === a.asset_id
-                  const isDeleting = deleting === a.asset_id
-                  const structured = getStructuredMenuFields(a)
+                const isEditing = editingId === a.asset_id
+                const isDeleting = deleting === a.asset_id
+                const structured = getStructuredMenuFields(a)
 
-                  if (isEditing) {
-                    return (
-                      <GlassCard key={a.asset_id} style={{ padding: 0, overflow: 'hidden' }}>
-                        {/* Image fills top without padding */}
-                        {a.image_url ? (
-                          <img
-                            src={`${API_BASE}${a.image_url}`}
-                            alt={a.name}
-                            style={{
-                              width: '100%',
-                              height: 160,
-                              objectFit: 'cover',
-                            }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: '100%',
-                              height: 160,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: '#f1f5f9',
-                              color: '#94a3b8',
-                            }}
-                          >
-                            <UtensilsCrossed size={32} />
-                          </div>
-                        )}
-
-                        {/* Content with padding */}
-                        <div style={{ padding: '1rem', display: 'grid', gap: '0.75rem' }}>
-                          <label
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              fontSize: '0.82rem',
-                              color: '#64748b',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <Upload size={14} />
-                            {t('botMenuList.replaceImage', 'Replace image')}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={(e) => setEditFile(e.target.files?.[0] || null)}
-                            />
-                          </label>
-
-                          <GlassField label={t('botMenuList.nameLabel', 'Name')}>
-                            <input
-                              type="text"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                            />
-                          </GlassField>
-
-                          <GlassField label={t('botMenuList.descriptionLabel', 'Description (for AI context)')}>
-                            <textarea
-                              value={editDescription}
-                              onChange={(e) => setEditDescription(e.target.value)}
-                              rows={2}
-                              style={{ fontFamily: 'inherit' }}
-                            />
-                          </GlassField>
-
-                          <GlassField label={t('botMenuList.linkUrlLabel', 'Link URL (optional)')}>
-                            <input
-                              type="url"
-                              value={editLinkUrl}
-                              onChange={(e) => setEditLinkUrl(e.target.value)}
-                            />
-                          </GlassField>
-
-                          <GlassField label={t('botMenuList.keywordsLabel', 'Keywords (optional, comma-separated)')}>
-                            <input
-                              type="text"
-                              value={editKeywords}
-                              onChange={(e) => setEditKeywords(e.target.value)}
-                            />
-                          </GlassField>
-
-                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                            <UiButton variant="secondary" onClick={() => setEditingId(null)}>
-                              {t('botMenuList.cancel', 'Cancel')}
-                            </UiButton>
-                            <UiButton
-                              variant="primary"
-                              onClick={() => void handleEdit()}
-                              disabled={!editName.trim() || editSaving}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                            >
-                              {editSaving ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-                              {t('botMenuList.save', 'Save')}
-                            </UiButton>
-                          </div>
-                        </div>
-                      </GlassCard>
-                    )
-                  }
-
-                  const isSelected = selectedIds.has(a.asset_id)
-
+                if (isEditing) {
                   return (
-                    <GlassCard
-                      key={a.asset_id}
-                      style={{
-                        padding: 0,
-                        overflow: 'hidden',
-                        opacity: a.is_active ? 1 : 0.5,
-                        outline: isSelected ? '2px solid #e4587a' : '2px solid transparent',
-                        outlineOffset: -2,
-                        transition: 'outline 0.15s',
-                        position: 'relative',
-                      }}
-                    >
-                      {/* Checkbox overlay */}
-                      <button
-                        onClick={() => toggleSelect(a.asset_id)}
-                        title={isSelected ? 'Deselect' : 'Select'}
-                        style={{
-                          position: 'absolute',
-                          top: 8,
-                          left: 8,
-                          zIndex: 10,
-                          background: isSelected ? '#e4587a' : 'rgba(255,255,255,0.85)',
-                          border: isSelected ? '2px solid #e4587a' : '2px solid #cbd5e1',
-                          borderRadius: 5,
-                          width: 22,
-                          height: 22,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          padding: 0,
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        {isSelected && <Check size={13} color="#fff" strokeWidth={3} />}
-                      </button>
-
+                    <GlassCard key={a.asset_id} style={{ padding: 0, overflow: 'hidden' }}>
+                      {/* Image fills top without padding */}
                       {a.image_url ? (
                         <img
                           src={`${API_BASE}${a.image_url}`}
                           alt={a.name}
                           style={{
                             width: '100%',
-                            height: 180,
+                            height: 160,
                             objectFit: 'cover',
-                            display: 'block',
                           }}
                         />
                       ) : (
                         <div
                           style={{
                             width: '100%',
-                            height: 120,
+                            height: 160,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                            background: '#f1f5f9',
                             color: '#94a3b8',
                           }}
                         >
-                          <UtensilsCrossed size={36} />
+                          <UtensilsCrossed size={32} />
                         </div>
                       )}
-                      <div style={{ padding: '0.75rem 1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <h4 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>
-                              {a.name}
-                            </h4>
-                            {structured.category && (
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  marginBottom: 6,
-                                  fontSize: '0.72rem',
-                                  padding: '2px 8px',
-                                  borderRadius: 999,
-                                  background: '#fef3c7',
-                                  color: '#92400e',
-                                  textTransform: 'capitalize',
-                                }}
-                              >
-                                {structured.category}
-                              </span>
-                            )}
-                            {structured.priceText && (
-                              <div
-                                style={{
-                                  marginBottom: 4,
-                                  fontSize: '0.82rem',
-                                  fontWeight: 600,
-                                  color: '#0f766e',
-                                }}
-                              >
-                                {structured.priceText}
-                              </div>
-                            )}
-                            {structured.details && (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: '0.82rem',
-                                  color: '#64748b',
-                                  lineHeight: 1.4,
-                                  maxHeight: '2.8em',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                {structured.details}
-                              </p>
-                            )}
-                            {a.keywords && a.keywords.length > 0 && (
-                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
-                                {a.keywords.map((kw) => (
-                                  <span
-                                    key={kw}
-                                    style={{
-                                      fontSize: '0.72rem',
-                                      padding: '2px 8px',
-                                      borderRadius: 999,
-                                      background: '#f1f5f9',
-                                      color: '#64748b',
-                                    }}
-                                  >
-                                    {kw}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                            <button
-                              onClick={() => startEdit(a)}
-                              title="Edit"
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: '#94a3b8',
-                                padding: 4,
-                              }}
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => void handleDelete(a.asset_id)}
-                              title="Delete"
-                              disabled={isDeleting}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                color: '#ef4444',
-                                padding: 4,
-                              }}
-                            >
-                              {isDeleting ? <Loader2 size={16} className="spin" /> : <Trash2 size={16} />}
-                            </button>
-                          </div>
-                        </div>
-                        {a.link_url && (
-                          <a
-                            href={a.link_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: 'inline-block',
-                              marginTop: 6,
-                              fontSize: '0.82rem',
-                              color: 'var(--app-accent, #e4587a)',
-                            }}
+
+                      {/* Content with padding */}
+                      <div style={{ padding: '1rem', display: 'grid', gap: '0.75rem' }}>
+                        <label
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: '0.82rem',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Upload size={14} />
+                          {t('botMenuList.replaceImage', 'Replace image')}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => setEditFile(e.target.files?.[0] || null)}
+                          />
+                        </label>
+
+                        <GlassField label={t('botMenuList.nameLabel', 'Name')}>
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                          />
+                        </GlassField>
+
+                        <GlassField label={t('botMenuList.descriptionLabel', 'Description (for AI context)')}>
+                          <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            rows={2}
+                            style={{ fontFamily: 'inherit' }}
+                          />
+                        </GlassField>
+
+                        <GlassField label={t('botMenuList.linkUrlLabel', 'Link URL (optional)')}>
+                          <input
+                            type="url"
+                            value={editLinkUrl}
+                            onChange={(e) => setEditLinkUrl(e.target.value)}
+                          />
+                        </GlassField>
+
+                        <GlassField label={t('botMenuList.keywordsLabel', 'Keywords (optional, comma-separated)')}>
+                          <input
+                            type="text"
+                            value={editKeywords}
+                            onChange={(e) => setEditKeywords(e.target.value)}
+                          />
+                        </GlassField>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <UiButton variant="secondary" onClick={() => setEditingId(null)}>
+                            {t('botMenuList.cancel', 'Cancel')}
+                          </UiButton>
+                          <UiButton
+                            variant="primary"
+                            onClick={() => void handleEdit()}
+                            disabled={!editName.trim() || editSaving}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                           >
-                            {a.link_url.replace(/^https?:\/\//, '').slice(0, 40)}
-                            {a.link_url.replace(/^https?:\/\//, '').length > 40 ? '...' : ''}
-                          </a>
-                        )}
+                            {editSaving ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
+                            {t('botMenuList.save', 'Save')}
+                          </UiButton>
+                        </div>
                       </div>
                     </GlassCard>
                   )
-                })}
+                }
+
+                const isSelected = selectedIds.has(a.asset_id)
+
+                return (
+                  <GlassCard
+                    key={a.asset_id}
+                    style={{
+                      padding: 0,
+                      overflow: 'hidden',
+                      opacity: a.is_active ? 1 : 0.5,
+                      outline: isSelected ? '2px solid #e4587a' : '2px solid transparent',
+                      outlineOffset: -2,
+                      transition: 'outline 0.15s',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Checkbox overlay */}
+                    <button
+                      onClick={() => toggleSelect(a.asset_id)}
+                      title={isSelected ? 'Deselect' : 'Select'}
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        zIndex: 10,
+                        background: isSelected ? '#e4587a' : 'rgba(255,255,255,0.85)',
+                        border: isSelected ? '2px solid #e4587a' : '2px solid #cbd5e1',
+                        borderRadius: 5,
+                        width: 22,
+                        height: 22,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        padding: 0,
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {isSelected && <Check size={13} color="#fff" strokeWidth={3} />}
+                    </button>
+
+                    {a.image_url ? (
+                      <img
+                        src={`${API_BASE}${a.image_url}`}
+                        alt={a.name}
+                        style={{
+                          width: '100%',
+                          height: 180,
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: 120,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                          color: '#94a3b8',
+                        }}
+                      >
+                        <UtensilsCrossed size={36} />
+                      </div>
+                    )}
+                    <div style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h4 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>
+                            {a.name}
+                          </h4>
+                          {structured.category && (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                marginBottom: 6,
+                                fontSize: '0.72rem',
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                textTransform: 'capitalize',
+                              }}
+                            >
+                              {structured.category}
+                            </span>
+                          )}
+                          {structured.priceText && (
+                            <div
+                              style={{
+                                marginBottom: 4,
+                                fontSize: '0.82rem',
+                                fontWeight: 600,
+                                color: '#0f766e',
+                              }}
+                            >
+                              {structured.priceText}
+                            </div>
+                          )}
+                          {structured.details && (
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: '0.82rem',
+                                color: '#64748b',
+                                lineHeight: 1.4,
+                                maxHeight: '2.8em',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {structured.details}
+                            </p>
+                          )}
+                          {a.keywords && a.keywords.length > 0 && (
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                              {a.keywords.map((kw) => (
+                                <span
+                                  key={kw}
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    padding: '2px 8px',
+                                    borderRadius: 999,
+                                    background: '#f1f5f9',
+                                    color: '#64748b',
+                                  }}
+                                >
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                          <button
+                            onClick={() => startEdit(a)}
+                            title="Edit"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#94a3b8',
+                              padding: 4,
+                            }}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => void handleDelete(a.asset_id)}
+                            title="Delete"
+                            disabled={isDeleting}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#ef4444',
+                              padding: 4,
+                            }}
+                          >
+                            {isDeleting ? <Loader2 size={16} className="spin" /> : <Trash2 size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                      {a.link_url && (
+                        <a
+                          href={a.link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-block',
+                            marginTop: 6,
+                            fontSize: '0.82rem',
+                            color: 'var(--app-accent, #e4587a)',
+                          }}
+                        >
+                          {a.link_url.replace(/^https?:\/\//, '').slice(0, 40)}
+                          {a.link_url.replace(/^https?:\/\//, '').length > 40 ? '...' : ''}
+                        </a>
+                      )}
+                    </div>
+                  </GlassCard>
+                )
+              })}
             </div>
           )
         }
