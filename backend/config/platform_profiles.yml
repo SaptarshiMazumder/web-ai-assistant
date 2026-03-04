@@ -240,17 +240,21 @@ platforms:
     strip_query_params: true
     menu_url_patterns:
       - "/course(?:/|$)"
+      - "/course_cnod\\d+(?:/|$)"
       - "/drink(?:/|$)"
       - "/lunch(?:/|$)"
       - "/food(?:/|$)"
+      - "/party(?:/|$)"
     menu_extraction_rules:
       enabled: true
       mode: deterministic
       extractor: hotpepper_v1
       allowed_path_patterns:
-        - "^/(?:[a-z]{2}/)?strJ\\d+/(?:food|drink|course|lunch)(?:/|$)"
+        - "^/(?:[a-z]{2}/)?strJ\\d+/(?:food|drink|course|lunch|party|course_cnod\\d+)(?:/|$)"
       path_category_patterns:
         - pattern: "/course(?:/|$)"
+          category: course
+        - pattern: "/course_cnod\\d+(?:/|$)"
           category: course
         - pattern: "/drink(?:/|$)"
           category: drink
@@ -258,6 +262,8 @@ platforms:
           category: lunch
         - pattern: "/food(?:/|$)"
           category: dish
+        - pattern: "/party(?:/|$)"
+          category: course
     metadata:
       asset_filter:
         reservation_suppress_terms:

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Menu Extraction Service
 
 Extracts structured menu items (courses, dishes, food items) from crawled
@@ -744,42 +744,122 @@ def _extract_tabelog_menu_items(page_url: str) -> List[Dict[str, Any]]:
     return _dedupe_menu_items(course_items + menu_items)
 
 
+import logging
+logger = logging.getLogger("menu_extraction_service")
+
 def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
+    logger.info(f"[HotPepper Extractor] Starting extraction for URL: {page_url}")
     html_text = _fetch_html(page_url)
     if not html_text:
+        logger.warning(f"[HotPepper Extractor] Failed to fetch HTML for URL: {page_url}")
         return []
         
+    logger.info(f"[HotPepper Extractor] Fetched HTML, length: {len(html_text)}")
     try:
         from bs4 import BeautifulSoup  # type: ignore
-    except Exception:
+    except Exception as e:
+        logger.error(f"[HotPepper Extractor] BeautifulSoup import failed: {e}")
         return []
 
     soup = BeautifulSoup(html_text, "html.parser")
     if not soup:
+        logger.warning(f"[HotPepper Extractor] BeautifulSoup failed to parse HTML")
         return []
 
     items: List[Dict[str, Any]] = []
 
-    # Hotpepper typically uses .courseList .courseItem or .course-cassette for courses
-    # and .itemWrapper or similar for dishes.
-    # We will try a few common Hotpepper CSS selectors.
+    # 0. Course detail pages (course_cnod07/, party_cnodXX/, etc.) - single course with full details
+    path = (urlparse(page_url).path or "").lower()
+    if "course_cnod" in path or "party_cnod" in path:
+        name_el = soup.select_one(".courseNameText")
+        if name_el:
+            name = _strip_html(name_el.get_text(" ", strip=True))
+            if name:
+                num_el = soup.select_one(".courseDetailPriceNumber")
+                unit_el = soup.select_one(".courseDetailCurrency")
+                num = _strip_html(num_el.get_text(" ", strip=True) if num_el else "")
+                unit = _strip_html(unit_el.get_text(" ", strip=True) if unit_el else "円")
+                price = f"{num}{unit}" if num else ""
+                desc_el = soup.select_one(".courseDetailCopyWord")
+                body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
+                menu_el = soup.select_one(".courseMenu")
+                if menu_el:
+                    menu_text = _strip_html(menu_el.get_text(" ", strip=True))
+                    if menu_text and len(menu_text) > 10:
+                        body = f"{body} {menu_text}".strip() if body else menu_text
+                description = _format_menu_description(price, body)
+                img_el = soup.select_one(".courseDetailPhoto img, .courseDetailPhotoWrap img")
+                image_src = ""
+                if img_el:
+                    for attr in ("src", "data-src", "data-original"):
+                        candidate = str(img_el.get(attr) or "").strip()
+                        if candidate:
+                            image_src = candidate
+                            break
+                resolved_image = urljoin(page_url, image_src) if image_src else None
+                items.append(
+                    {
+                        "name": name,
+                        "price_text": price,
+                        "details": body,
+                        "description": description,
+                        "link_url": page_url,
+                        "image_url": resolved_image,
+                        "category": "course",
+                        "keywords": _keywords_for_menu_item(name, description),
+                    }
+                )
+                logger.info(f"[HotPepper Extractor] Extracted course detail: name='{name[:50]}...', price='{price}'")
+                return _dedupe_menu_items(items)
+
+    # HotPepper Gourmet uses: ul.courseList > li for courses; p.courseCassetteTitle a for name;
+    # li.coursePrice with .priceNumber + .priceUnit for price; ul.summaryList for description.
     
-    # 1. Course items
-    course_blocks = soup.select(".course-list .course-item, .courseList .courseItem, .courseList li, .course-cassette")
+    # 1. Course items (course/, lunch/ pages)
+    course_blocks = soup.select(".courseList li")
+    logger.info(f"[HotPepper Extractor] Found {len(course_blocks)} potential course blocks")
     for block in course_blocks:
-        name_el = block.select_one(".course-title, .courseTitle, .course-name, h3, .courseList-name, .courseList-title, .course-cassette__title")
+        # Title: p.courseCassetteTitle > a (HotPepper's actual structure)
+        name_el = block.select_one(
+            ".courseCassetteTitle a, .courseCassetteTitle, "
+            ".course-title, .courseTitle, .course-name, h3, .courseList-name, .courseList-title, .course-cassette__title"
+        )
         name = _strip_html(name_el.get_text(" ", strip=True) if name_el else "")
         if not name:
             continue
-            
-        price_el = block.select_one(".price, .course-price, .courseList-price, .courseList-priceIn, .course-cassette__price")
-        price = _strip_html(price_el.get_text(" ", strip=True) if price_el else "")
-        
-        desc_el = block.select_one(".course-desc, .courseDesc, .courseList-desc, .course-cassette__desc")
-        body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
+
+        # Price: li.coursePrice with .priceNumber + .priceUnit (e.g. "4,000" + "円")
+        price_el = block.select_one(".coursePrice")
+        price = ""
+        if price_el:
+            num_el = price_el.select_one(".priceNumber, .priceNumberWrap .priceNumber")
+            unit_el = price_el.select_one(".priceUnit")
+            num = _strip_html(num_el.get_text(" ", strip=True) if num_el else "")
+            unit = _strip_html(unit_el.get_text(" ", strip=True) if unit_el else "円")
+            if num:
+                price = f"{num}{unit}"
+        if not price:
+            fallback_price_el = block.select_one(".price, .course-price, .courseList-price, .course-cassette__price")
+            price = _strip_html(fallback_price_el.get_text(" ", strip=True) if fallback_price_el else "")
+
+        # Description: ul.summaryList li (first li is usually the course description)
+        desc_el = block.select_one(".summaryList")
+        body = ""
+        if desc_el:
+            for li in desc_el.select("li"):
+                t = _strip_html(li.get_text(" ", strip=True))
+                if len(t) > 15 and "（税込）" not in t and "予約締切" not in t and "coursePrice" not in str(li.get("class", [])):
+                    body = t
+                    break
+        if not body:
+            desc_el = block.select_one(".course-desc, .courseDesc, .courseList-desc, .course-cassette__desc")
+            body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
         description = _format_menu_description(price, body)
-        
-        link_el = block.select_one("a[href]")
+
+        # Prefer course detail link (title or reserve button)
+        link_el = block.select_one(".courseCassetteTitle a[href], .reserveBtn[href]")
+        if not link_el:
+            link_el = block.select_one("a[href]")
         href = str(link_el.get("href") or "").strip() if link_el else ""
         resolved_link = urljoin(page_url, href) if href else page_url
         
@@ -792,6 +872,8 @@ def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
                     image_src = candidate
                     break
         resolved_image = urljoin(page_url, image_src) if image_src else None
+        
+        logger.info(f"[HotPepper Extractor] Extracted Course: name='{name}', price='{price}', has_desc={bool(body)}, has_image={bool(resolved_image)}")
         
         items.append(
             {
@@ -806,18 +888,26 @@ def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
             }
         )
         
-    # 2. Dish/Drink items (food/drink pages)
-    item_blocks = soup.select(".itemWrapper, .foodWrapper, .drinkWrapper, .menu-item, .menuItem, .detailList li")
+    # 2. Dish/Drink items (food/drink pages) - HotPepper uses ul.menuList > li with h4.title, p.price
+    item_blocks = soup.select(
+        ".menuList li, "
+        ".itemWrapper, .foodWrapper, .drinkWrapper, .menu-item, .menuItem, .detailList li"
+    )
+    logger.info(f"[HotPepper Extractor] Found {len(item_blocks)} potential dish/drink blocks")
     for block in item_blocks:
-        name_el = block.select_one(".itemName, .item-name, .menuTitle, .detailList-name, h3")
+        # HotPepper drink/food: h4.title (name), p.price, p.text (description)
+        name_el = block.select_one(
+            ".title, h4.title, "
+            ".itemName, .item-name, .menuTitle, .detailList-name, h3"
+        )
         name = _strip_html(name_el.get_text(" ", strip=True) if name_el else "")
         if not name:
             continue
-            
-        price_el = block.select_one(".itemPrice, .item-price, .price, .detailList-price")
+
+        price_el = block.select_one(".price, .itemPrice, .item-price, .detailList-price")
         price = _strip_html(price_el.get_text(" ", strip=True) if price_el else "")
-        
-        desc_el = block.select_one(".itemDesc, .item-desc, .detailList-desc")
+
+        desc_el = block.select_one(".text, .itemDesc, .item-desc, .detailList-desc")
         body = _strip_html(desc_el.get_text(" ", strip=True) if desc_el else "")
         description = _format_menu_description(price, body)
         
@@ -834,6 +924,8 @@ def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
         category = "dish"
         if "/drink" in page_url:
             category = "drink"
+            
+        logger.info(f"[HotPepper Extractor] Extracted {category.capitalize()}: name='{name}', price='{price}', has_desc={bool(body)}, has_image={bool(resolved_image)}")
             
         items.append(
             {
