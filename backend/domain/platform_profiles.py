@@ -370,6 +370,33 @@ def get_reservation_config_from_widget(
     }
 
 
+def get_knowledge_tabs_for_widget(widget_config: Dict[str, Any]) -> List[str]:
+    """
+    Get which knowledge tabs (image-assets, menu-list) to show in the bot dashboard.
+    Config-driven via reservation_platform_config.knowledge_tabs in platform_profiles.yml.
+
+    - tabelog, hotpepper: ["menu"] — Menu tab only
+    - tablecheck, others: ["image"] — Image tab only (default)
+    """
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return ["image"]
+    platform_id = cfg.get("platform_id")
+    if not platform_id:
+        return ["image"]
+    raw = _load_platform_config()
+    rpc = raw.get("reservation_platform_config") or {}
+    entry = rpc.get(platform_id) if isinstance(rpc, dict) else {}
+    if not isinstance(entry, dict):
+        return ["image"]
+    tabs = entry.get("knowledge_tabs")
+    if isinstance(tabs, list) and tabs:
+        out = [str(t).strip().lower() for t in tabs if str(t).strip()]
+        if out:
+            return out
+    return ["image"]
+
+
 def get_platform_features_from_widget(widget_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
     Get platform features (menu, suggested_messages) from widget config.
@@ -556,30 +583,6 @@ def get_suggested_messages_for_widget(
     if platform_suggested:
         return resolve_items(platform_suggested)
     return resolve_items(DEFAULT_SUGGESTED_MESSAGES)
-
-
-def get_asset_filter_from_widget(widget_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Get asset filter config from the active platform profile.
-    Used to suppress assets for reservation-only queries (config-driven, no hardcoding).
-    Returns dict with reservation_suppress_terms, menu_food_intent_terms; or None.
-    """
-    cfg = get_reservation_config_from_widget(widget_config)
-    if not cfg:
-        return None
-    domain_key = cfg.get("domain_key")
-    if not domain_key or domain_key not in PLATFORM_PROFILES:
-        return None
-    profile = PLATFORM_PROFILES[domain_key]
-    metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
-    asset_filter = metadata.get("asset_filter")
-    if not isinstance(asset_filter, dict):
-        return None
-    suppress = asset_filter.get("reservation_suppress_terms")
-    menu_terms = asset_filter.get("menu_food_intent_terms")
-    if not isinstance(suppress, list) or not isinstance(menu_terms, list):
-        return None
-    return {"reservation_suppress_terms": suppress, "menu_food_intent_terms": menu_terms}
 
 
 def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:

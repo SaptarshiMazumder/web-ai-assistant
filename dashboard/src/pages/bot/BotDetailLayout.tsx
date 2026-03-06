@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation, useParams } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useLocation, useParams } from 'react-router-dom'
 import { ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -10,7 +10,7 @@ export default function BotDetailLayout() {
   const { botId } = useParams()
   const location = useLocation()
   const { t } = useTranslation()
-  const { selectedBot, setSelectedBotId, isSuperAdmin, activeOrgId } = useDashboardData()
+  const { selectedBot, selectedBotWidgetConfig, setSelectedBotId, isSuperAdmin, activeOrgId } = useDashboardData()
 
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
   const [dropdownTop, setDropdownTop] = useState(0)
@@ -27,9 +27,13 @@ export default function BotDetailLayout() {
     setMobileDropdownOpen(false)
   }, [location.pathname])
 
+  const knowledgeTabs = (selectedBotWidgetConfig as Record<string, unknown> | null)?.knowledge_tabs
   const secondaryItems = useMemo(
-    () => (botId ? botTabSecondaryItems(botId) : []),
-    [botId]
+    () =>
+      botId
+        ? botTabSecondaryItems(botId, Array.isArray(knowledgeTabs) ? knowledgeTabs : null)
+        : [],
+    [botId, knowledgeTabs]
   )
 
   const activeSecondaryItem = useMemo(() => {
@@ -61,8 +65,28 @@ export default function BotDetailLayout() {
 
   const ActiveIcon = activeSecondaryItem?.icon
 
+  // Redirect when on a knowledge tab that's not available for this platform
+  const allowedKnowledgeIds = useMemo(
+    () => new Set(secondaryItems.filter(i => i.id === 'image-assets' || i.id === 'menu-list').map(i => i.id)),
+    [secondaryItems]
+  )
+  const pathSeg = location.pathname.split('/').pop() || ''
+  const isOnImageAssets = pathSeg === 'image-assets'
+  const isOnMenuList = pathSeg === 'menu-list'
+  const shouldRedirect =
+    (isOnImageAssets && !allowedKnowledgeIds.has('image-assets')) ||
+    (isOnMenuList && !allowedKnowledgeIds.has('menu-list'))
+  const redirectTo =
+    shouldRedirect && secondaryItems.length > 0
+      ? secondaryItems.find(i => i.id === 'image-assets' || i.id === 'menu-list')?.to ?? `/bots/${botId}/knowledge`
+      : null
+
   if (isSuperAdmin && !activeOrgId) {
     return <div className="empty-panel">{t('botDetailLayout.selectOrganization', 'Select an organization to view bot details.')}</div>
+  }
+
+  if (redirectTo) {
+    return <Navigate to={redirectTo} replace />
   }
 
   return (

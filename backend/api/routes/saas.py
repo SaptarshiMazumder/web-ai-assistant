@@ -1684,6 +1684,10 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             profile, _ = resolve_platform_profile(platform_url)
             if profile and profile.menu_url_patterns:
                 widget_config["menuUrlPatterns"] = profile.menu_url_patterns
+        # Inject knowledge_tabs for dashboard (config-driven: tabelog/hotpepper=menu, others=image)
+        from domain.platform_profiles import get_knowledge_tabs_for_widget
+        tabs = get_knowledge_tabs_for_widget(widget_config)
+        widget_config = {**widget_config, "knowledge_tabs": tabs}
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,

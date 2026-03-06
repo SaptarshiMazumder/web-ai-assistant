@@ -22,7 +22,7 @@ function getActivePrimaryId(pathname: string): string {
 }
 
 export default function DashboardLayout() {
-  const { loading, error } = useDashboardData()
+  const { loading, error, selectedBotWidgetConfig } = useDashboardData()
   const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const { t } = useTranslation()
@@ -33,9 +33,13 @@ export default function DashboardLayout() {
 
   const activePrimaryId = useMemo(() => getActivePrimaryId(location.pathname), [location.pathname])
 
+  const knowledgeTabs = (selectedBotWidgetConfig as Record<string, unknown> | null)?.knowledge_tabs
   const secondaryItems = useMemo(
-    () => (botId ? botTabSecondaryItems(botId) : botsSecondaryItemsBase),
-    [botId]
+    () =>
+      botId
+        ? botTabSecondaryItems(botId, Array.isArray(knowledgeTabs) ? knowledgeTabs : null)
+        : botsSecondaryItemsBase,
+    [botId, knowledgeTabs]
   )
 
   const showSecondaryPanel = activePrimaryId === 'bots' && !!botId
