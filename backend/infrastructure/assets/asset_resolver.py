@@ -15,7 +15,11 @@ from urllib.parse import urlparse
 
 from common.config import config
 from domain.entities import BotAsset
-from domain.platform_profiles import get_default_marker_rule
+from domain.platform_profiles import (
+    get_asset_base_stopwords,
+    get_default_asset_term_config,
+    get_default_marker_rule,
+)
 from infrastructure.db.repositories import PostgresBotAssetRepository
 from redis import Redis
 
@@ -44,48 +48,28 @@ _ASSET_SESSION_DEDUPE_TTL_SECONDS = max(
     300,
     min(int(os.environ.get("ASSET_SESSION_DEDUPE_TTL_SECONDS", "43200")), 604800),
 )
-# Base stopwords (universal language stopwords). generic_tokens from config are merged at runtime.
-_BASE_STOPWORDS = {
-    "a", "an", "and", "are", "be", "can", "for", "from", "i", "in", "is", "it",
-    "me", "my", "of", "on", "or", "please", "the", "to", "we", "with", "you", "your",
-}
+# Base stopwords are config-driven.
+_BASE_STOPWORDS = set(get_asset_base_stopwords())
 _SPECIAL_SHORT_TOKENS = {"xl", "xxl", "xs"}
 def _resolve_term_config(asset_term_config: Optional[Dict[str, Any]]) -> Dict[str, Set[str]]:
-    """Build term sets from config. Key present in config = use it (even if empty). Key absent = use fallback."""
-    if asset_term_config is None:
-        asset_term_config = {}
+    """Build term sets from config without in-code vocabulary defaults."""
+    merged = get_default_asset_term_config()
+    if isinstance(asset_term_config, dict):
+        for key in (
+            "generic_tokens",
+            "asset_intent_terms",
+            "visual_request_terms",
+            "visual_request_many_terms",
+            "visual_suppress_terms",
+        ):
+            if key in asset_term_config and isinstance(asset_term_config.get(key), list):
+                merged[key] = [str(v).strip() for v in asset_term_config.get(key) if str(v).strip()]
 
-    def _get(key: str, fallback: Set[str]) -> Set[str]:
-        if key not in asset_term_config:
-            return fallback
-        val = asset_term_config.get(key)
-        if not isinstance(val, list):
-            return fallback
-        return set(str(v).strip() for v in val if str(v).strip())
-
-    _generic = {"about", "available", "booking", "cost", "detail", "details", "info", "information",
-                "item", "items", "option", "options", "price", "product", "products", "service", "services"}
-    _intent = {"menu", "dish", "dishes", "food", "drink", "drinks", "beverage", "beverages", "product",
-               "products", "service", "services", "package", "packages", "plan", "plans", "room", "rooms",
-               "suite", "suites", "facility", "facilities", "amenity", "amenities", "location", "locations",
-               "map", "branch", "branches", "store", "stores", "item", "items", "option", "options",
-               "catalog", "collection", "メニュー", "料理", "コース", "食べ物", "飲み物", "ドリンク", "商品",
-               "サービス", "プラン", "部屋", "施設", "おすすめ", "人気", "定番", "ランチ", "ディナー", "デザート",
-               "前菜", "刺身", "寿司", "焼肉", "セット"}
-    _visual = {"photo", "photos", "image", "images", "picture", "pictures", "pic", "pics", "gallery",
-               "show me", "send me", "share", "let me see", "what it looks like",
-               "写真", "画像", "見せて", "見たい", "見せてください", "見たいです"}
-    _visual_many = {"all", "more", "many", "several", "multiple", "full menu", "whole menu", "entire menu",
-                    "more photos", "more images", "全部", "もっと", "全メニュー", "メニュー全部", "一覧"}
-    _suppress = {"no image", "no images", "no photo", "no photos", "no picture", "no pictures",
-                 "without image", "without images", "without photo", "without photos",
-                 "画像なし", "写真なし", "画像不要", "写真不要"}
-
-    generic = _get("generic_tokens", _generic)
-    intent = _get("asset_intent_terms", _intent)
-    visual = _get("visual_request_terms", _visual)
-    visual_many = _get("visual_request_many_terms", _visual_many)
-    suppress = _get("visual_suppress_terms", _suppress)
+    generic = set(merged.get("generic_tokens") or [])
+    intent = set(merged.get("asset_intent_terms") or [])
+    visual = set(merged.get("visual_request_terms") or [])
+    visual_many = set(merged.get("visual_request_many_terms") or [])
+    suppress = set(merged.get("visual_suppress_terms") or [])
     stopwords = _BASE_STOPWORDS | generic
     return {
         "generic_tokens": generic,
@@ -221,12 +205,7 @@ def _max_cards_for_query(
     if _contains_any_term(answer_norm, term_sets["visual_suppress_terms"]):
         return 0
 
-    explicit_visual = _contains_any_term(answer_norm, term_sets["visual_request_terms"]) or bool(
-        re.search(
-            r"\b(show|send|share|see|view)\b.*\b(photo|image|picture|pic|gallery|menu|product|service|room|suite|location|map)\b",
-            answer_norm,
-        )
-    )
+    explicit_visual = _contains_any_term(answer_norm, term_sets["visual_request_terms"])
     intent_in_answer = _contains_any_term(answer_norm, term_sets["asset_intent_terms"])
     card_match = _query_matches_cards(answer_norm, cards, term_sets["stopwords"])
 
@@ -238,7 +217,6 @@ def _max_cards_for_query(
 
     explicit_many = explicit_visual and (
         _contains_any_term(answer_norm, term_sets["visual_request_many_terms"])
-        or bool(re.search(r"\b(all|more|many|several|multiple)\b", answer_norm))
     )
     if explicit_many:
         return _MAX_ASSET_CARDS_EXPLICIT_REQUEST
@@ -268,10 +246,7 @@ def _stem_token(token: str) -> str:
 
 
 def _tokenize(text: str, stopwords: Optional[Set[str]] = None) -> Set[str]:
-    sw = stopwords if stopwords is not None else _BASE_STOPWORDS | {
-        "about", "available", "booking", "cost", "detail", "details", "info", "information",
-        "item", "items", "option", "options", "price", "product", "products", "service", "services",
-    }
+    sw = stopwords if stopwords is not None else _BASE_STOPWORDS
     norm = _normalize_text(text)
     if not norm:
         return set()
@@ -436,6 +411,7 @@ def _asset_query_score(
     *,
     generic_tokens: Set[str],
     stopwords: Set[str],
+    intent_terms: Set[str],
 ) -> int:
     if not query_norm:
         return 0
@@ -468,7 +444,7 @@ def _asset_query_score(
 
     # Menu-aware boost to improve restaurant recall when user asks for menu details.
     if getattr(asset, "asset_type", "image") == "menu_item":
-        if any(tok in query_norm for tok in ("menu", "dish", "drink", "lunch", "course", "party")):
+        if _contains_any_term(query_norm, intent_terms):
             score += 3
         _, _, category = _menu_fields(asset)
         if category and category in query_norm:
@@ -496,7 +472,9 @@ def _match_assets_from_query(
     for a in assets:
         s = _asset_query_score(
             a, query_norm, query_tokens,
-            generic_tokens=ts["generic_tokens"], stopwords=ts["stopwords"],
+            generic_tokens=ts["generic_tokens"],
+            stopwords=ts["stopwords"],
+            intent_terms=ts["asset_intent_terms"],
         )
         if s <= 0:
             continue

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -15,32 +14,25 @@ from google.cloud import storage
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from markdownify import markdownify
 
-from domain.entities import BookingLinkJob, Document, TopicJob
+from domain.entities import Document
 from infrastructure.celery_app import celery_app
-from infrastructure.db.repositories import (
-    PostgresBookingLinkJobRepository,
-    PostgresIndexJobRepository,
-    PostgresBotRepository,
-    PostgresTopicJobRepository,
-)
+from infrastructure.db.repositories import PostgresIndexJobRepository
 from infrastructure.rag.crawl_service import CRAWL_WAIT_FOR_CONTENT, _normalize_text_encoding
 from infrastructure.rag.robots_policy import robots_policy
 from infrastructure.repositories import GCSDocumentStorageRepository, VertexRAGRepository
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
+from infrastructure.tasks.crawl_tasks import (
+    _get_post_crawl_jobs,
+    _start_booking_link_job,
+    _start_menu_extraction_job,
+    _start_topic_extraction_job,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
-
-
-def _new_topic_job_id() -> str:
-    return "tjob_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
-
-
-def _new_booking_link_job_id() -> str:
-    return "blj_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
 
 def _get_source_language(bot_id: str, source_id: Optional[str]) -> str:
@@ -202,68 +194,6 @@ def _repair_doc_for_language(doc: Document, *, lang: str) -> None:
             doc.content = f"Source URL: {doc.url}\n\n{md}"
     except Exception:
         return
-
-
-def _start_topic_extraction_job(bot_id: str, gcs_prefix: str) -> None:
-    if not bot_id or not gcs_prefix:
-        return
-    try:
-        bot_repo = PostgresBotRepository()
-        bot = bot_repo.get_bot(bot_id)
-        if not bot:
-            logger.warning(f"Cannot start topic job: bot {bot_id} not found")
-            return
-        repo = PostgresTopicJobRepository()
-        job_id = _new_topic_job_id()
-        now = _utc_now()
-        job = TopicJob(
-            job_id=job_id,
-            org_id=bot.org_id,
-            bot_id=bot_id,
-            status="queued",
-            stage="queued",
-            gcs_prefix=gcs_prefix,
-            docs_count=0,
-            topics_count=0,
-            last_error=None,
-            celery_task_id=None,
-            created_at=now,
-            updated_at=now,
-        )
-        repo.create(job)
-        from infrastructure.tasks.crawl_tasks import topic_extraction_job
-        async_result = topic_extraction_job.delay(job_id=job_id, bot_id=bot_id, org_id=bot.org_id, gcs_prefix=gcs_prefix)
-        job.celery_task_id = async_result.id
-        repo.update(job)
-    except Exception as e:
-        logger.warning(f"Failed to start topic extraction job for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
-
-
-def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) -> None:
-    if not bot_id or not index_job_id:
-        return
-    auto_start = (os.environ.get("BOOKING_RAG_AUTO_START") or "true").strip().lower()
-    if auto_start not in ("1", "true", "yes", "on"):
-        return
-    delay_sec = int(os.environ.get("BOOKING_RAG_START_DELAY_SEC", "90"))
-    repo = PostgresBookingLinkJobRepository()
-    now = _utc_now()
-    job = BookingLinkJob(
-        job_id=_new_booking_link_job_id(),
-        bot_id=bot_id,
-        index_job_id=index_job_id,
-        root_url=root_url or "",
-        status="queued",
-        links=[],
-        error=None,
-        celery_task_id=None,
-        created_at=now,
-        updated_at=now,
-    )
-    repo.create(job)
-    async_result = booking_link_job_task.apply_async((job.job_id, bot_id), countdown=max(0, delay_sec))
-    job.celery_task_id = async_result.id
-    repo.update(job)
 
 
 async def _execute_single_page_crawl(
@@ -493,7 +423,11 @@ async def _execute_single_page_crawl(
     job_repo.update_job(job)
 
     if gcs_prefix:
-        _start_topic_extraction_job(bot_id, gcs_prefix)
+        post_crawl_jobs = _get_post_crawl_jobs(bot_id)
+        if "topic_extraction" in post_crawl_jobs:
+            _start_topic_extraction_job(bot_id, gcs_prefix)
+        if "menu_extraction" in post_crawl_jobs:
+            _start_menu_extraction_job(bot_id, gcs_prefix)
 
     job.stage = "importing"
     job_repo.update_job(job)
@@ -508,8 +442,10 @@ async def _execute_single_page_crawl(
     job.stage = "import_submitted"
     job_repo.update_job(job)
     try:
-        root_url = url if (url or "").startswith(("http://", "https://")) else ""
-        _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
+        post_crawl_jobs = _get_post_crawl_jobs(bot_id)
+        if "booking_link" in post_crawl_jobs:
+            root_url = url if (url or "").startswith(("http://", "https://")) else ""
+            _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
     except Exception as booking_error:
         logger.warning(
             f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"

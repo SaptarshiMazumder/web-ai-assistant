@@ -34,6 +34,11 @@ from application.services.default_prompt_service import (
     build_default_system_instruction,
     extract_business_type_from_widget_config,
 )
+from domain.platform_profiles import (
+    get_default_post_crawl_jobs,
+    get_default_source_language,
+    get_post_crawl_jobs_for_widget,
+)
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 
 logger = logging.getLogger(__name__)
@@ -73,8 +78,20 @@ def _new_booking_link_job_id() -> str:
 
 
 def _get_source_language(bot_id: str, source_id: Optional[str]) -> str:
-    # Hardcode JP for now (do not read env or source config).
-    return "ja"
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if bot and getattr(bot, "widget_config", None):
+            raw = (bot.widget_config or "").strip()
+            if raw:
+                cfg = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(cfg, dict):
+                    lang = str(cfg.get("language") or cfg.get("botLanguage") or "").strip().lower()
+                    if lang:
+                        return "ja" if lang in ("ja", "jp") else "en"
+    except Exception:
+        pass
+    return get_default_source_language()
 
 
 def _get_bot_language(bot: Any) -> str:
@@ -296,11 +313,65 @@ def _start_topic_extraction_job(bot_id: str, gcs_prefix: str) -> None:
         logger.warning(f"Failed to start topic extraction job for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
 
 
+def _get_post_crawl_jobs(bot_id: str) -> List[str]:
+    """Get post-crawl job names from platform config for this bot."""
+    default_jobs = get_default_post_crawl_jobs()
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot or not getattr(bot, "widget_config", None):
+            return default_jobs
+        raw = (bot.widget_config or "").strip()
+        if not raw:
+            return default_jobs
+        cfg = json.loads(raw) if isinstance(raw, str) else raw
+        if not isinstance(cfg, dict):
+            return default_jobs
+        return get_post_crawl_jobs_for_widget(cfg)
+    except Exception:
+        return default_jobs
+
+
+def _start_menu_extraction_job(bot_id: str, gcs_prefix: str) -> None:
+    if not bot_id or not gcs_prefix:
+        return
+    try:
+        import uuid
+        from infrastructure.db.repositories import PostgresAssetExtractionJobRepository, AssetExtractionJob
+
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if not bot:
+            logger.warning(f"Cannot start menu extraction: bot {bot_id} not found")
+            return
+        job_id = "menuext_" + uuid.uuid4().hex
+        now = _utc_now()
+        job = AssetExtractionJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            org_id=bot.org_id,
+            status="queued",
+            created_at=now,
+            updated_at=now,
+            gcs_prefix=gcs_prefix,
+            page_urls=None,
+        )
+        extract_repo = PostgresAssetExtractionJobRepository()
+        extract_repo.create_job(job)
+        async_result = menu_extraction_task.delay(
+            bot_id=bot_id,
+            org_id=bot.org_id,
+            gcs_prefix=gcs_prefix,
+            job_id=job_id,
+        )
+        job.celery_task_id = async_result.id
+        extract_repo.update_job(job)
+    except Exception as e:
+        logger.warning(f"Failed to start menu extraction job for bot {bot_id}: {type(e).__name__}: {str(e)[:200]}")
+
+
 def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) -> None:
     if not bot_id or not index_job_id:
-        return
-    auto_start = (os.environ.get("BOOKING_RAG_AUTO_START") or "true").strip().lower()
-    if auto_start not in ("1", "true", "yes", "on"):
         return
     delay_sec = int(os.environ.get("BOOKING_RAG_START_DELAY_SEC", "90"))
     repo = PostgresBookingLinkJobRepository()
@@ -904,13 +975,17 @@ async def _execute_crawl(
             job_repo.update_job(job)
             # Continue even if upload fails - at least we tried
 
-        # Start topic extraction in parallel once docs are in GCS
+        # Start post-crawl jobs (topic_extraction, menu_extraction) once docs are in GCS
         if gcs_prefix:
+            post_crawl_jobs = _get_post_crawl_jobs(bot_id)
             try:
-                _emit_event("stage", {"stage": "topics_queued"})
-                _start_topic_extraction_job(bot_id, gcs_prefix)
-            except Exception as topic_error:
-                logger.warning(f"Topic extraction queue failed: {type(topic_error).__name__}: {str(topic_error)[:200]}")
+                if "topic_extraction" in post_crawl_jobs:
+                    _emit_event("stage", {"stage": "topics_queued"})
+                    _start_topic_extraction_job(bot_id, gcs_prefix)
+                if "menu_extraction" in post_crawl_jobs:
+                    _start_menu_extraction_job(bot_id, gcs_prefix)
+            except Exception as job_error:
+                logger.warning(f"Post-crawl job queue failed: {type(job_error).__name__}: {str(job_error)[:200]}")
 
 
 
@@ -932,8 +1007,10 @@ async def _execute_crawl(
             job_repo.update_job(job)
             _emit_event("stage", {"stage": "import_submitted"})
             try:
-                root_url = job.url if (job.url or "").startswith(("http://", "https://")) else ""
-                _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
+                post_crawl_jobs = _get_post_crawl_jobs(bot_id)
+                if "booking_link" in post_crawl_jobs:
+                    root_url = job.url if (job.url or "").startswith(("http://", "https://")) else ""
+                    _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
             except Exception as booking_error:
                 logger.warning(
                     f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"

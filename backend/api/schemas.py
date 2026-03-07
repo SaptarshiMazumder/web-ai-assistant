@@ -472,6 +472,9 @@ class WidgetConfigUpdate(BaseModel):
     bookingUrlPattern: Optional[Dict[str, Any]] = None  # written by availability job
     # Restaurant reservation: one profile per agent (tabelog | hotpepper | tablecheck)
     reservationPlatform: Optional[str] = None
+    # Canonical map form (backward-compatible bridge): {platform_id: url}
+    reservationLinks: Optional[Dict[str, str]] = None
+    reservation_links: Optional[Dict[str, str]] = None
     # URL for the selected platform (use the field matching reservationPlatform)
     tableCheckUrl: Optional[str] = None
     tabelogUrl: Optional[str] = None

@@ -95,19 +95,27 @@ from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
     get_available_suggested_message_types,
+    get_menu_category_order,
+    get_menu_texts,
     get_platform_asset_instructions,
     get_platform_features_from_widget,
     get_platform_json_response_enabled,
     get_platform_json_response_instruction,
+    get_prompt_fallback_config,
+    get_prompt_generation_config,
+    get_reservation_url_for_platform,
     get_reservation_config_from_widget,
     get_reservation_platforms_list,
     get_suggested_messages_for_platform,
     get_suggested_messages_for_widget,
+    normalize_reservation_links,
 )
+from application.services.platform_strategy import normalize_menu_category
 from application.services.default_prompt_service import (
     build_default_system_instruction,
     extract_business_type_from_widget_config,
 )
+from application.services.prompt_provider import ConfigPromptProvider
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
@@ -117,6 +125,7 @@ from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
 
 logger = logging.getLogger(__name__)
+_prompt_provider = ConfigPromptProvider()
 
 # Prefixes that indicate availability check failed; don't inject as success.
 _AVAILABILITY_ERROR_PREFIXES = ("Could not complete availability check", "The availability check is taking longer")
@@ -141,40 +150,11 @@ def _resolve_system_instruction(
     bot_name: str = "",
     widget_config: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
-    """
-    Resolve system instruction:
-    1) explicit instructions
-    2) explicit non-default persona/custom persona prompt
-    3) deterministic default prompt (no LLM)
-    """
-    default_persona_id = get_default_persona_id()
-    instructions = agent_config.get("instructions") if agent_config else None
-    if instructions and str(instructions).strip():
-        default_persona_prompt = get_persona_system_prompt(default_persona_id, lang=lang) or ""
-        if _normalize_prompt_text(instructions) != _normalize_prompt_text(default_persona_prompt):
-            return instructions
-
-    persona_id_raw = agent_config.get("persona_id") if agent_config else None
-    persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
-    has_explicit_non_default_persona = bool(persona_id_raw and persona_id and persona_id != default_persona_id)
-
-    if has_explicit_non_default_persona:
-        # Check built-in personas first.
-        builtin = get_persona_system_prompt(persona_id, lang=lang)
-        if builtin:
-            return builtin
-
-        # Check custom personas stored in agent_config.
-        for cp in (agent_config.get("custom_personas") or []):
-            if cp.get("id") == persona_id and cp.get("system_prompt"):
-                return cp["system_prompt"]
-
-    # Final fallback is deterministic and based on bot name + optional business type.
-    business_type = extract_business_type_from_widget_config(widget_config)
-    return build_default_system_instruction(
-        bot_name=bot_name,
-        business_type=business_type,
+    return _prompt_provider.resolve_system_prompt(
+        agent_config=agent_config or {},
         lang=lang,
+        bot_name=bot_name,
+        widget_config=widget_config,
     )
 
 
@@ -754,6 +734,10 @@ async def v1_pk_widget_config(publishable_key: str):
     lang = _get_language_from_widget_config_dict(config)
     config["suggestedMessages"] = get_suggested_messages_for_widget(config, lang=lang)
     config.pop("suggestedMessagesEnabled", None)  # removed; always show when config has them
+    reservation_links = normalize_reservation_links(config)
+    if reservation_links:
+        config["reservationLinks"] = reservation_links
+        config["reservation_links"] = reservation_links
 
     return config
 
@@ -767,28 +751,29 @@ async def v1_pk_menu_page(publishable_key: str, request: Request):
     items = asset_repo().list_assets_for_bot(bot.bot_id, active_only=True, asset_type="menu_item")
     base = str(request.base_url).rstrip("/")
     title = getattr(bot, "display_name", "Menu") or "Menu"
-    _MENU_CATEGORY_ORDER = ("course", "dish", "drink", "lunch", "menu")
-    _MENU_CATEGORY_LABELS = {
-        "course": "Party / Course",
-        "dish": "Dish",
-        "drink": "Drink",
-        "lunch": "Lunch",
-        "menu": "Menu",
-    }
-    grouped: Dict[str, List[Any]] = {k: [] for k in _MENU_CATEGORY_ORDER}
+    widget_config: Dict[str, Any] = {}
+    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+        try:
+            widget_config = json.loads(bot.widget_config)
+        except (TypeError, ValueError):
+            widget_config = {}
+    lang = _get_language_from_widget_config_dict(widget_config)
+    category_order = list(get_menu_category_order())
+    default_category = category_order[-1] if category_order else ""
+    menu_labels = (get_menu_texts(lang, widget_config=widget_config).get("category_labels") or {})
+    grouped: Dict[str, List[Any]] = {k: [] for k in category_order}
     for item in items:
         meta = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
         raw = str(meta.get("category") or "").strip().lower()
-        aliases = {"party": "course", "plan": "course", "set": "course", "beverage": "drink", "food": "dish", "lunch_set": "lunch"}
-        cat = aliases.get(raw, raw) if raw else "menu"
-        cat = cat if cat in _MENU_CATEGORY_ORDER else "menu"
+        cat = normalize_menu_category(raw, widget_config=widget_config) if raw else default_category
+        cat = cat if cat in category_order else default_category
         grouped[cat].append(item)
     html_sections: List[str] = []
-    for cat in _MENU_CATEGORY_ORDER:
+    for cat in category_order:
         cat_items = grouped.get(cat) or []
         if not cat_items:
             continue
-        label = _MENU_CATEGORY_LABELS.get(cat, cat.title())
+        label = str(menu_labels.get(cat) or cat)
         section_items: List[str] = []
         for a in cat_items:
             name = str(a.name or "Menu item").strip()
@@ -1670,16 +1655,17 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
                 {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
                 for m in resolved
             ]
-            
+
+        reservation_links = normalize_reservation_links(widget_config)
+        if reservation_links:
+            widget_config["reservationLinks"] = reservation_links
+            widget_config["reservation_links"] = reservation_links
+
         # Also resolve menu extraction patterns if a platform is configured
         from domain.platform_profiles import resolve_platform_profile
-        platform_name = widget_config.get("reservationPlatform")
-        platform_url = None
-        if platform_name == "hotpepper":
-            platform_url = widget_config.get("hotPepperUrl")
-        elif platform_name == "tabelog":
-            platform_url = widget_config.get("tabelogUrl")
-            
+        platform_name = str(widget_config.get("reservationPlatform") or "").strip().lower()
+        platform_url = get_reservation_url_for_platform(widget_config, platform_name) if platform_name else ""
+
         if platform_url:
             profile, _ = resolve_platform_profile(platform_url)
             if profile and profile.menu_url_patterns:
@@ -1747,6 +1733,9 @@ async def v1_org_update_bot_widget_config(
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
     incoming = payload.model_dump(exclude_none=True)
+    used_legacy_reservation_fields = any(
+        key in incoming for key in ("tableCheckUrl", "tabelogUrl", "hotPepperUrl")
+    )
 
     # Merge with existing widget_config so partial updates don't wipe unrelated keys
     # (e.g., urlBank/answer links).
@@ -1760,6 +1749,23 @@ async def v1_org_update_bot_widget_config(
         existing = {}
 
     merged = {**existing, **incoming}
+
+    if used_legacy_reservation_fields:
+        logger.warning(
+            "Deprecated reservation URL fields used for bot_id=%s. Prefer reservationLinks/reservation_links map.",
+            bot_id,
+        )
+
+    merged_links = normalize_reservation_links(merged)
+    if merged_links:
+        merged["reservationLinks"] = merged_links
+        merged["reservation_links"] = merged_links
+        if not str(merged.get("reservationPlatform") or "").strip():
+            merged["reservationPlatform"] = next(iter(merged_links.keys()))
+        # Keep legacy explicit fields for backward compatibility in this phase.
+        for platform_id, (widget_key, _) in RESERVATION_PLATFORM_CONFIG.items():
+            merged[widget_key] = merged_links.get(platform_id, "")
+
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
 
@@ -1883,23 +1889,26 @@ async def v1_list_personas(lang: str = "en"):
 
 def _default_prompt_fallback(business_name: str, lang: str = "en") -> str:
     """Fallback 3-part prompt when LLM or RAG is unavailable."""
-    if lang == "ja":
-        from domain.personas_ja import ABOUT_BUSINESS_JA, RESPONSE_RULES_JA
-        return (
-            f"## パーソナリティ\n"
-            f"あなたは{business_name}のAIアシスタントで、親切でフレンドリーなガイドです。\n\n"
-            f"## ビジネスについて\n"
-            f"{business_name}はお客様に卓越したサービスを提供することに専念しています。"
-            + RESPONSE_RULES_JA
-        )
-    from application.services.prompt_generation_service import _STANDARD_RESPONSE_RULES
-    return (
-        f"## Personality\n"
-        f"You are {business_name}'s AI assistant, a helpful and friendly guide.\n\n"
-        f"## About the Business\n"
-        f"{business_name} is dedicated to providing excellent service to its customers."
-        + _STANDARD_RESPONSE_RULES
-    )
+    normalized_lang = "ja" if str(lang or "").strip().lower() in ("ja", "jp") else "en"
+    fallback_cfg = get_prompt_fallback_config()
+    generation_cfg = get_prompt_generation_config()
+
+    if normalized_lang == "ja":
+        personality_template = str(fallback_cfg.get("personality_ja") or "").strip()
+        about_template = str(fallback_cfg.get("about_ja") or "").strip()
+        response_rules = str(generation_cfg.get("standard_response_rules_ja") or "").strip()
+        personality_title = str(fallback_cfg.get("personality_title_ja") or "").strip()
+        about_title = str(fallback_cfg.get("about_title_ja") or "").strip()
+    else:
+        personality_template = str(fallback_cfg.get("personality_en") or "").strip()
+        about_template = str(fallback_cfg.get("about_en") or "").strip()
+        response_rules = str(generation_cfg.get("standard_response_rules_en") or "").strip()
+        personality_title = str(fallback_cfg.get("personality_title_en") or "").strip()
+        about_title = str(fallback_cfg.get("about_title_en") or "").strip()
+
+    personality = personality_template.format(business_name=business_name)
+    about = about_template.format(business_name=business_name)
+    return f"{personality_title}\n{personality}\n\n{about_title}\n{about}{response_rules}"
 
 
 @router.post("/v1/org/bots/{bot_id}/generate-default-prompt")
@@ -2970,6 +2979,10 @@ async def v1_org_takeover_conversation(
     if not session or session.bot_id != bot_id:
         raise HTTPException(status_code=404, detail="Unknown session_id")
     ch = (session.channel or "").strip().lower()
+    bot = bot_service().get_bot(bot_id)
+    lang = _get_bot_language(bot) if bot else "en"
+    is_ja = lang.startswith("ja")
+
     if ch == "instagram":
         from infrastructure.db.repositories import PostgresInstagramUserSessionRepository
 
@@ -2978,12 +2991,28 @@ async def v1_org_takeover_conversation(
         if not mapping:
             raise HTTPException(status_code=404, detail="No Instagram session found for this conversation")
     elif ch == "line":
-        from infrastructure.db.repositories import PostgresLineUserSessionRepository
+        from infrastructure.db.repositories import PostgresLineUserSessionRepository, PostgresLineChannelRepository
+        from infrastructure.clients.line_client import push_message as line_push
 
         repo = PostgresLineUserSessionRepository()
         mapping = repo.escalate_by_session_id(session_id)
         if not mapping:
             raise HTTPException(status_code=404, detail="No LINE session found for this conversation")
+        # Notify end user that a staff member has taken over
+        try:
+            lc = PostgresLineChannelRepository().get_by_bot_id(bot_id)
+            if lc and lc.is_active:
+                msg = (
+                    "スタッフが対応を引き継ぎました。このままLINEでお返事いたしますので、少々お待ちください。"
+                    if is_ja
+                    else "A team member has taken over this conversation. They will reply to you here on LINE shortly."
+                )
+                import asyncio
+                asyncio.ensure_future(
+                    line_push(mapping.line_user_id, [msg], lc.line_channel_access_token)
+                )
+        except Exception:
+            pass  # Best-effort
     else:
         raise HTTPException(status_code=400, detail="Takeover only supported for Instagram and LINE conversations")
     return ConversationTakeoverResponse()

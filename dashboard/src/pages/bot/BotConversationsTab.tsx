@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bot, User, Search, Download, ArrowLeft, XCircle, MessageCircle, MessagesSquare } from 'lucide-react'
+import { Bot, User, Search, Download, ArrowLeft, XCircle, MessageCircle, MessagesSquare, HandMetal, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import type {
@@ -15,7 +15,7 @@ export default function BotConversationsTab() {
   const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
   const isJa = lang.startsWith('ja') || lang.startsWith('jp')
   const tr = (en: string, ja: string) => (isJa ? ja : en)
-  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession } =
+  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession, takeOverConversation } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
@@ -26,6 +26,8 @@ export default function BotConversationsTab() {
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
+  const [takenOver, setTakenOver] = useState<Set<string>>(new Set())
+  const [takingOver, setTakingOver] = useState(false)
 
   useEffect(() => {
     if (!selectedBot) return
@@ -157,6 +159,17 @@ export default function BotConversationsTab() {
     await loadSessions()
   }
 
+  async function handleTakeOver() {
+    if (!selectedBot || !selectedSession || takingOver) return
+    setTakingOver(true)
+    try {
+      await takeOverConversation(selectedBot.bot_id, selectedSession)
+      setTakenOver((prev) => new Set(prev).add(selectedSession))
+    } finally {
+      setTakingOver(false)
+    }
+  }
+
   function channelLabel(ch?: string | null): { emoji: string; label: string } {
     switch ((ch || '').toLowerCase()) {
       case 'web': return { emoji: '🌐', label: tr('Website', 'ウェブサイト') }
@@ -249,6 +262,24 @@ export default function BotConversationsTab() {
                   {escalatedSessionIds.has(s.session_id) && (
                     <span className="conversation-pill conversation-pill--escalated">{tr('Support requested', 'サポート依頼')}</span>
                   )}
+                  {(s.channel || '').toLowerCase() === 'line' && (
+                    <a
+                      href="https://chat.line.biz/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      title={tr('Open LINE Official Account', 'LINE公式アカウントを開く')}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                        padding: '0.15rem 0.5rem', borderRadius: 6,
+                        background: '#06C755', color: '#fff', fontSize: '0.75rem', fontWeight: 600,
+                        textDecoration: 'none', marginLeft: 'auto',
+                      }}
+                    >
+                      <ExternalLink size={11} />
+                      LINE OA
+                    </a>
+                  )}
                 </div>
               </button>
             ))}
@@ -321,6 +352,40 @@ export default function BotConversationsTab() {
                   <ArrowLeft size={14} />
                   {tr('Back to list', '一覧に戻る')}
                 </UiButton>
+                {selectedSessionRecord && (selectedSessionRecord.channel || '').toLowerCase() === 'line' && (
+                  takenOver.has(selectedSession!) || escalation?.status === 'open' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ui-flow-accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <HandMetal size={14} />
+                        {tr("You've taken over — bot is paused", '引き継ぎ済み — ボットは一時停止中')}
+                      </span>
+                      <a
+                        href="https://chat.line.biz/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                          padding: '0.4rem 0.85rem', borderRadius: 8,
+                          background: '#06C755', color: '#fff', fontSize: '0.85rem', fontWeight: 600,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        <ExternalLink size={14} />
+                        {tr('Reply on LINE OA', 'LINE公式で返信')}
+                      </a>
+                    </div>
+                  ) : (
+                    <UiButton
+                      variant="primary"
+                      onClick={() => void handleTakeOver()}
+                      disabled={takingOver}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <HandMetal size={14} />
+                      {takingOver ? tr('Taking over...', '引き継ぎ中...') : tr('Take over', '引き継ぐ')}
+                    </UiButton>
+                  )
+                )}
                 <UiButton variant="ghost" onClick={() => void handleEndSession()} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <XCircle size={14} />
                   {tr('End session', 'セッションを終了')}

@@ -19,13 +19,10 @@ LINE_API_BASE = "https://api.line.me/v2/bot"
 LINE_API_DATA = "https://api-data.line.me/v2/bot"
 
 # Menu flow (matches Instagram) — from config
-try:
-    from domain.platform_profiles import get_line_menu_quick_payload, get_line_menu_page_payload_prefix
-    LINE_MENU_QUICK_PAYLOAD = get_line_menu_quick_payload()
-    LINE_MENU_PAGE_PAYLOAD_PREFIX = get_line_menu_page_payload_prefix()
-except Exception:
-    LINE_MENU_QUICK_PAYLOAD = "SHOW_FULL_MENU"
-    LINE_MENU_PAGE_PAYLOAD_PREFIX = "SHOW_MENU_PAGE:"
+from domain.platform_profiles import get_line_menu_quick_payload, get_line_menu_page_payload_prefix
+
+LINE_MENU_QUICK_PAYLOAD = get_line_menu_quick_payload()
+LINE_MENU_PAGE_PAYLOAD_PREFIX = get_line_menu_page_payload_prefix()
 
 # ── Signature verification ────────────────────────────────────────────
 

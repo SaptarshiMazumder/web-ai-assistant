@@ -1,48 +1,43 @@
-# Platform config
+﻿# Platform config
 
 ## platform_profiles.yml
 
-Single source of truth for all business-type-specific behavior (Tabelog, HotPepper, TableCheck, etc.).
+Single source of truth for business/platform behavior (Tabelog, HotPepper, TableCheck, etc.).
 
-**Edit this file to add or change platforms** — no code changes needed.
+Edit this file to add or change platform behavior. No code change should be required for runtime settings.
 
-### Schema
+### Top-level sections
 
 | Section | Description |
 |---------|-------------|
-| `reservation_platform_config` | Maps platform_id (tabelog, hotpepper, tablecheck) → `widget_key`, `domain_key`, `url_placeholder`, `knowledge_tabs` |
-| `default_asset_rules` | `marker_rule`, `evidence_template` — fallback when no platform defines `asset_rules` |
-| `default_asset_term_config` | `generic_tokens`, `asset_intent_terms`, `visual_request_terms`, `visual_request_many_terms`, `visual_suppress_terms` — used for asset matching/scoring |
-| `default_suggested_messages` | Fallback when no platform defines `suggested_messages` |
-| `platforms` | Per-domain config keyed by domain (e.g. `tabelog.com`) |
+| `default_post_crawl_jobs` | Default jobs after crawl (`topic_extraction`, `booking_link`) |
+| `defaults` | Global defaults for source language, menu aliases/tokens, prompts, function mapping, and stopwords |
+| `reservation_platform_config` | Platform map (`platform_id -> widget_key/domain_key/url_placeholder/knowledge_tabs/post_crawl_jobs`) |
+| `default_asset_rules` | Default `marker_rule` and `evidence_template` |
+| `default_asset_term_config` | Default term lists for asset matching |
+| `default_suggested_messages` | Fallback suggested messages |
+| `platforms` | Per-domain config keyed by domain (e.g., `tabelog.com`) |
 
-### Platform entry fields
-
-| Field | Description |
-|-------|-------------|
-| `domain_pattern` | Regex to match URLs (e.g. `tabelog\.com`) |
-| `include_paths` | URL path patterns to include in crawl |
-| `exclude_paths` | URL path patterns to exclude |
-| `priority` | Tiebreaker when multiple profiles match |
-| `strip_query_params` | Remove `?` params for URL deduplication |
-| `menu_url_patterns` | Paths containing menu/course data |
-| `menu_extraction_rules` | `enabled`, `extractor`, `path_category_patterns`, etc. |
-| `metadata` | Platform-specific prompts and rules |
-
-### reservation_platform_config entry fields
+### reservation_platform_config fields
 
 | Field | Description |
 |-------|-------------|
-| `widget_key` | Key in widget_config for the platform URL (e.g. `tabelogUrl`) |
-| `domain_key` | Domain key for platform profiles (e.g. `tabelog.com`) |
-| `url_placeholder` | Placeholder URL for the dashboard input |
-| `knowledge_tabs` | Dashboard tabs to show: `[menu]` for Menu tab only (Tabelog, HotPepper), `[image]` for Image tab only (default) |
+| `widget_key` | Key in widget config for URL (e.g., `tabelogUrl`) |
+| `domain_key` | Domain key in `platforms` |
+| `url_placeholder` | Placeholder URL shown in dashboard |
+| `knowledge_tabs` | Dashboard tabs to show (e.g., `[menu]`, `[image]`) |
+| `post_crawl_jobs` | Platform-specific post-crawl jobs |
 
-### metadata sub-fields
+### Widget config reservation URL shape
+
+- Canonical internal shape: `reservation_links: { platform_id: url }`
+- Backward compatible (still supported): `tabelogUrl`, `hotPepperUrl`, `tableCheckUrl`
+
+### platform metadata fields
 
 | Field | Description |
 |-------|-------------|
-| `reservation` | `enabled`, `link_label` (en/ja), `instruction_template` (en/ja) |
-| `suggested_messages` | Quick-reply options (Menu, Reservation, etc.) |
-| `asset_instructions` | LLM prompt rules for when to show menu assets vs reservation link |
-| `asset_rules` | `marker_rule`, `evidence_template`, `asset_term_config` — asset bank instruction, evidence format, and term config (overrides default) |
+| `reservation` | Reservation enablement, labels, and instruction template |
+| `suggested_messages` | Suggested action chips/buttons |
+| `asset_instructions` | Prompt guidance for asset use |
+| `asset_rules` | Marker/evidence and term-config overrides |

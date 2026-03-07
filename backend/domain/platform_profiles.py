@@ -38,6 +38,111 @@ def _load_platform_config() -> Dict[str, Any]:
         return {}
 
 
+class ConfigValidationError(RuntimeError):
+    pass
+
+
+def _require_dict(container: Dict[str, Any], key: str) -> Dict[str, Any]:
+    value = container.get(key)
+    if not isinstance(value, dict):
+        raise ConfigValidationError(f"Missing or invalid '{key}' in {_CONFIG_PATH}")
+    return value
+
+
+def _require_list(container: Dict[str, Any], key: str) -> List[Any]:
+    value = container.get(key)
+    if not isinstance(value, list):
+        raise ConfigValidationError(f"Missing or invalid '{key}' in {_CONFIG_PATH}")
+    return value
+
+
+def _require_str(container: Dict[str, Any], key: str) -> str:
+    value = str(container.get(key) or "").strip()
+    if not value:
+        raise ConfigValidationError(f"Missing or invalid '{key}' in {_CONFIG_PATH}")
+    return value
+
+
+def _validate_platform_config(cfg: Dict[str, Any]) -> None:
+    if not isinstance(cfg, dict) or not cfg:
+        raise ConfigValidationError(f"Config file is empty: {_CONFIG_PATH}")
+
+    _require_dict(cfg, "platforms")
+    _require_dict(cfg, "reservation_platform_config")
+    _require_dict(cfg, "default_asset_rules")
+    datc = _require_dict(cfg, "default_asset_term_config")
+    for key in (
+        "generic_tokens",
+        "asset_intent_terms",
+        "visual_request_terms",
+        "visual_request_many_terms",
+        "visual_suppress_terms",
+    ):
+        _require_list(datc, key)
+
+    dar = _require_dict(cfg, "default_asset_rules")
+    _require_str(dar, "marker_rule")
+    _require_str(dar, "evidence_template")
+    _require_dict(cfg, "default_rag_instruction")
+    _require_dict(cfg, "default_menu_texts")
+    _require_list(cfg, "default_menu_keywords")
+    _require_list(cfg, "default_menu_category_order")
+    _require_list(cfg, "default_post_crawl_jobs")
+    _require_str(cfg, "line_menu_quick_payload")
+    _require_str(cfg, "line_menu_page_payload_prefix")
+    _require_str(cfg, "instagram_menu_quick_payload")
+    _require_str(cfg, "instagram_menu_page_payload_prefix")
+
+    defaults = _require_dict(cfg, "defaults")
+    _require_str(defaults, "source_language")
+    _require_list(defaults, "knowledge_tabs")
+    menu_defaults = _require_dict(defaults, "menu")
+    _require_dict(menu_defaults, "category_aliases")
+    _require_dict(menu_defaults, "view_all_url_tokens")
+    prompts_defaults = _require_dict(defaults, "prompts")
+    deterministic = _require_dict(prompts_defaults, "deterministic")
+    _require_dict(deterministic, "default_business_name")
+    _require_dict(deterministic, "personality_with_business_type")
+    _require_dict(deterministic, "personality_without_business_type")
+    section_titles = _require_dict(deterministic, "section_titles")
+    _require_dict(section_titles, "personality")
+    _require_dict(section_titles, "response_rules")
+    response_rules = _require_dict(deterministic, "response_rules")
+    _require_list(response_rules, "en")
+    _require_list(response_rules, "ja")
+
+    generation = _require_dict(prompts_defaults, "generation")
+    for key in (
+        "model",
+        "meta_prompt_en",
+        "meta_prompt_ja",
+        "rag_meta_prompt_en",
+        "rag_meta_prompt_ja",
+        "standard_response_rules_en",
+        "standard_response_rules_ja",
+        "identity_instruction_en",
+    ):
+        _require_str(generation, key)
+
+    fallback = _require_dict(prompts_defaults, "fallback")
+    for key in (
+        "personality_title_en",
+        "about_title_en",
+        "personality_title_ja",
+        "about_title_ja",
+        "personality_en",
+        "about_en",
+        "personality_ja",
+        "about_ja",
+    ):
+        _require_str(fallback, key)
+
+    functions_defaults = _require_dict(defaults, "functions")
+    _require_dict(functions_defaults, "suggested_type_to_function")
+    assets_defaults = _require_dict(defaults, "assets")
+    _require_list(assets_defaults, "base_stopwords")
+
+
 @dataclass
 class PlatformProfile:
     """Defines crawling and extraction strategy for a specific domain."""
@@ -126,6 +231,8 @@ def _build_platform_registry() -> tuple[
     Optional[Dict[str, Any]],
     List[str],
     List[str],
+    List[str],
+    Dict[str, Any],
     str,
     str,
     str,
@@ -133,6 +240,7 @@ def _build_platform_registry() -> tuple[
 ]:
     """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES, DEFAULT_ASSET_RULES, DEFAULT_ASSET_TERM_CONFIG, DEFAULT_JSON_RESPONSE_FORMAT, DEFAULT_RAG_INSTRUCTION, DEFAULT_MENU_TEXTS."""
     cfg = _load_platform_config()
+    _validate_platform_config(cfg)
     profiles: Dict[str, PlatformProfile] = {}
     reservation_config: Dict[str, Tuple[str, str]] = {}
     default_suggested: List[Dict[str, Any]] = []
@@ -181,11 +289,13 @@ def _build_platform_registry() -> tuple[
     default_menu_texts = cfg.get("default_menu_texts") if isinstance(cfg.get("default_menu_texts"), dict) else None
     default_menu_keywords = cfg.get("default_menu_keywords")
     default_menu_category_order = cfg.get("default_menu_category_order")
+    default_post_crawl_jobs = cfg.get("default_post_crawl_jobs")
+    defaults_cfg = cfg.get("defaults") if isinstance(cfg.get("defaults"), dict) else {}
     default_menu_request_pattern = str(cfg.get("default_menu_request_pattern") or "").strip()
-    line_menu_payload = str(cfg.get("line_menu_quick_payload") or "SHOW_FULL_MENU").strip()
-    line_menu_prefix = str(cfg.get("line_menu_page_payload_prefix") or "SHOW_MENU_PAGE:").strip()
-    ig_menu_payload = str(cfg.get("instagram_menu_quick_payload") or "SHOW_FULL_MENU").strip()
-    ig_menu_prefix = str(cfg.get("instagram_menu_page_payload_prefix") or "SHOW_MENU_PAGE:").strip()
+    line_menu_payload = _require_str(cfg, "line_menu_quick_payload")
+    line_menu_prefix = _require_str(cfg, "line_menu_page_payload_prefix")
+    ig_menu_payload = _require_str(cfg, "instagram_menu_quick_payload")
+    ig_menu_prefix = _require_str(cfg, "instagram_menu_page_payload_prefix")
 
     return (
         profiles,
@@ -197,7 +307,9 @@ def _build_platform_registry() -> tuple[
         default_rag,
         default_menu_texts,
         default_menu_keywords if isinstance(default_menu_keywords, list) else [],
-        default_menu_category_order if isinstance(default_menu_category_order, list) else ["course", "dish", "drink", "lunch", "menu"],
+        default_menu_category_order if isinstance(default_menu_category_order, list) else [],
+        default_post_crawl_jobs if isinstance(default_post_crawl_jobs, list) else [],
+        defaults_cfg if isinstance(defaults_cfg, dict) else {},
         default_menu_request_pattern,
         line_menu_payload,
         line_menu_prefix,
@@ -217,6 +329,8 @@ def _build_platform_registry() -> tuple[
     DEFAULT_MENU_TEXTS,
     DEFAULT_MENU_KEYWORDS,
     DEFAULT_MENU_CATEGORY_ORDER,
+    DEFAULT_POST_CRAWL_JOBS,
+    DEFAULTS_CONFIG,
     DEFAULT_MENU_REQUEST_PATTERN,
     LINE_MENU_QUICK_PAYLOAD,
     LINE_MENU_PAGE_PAYLOAD_PREFIX,
@@ -255,6 +369,155 @@ def get_reservation_platforms_list(*, lang: str = "en") -> List[Dict[str, Any]]:
             "url_placeholder": url_placeholder,
         })
     return out
+
+
+def get_defaults_config() -> Dict[str, Any]:
+    return dict(DEFAULTS_CONFIG) if isinstance(DEFAULTS_CONFIG, dict) else {}
+
+
+def get_default_post_crawl_jobs() -> List[str]:
+    return [str(j).strip().lower() for j in DEFAULT_POST_CRAWL_JOBS if str(j).strip()]
+
+
+def get_default_source_language() -> str:
+    defaults = get_defaults_config()
+    return str(defaults.get("source_language") or "").strip().lower()
+
+
+def get_default_knowledge_tabs() -> List[str]:
+    defaults = get_defaults_config()
+    raw = defaults.get("knowledge_tabs")
+    return [str(v).strip().lower() for v in raw] if isinstance(raw, list) else []
+
+
+def get_menu_category_aliases(*, widget_config: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+    defaults = get_defaults_config()
+    menu_defaults = defaults.get("menu") if isinstance(defaults.get("menu"), dict) else {}
+    aliases = menu_defaults.get("category_aliases") if isinstance(menu_defaults.get("category_aliases"), dict) else {}
+    out = {str(k).strip().lower(): str(v).strip().lower() for k, v in aliases.items() if str(k).strip() and str(v).strip()}
+
+    if widget_config:
+        cfg = get_reservation_config_from_widget(widget_config)
+        if cfg:
+            domain_key = cfg.get("domain_key")
+            profile = PLATFORM_PROFILES.get(str(domain_key or ""))
+            metadata = profile.metadata if profile and isinstance(getattr(profile, "metadata", None), dict) else {}
+            platform_menu = metadata.get("menu") if isinstance(metadata.get("menu"), dict) else {}
+            override = platform_menu.get("category_aliases") if isinstance(platform_menu.get("category_aliases"), dict) else {}
+            for k, v in override.items():
+                key = str(k).strip().lower()
+                value = str(v).strip().lower()
+                if key and value:
+                    out[key] = value
+    return out
+
+
+def get_menu_view_all_url_tokens(*, widget_config: Optional[Dict[str, Any]] = None) -> Dict[str, List[str]]:
+    defaults = get_defaults_config()
+    menu_defaults = defaults.get("menu") if isinstance(defaults.get("menu"), dict) else {}
+    raw = menu_defaults.get("view_all_url_tokens") if isinstance(menu_defaults.get("view_all_url_tokens"), dict) else {}
+    out: Dict[str, List[str]] = {}
+    for k, values in raw.items():
+        key = str(k).strip().lower()
+        if not key:
+            continue
+        if isinstance(values, list):
+            out[key] = [str(v).strip() for v in values if str(v).strip()]
+
+    if widget_config:
+        cfg = get_reservation_config_from_widget(widget_config)
+        if cfg:
+            domain_key = cfg.get("domain_key")
+            profile = PLATFORM_PROFILES.get(str(domain_key or ""))
+            metadata = profile.metadata if profile and isinstance(getattr(profile, "metadata", None), dict) else {}
+            platform_menu = metadata.get("menu") if isinstance(metadata.get("menu"), dict) else {}
+            override = platform_menu.get("view_all_url_tokens") if isinstance(platform_menu.get("view_all_url_tokens"), dict) else {}
+            for k, values in override.items():
+                key = str(k).strip().lower()
+                if not key:
+                    continue
+                if isinstance(values, list):
+                    out[key] = [str(v).strip() for v in values if str(v).strip()]
+    return out
+
+
+def get_function_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    funcs = defaults.get("functions")
+    return dict(funcs) if isinstance(funcs, dict) else {}
+
+
+def get_deterministic_prompt_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    prompts = defaults.get("prompts") if isinstance(defaults.get("prompts"), dict) else {}
+    deterministic = prompts.get("deterministic")
+    return dict(deterministic) if isinstance(deterministic, dict) else {}
+
+
+def get_prompt_generation_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    prompts = defaults.get("prompts") if isinstance(defaults.get("prompts"), dict) else {}
+    generation = prompts.get("generation")
+    return dict(generation) if isinstance(generation, dict) else {}
+
+
+def get_prompt_fallback_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    prompts = defaults.get("prompts") if isinstance(defaults.get("prompts"), dict) else {}
+    fallback = prompts.get("fallback")
+    return dict(fallback) if isinstance(fallback, dict) else {}
+
+
+def get_asset_base_stopwords() -> List[str]:
+    defaults = get_defaults_config()
+    assets = defaults.get("assets") if isinstance(defaults.get("assets"), dict) else {}
+    raw = assets.get("base_stopwords")
+    return [str(v).strip().lower() for v in raw if str(v).strip()] if isinstance(raw, list) else []
+
+
+def get_default_asset_term_config() -> Dict[str, List[str]]:
+    return {
+        key: [str(v).strip() for v in values if str(v).strip()]
+        for key, values in (DEFAULT_ASSET_TERM_CONFIG or {}).items()
+        if isinstance(values, list)
+    }
+
+
+def normalize_reservation_links(widget_config: Dict[str, Any]) -> Dict[str, str]:
+    """
+    Canonicalize reservation links from widget_config into {platform_id: url}.
+    Supports both new map fields and legacy explicit URL fields.
+    """
+    links: Dict[str, str] = {}
+    if not isinstance(widget_config, dict):
+        return links
+
+    for key in ("reservation_links", "reservationLinks"):
+        raw = widget_config.get(key)
+        if not isinstance(raw, dict):
+            continue
+        for platform_id, url in raw.items():
+            pid = str(platform_id or "").strip().lower()
+            val = str(url or "").strip()
+            if not pid or not val:
+                continue
+            if not val.startswith(("http://", "https://")):
+                val = f"https://{val}"
+            links[pid] = val
+
+    for platform_id, (widget_key, _) in RESERVATION_PLATFORM_CONFIG.items():
+        raw_url = str(widget_config.get(widget_key) or "").strip()
+        if not raw_url:
+            continue
+        if not raw_url.startswith(("http://", "https://")):
+            raw_url = f"https://{raw_url}"
+        links[platform_id] = raw_url
+
+    return links
+
+
+def get_reservation_url_for_platform(widget_config: Dict[str, Any], platform_id: str) -> str:
+    return str(normalize_reservation_links(widget_config).get(str(platform_id or "").strip().lower()) or "").strip()
 
 
 def get_asset_rules_from_widget(widget_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -310,17 +573,15 @@ def get_reservation_config_from_widget(
     lang = "ja" if lang in ("ja", "jp") else "en"
 
     # One profile per agent: use reservationPlatform if set, else infer from first URL
+    normalized_links = normalize_reservation_links(widget_config)
     platform_id = str(widget_config.get("reservationPlatform") or "").strip().lower()
-    if not platform_id:
-        for pid, (config_key, _) in RESERVATION_PLATFORM_CONFIG.items():
-            if (widget_config.get(config_key) or "").strip():
-                platform_id = pid
-                break
+    if not platform_id and normalized_links:
+        platform_id = next(iter(normalized_links.keys()), "")
     if not platform_id or platform_id not in RESERVATION_PLATFORM_CONFIG:
         return None
 
-    config_key, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
-    raw_url = (widget_config.get(config_key) or "").strip()
+    _, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
+    raw_url = str(normalized_links.get(platform_id) or "").strip()
     if not raw_url:
         return None
     if not raw_url.startswith(("http://", "https://")):
@@ -345,8 +606,6 @@ def get_reservation_config_from_widget(
         templates = reservation.get("instruction_template")
         if isinstance(templates, dict):
             instruction = str(templates.get(lang) or templates.get("en") or "").strip()
-        else:
-            instruction = "When the customer asks about reservations or booking, include this exact link: {url}. Answer naturally based on the evidence."
     if not instruction:
         return None
 
@@ -357,9 +616,11 @@ def get_reservation_config_from_widget(
 
     labels = reservation.get("link_label")
     if isinstance(labels, dict):
-        link_label = str(labels.get(lang) or labels.get("en") or "Online Reservation").strip()
+        link_label = str(labels.get(lang) or labels.get("en") or "").strip()
     else:
-        link_label = "Online Reservation"
+        link_label = ""
+    if not link_label:
+        return None
 
     return {
         "url": raw_url,
@@ -379,22 +640,50 @@ def get_knowledge_tabs_for_widget(widget_config: Dict[str, Any]) -> List[str]:
     - tablecheck, others: ["image"] — Image tab only (default)
     """
     cfg = get_reservation_config_from_widget(widget_config)
+    default_tabs = get_default_knowledge_tabs()
     if not cfg:
-        return ["image"]
+        return default_tabs
     platform_id = cfg.get("platform_id")
     if not platform_id:
-        return ["image"]
-    raw = _load_platform_config()
-    rpc = raw.get("reservation_platform_config") or {}
+        return default_tabs
+    rpc = _load_platform_config().get("reservation_platform_config") or {}
     entry = rpc.get(platform_id) if isinstance(rpc, dict) else {}
     if not isinstance(entry, dict):
-        return ["image"]
+        return default_tabs
     tabs = entry.get("knowledge_tabs")
     if isinstance(tabs, list) and tabs:
         out = [str(t).strip().lower() for t in tabs if str(t).strip()]
         if out:
             return out
-    return ["image"]
+    return default_tabs
+
+
+def get_post_crawl_jobs_for_widget(widget_config: Dict[str, Any]) -> List[str]:
+    """
+    Get list of job names to run automatically after crawl completes.
+    Config-driven via reservation_platform_config.post_crawl_jobs or default_post_crawl_jobs.
+
+    Valid job names: topic_extraction, booking_link, menu_extraction
+    """
+    raw = _load_platform_config()
+    default_jobs = get_default_post_crawl_jobs()
+
+    cfg = get_reservation_config_from_widget(widget_config)
+    if not cfg:
+        return default_jobs
+    platform_id = cfg.get("platform_id")
+    if not platform_id:
+        return default_jobs
+    rpc = raw.get("reservation_platform_config") or {}
+    entry = rpc.get(platform_id) if isinstance(rpc, dict) else {}
+    if not isinstance(entry, dict):
+        return default_jobs
+    jobs = entry.get("post_crawl_jobs")
+    if isinstance(jobs, list) and jobs:
+        out = [str(j).strip().lower() for j in jobs if str(j).strip()]
+        if out:
+            return out
+    return default_jobs
 
 
 def get_platform_features_from_widget(widget_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -717,12 +1006,12 @@ def get_menu_texts(lang: str, *, widget_config: Optional[Dict[str, Any]] = None)
 
 def get_menu_keywords() -> List[str]:
     """Get menu request keywords from config."""
-    return list(DEFAULT_MENU_KEYWORDS) if DEFAULT_MENU_KEYWORDS else []
+    return [str(v).strip() for v in (DEFAULT_MENU_KEYWORDS or []) if str(v).strip()]
 
 
 def get_menu_category_order() -> Tuple[str, ...]:
     """Get menu category order from config."""
-    return tuple(DEFAULT_MENU_CATEGORY_ORDER) if DEFAULT_MENU_CATEGORY_ORDER else ("course", "dish", "drink", "lunch", "menu")
+    return tuple(str(v).strip().lower() for v in (DEFAULT_MENU_CATEGORY_ORDER or []) if str(v).strip())
 
 
 def get_menu_request_pattern() -> Optional[str]:
@@ -732,22 +1021,22 @@ def get_menu_request_pattern() -> Optional[str]:
 
 def get_line_menu_quick_payload() -> str:
     """Get LINE menu quick reply payload from config."""
-    return LINE_MENU_QUICK_PAYLOAD or "SHOW_FULL_MENU"
+    return str(LINE_MENU_QUICK_PAYLOAD or "").strip()
 
 
 def get_line_menu_page_payload_prefix() -> str:
     """Get LINE menu page payload prefix from config."""
-    return LINE_MENU_PAGE_PAYLOAD_PREFIX or "SHOW_MENU_PAGE:"
+    return str(LINE_MENU_PAGE_PAYLOAD_PREFIX or "").strip()
 
 
 def get_instagram_menu_quick_payload() -> str:
     """Get Instagram menu quick reply payload from config."""
-    return INSTAGRAM_MENU_QUICK_PAYLOAD or "SHOW_FULL_MENU"
+    return str(INSTAGRAM_MENU_QUICK_PAYLOAD or "").strip()
 
 
 def get_instagram_menu_page_payload_prefix() -> str:
     """Get Instagram menu page payload prefix from config."""
-    return INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX or "SHOW_MENU_PAGE:"
+    return str(INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX or "").strip()
 
 
 def ensure_canonical_reservation_url_in_text(text: str, canonical_url: str, domain_key: str) -> str:

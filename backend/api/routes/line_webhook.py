@@ -23,6 +23,14 @@ from api.schemas import (
     LineChannelDeleteResponse,
 )
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
+from application.services.asset_policy import ConfigAssetPolicy
+from application.services.channel_adapters import LineChannelAdapter
+from application.services.function_registry import FunctionRegistry
+from application.services.prompt_provider import ConfigPromptProvider
+from application.services.platform_strategy import (
+    build_menu_view_all_url_for_category,
+    normalize_menu_category,
+)
 from common.di.container import asset_repo, bot_service, conversation_service
 from infrastructure.clients.line_client import (
     verify_signature,
@@ -52,15 +60,12 @@ from domain.platform_profiles import (
 )
 from infrastructure.assets.asset_resolver import (
     build_asset_instruction,
-    process_answer_assets,
-    resolve_asset_markers,
 )
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
     PostgresLineUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
-from domain.personas import get_default_persona_id, get_persona_system_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +73,10 @@ router = APIRouter()
 
 _line_channel_repo = PostgresLineChannelRepository()
 _line_user_session_repo = PostgresLineUserSessionRepository()
+_line_adapter = LineChannelAdapter()
+_prompt_provider = ConfigPromptProvider()
+_asset_policy = ConfigAssetPolicy()
+_function_registry = FunctionRegistry()
 
 # ── Rate limiting (mirrors saas.py pattern) ──────────────────────────
 
@@ -110,18 +119,8 @@ _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
     },
 }
 
-ESCALATION_KEYWORDS = {
-    "human", "agent", "staff", "real person", "operator",
-    "talk to someone", "スタッフ", "人間", "担当者",
-}
-
 # Cancel escalation (matches Instagram — no skip, no back-to-bot)
 _CANCEL_KEYWORDS = {"cancel", "キャンセル"}
-
-
-def _wants_escalation(text: str) -> bool:
-    lower = text.lower().strip()
-    return any(kw in lower for kw in ESCALATION_KEYWORDS)
 
 
 def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
@@ -137,6 +136,21 @@ def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
         if t == label or t == prompt:
             return True
     return False
+
+
+def _resolve_suggested_type(text: str, suggested_messages: list) -> Optional[str]:
+    if not text or not suggested_messages:
+        return None
+    t = (text or "").strip()
+    for sm in suggested_messages:
+        if not isinstance(sm, dict):
+            continue
+        label = (sm.get("label") or "").strip()
+        prompt = (sm.get("prompt") or "").strip()
+        if t == label or t == prompt:
+            raw_type = str(sm.get("type") or "").strip()
+            return raw_type or None
+    return None
 
 
 def _wants_cancel_escalation(text: str) -> bool:
@@ -192,13 +206,13 @@ def _get_menu_items_for_bot(bot_id: str) -> List[Any]:
         return []
 
 
-def _menu_category_for_item(item: Any) -> str:
+def _menu_category_for_item(item: Any, *, widget_config: Optional[Dict[str, Any]] = None) -> str:
     metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
     raw = str(metadata.get("category") or "").strip().lower()
-    aliases = {"party": "course", "plan": "course", "set": "course", "beverage": "drink", "food": "dish", "lunch_set": "lunch"}
-    category = aliases.get(raw, raw)
+    category = normalize_menu_category(raw, widget_config=widget_config)
     order = get_menu_category_order()
-    return category if category in order else "menu"
+    default_category = order[-1] if order else category
+    return category if category in order else default_category
 
 
 def _is_full_menu_request(text: str, payload: Optional[str]) -> bool:
@@ -269,15 +283,13 @@ def _menu_item_source_url(item: Any) -> str:
     return u if u.startswith("http") else ""
 
 
-def _menu_view_all_url_for_category(category: str, items: List[Any]) -> str:
-    tokens = {"course": ("/party",), "dish": ("/dtlmenu",), "drink": ("/dtlmenu/drink",), "lunch": ("/dtlmenu/lunch",)}
-    urls = list({_menu_item_source_url(i) for i in items if _menu_item_source_url(i)})
-    for u in urls:
-        low = u.lower()
-        for t in tokens.get(category, ()):
-            if t in low:
-                return u
-    return urls[0] if urls else ""
+def _menu_view_all_url_for_category(
+    category: str,
+    items: List[Any],
+    *,
+    widget_config: Optional[Dict[str, Any]] = None,
+) -> str:
+    return build_menu_view_all_url_for_category(category, items, widget_config=widget_config)
 
 
 def _resolve_public_base_url(request: Optional[Request] = None) -> str:
@@ -335,6 +347,7 @@ async def _send_menu_by_category_line(
     lang: str = "en",
     publishable_key: Optional[str] = None,
     request: Optional[Request] = None,
+    widget_config: Optional[Dict[str, Any]] = None,
 ) -> None:
     """Send menu by category (matches Instagram flow, adapted for LINE)."""
     items = _get_menu_items_for_bot(bot_id)
@@ -380,7 +393,7 @@ async def _send_menu_by_category_line(
     order = get_menu_category_order()
     grouped: Dict[str, List[Any]] = {k: [] for k in order}
     for item in items:
-        grouped[_menu_category_for_item(item)].append(item)
+        grouped[_menu_category_for_item(item, widget_config=widget_config)].append(item)
 
     categories = [page_category] if page_category and page_category in order else list(order)
     pending_more_qr: List[dict] = []
@@ -396,7 +409,11 @@ async def _send_menu_by_category_line(
         if not page_items:
             continue
 
-        view_url = menu_page_url or _menu_view_all_url_for_category(category, category_items)
+        view_url = menu_page_url or _menu_view_all_url_for_category(
+            category,
+            category_items,
+            widget_config=widget_config,
+        )
         text_parts.append(label)
         if view_url:
             text_parts.append(_menu_text("view_full_menu", lang, url=view_url))
@@ -466,39 +483,6 @@ def _format_conversation_context(messages: list) -> str:
     return "\n\n".join(lines) if lines else ""
 
 
-def _get_bot_language(bot) -> str:
-    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-        try:
-            wc = json.loads(bot.widget_config)
-            lang = (wc.get("language") or "").strip().lower()
-            if lang in ("ja", "jp"):
-                return "ja"
-        except (TypeError, ValueError):
-            pass
-    return "en"
-
-
-def _resolve_system_instruction(agent_config: Dict[str, Any], bot) -> Optional[str]:
-    instructions = agent_config.get("instructions") if agent_config else None
-    if instructions and str(instructions).strip():
-        return instructions
-
-    lang = _get_bot_language(bot)
-    default_persona_id = get_default_persona_id()
-    persona_id_raw = agent_config.get("persona_id") if agent_config else None
-    persona_id = str(persona_id_raw).strip() if persona_id_raw else default_persona_id
-
-    builtin = get_persona_system_prompt(persona_id, lang=lang)
-    if builtin:
-        return builtin
-
-    for cp in (agent_config.get("custom_personas") or []):
-        if cp.get("id") == persona_id and cp.get("system_prompt"):
-            return cp["system_prompt"]
-
-    return get_persona_system_prompt(default_persona_id, lang=lang)
-
-
 # ── Helper: resolve org for auth (mirrors saas.py pattern) ───────────
 
 def _resolve_org_id(user_ctx, org_id: Optional[str] = None) -> str:
@@ -561,31 +545,18 @@ async def line_webhook(bot_id: str, request: Request):
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
 
-    # Process each event
+    # Process each event through the channel adapter.
     for event in events:
-        event_type = event.get("type")
-        if event_type != "message":
-            continue
-        message = event.get("message", {})
-        if message.get("type") != "text":
-            continue
-
-        text = (message.get("text") or "").strip()
-        if not text:
-            continue
-
-        reply_token = event.get("replyToken", "")
-        source = event.get("source", {})
-        line_user_id = source.get("userId", "")
-        if not line_user_id:
+        parsed = _line_adapter.parse_event(event)
+        if not parsed:
             continue
 
         await _handle_text_message(
             bot=bot,
             channel=channel,
-            line_user_id=line_user_id,
-            text=text,
-            reply_token=reply_token,
+            line_user_id=parsed.user_id,
+            text=parsed.text,
+            reply_token=parsed.reply_token,
             request=request,
         )
 
@@ -647,6 +618,8 @@ async def _handle_text_message(
     suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
+    suggested_type = _resolve_suggested_type(text, suggested_messages or [])
+    suggested_function_id = _function_registry.resolve_from_suggested_type(suggested_type or "")
 
     # Get or create session mapping
     mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
@@ -811,7 +784,7 @@ async def _handle_text_message(
         return
 
     # ── Escalation request ───────────────────────────────────────────
-    if _is_escalate_quick_reply(text, suggested_messages or []):
+    if suggested_function_id == "escalate" or _is_escalate_quick_reply(text, suggested_messages or []):
         _line_user_session_repo.set_awaiting_escalation_msg(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
@@ -861,6 +834,7 @@ async def _handle_text_message(
             lang=lang,
             publishable_key=getattr(bot, "publishable_key", None),
             request=request,
+            widget_config=widget_config,
         )
         conversation_service().add_message(
             session_id=session.session_id,
@@ -872,7 +846,7 @@ async def _handle_text_message(
 
     # Run menu flow when user explicitly requests menu (Menu/SHOW_FULL_MENU),
     # regardless of platform — ensures Menu button always responds
-    if _is_full_menu_request(effective_text, quick_payload):
+    if suggested_function_id == "show_menu" or _is_full_menu_request(effective_text, quick_payload):
         try:
             await _send_menu_by_category_line(
                 bot_id=bot.bot_id,
@@ -883,6 +857,7 @@ async def _handle_text_message(
                 lang=lang,
                 publishable_key=getattr(bot, "publishable_key", None),
                 request=request,
+                widget_config=widget_config,
             )
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -925,7 +900,14 @@ async def _handle_text_message(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    system_instruction = _resolve_system_instruction(agent_config, bot)
+    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
+    lang = "ja" if lang in ("ja", "jp") else "en"
+    system_instruction = _prompt_provider.resolve_system_prompt(
+        agent_config=agent_config,
+        lang=lang,
+        bot_name=(bot.display_name or "").strip(),
+        widget_config=widget_config,
+    )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
@@ -938,8 +920,6 @@ async def _handle_text_message(
     asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
-    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
-    lang = "ja" if lang in ("ja", "jp") else "en"
     platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=lang)
     if platform_asset_instruction:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
@@ -991,24 +971,15 @@ async def _handle_text_message(
                 answer, reservation_config["url"], reservation_config["domain_key"]
             )
 
-        show_assets = result.get("show_assets")
-        if show_assets is False:
-            asset_cards = []
-        else:
-            answer, marker_cards = resolve_asset_markers(
-                answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
-            )
-            if marker_cards:
-                asset_cards = marker_cards
-            else:
-                answer, asset_cards = process_answer_assets(
-                    answer,
-                    bot.bot_id,
-                    user_query=ai_query,
-                    session_id=session.session_id,
-                    allowed_asset_types=allowed_asset_types,
-                    asset_term_config=asset_rules.get("asset_term_config"),
-                )
+        answer, asset_cards = _asset_policy.resolve_assets(
+            answer=answer,
+            bot_id=bot.bot_id,
+            user_query=ai_query,
+            session_id=session.session_id,
+            allowed_asset_types=allowed_asset_types,
+            show_assets=result.get("show_assets"),
+            asset_term_config=asset_rules.get("asset_term_config"),
+        )
     except Exception as e:
         if is_quota_exhausted_error(e):
             logger.warning("RAG quota exhausted for LINE message bot_id=%s", bot.bot_id)

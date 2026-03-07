@@ -14,7 +14,6 @@ import {
 
   Bell,
   Settings,
-  Instagram,
   Globe,
   UsersRound,
   History,
@@ -116,7 +115,6 @@ export function botTabSecondaryItems(
 
     // Install section
     { id: 'website', label: 'nav.website', to: `/bots/${botId}/website`, icon: Globe, header: 'nav.install' },
-    { id: 'instagram', label: 'nav.instagram', to: `/bots/${botId}/instagram`, icon: Instagram, header: 'nav.install' },
     { id: 'line', label: 'nav.line', to: `/bots/${botId}/line`, icon: LineIcon, header: 'nav.install' },
 
     // Contacts section

@@ -28,7 +28,6 @@ import BotSettingsTab from './pages/bot/BotSettingsTab'
 import BotTestingTab from './pages/bot/BotTestingTab'
 import BotConversationsTab from './pages/bot/BotConversationsTab'
 import BotEscalationsTab from './pages/bot/BotEscalationsTab'
-import BotInstagramSettingsTab from './pages/bot/BotInstagramSettingsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
 
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
@@ -124,7 +123,6 @@ export default function App() {
               <Route path="escalations" element={<BotEscalationsTab />} />
               <Route path="leads" element={<BotLeadsTab />} />
               <Route path="website" element={<BotWebsiteSettingsTab />} />
-              <Route path="instagram" element={<BotInstagramSettingsTab />} />
               <Route path="line" element={<BotLineSettingsTab />} />
               <Route path="settings" element={<BotSettingsTab />} />
             </Route>

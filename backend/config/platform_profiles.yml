@@ -4,22 +4,202 @@
 #
 # Schema:
 #   reservation_platform_config: maps platform_id -> widget_key, domain_key, url_placeholder (optional)
+#   post_crawl_jobs: jobs to run automatically after crawl completes (topic_extraction, booking_link, menu_extraction)
 #   default_suggested_messages: fallback when no platform defines suggested_messages
 #   platforms: per-domain config (crawl, menu extraction, prompts, etc.)
+
+# Jobs run automatically after crawl completes. Controlled per-platform.
+# - topic_extraction: extract topics from docs
+# - booking_link: discover reservation/booking URLs from RAG (for generic bots; Tabelog/HotPepper use explicit URL)
+# - menu_extraction: extract menu items from crawled pages (for Tabelog, HotPepper)
+default_post_crawl_jobs:
+  - topic_extraction
+  - booking_link
+
+defaults:
+  source_language: ja
+  knowledge_tabs: [image]
+  menu:
+    category_aliases:
+      party: course
+      plan: course
+      set: course
+      beverage: drink
+      food: dish
+      lunch_set: lunch
+    view_all_url_tokens:
+      course: ["/party", "/course", "/course_cnod"]
+      dish: ["/dtlmenu", "/food"]
+      drink: ["/dtlmenu/drink", "/drink"]
+      lunch: ["/dtlmenu/lunch", "/lunch"]
+      menu: []
+  functions:
+    suggested_type_to_function:
+      show_menu: show_menu
+      escalate: escalate
+      ai_response: ai_response
+  assets:
+    base_stopwords:
+      - a
+      - an
+      - and
+      - are
+      - be
+      - can
+      - for
+      - from
+      - i
+      - in
+      - is
+      - it
+      - me
+      - my
+      - of
+      - on
+      - or
+      - please
+      - the
+      - to
+      - we
+      - with
+      - you
+      - your
+  prompts:
+    deterministic:
+      default_business_name:
+        en: "this business"
+        ja: "このビジネス"
+      personality_with_business_type:
+        en: "You are {bot_name}, a premier {business_type} assistant."
+        ja: "あなたは{bot_name}、一流の{business_type}アシスタントです。"
+      personality_without_business_type:
+        en: "You are {bot_name}, an AI assistant."
+        ja: "あなたは{bot_name}のAIアシスタントです。"
+      section_titles:
+        personality:
+          en: "## Personality"
+          ja: "## パーソナリティ"
+        response_rules:
+          en: "## Response Rules"
+          ja: "## 応答ルール"
+      response_rules:
+        en:
+          - "Respond in the same language as the user."
+          - "Use trained content as the source of truth and answer clearly."
+          - "If information is missing, say so directly and suggest how to confirm."
+          - "When helpful, suggest a clear next step."
+        ja:
+          - "ユーザーの入力言語に合わせて回答してください。"
+          - "学習済みコンテンツに基づいて、明確で正確に回答してください。"
+          - "不明な点は推測せず、分からないと伝えたうえで確認方法を案内してください。"
+          - "必要に応じて、次に取るべき行動を簡潔に提案してください。"
+    generation:
+      model: "gemini-2.0-flash-lite-001"
+      identity_instruction_en: |
+        IMPORTANT: The business name is "{business_name}". Use EXACTLY this name in the identity line.
+      meta_prompt_en: |
+        You are an expert prompt engineer. Your job is to write SYSTEM INSTRUCTIONS for an AI chatbot.
+
+        IMPORTANT: You are writing INSTRUCTIONS that tell the AI how to behave — NOT a conversation with a user.
+
+        RULES FOR THE OUTPUT:
+        1. Write everything in the SAME LANGUAGE as the website content.
+        2. Start with a "## Personality" section.
+        3. Include a "## About the Business" section (max 2-3 lines, no volatile details).
+        4. Do NOT include "Response Rules" or behavioral instructions.
+        5. Do NOT write chatbot-style replies.
+        6. Keep the entire output under 150 words.
+
+        Website URL: {url}
+
+        Website content (homepage only):
+        {content}
+
+        Generate ONLY the "## Personality" and "## About the Business" sections.
+      meta_prompt_ja: |
+        あなたは専門のプロンプトエンジニアです。AIチャットボットのシステム指示を書いてください。
+        出力は指示文として自然に読める形式にしてください。
+
+        ルール:
+        1. すべて日本語で書く。
+        2. 「## パーソナリティ」セクションを含める。
+        3. 「## ビジネスについて」セクションを含める（2〜3行、変動情報を除く）。
+        4. 「応答ルール」は含めない。
+        5. チャット返信文のような書き方はしない。
+        6. 150語以内。
+
+        ビジネス名: {business_name}
+        コンテンツ:
+        {content}
+      rag_meta_prompt_en: |
+        You are an expert prompt engineer. Your job is to write SYSTEM INSTRUCTIONS for an AI chatbot.
+
+        RULES FOR THE OUTPUT:
+        1. Write in the same language as the provided business content.
+        2. Include "## Personality".
+        3. Include "## About the Business" in 2-3 lines without volatile details.
+        4. Do NOT include response rules.
+        5. Keep output under 150 words.
+
+        Business Name: {business_name}
+
+        Business content:
+        {content}
+      rag_meta_prompt_ja: |
+        あなたは専門のプロンプトエンジニアです。AIチャットボットのシステム指示を書いてください。
+        以下のビジネス情報を使って「## パーソナリティ」と「## ビジネスについて」を日本語で作成してください。
+        応答ルールは書かず、150語以内で簡潔にまとめてください。
+
+        ビジネス名: {business_name}
+        ビジネスコンテンツ:
+        {content}
+      standard_response_rules_en: |
+
+        ## Response Rules
+        - MANDATORY: Detect the language of the user's input and respond in that same language.
+        - Use bullet points when listing multiple items from the same category.
+        - You may use markdown bold (**text**) to emphasize important items, sparingly.
+        - Provide detailed, helpful explanations.
+        - If you don't know something, say so and suggest checking the website.
+        - End responses on a welcoming note, and ask a logical follow-up question when useful.
+      standard_response_rules_ja: |
+
+        ## 応答ルール
+        - 必須：ユーザーの入力言語を検出し、同じ言語で応答してください。
+        - 同じカテゴリの複数項目を列挙する場合は箇条書きを使ってください。
+        - 強調にはマークダウン太字（**テキスト**）を控えめに使えます。
+        - 詳細で役立つ説明を提供してください。
+        - わからない場合は正直に伝え、Webサイト確認を提案してください。
+        - 応答は歓迎的な言葉で締め、必要に応じて自然なフォローアップ質問をしてください。
+    fallback:
+      personality_title_en: "## Personality"
+      about_title_en: "## About the Business"
+      personality_title_ja: "## パーソナリティ"
+      about_title_ja: "## ビジネスについて"
+      personality_en: "You are {business_name}'s AI assistant, a helpful and friendly guide."
+      about_en: "{business_name} is dedicated to providing excellent service to its customers."
+      personality_ja: "あなたは{business_name}のAIアシスタントで、親切でフレンドリーなガイドです。"
+      about_ja: "{business_name}はお客様に卓越したサービスを提供することに専念しています。"
 
 reservation_platform_config:
   tabelog:
     widget_key: tabelogUrl
     domain_key: tabelog.com
     url_placeholder: "https://tabelog.com/tokyo/A1304/A130401/13224546/"
+    knowledge_tabs: [menu]  # Menu tab only; no Image tab
+    post_crawl_jobs: [topic_extraction, menu_extraction]  # Skip booking_link; reservation URL is explicit
   hotpepper:
     widget_key: hotPepperUrl
     domain_key: hotpepper.jp
     url_placeholder: "https://www.hotpepper.jp/strJ001234567/"
+    knowledge_tabs: [menu]  # Menu tab only; no Image tab
+    post_crawl_jobs: [topic_extraction, menu_extraction]  # Skip booking_link; reservation URL is explicit
   tablecheck:
     widget_key: tableCheckUrl
     domain_key: tablecheck.com
     url_placeholder: "https://www.tablecheck.com/en/shops/your-restaurant/reserve"
+    knowledge_tabs: [image]  # Image tab only; no Menu tab
+    post_crawl_jobs: [topic_extraction, booking_link]  # No menu extraction (Image tab only)
 
 # Default asset rules (used when no platform or platform doesn't override)
 default_asset_rules:
@@ -206,9 +386,9 @@ default_json_response_format:
     show_assets: "boolean"
   show_assets_true_when:
     en: |
-      Set show_assets to TRUE when the question is about products, services, menu, items, offerings, or anything the business sells or provides.
+      Set show_assets to TRUE when the question is about products, services, menu, dishes, food, drinks, courses, or anything the business sells or provides.
     ja: |
-      show_assetsをTRUEにする場合: 商品、サービス、メニュー、品目、提供内容など、事業が販売・提供するものについての質問。
+      show_assetsをTRUEにする場合: 商品、サービス、メニュー、料理、食べ物、飲み物、コース、または事業が販売・提供するものについての質問。
   show_assets_false_when:
     en: |
       Set show_assets to FALSE when the question is about contact, hours, location, booking, or general info.
@@ -268,30 +448,6 @@ platforms:
         - id: suggest_support
           type: escalate
           label: { en: "Human support", ja: "サポートに相談" }
-      asset_filter:
-        reservation_suppress_terms:
-          - reservation
-          - reserve
-          - reserving
-          - book
-          - booking
-          - table
-          - 予約
-          - 席
-        menu_food_intent_terms:
-          - menu
-          - dish
-          - dishes
-          - food
-          - drink
-          - drinks
-          - course
-          - メニュー
-          - 料理
-          - コース
-          - ランチ
-          - ディナー
-          - デザート
       asset_rules:
         marker_rule: "Include {{asset_ASSET_ID}} for EVERY product/service you mention by name. One marker per item — do not skip any. URLs and images are resolved server-side from the ID."
         evidence_template: "To show this product's image in the response, include {{asset_{asset_id}}} in your answer."
@@ -403,12 +559,12 @@ platforms:
           show_assets: "boolean"
         show_assets_true_when:
           en: |
-            Set show_assets to TRUE when the question is about: menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list").
+            Set show_assets to TRUE when the question is about menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list"). Also set to TRUE whenever you have included {{asset_ID}} markers in your answer.
           ja: |
-            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。
+            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。回答に{{asset_ID}}マーカーを含めた場合もTRUEにしてください。
         show_assets_false_when:
           en: |
-            Set show_assets to FALSE when the question is about: reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
+            Set show_assets to FALSE when the question is about reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
           ja: |
             show_assetsをFALSEにする場合: 予約、席、営業時間、場所、連絡先、または一般的な情報についての質問。回答は予約・場所・連絡先にのみ焦点を当ててください。
         intent_when:
@@ -458,30 +614,6 @@ platforms:
         - pattern: "/party(?:/|$)"
           category: course
     metadata:
-      asset_filter:
-        reservation_suppress_terms:
-          - reservation
-          - reserve
-          - reserving
-          - book
-          - booking
-          - table
-          - 予約
-          - 席
-        menu_food_intent_terms:
-          - menu
-          - dish
-          - dishes
-          - food
-          - drink
-          - drinks
-          - course
-          - メニュー
-          - 料理
-          - コース
-          - ランチ
-          - ディナー
-          - デザート
       suggested_messages:
         - id: suggest_menu
           type: show_menu
@@ -602,12 +734,12 @@ platforms:
           show_assets: "boolean"
         show_assets_true_when:
           en: |
-            Set show_assets to TRUE when the question is about: menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list").
+            Set show_assets to TRUE when the question is about menu, dishes, food, drinks, courses, lunch, dinner, desserts, products, services, recommendations, or specific items (e.g. "what's the omakase?", "show me the wine list"). Also set to TRUE whenever you have included {{asset_ID}} markers in your answer.
           ja: |
-            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。
+            show_assetsをTRUEにする場合: メニュー、料理、食べ物、飲み物、コース、ランチ、ディナー、デザート、商品、サービス、おすすめ、または特定の品目（例：「おまかせは？」「ワインリストを見せて」）についての質問。回答に{{asset_ID}}マーカーを含めた場合もTRUEにしてください。
         show_assets_false_when:
           en: |
-            Set show_assets to FALSE when the question is about: reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
+            Set show_assets to FALSE when the question is about reservations, booking, tables, hours, location, contact, or general info. Keep the answer focused on reservation/location/contact only.
           ja: |
             show_assetsをFALSEにする場合: 予約、席、営業時間、場所、連絡先、または一般的な情報についての質問。回答は予約・場所・連絡先にのみ焦点を当ててください。
         intent_when:
@@ -637,30 +769,6 @@ platforms:
     exclude_paths: []
     priority: 10
     metadata:
-      asset_filter:
-        reservation_suppress_terms:
-          - reservation
-          - reserve
-          - reserving
-          - book
-          - booking
-          - table
-          - 予約
-          - 席
-        menu_food_intent_terms:
-          - menu
-          - dish
-          - dishes
-          - food
-          - drink
-          - drinks
-          - course
-          - メニュー
-          - 料理
-          - コース
-          - ランチ
-          - ディナー
-          - デザート
       asset_rules:
         asset_term_config:
           generic_tokens:
