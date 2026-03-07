@@ -203,6 +203,11 @@ export type JobPipelineStepRecord = {
   runner_ref: string
   on_failure: string
   status: string
+  progress_pct: number
+  current_stage_key?: string | null
+  current_message?: string | null
+  attempt: number
+  celery_task_id?: string | null
   linked_job_type?: string | null
   linked_job_id?: string | null
   output: Record<string, unknown>
@@ -213,6 +218,18 @@ export type JobPipelineStepRecord = {
   updated_at: string
 }
 
+export type JobPipelineEventRecord = {
+  event_id: string
+  run_id: string
+  step_index?: number | null
+  event_type: string
+  stage_key?: string | null
+  message?: string | null
+  progress_pct?: number | null
+  details: Record<string, unknown>
+  created_at: string
+}
+
 export type JobPipelineRunRecord = {
   run_id: string
   org_id: string
@@ -221,11 +238,16 @@ export type JobPipelineRunRecord = {
   trigger: string
   status: string
   current_step_index: number
+  progress_pct: number
+  current_step_id?: string | null
+  current_stage_key?: string | null
+  current_message?: string | null
   context: Record<string, unknown>
   last_error?: string | null
   created_at: string
   updated_at: string
   steps: JobPipelineStepRecord[]
+  events: JobPipelineEventRecord[]
 }
 
 export type ConversationSessionRecord = {
@@ -622,11 +644,15 @@ async function fetchJson<T>(
   const headerEntries =
     initHeaders instanceof Headers ? Object.fromEntries(initHeaders.entries()) : (initHeaders as Record<string, string> | undefined)
   const isFormDataBody = typeof FormData !== 'undefined' && init?.body instanceof FormData
+  const method = String(init?.method || 'GET').toUpperCase()
+  const isReadRequest = method === 'GET' || method === 'HEAD'
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    ...(isReadRequest ? { cache: 'no-store' as RequestCache } : {}),
     headers: {
       ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
       ...(headerEntries || {}),
+      ...(isReadRequest ? { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
@@ -701,10 +727,22 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   async function saveWidgetConfig(botId: string, config: Record<string, unknown>): Promise<void> {
     const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
-    await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/widget-config`, orgOverride), {
-      method: 'PUT',
-      body: JSON.stringify(config),
-    })
+    const result = await fetchAuthedJson<{ widget_config?: Record<string, unknown> }>(
+      withOrgParam(`/v1/org/bots/${botId}/widget-config`, orgOverride),
+      {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      }
+    )
+    const returnedWidgetConfig = result?.widget_config
+    if (
+      returnedWidgetConfig &&
+      typeof returnedWidgetConfig === 'object' &&
+      !Array.isArray(returnedWidgetConfig)
+    ) {
+      setSelectedBotWidgetConfig(returnedWidgetConfig)
+      return
+    }
     setSelectedBotWidgetConfig((prev) => ({ ...(prev || {}), ...(config || {}) }))
   }
 

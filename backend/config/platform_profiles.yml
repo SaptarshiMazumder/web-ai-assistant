@@ -18,12 +18,50 @@ default_post_crawl_jobs:
 job_pipeline:
   defaults:
     on_failure: continue
+    task_queue: celery
+    run_messages:
+      queued:
+        en: "Automation pipeline queued"
+        ja: "自動化パイプラインをキューに登録しました"
+      running:
+        en: "Automation pipeline running"
+        ja: "自動化パイプラインを実行中です"
+      paused:
+        en: "Pipeline paused, waiting for manual action"
+        ja: "パイプラインは一時停止中です（手動操作待ち）"
+      resume_requested:
+        en: "Resume requested, pipeline re-queued"
+        ja: "再開要求を受け付け、パイプラインを再キューしました"
+      done:
+        en: "Automation pipeline completed"
+        ja: "自動化パイプラインが完了しました"
+      error:
+        en: "Automation pipeline failed"
+        ja: "自動化パイプラインが失敗しました"
   jobs:
     discovery:
       runner_ref: application.services.job_pipeline.runners.discovery:DiscoveryRunner
       retries: 0
       timeout_sec: 1200
       on_failure: continue
+      progress_weight: 15
+      running_progress_pct: 40
+      progress_messages:
+        queued:
+          en: "Discovery queued"
+          ja: "URL検出をキューに登録しました"
+        running:
+          en: "Discovering URLs"
+          ja: "URLを検出しています"
+        paused:
+          en: "Waiting for URL selection"
+          ja: "URL選択待ちです"
+        done:
+          en: "Discovery completed"
+          ja: "URL検出が完了しました"
+        error:
+          en: "Discovery failed"
+          ja: "URL検出に失敗しました"
       dashboard_label:
         en: "URL discovery"
         ja: "URL検出"
@@ -32,6 +70,24 @@ job_pipeline:
       retries: 0
       timeout_sec: 1800
       on_failure: stop
+      progress_weight: 35
+      running_progress_pct: 45
+      progress_messages:
+        queued:
+          en: "Crawl/import queued"
+          ja: "クロールと取り込みをキューに登録しました"
+        running:
+          en: "Scanning and importing pages"
+          ja: "ページをスキャンして取り込み中です"
+        paused:
+          en: "Crawl/import paused"
+          ja: "クロールと取り込みは一時停止中です"
+        done:
+          en: "Crawl/import completed"
+          ja: "クロールと取り込みが完了しました"
+        error:
+          en: "Crawl/import failed"
+          ja: "クロールと取り込みに失敗しました"
       dashboard_label:
         en: "Crawl and import"
         ja: "クロールと取り込み"
@@ -40,6 +96,24 @@ job_pipeline:
       retries: 0
       timeout_sec: 300
       on_failure: continue
+      progress_weight: 25
+      running_progress_pct: 55
+      progress_messages:
+        queued:
+          en: "Prompt generation queued"
+          ja: "プロンプト生成をキューに登録しました"
+        running:
+          en: "Preparing bot prompt"
+          ja: "ボットのプロンプトを準備中です"
+        paused:
+          en: "Prompt generation paused"
+          ja: "プロンプト生成は一時停止中です"
+        done:
+          en: "Prompt generation completed"
+          ja: "プロンプト生成が完了しました"
+        error:
+          en: "Prompt generation failed"
+          ja: "プロンプト生成に失敗しました"
       dashboard_label:
         en: "Prompt generation"
         ja: "プロンプト生成"
@@ -48,6 +122,33 @@ job_pipeline:
       retries: 0
       timeout_sec: 120
       on_failure: continue
+      completion:
+        enabled: true
+        checker_ref: application.services.job_pipeline.completion:BookingLinkCompletionChecker
+        poll_interval_sec: 4
+        max_wait_sec: 1800
+        status_map:
+          running: [queued, running]
+          done: [done]
+          error: [failed, error, cancelled]
+      progress_weight: 35
+      running_progress_pct: 60
+      progress_messages:
+        queued:
+          en: "Booking link extraction queued"
+          ja: "予約リンク抽出をキューに登録しました"
+        running:
+          en: "Extracting booking links"
+          ja: "予約リンクを抽出しています"
+        paused:
+          en: "Booking link extraction paused"
+          ja: "予約リンク抽出は一時停止中です"
+        done:
+          en: "Booking link extraction completed"
+          ja: "予約リンク抽出が完了しました"
+        error:
+          en: "Booking link extraction failed"
+          ja: "予約リンク抽出に失敗しました"
       dashboard_label:
         en: "Booking link extraction"
         ja: "予約リンク抽出"
@@ -56,6 +157,33 @@ job_pipeline:
       retries: 0
       timeout_sec: 120
       on_failure: continue
+      completion:
+        enabled: true
+        checker_ref: application.services.job_pipeline.completion:MenuExtractionCompletionChecker
+        poll_interval_sec: 4
+        max_wait_sec: 2400
+        status_map:
+          running: [queued, running]
+          done: [done]
+          error: [failed, error, cancelled]
+      progress_weight: 45
+      running_progress_pct: 70
+      progress_messages:
+        queued:
+          en: "Menu extraction queued"
+          ja: "メニュー抽出をキューに登録しました"
+        running:
+          en: "Preparing menu from crawled pages"
+          ja: "クロール結果からメニューを作成中です"
+        paused:
+          en: "Menu extraction paused"
+          ja: "メニュー抽出は一時停止中です"
+        done:
+          en: "Menu extraction completed"
+          ja: "メニュー抽出が完了しました"
+        error:
+          en: "Menu extraction failed"
+          ja: "メニュー抽出に失敗しました"
       dashboard_label:
         en: "Menu extraction"
         ja: "メニュー抽出"
@@ -64,6 +192,24 @@ job_pipeline:
       retries: 0
       timeout_sec: 60
       on_failure: continue
+      progress_weight: 15
+      running_progress_pct: 75
+      progress_messages:
+        queued:
+          en: "Reservation URL automation queued"
+          ja: "予約URL自動設定をキューに登録しました"
+        running:
+          en: "Confirming reservation URL"
+          ja: "予約URLを確認しています"
+        paused:
+          en: "Reservation URL automation paused"
+          ja: "予約URL自動設定は一時停止中です"
+        done:
+          en: "Reservation URL automation completed"
+          ja: "予約URL自動設定が完了しました"
+        error:
+          en: "Reservation URL automation failed"
+          ja: "予約URL自動設定に失敗しました"
       dashboard_label:
         en: "Reservation URL automation"
         ja: "予約URL自動設定"
@@ -126,6 +272,26 @@ reservation_url_rules:
 defaults:
   jobs:
     topic_extraction_enabled: false
+  rag_import:
+    batch_size: 25
+    max_embedding_requests_per_min: 1000
+    busy_retry_max_attempts: 60
+    busy_retry_initial_backoff_sec: 2
+    busy_retry_max_backoff_sec: 30
+  logging:
+    crawl:
+      emit_events:
+        stage: true
+        progress: false
+        fetch: false
+        result: true
+        auth: false
+        gcs_prefix: false
+        error: true
+      previews:
+        single_page_content: false
+        crawl_raw: false
+        crawl_upload: false
   source_language: ja
   knowledge_tabs: [image]
   menu:

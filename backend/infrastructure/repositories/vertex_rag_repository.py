@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import time
 from typing import Optional
@@ -8,12 +9,22 @@ from vertexai import rag as vx_rag
 from google.cloud import storage
 
 from common.config import config
+from domain.platform_profiles import (
+    get_rag_import_batch_size,
+    get_rag_import_busy_retry_initial_backoff_sec,
+    get_rag_import_busy_retry_max_attempts,
+    get_rag_import_busy_retry_max_backoff_sec,
+    get_rag_import_max_embedding_requests_per_min,
+)
 from domain.repositories import RAGRepository
 
 from infrastructure.rag.crawl_service import CHUNK_OVERLAP, CHUNK_SIZE, EMBEDDING_PUBLISHER_MODEL
 
 PROJECT_ID = (config.PROJECT_ID or "").strip()
 VERTEX_LOCATION = (config.LOCATION or "us-central1").strip()
+_VERTEX_IMPORT_MAX_GCS_URIS = 25
+
+logger = logging.getLogger(__name__)
 
 
 class VertexRAGRepository(RAGRepository):
@@ -121,6 +132,21 @@ class VertexRAGRepository(RAGRepository):
         if not blob_paths:
             raise RuntimeError(f"No markdown files found under prefix: gs://{bucket_name}/{storage_prefix}/")
         gcs_uris = [f"gs://{bucket_name}/{name}" for name in blob_paths]
+        configured_batch_size = get_rag_import_batch_size()
+        batch_size = max(1, min(configured_batch_size, _VERTEX_IMPORT_MAX_GCS_URIS))
+        max_embedding_requests_per_min = get_rag_import_max_embedding_requests_per_min()
+        busy_retry_max_attempts = get_rag_import_busy_retry_max_attempts()
+        busy_retry_initial_backoff_sec = get_rag_import_busy_retry_initial_backoff_sec()
+        busy_retry_max_backoff_sec = get_rag_import_busy_retry_max_backoff_sec()
+        batches = [gcs_uris[i:i + batch_size] for i in range(0, len(gcs_uris), batch_size)]
+        logger.info(
+            "RAG import batching: corpus=%s files=%d configured_batch_size=%d effective_batch_size=%d batches=%d",
+            corpus_resource,
+            len(gcs_uris),
+            configured_batch_size,
+            batch_size,
+            len(batches),
+        )
         # Vertex RAG corpora reject concurrent import operations (FailedPrecondition).
         # We serialize imports per corpus across workers using a Postgres advisory lock,
         # and add a small retry loop for any lingering in-flight operations.
@@ -132,34 +158,36 @@ class VertexRAGRepository(RAGRepository):
                 cur.execute("SELECT pg_advisory_lock(%s)", (lock_key,))
             con.commit()
 
-            attempt = 0
-            backoff_s = 2.0
-            max_attempts = 10
-            while True:
-                try:
-                    vx_rag.import_files(
-                        corpus_resource,
-                        gcs_uris,
-                        transformation_config=vx_rag.TransformationConfig(
-                            chunking_config=vx_rag.ChunkingConfig(
-                                chunk_size=CHUNK_SIZE,
-                                chunk_overlap=CHUNK_OVERLAP,
-                            )
-                        ),
-                        max_embedding_requests_per_min=1000,
-                    )
-                    return
-                except Exception as e:
-                    msg = str(e) or ""
-                    busy = ("There are other operations running on the RagCorpus" in msg) or ("FailedPrecondition" in msg and "RagCorpus" in msg)
-                    attempt += 1
-                    if busy and attempt < max_attempts:
-                        time.sleep(backoff_s)
-                        backoff_s = min(backoff_s * 1.8, 30.0)
-                        continue
-                    raise RuntimeError(
-                        f"RAG import failed for corpus {corpus_resource}, prefix gs://{bucket_name}/{storage_prefix}/: {e}"
-                    ) from e
+            for batch_index, batch_uris in enumerate(batches, start=1):
+                attempt = 0
+                backoff_s = busy_retry_initial_backoff_sec
+                while True:
+                    try:
+                        vx_rag.import_files(
+                            corpus_resource,
+                            batch_uris,
+                            transformation_config=vx_rag.TransformationConfig(
+                                chunking_config=vx_rag.ChunkingConfig(
+                                    chunk_size=CHUNK_SIZE,
+                                    chunk_overlap=CHUNK_OVERLAP,
+                                )
+                            ),
+                            max_embedding_requests_per_min=max_embedding_requests_per_min,
+                        )
+                        break
+                    except Exception as e:
+                        msg = str(e) or ""
+                        busy = ("There are other operations running on the RagCorpus" in msg) or ("FailedPrecondition" in msg and "RagCorpus" in msg)
+                        attempt += 1
+                        if busy and attempt < busy_retry_max_attempts:
+                            time.sleep(backoff_s)
+                            backoff_s = min(backoff_s * 1.8, busy_retry_max_backoff_sec)
+                            continue
+                        raise RuntimeError(
+                            "RAG import failed for corpus "
+                            f"{corpus_resource}, prefix gs://{bucket_name}/{storage_prefix}/, "
+                            f"batch {batch_index}/{len(batches)} ({len(batch_uris)} files): {e}"
+                        ) from e
         finally:
             try:
                 with con.cursor() as cur:

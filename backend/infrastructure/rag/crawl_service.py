@@ -549,18 +549,21 @@ def import_gcs_prefix_into_corpus(corpus_resource: str, bucket_name: str, prefix
         raise ValueError(f"No markdown files found under gs://{bucket_name}/{prefix}/")
     gcs_uris = [f"gs://{bucket_name}/{name}" for name in blob_paths]
     try:
-        vx_rag.import_files(
-            corpus_resource,
-            gcs_uris,
-            transformation_config=vx_rag.TransformationConfig(
-                chunking_config=vx_rag.ChunkingConfig(
-                    chunk_size=CHUNK_SIZE,
-                    chunk_overlap=CHUNK_OVERLAP,
-                )
-                # (Later) you can switch to semantic/html chunking configs
-            ),
-            max_embedding_requests_per_min=1000,
-        )
+        max_uris_per_request = 25
+        for start in range(0, len(gcs_uris), max_uris_per_request):
+            batch = gcs_uris[start:start + max_uris_per_request]
+            vx_rag.import_files(
+                corpus_resource,
+                batch,
+                transformation_config=vx_rag.TransformationConfig(
+                    chunking_config=vx_rag.ChunkingConfig(
+                        chunk_size=CHUNK_SIZE,
+                        chunk_overlap=CHUNK_OVERLAP,
+                    )
+                    # (Later) you can switch to semantic/html chunking configs
+                ),
+                max_embedding_requests_per_min=1000,
+            )
         print(f"[RAG] Imported {len(gcs_uris)} markdown file(s) from gs://{bucket_name}/{prefix}/")
     except Exception as e:
         # Provide actionable diagnostics

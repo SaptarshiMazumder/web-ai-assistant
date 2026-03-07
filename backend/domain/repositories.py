@@ -13,6 +13,7 @@ from .entities import (
     IndexJob,
     JobPipelineRun,
     JobPipelineStep,
+    JobPipelineStepEvent,
     OrgMemberRecord,
     OrgRecord,
     TopicJob,
@@ -237,10 +238,16 @@ class JobPipelineRepository(Protocol):
     def list_steps(self, run_id: str) -> List[JobPipelineStep]:
         ...
 
+    def list_events(self, run_id: str) -> List[JobPipelineStepEvent]:
+        ...
+
     def update_run(self, run: JobPipelineRun) -> None:
         ...
 
     def update_step(self, step: JobPipelineStep) -> None:
+        ...
+
+    def append_event(self, event: JobPipelineStepEvent) -> None:
         ...
 
 

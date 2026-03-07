@@ -84,6 +84,7 @@ from api.schemas import (
     DiscoveryJobListResponse,
     BookingLinkJobItem,
     BookingLinkJobsResponse,
+    JobPipelineEventItem,
     JobPipelineLatestResponse,
     JobPipelineResumeResponse,
     JobPipelineRunItem,
@@ -181,6 +182,43 @@ def _get_language_from_widget_config_dict(widget_config: Optional[Dict[str, Any]
         if lang in ("ja", "jp"):
             return "ja"
     return "en"
+
+
+def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Resolve dashboard-facing widget config fields from canonical config.
+
+    Keeps dashboard behavior config-driven and consistent across read/update endpoints.
+    """
+    if not isinstance(widget_config, dict):
+        return widget_config
+
+    resolved = dict(widget_config)
+    lang = _get_language_from_widget_config_dict(resolved)
+    suggested = get_suggested_messages_for_widget(resolved, lang=lang)
+    if suggested:
+        resolved["suggestedMessages"] = [
+            {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
+            for m in suggested
+        ]
+
+    reservation_links = normalize_reservation_links(resolved)
+    if reservation_links:
+        resolved["reservationLinks"] = reservation_links
+        resolved["reservation_links"] = reservation_links
+
+    # Local import keeps dependency surface small for route startup.
+    from domain.platform_profiles import get_knowledge_tabs_for_widget, resolve_platform_profile
+
+    platform_name = str(resolved.get("reservationPlatform") or "").strip().lower()
+    platform_url = get_reservation_url_for_platform(resolved, platform_name) if platform_name else ""
+    if platform_url:
+        profile, _ = resolve_platform_profile(platform_url)
+        if profile and profile.menu_url_patterns:
+            resolved["menuUrlPatterns"] = profile.menu_url_patterns
+
+    resolved["knowledge_tabs"] = get_knowledge_tabs_for_widget(resolved)
+    return resolved
 
 
 def _build_deterministic_instruction_for_bot(
@@ -1649,35 +1687,7 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    # Resolve suggestedMessages so dashboard shows what widget/Instagram/Line use
-    if isinstance(widget_config, dict):
-        lang = _get_language_from_widget_config_dict(widget_config)
-        resolved = get_suggested_messages_for_widget(widget_config, lang=lang)
-        if resolved:
-            widget_config = dict(widget_config)
-            widget_config["suggestedMessages"] = [
-                {"id": m["id"], "label": m["label"], "type": m["type"], "prompt": m.get("prompt") or m["label"]}
-                for m in resolved
-            ]
-
-        reservation_links = normalize_reservation_links(widget_config)
-        if reservation_links:
-            widget_config["reservationLinks"] = reservation_links
-            widget_config["reservation_links"] = reservation_links
-
-        # Also resolve menu extraction patterns if a platform is configured
-        from domain.platform_profiles import resolve_platform_profile
-        platform_name = str(widget_config.get("reservationPlatform") or "").strip().lower()
-        platform_url = get_reservation_url_for_platform(widget_config, platform_name) if platform_name else ""
-
-        if platform_url:
-            profile, _ = resolve_platform_profile(platform_url)
-            if profile and profile.menu_url_patterns:
-                widget_config["menuUrlPatterns"] = profile.menu_url_patterns
-        # Inject knowledge_tabs for dashboard (config-driven: tabelog/hotpepper=menu, others=image)
-        from domain.platform_profiles import get_knowledge_tabs_for_widget
-        tabs = get_knowledge_tabs_for_widget(widget_config)
-        widget_config = {**widget_config, "knowledge_tabs": tabs}
+    widget_config = _build_widget_config_dashboard_view(widget_config)
     return BotDetailResponse(
         bot=BotSummary(
             bot_id=bot.bot_id,
@@ -1804,7 +1814,11 @@ async def v1_org_update_bot_widget_config(
             agent_config["persona_id"] = default_persona_id
         bot_service().update_agent_config(bot_id, json.dumps(agent_config, ensure_ascii=False))
 
-    return {"status": "ok", "bot_id": bot_id}
+    return {
+        "status": "ok",
+        "bot_id": bot_id,
+        "widget_config": _build_widget_config_dashboard_view(merged),
+    }
 
 
 @router.get("/v1/org/bots/{bot_id}/agent-config", response_model=AgentConfigResponse)
@@ -4628,10 +4642,12 @@ async def v1_org_get_latest_job_pipeline(
         return JobPipelineLatestResponse(bot_id=bot_id, run=None)
     run_raw = snapshot.get("run") if isinstance(snapshot, dict) else None
     steps_raw = snapshot.get("steps") if isinstance(snapshot, dict) else None
+    events_raw = snapshot.get("events") if isinstance(snapshot, dict) else None
     if not isinstance(run_raw, dict):
         return JobPipelineLatestResponse(bot_id=bot_id, run=None)
     steps = [JobPipelineStepItem(**s) for s in (steps_raw or []) if isinstance(s, dict)]
-    run = JobPipelineRunItem(**{**run_raw, "steps": steps})
+    events = [JobPipelineEventItem(**e) for e in (events_raw or []) if isinstance(e, dict)]
+    run = JobPipelineRunItem(**{**run_raw, "steps": steps, "events": events})
     return JobPipelineLatestResponse(bot_id=bot_id, run=run)
 
 
@@ -4650,12 +4666,14 @@ async def v1_org_resume_job_pipeline(
         raise HTTPException(status_code=404, detail=str(exc))
     run_raw = snapshot.get("run") if isinstance(snapshot, dict) else None
     steps_raw = snapshot.get("steps") if isinstance(snapshot, dict) else None
+    events_raw = snapshot.get("events") if isinstance(snapshot, dict) else None
     if not isinstance(run_raw, dict):
         raise HTTPException(status_code=404, detail="Job pipeline run not found")
     if str(run_raw.get("bot_id") or "").strip() != bot_id:
         raise HTTPException(status_code=403, detail="Run does not belong to this bot")
     steps = [JobPipelineStepItem(**s) for s in (steps_raw or []) if isinstance(s, dict)]
-    run = JobPipelineRunItem(**{**run_raw, "steps": steps})
+    events = [JobPipelineEventItem(**e) for e in (events_raw or []) if isinstance(e, dict)]
+    run = JobPipelineRunItem(**{**run_raw, "steps": steps, "events": events})
     return JobPipelineResumeResponse(bot_id=bot_id, run=run)
 
 

@@ -730,6 +730,11 @@ class JobPipelineStepItem(BaseModel):
     runner_ref: str
     on_failure: str
     status: str
+    progress_pct: int = 0
+    current_stage_key: Optional[str] = None
+    current_message: Optional[str] = None
+    attempt: int = 0
+    celery_task_id: Optional[str] = None
     linked_job_type: Optional[str] = None
     linked_job_id: Optional[str] = None
     output: Dict[str, Any] = {}
@@ -740,6 +745,18 @@ class JobPipelineStepItem(BaseModel):
     updated_at: str
 
 
+class JobPipelineEventItem(BaseModel):
+    event_id: str
+    run_id: str
+    step_index: Optional[int] = None
+    event_type: str
+    stage_key: Optional[str] = None
+    message: Optional[str] = None
+    progress_pct: Optional[int] = None
+    details: Dict[str, Any] = {}
+    created_at: str
+
+
 class JobPipelineRunItem(BaseModel):
     run_id: str
     org_id: str
@@ -748,11 +765,16 @@ class JobPipelineRunItem(BaseModel):
     trigger: str
     status: str
     current_step_index: int
+    progress_pct: int = 0
+    current_step_id: Optional[str] = None
+    current_stage_key: Optional[str] = None
+    current_message: Optional[str] = None
     context: Dict[str, Any] = {}
     last_error: Optional[str] = None
     created_at: str
     updated_at: str
     steps: List[JobPipelineStepItem] = []
+    events: List[JobPipelineEventItem] = []
 
 
 class JobPipelineLatestResponse(BaseModel):

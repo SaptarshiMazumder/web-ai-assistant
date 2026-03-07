@@ -63,6 +63,16 @@ def _require_str(container: Dict[str, Any], key: str) -> str:
     return value
 
 
+def _is_valid_i18n_text(value: Any) -> bool:
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, dict):
+        en = str(value.get("en") or "").strip()
+        ja = str(value.get("ja") or "").strip()
+        return bool(en or ja)
+    return False
+
+
 def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     if not isinstance(cfg, dict) or not cfg:
         raise ConfigValidationError(f"Config file is empty: {_CONFIG_PATH}")
@@ -144,9 +154,54 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_dict(functions_defaults, "suggested_type_to_function")
     assets_defaults = _require_dict(defaults, "assets")
     _require_list(assets_defaults, "base_stopwords")
+    rag_import_defaults = _require_dict(defaults, "rag_import")
+    for key in (
+        "batch_size",
+        "max_embedding_requests_per_min",
+        "busy_retry_max_attempts",
+        "busy_retry_initial_backoff_sec",
+        "busy_retry_max_backoff_sec",
+    ):
+        if key not in rag_import_defaults:
+            raise ConfigValidationError(f"Missing defaults.rag_import.{key} in {_CONFIG_PATH}")
+    try:
+        if int(rag_import_defaults.get("batch_size")) <= 0:
+            raise ValueError
+        if int(rag_import_defaults.get("max_embedding_requests_per_min")) <= 0:
+            raise ValueError
+        if int(rag_import_defaults.get("busy_retry_max_attempts")) <= 0:
+            raise ValueError
+        if float(rag_import_defaults.get("busy_retry_initial_backoff_sec")) <= 0:
+            raise ValueError
+        if float(rag_import_defaults.get("busy_retry_max_backoff_sec")) <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise ConfigValidationError(f"Invalid defaults.rag_import values in {_CONFIG_PATH}")
+    logging_defaults = _require_dict(defaults, "logging")
+    crawl_logging = _require_dict(logging_defaults, "crawl")
+    emit_events = _require_dict(crawl_logging, "emit_events")
+    for key in ("stage", "progress", "fetch", "result", "auth", "gcs_prefix", "error"):
+        if not isinstance(emit_events.get(key), bool):
+            raise ConfigValidationError(
+                f"Missing or invalid 'defaults.logging.crawl.emit_events.{key}' in {_CONFIG_PATH}"
+            )
+    previews = _require_dict(crawl_logging, "previews")
+    for key in ("single_page_content", "crawl_raw", "crawl_upload"):
+        if not isinstance(previews.get(key), bool):
+            raise ConfigValidationError(
+                f"Missing or invalid 'defaults.logging.crawl.previews.{key}' in {_CONFIG_PATH}"
+            )
 
     job_pipeline = _require_dict(cfg, "job_pipeline")
-    _require_dict(job_pipeline, "defaults")
+    pipeline_defaults = _require_dict(job_pipeline, "defaults")
+    _require_str(pipeline_defaults, "on_failure")
+    _require_str(pipeline_defaults, "task_queue")
+    run_messages = _require_dict(pipeline_defaults, "run_messages")
+    for key in ("queued", "running", "paused", "resume_requested", "done", "error"):
+        if not _is_valid_i18n_text(run_messages.get(key)):
+            raise ConfigValidationError(
+                f"Missing or invalid 'job_pipeline.defaults.run_messages.{key}' in {_CONFIG_PATH}"
+            )
     jobs_catalog = _require_dict(job_pipeline, "jobs")
     workflows = _require_dict(job_pipeline, "workflows")
     workflow_default = _require_list(workflows, "default")
@@ -154,6 +209,75 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
         if not isinstance(entry, dict):
             raise ConfigValidationError(f"Invalid job_pipeline.jobs.{job_id} in {_CONFIG_PATH}")
         _require_str(entry, "runner_ref")
+        if "progress_weight" not in entry:
+            raise ConfigValidationError(
+                f"Missing job_pipeline.jobs.{job_id}.progress_weight in {_CONFIG_PATH}"
+            )
+        try:
+            weight = int(entry.get("progress_weight"))
+        except (TypeError, ValueError):
+            raise ConfigValidationError(
+                f"Invalid job_pipeline.jobs.{job_id}.progress_weight in {_CONFIG_PATH}"
+            )
+        if weight <= 0:
+            raise ConfigValidationError(
+                f"Invalid job_pipeline.jobs.{job_id}.progress_weight in {_CONFIG_PATH}"
+            )
+        if "running_progress_pct" not in entry:
+            raise ConfigValidationError(
+                f"Missing job_pipeline.jobs.{job_id}.running_progress_pct in {_CONFIG_PATH}"
+            )
+        try:
+            running_pct = int(entry.get("running_progress_pct"))
+        except (TypeError, ValueError):
+            raise ConfigValidationError(
+                f"Invalid job_pipeline.jobs.{job_id}.running_progress_pct in {_CONFIG_PATH}"
+            )
+        if running_pct < 0 or running_pct > 100:
+            raise ConfigValidationError(
+                f"Invalid job_pipeline.jobs.{job_id}.running_progress_pct in {_CONFIG_PATH}"
+            )
+        progress_messages = _require_dict(entry, "progress_messages")
+        for status_key in ("queued", "running", "paused", "done", "error"):
+            if not _is_valid_i18n_text(progress_messages.get(status_key)):
+                raise ConfigValidationError(
+                    f"Missing or invalid 'job_pipeline.jobs.{job_id}.progress_messages.{status_key}' in {_CONFIG_PATH}"
+                )
+        completion = entry.get("completion")
+        if completion is not None:
+            if not isinstance(completion, dict):
+                raise ConfigValidationError(
+                    f"Invalid job_pipeline.jobs.{job_id}.completion in {_CONFIG_PATH}"
+                )
+            enabled = bool(completion.get("enabled"))
+            if enabled:
+                checker_ref = str(completion.get("checker_ref") or "").strip()
+                if not checker_ref:
+                    raise ConfigValidationError(
+                        f"Missing job_pipeline.jobs.{job_id}.completion.checker_ref in {_CONFIG_PATH}"
+                    )
+                try:
+                    poll_interval = int(completion.get("poll_interval_sec"))
+                    max_wait = int(completion.get("max_wait_sec"))
+                except (TypeError, ValueError):
+                    raise ConfigValidationError(
+                        f"Invalid completion poll/max wait config for job_pipeline.jobs.{job_id} in {_CONFIG_PATH}"
+                    )
+                if poll_interval <= 0 or max_wait <= 0:
+                    raise ConfigValidationError(
+                        f"Invalid completion poll/max wait config for job_pipeline.jobs.{job_id} in {_CONFIG_PATH}"
+                    )
+                status_map = completion.get("status_map")
+                if not isinstance(status_map, dict):
+                    raise ConfigValidationError(
+                        f"Missing job_pipeline.jobs.{job_id}.completion.status_map in {_CONFIG_PATH}"
+                    )
+                for map_key in ("running", "done", "error"):
+                    group = status_map.get(map_key)
+                    if not isinstance(group, list) or not [str(v).strip() for v in group if str(v).strip()]:
+                        raise ConfigValidationError(
+                            f"Missing or invalid job_pipeline.jobs.{job_id}.completion.status_map.{map_key} in {_CONFIG_PATH}"
+                        )
     for item in workflow_default:
         jid = str(item or "").strip()
         if jid and jid not in jobs_catalog:
@@ -458,6 +582,17 @@ def get_job_pipeline_config() -> Dict[str, Any]:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
+def get_job_pipeline_defaults() -> Dict[str, Any]:
+    pipeline = get_job_pipeline_config()
+    defaults = pipeline.get("defaults")
+    return dict(defaults) if isinstance(defaults, dict) else {}
+
+
+def get_job_pipeline_task_queue() -> str:
+    defaults = get_job_pipeline_defaults()
+    return str(defaults.get("task_queue") or "").strip()
+
+
 def get_job_pipeline_jobs() -> Dict[str, Dict[str, Any]]:
     pipeline = get_job_pipeline_config()
     raw = pipeline.get("jobs")
@@ -526,6 +661,64 @@ def get_job_pipeline_gates() -> Dict[str, Dict[str, Any]]:
 def get_default_source_language() -> str:
     defaults = get_defaults_config()
     return str(defaults.get("source_language") or "").strip().lower()
+
+
+def get_rag_import_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    rag_import = defaults.get("rag_import")
+    return dict(rag_import) if isinstance(rag_import, dict) else {}
+
+
+def get_rag_import_batch_size() -> int:
+    cfg = get_rag_import_config()
+    return int(cfg.get("batch_size"))
+
+
+def get_rag_import_max_embedding_requests_per_min() -> int:
+    cfg = get_rag_import_config()
+    return int(cfg.get("max_embedding_requests_per_min"))
+
+
+def get_rag_import_busy_retry_max_attempts() -> int:
+    cfg = get_rag_import_config()
+    return int(cfg.get("busy_retry_max_attempts"))
+
+
+def get_rag_import_busy_retry_initial_backoff_sec() -> float:
+    cfg = get_rag_import_config()
+    return float(cfg.get("busy_retry_initial_backoff_sec"))
+
+
+def get_rag_import_busy_retry_max_backoff_sec() -> float:
+    cfg = get_rag_import_config()
+    return float(cfg.get("busy_retry_max_backoff_sec"))
+
+
+def get_crawl_logging_config() -> Dict[str, Any]:
+    defaults = get_defaults_config()
+    logging_cfg = defaults.get("logging")
+    if not isinstance(logging_cfg, dict):
+        return {}
+    crawl_cfg = logging_cfg.get("crawl")
+    return dict(crawl_cfg) if isinstance(crawl_cfg, dict) else {}
+
+
+def should_emit_crawl_event(event_type: str) -> bool:
+    crawl_cfg = get_crawl_logging_config()
+    emit_events = crawl_cfg.get("emit_events")
+    if not isinstance(emit_events, dict):
+        return False
+    key = str(event_type or "").strip().lower()
+    return bool(emit_events.get(key))
+
+
+def is_crawl_preview_logging_enabled(kind: str) -> bool:
+    crawl_cfg = get_crawl_logging_config()
+    previews = crawl_cfg.get("previews")
+    if not isinstance(previews, dict):
+        return False
+    key = str(kind or "").strip().lower()
+    return bool(previews.get(key))
 
 
 def is_topic_extraction_enabled() -> bool:

@@ -16,7 +16,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from markdownify import markdownify
 
 from domain.entities import Document
-from domain.platform_profiles import get_default_source_language
+from domain.platform_profiles import get_default_source_language, is_crawl_preview_logging_enabled
 from application.services.job_pipeline_service import JobPipelineService
 from infrastructure.celery_app import celery_app
 from infrastructure.db.repositories import (
@@ -390,9 +390,10 @@ async def _execute_single_page_crawl(
                 content = getattr(result, "markdown", None) or getattr(result, "cleaned_html", None) or ""
                 content = _normalize_text_encoding(content)
             if content:
-                preview_limit = int(os.environ.get("SINGLE_PAGE_LOG_MAX_CHARS", "8000"))
-                preview = content if len(content) <= preview_limit else content[:preview_limit] + "\n...[truncated]"
-                logger.info("Single-page crawl [%s] content preview for %s:\n%s", pass_name, url, preview)
+                if is_crawl_preview_logging_enabled("single_page_content"):
+                    preview_limit = int(os.environ.get("SINGLE_PAGE_LOG_MAX_CHARS", "8000"))
+                    preview = content if len(content) <= preview_limit else content[:preview_limit] + "\n...[truncated]"
+                    logger.info("Single-page crawl [%s] content preview for %s:\n%s", pass_name, url, preview)
             if content:
                 docs.append(
                     Document(
@@ -415,7 +416,7 @@ async def _execute_single_page_crawl(
         job_repo.update_job(job)
         return {"status": "done", "docs_count": 0}
 
-    if docs:
+    if docs and is_crawl_preview_logging_enabled("crawl_raw"):
         preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
         for idx, doc in enumerate(docs):
             content = getattr(doc, "content", None) or ""
@@ -430,16 +431,17 @@ async def _execute_single_page_crawl(
     if source_lang:
         for doc in docs:
             _repair_doc_for_language(doc, lang=source_lang)
-        preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
-        for idx, doc in enumerate(docs):
-            content = getattr(doc, "content", None) or ""
-            if content:
-                logger.info(
-                    "GCS upload preview [%s] %s:\n%s",
-                    idx + 1,
-                    getattr(doc, "url", "") or "",
-                    _preview_text(content, preview_limit),
-                )
+        if is_crawl_preview_logging_enabled("crawl_upload"):
+            preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
+            for idx, doc in enumerate(docs):
+                content = getattr(doc, "content", None) or ""
+                if content:
+                    logger.info(
+                        "GCS upload preview [%s] %s:\n%s",
+                        idx + 1,
+                        getattr(doc, "url", "") or "",
+                        _preview_text(content, preview_limit),
+                    )
 
     job.stage = "uploading"
     job_repo.update_job(job)

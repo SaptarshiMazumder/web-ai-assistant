@@ -29,12 +29,12 @@ export default function CreateBotProgressPage() {
 
   // Auto-advance to next step ~5s after learning starts so user can continue setup while training runs in background
   useEffect(() => {
-    if ((!jobId && pdfJobIds.length === 0) || trainingStage !== 'training' || !flow.nextPath) return
+    if ((!jobId && pdfJobIds.length === 0) || trainingStage !== 'training' || !flow.nextPath || !!localError) return
     const t = window.setTimeout(() => {
       navigate(flow.nextPath!)
     }, 5000)
     return () => window.clearTimeout(t)
-  }, [jobId, pdfJobIds.length, trainingStage, flow.nextPath, navigate])
+  }, [jobId, pdfJobIds.length, trainingStage, flow.nextPath, navigate, localError])
 
   // If user skipped sources, there's no jobId; let them move on immediately.
   useEffect(() => {

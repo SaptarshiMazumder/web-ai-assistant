@@ -21,6 +21,7 @@ from domain.entities import (
     IndexJob,
     JobPipelineRun,
     JobPipelineStep,
+    JobPipelineStepEvent,
     InstagramChannel,
     InstagramUserSession,
     LineChannel,
@@ -82,6 +83,10 @@ def _new_message_id() -> str:
 
 def _new_escalation_id() -> str:
     return "esc_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
+
+
+def _new_pipeline_event_id() -> str:
+    return "jpe_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
 
 class PostgresBotRepository:
@@ -1872,9 +1877,10 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 """
                 INSERT INTO job_pipeline_runs(
                   run_id, org_id, bot_id, workflow_id, trigger, status,
-                  current_step_index, context_json, last_error, created_at, updated_at
+                  current_step_index, progress_pct, current_step_id, current_stage_key, current_message,
+                  context_json, last_error, created_at, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     run.run_id,
@@ -1884,6 +1890,10 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                     run.trigger,
                     run.status,
                     int(run.current_step_index or 0),
+                    int(run.progress_pct or 0),
+                    run.current_step_id,
+                    run.current_stage_key,
+                    run.current_message,
                     json.dumps(run.context if isinstance(run.context, dict) else {}),
                     run.last_error,
                     run.created_at,
@@ -1895,10 +1905,11 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                     """
                     INSERT INTO job_pipeline_steps(
                       run_id, step_index, job_id, runner_ref, on_failure, status,
+                      progress_pct, current_stage_key, current_message, attempt, celery_task_id,
                       linked_job_type, linked_job_id, output_json, last_error,
                       started_at, completed_at, created_at, updated_at
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         step.run_id,
@@ -1907,6 +1918,11 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                         step.runner_ref,
                         step.on_failure,
                         step.status,
+                        int(step.progress_pct or 0),
+                        step.current_stage_key,
+                        step.current_message,
+                        int(step.attempt or 0),
+                        step.celery_task_id,
                         step.linked_job_type,
                         step.linked_job_id,
                         json.dumps(step.output if isinstance(step.output, dict) else {}),
@@ -1930,7 +1946,8 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             row = con.execute(
                 """
                 SELECT run_id, org_id, bot_id, workflow_id, trigger, status,
-                       current_step_index, context_json, last_error, created_at, updated_at
+                       current_step_index, progress_pct, current_step_id, current_stage_key, current_message,
+                       context_json, last_error, created_at, updated_at
                 FROM job_pipeline_runs
                 WHERE run_id = %s
                 """,
@@ -1939,7 +1956,7 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             if not row:
                 return None
             try:
-                context_json = json.loads(row[7]) if row[7] else {}
+                context_json = json.loads(row[11]) if row[11] else {}
             except Exception:
                 context_json = {}
             return JobPipelineRun(
@@ -1950,10 +1967,14 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 trigger=row[4],
                 status=row[5],
                 current_step_index=row[6] or 0,
+                progress_pct=row[7] or 0,
+                current_step_id=row[8],
+                current_stage_key=row[9],
+                current_message=row[10],
                 context=context_json if isinstance(context_json, dict) else {},
-                last_error=row[8],
-                created_at=row[9],
-                updated_at=row[10],
+                last_error=row[12],
+                created_at=row[13],
+                updated_at=row[14],
             )
         finally:
             con.close()
@@ -1967,7 +1988,8 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             row = con.execute(
                 """
                 SELECT run_id, org_id, bot_id, workflow_id, trigger, status,
-                       current_step_index, context_json, last_error, created_at, updated_at
+                       current_step_index, progress_pct, current_step_id, current_stage_key, current_message,
+                       context_json, last_error, created_at, updated_at
                 FROM job_pipeline_runs
                 WHERE bot_id = %s
                 ORDER BY updated_at DESC
@@ -1978,7 +2000,7 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             if not row:
                 return None
             try:
-                context_json = json.loads(row[7]) if row[7] else {}
+                context_json = json.loads(row[11]) if row[11] else {}
             except Exception:
                 context_json = {}
             return JobPipelineRun(
@@ -1989,10 +2011,14 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 trigger=row[4],
                 status=row[5],
                 current_step_index=row[6] or 0,
+                progress_pct=row[7] or 0,
+                current_step_id=row[8],
+                current_stage_key=row[9],
+                current_message=row[10],
                 context=context_json if isinstance(context_json, dict) else {},
-                last_error=row[8],
-                created_at=row[9],
-                updated_at=row[10],
+                last_error=row[12],
+                created_at=row[13],
+                updated_at=row[14],
             )
         finally:
             con.close()
@@ -2006,6 +2032,7 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             rows = con.execute(
                 """
                 SELECT run_id, step_index, job_id, runner_ref, on_failure, status,
+                       progress_pct, current_stage_key, current_message, attempt, celery_task_id,
                        linked_job_type, linked_job_id, output_json, last_error,
                        started_at, completed_at, created_at, updated_at
                 FROM job_pipeline_steps
@@ -2017,7 +2044,7 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
             out: List[JobPipelineStep] = []
             for row in rows or []:
                 try:
-                    output_json = json.loads(row[8]) if row[8] else {}
+                    output_json = json.loads(row[13]) if row[13] else {}
                 except Exception:
                     output_json = {}
                 out.append(
@@ -2028,14 +2055,58 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                         runner_ref=row[3],
                         on_failure=row[4],
                         status=row[5],
-                        linked_job_type=row[6],
-                        linked_job_id=row[7],
+                        progress_pct=row[6] or 0,
+                        current_stage_key=row[7],
+                        current_message=row[8],
+                        attempt=row[9] or 0,
+                        celery_task_id=row[10],
+                        linked_job_type=row[11],
+                        linked_job_id=row[12],
                         output=output_json if isinstance(output_json, dict) else {},
-                        last_error=row[9],
-                        started_at=row[10],
-                        completed_at=row[11],
-                        created_at=row[12],
-                        updated_at=row[13],
+                        last_error=row[14],
+                        started_at=row[15],
+                        completed_at=row[16],
+                        created_at=row[17],
+                        updated_at=row[18],
+                    )
+                )
+            return out
+        finally:
+            con.close()
+
+    def list_events(self, run_id: str) -> List[JobPipelineStepEvent]:
+        rid = (run_id or "").strip()
+        if not rid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT event_id, run_id, step_index, event_type, stage_key, message,
+                       progress_pct, details_json, created_at
+                FROM job_pipeline_step_events
+                WHERE run_id = %s
+                ORDER BY created_at ASC
+                """,
+                (rid,),
+            ).fetchall()
+            out: List[JobPipelineStepEvent] = []
+            for row in rows or []:
+                try:
+                    details_json = json.loads(row[7]) if row[7] else {}
+                except Exception:
+                    details_json = {}
+                out.append(
+                    JobPipelineStepEvent(
+                        event_id=row[0],
+                        run_id=row[1],
+                        step_index=row[2],
+                        event_type=row[3],
+                        stage_key=row[4],
+                        message=row[5],
+                        progress_pct=row[6],
+                        details=details_json if isinstance(details_json, dict) else {},
+                        created_at=row[8],
                     )
                 )
             return out
@@ -2052,6 +2123,10 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 UPDATE job_pipeline_runs
                 SET status = %s,
                     current_step_index = %s,
+                    progress_pct = %s,
+                    current_step_id = %s,
+                    current_stage_key = %s,
+                    current_message = %s,
                     context_json = %s,
                     last_error = %s,
                     updated_at = %s
@@ -2060,6 +2135,10 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 (
                     run.status,
                     int(run.current_step_index or 0),
+                    int(run.progress_pct or 0),
+                    run.current_step_id,
+                    run.current_stage_key,
+                    run.current_message,
                     json.dumps(run.context if isinstance(run.context, dict) else {}),
                     run.last_error,
                     now,
@@ -2079,6 +2158,11 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 """
                 UPDATE job_pipeline_steps
                 SET status = %s,
+                    progress_pct = %s,
+                    current_stage_key = %s,
+                    current_message = %s,
+                    attempt = %s,
+                    celery_task_id = %s,
                     linked_job_type = %s,
                     linked_job_id = %s,
                     output_json = %s,
@@ -2090,6 +2174,11 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                 """,
                 (
                     step.status,
+                    int(step.progress_pct or 0),
+                    step.current_stage_key,
+                    step.current_message,
+                    int(step.attempt or 0),
+                    step.celery_task_id,
                     step.linked_job_type,
                     step.linked_job_id,
                     json.dumps(step.output if isinstance(step.output, dict) else {}),
@@ -2099,6 +2188,35 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
                     now,
                     step.run_id,
                     int(step.step_index),
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def append_event(self, event: JobPipelineStepEvent) -> None:
+        eid = (event.event_id or "").strip() or _new_pipeline_event_id()
+        created = (event.created_at or "").strip() or _utc_now()
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO job_pipeline_step_events(
+                  event_id, run_id, step_index, event_type, stage_key, message,
+                  progress_pct, details_json, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    eid,
+                    event.run_id,
+                    event.step_index,
+                    event.event_type,
+                    event.stage_key,
+                    event.message,
+                    event.progress_pct,
+                    json.dumps(event.details if isinstance(event.details, dict) else {}),
+                    created,
                 ),
             )
             con.commit()

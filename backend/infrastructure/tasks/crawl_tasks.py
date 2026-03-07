@@ -39,6 +39,8 @@ from domain.platform_profiles import (
     get_default_post_crawl_jobs,
     get_default_source_language,
     get_post_crawl_jobs_for_widget,
+    is_crawl_preview_logging_enabled,
+    should_emit_crawl_event,
 )
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
 from application.services.job_pipeline_service import JobPipelineService
@@ -63,8 +65,24 @@ def _asset_limit() -> int:
 
 def _emit_event(event_type: str, data: Dict[str, Any]) -> None:
     """Emit event for progress tracking (for backward compatibility)."""
+    if not should_emit_crawl_event(event_type):
+        return
     # In Celery, we update DB directly, but can also log for monitoring
     print(f"WEB_AI_EVENT {json.dumps({'type': event_type, **data}, ensure_ascii=False)}", flush=True)
+
+
+def _format_exception_message(exc: BaseException, *, max_len: int = 1200, max_causes: int = 4) -> str:
+    parts: List[str] = []
+    current: Optional[BaseException] = exc
+    depth = 0
+    while current is not None and depth < max_causes:
+        text = f"{type(current).__name__}: {str(current).strip() or '(no details)'}"
+        if text not in parts:
+            parts.append(text)
+        current = current.__cause__ or current.__context__
+        depth += 1
+    merged = " | caused by ".join(parts)
+    return merged[:max_len]
 
 
 def _utc_now() -> str:
@@ -923,25 +941,28 @@ async def _execute_crawl(
             # Don't raise - continue to process whatever we got
 
         if docs:
-            preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
-            for idx, doc in enumerate(docs):
-                url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
-                content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
-                if content:
-                    logger.info("Crawl raw preview [%s] %s:\n%s", idx + 1, url, _preview_text(content, preview_limit))
+            if is_crawl_preview_logging_enabled("crawl_raw"):
+                preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
+                for idx, doc in enumerate(docs):
+                    url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
+                    content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
+                    if content:
+                        logger.info("Crawl raw preview [%s] %s:\n%s", idx + 1, url, _preview_text(content, preview_limit))
 
             docs = _repair_docs_for_language(docs, lang=source_lang)
 
-            for idx, doc in enumerate(docs):
-                url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
-                content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
-                if content:
-                    logger.info(
-                        "GCS upload preview [%s] %s:\n%s",
-                        idx + 1,
-                        url,
-                        _preview_text(content, preview_limit),
-                    )
+            if is_crawl_preview_logging_enabled("crawl_upload"):
+                preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
+                for idx, doc in enumerate(docs):
+                    url = getattr(doc, "url", None) or (doc.get("url") if isinstance(doc, dict) else "") or ""
+                    content = getattr(doc, "content", None) or (doc.get("content") if isinstance(doc, dict) else "") or ""
+                    if content:
+                        logger.info(
+                            "GCS upload preview [%s] %s:\n%s",
+                            idx + 1,
+                            url,
+                            _preview_text(content, preview_limit),
+                        )
 
         job.docs_count = len(docs) if docs else 0
         # Store every URL we discovered and indexed (for display in dashboard)
@@ -1028,12 +1049,17 @@ async def _execute_crawl(
                     f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
                 )
         except Exception as import_error:
-            error_msg = str(import_error)[:200]
-            logger.error(f"RAG import error: {type(import_error).__name__}: {error_msg}")
+            error_msg = _format_exception_message(import_error, max_len=1200)
+            logger.error(f"RAG import error: {error_msg}")
             job.last_error = f"Import error: {error_msg}"
             job.stage = "error"
             job_repo.update_job(job)
-            # Don't raise - return what we have
+            return {
+                "status": "error",
+                "docs_count": len(docs),
+                "gcs_prefix": gcs_prefix,
+                "error": error_msg,
+            }
 
         return {"status": "done", "docs_count": len(docs), "gcs_prefix": gcs_prefix}
 
@@ -1116,10 +1142,21 @@ def crawl_job_task(
         )
         
         elapsed = time.monotonic() - start_time
-        logger.info(
-            "Crawl job %s COMPLETED successfully in %.1fs (bot=%s, docs=%d)",
-            job_id, elapsed, bot_id, result.get("docs_count", 0)
-        )
+        result_status = str(result.get("status") or "").strip().lower()
+        if result_status == "error":
+            logger.error(
+                "Crawl job %s COMPLETED with errors in %.1fs (bot=%s, docs=%d): %s",
+                job_id,
+                elapsed,
+                bot_id,
+                result.get("docs_count", 0),
+                str(result.get("error") or "")[:300],
+            )
+        else:
+            logger.info(
+                "Crawl job %s COMPLETED successfully in %.1fs (bot=%s, docs=%d)",
+                job_id, elapsed, bot_id, result.get("docs_count", 0)
+            )
         return result
     except SoftTimeLimitExceeded:
         elapsed = time.monotonic() - start_time

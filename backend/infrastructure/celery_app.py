@@ -57,6 +57,11 @@ try:
 except ImportError as e:
     import sys
     print(f"WARNING: Failed to import sync_tasks: {e}", file=sys.stderr)
+try:
+    from infrastructure.tasks import job_pipeline_tasks  # noqa: E402, F401
+except ImportError as e:
+    import sys
+    print(f"WARNING: Failed to import job_pipeline_tasks: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     print(f"Registered tasks: {list(celery_app.tasks.keys())}")

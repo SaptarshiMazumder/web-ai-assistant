@@ -186,6 +186,10 @@ class JobPipelineRun:
     trigger: str
     status: str  # queued|running|paused|done|error
     current_step_index: int = 0
+    progress_pct: int = 0
+    current_step_id: Optional[str] = None
+    current_stage_key: Optional[str] = None
+    current_message: Optional[str] = None
     context: Dict[str, Any] = field(default_factory=dict)
     last_error: Optional[str] = None
     created_at: str = ""
@@ -200,6 +204,11 @@ class JobPipelineStep:
     runner_ref: str
     on_failure: str  # continue|stop
     status: str  # queued|running|paused|done|error
+    progress_pct: int = 0
+    current_stage_key: Optional[str] = None
+    current_message: Optional[str] = None
+    attempt: int = 0
+    celery_task_id: Optional[str] = None
     linked_job_type: Optional[str] = None
     linked_job_id: Optional[str] = None
     output: Dict[str, Any] = field(default_factory=dict)
@@ -208,6 +217,19 @@ class JobPipelineStep:
     completed_at: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+
+
+@dataclass
+class JobPipelineStepEvent:
+    event_id: str
+    run_id: str
+    step_index: Optional[int]
+    event_type: str  # progress|status|error|info
+    stage_key: Optional[str]
+    message: Optional[str]
+    progress_pct: Optional[int]
+    details: Dict[str, Any] = field(default_factory=dict)
+    created_at: str = ""
 
 
 @dataclass

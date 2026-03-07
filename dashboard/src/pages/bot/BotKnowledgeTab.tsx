@@ -53,7 +53,8 @@ function statusLabel(stage: string): string {
 /** Rough progress 0–100 for training stage (for progress bar). */
 function trainingProgressPercent(stage: string | undefined): number {
   const s = (stage || '').toLowerCase()
-  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled' || s === 'import_submitted') return 100
+  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled') return 100
+  if (s === 'import_submitted') return 92
   if (s === 'prompt_generating') return 96
   if (s === 'prompt_queued') return 90
   if (s === 'uploading' || s === 'importing') return 75
@@ -69,7 +70,8 @@ function trainingProgressDisplayPercent(
   totalUrls: number
 ): number {
   const s = (stage || '').toLowerCase()
-  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled' || s === 'import_submitted') return 100
+  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled') return 100
+  if (s === 'import_submitted') return 92
   if (s === 'prompt_generating') return 96
   if (s === 'prompt_queued') return 90
   if (s === 'uploading' || s === 'importing') return 75
@@ -93,7 +95,7 @@ function trainingProgressLabel(stage: string | undefined): string {
   return 'Training…'
 }
 
-const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled', 'import_submitted'])
+const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled'])
 
 const BOOKING_LINK_JOB_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
 
@@ -103,6 +105,30 @@ function bookingStatusLabel(status?: string): string {
   if (s === 'failed' || s === 'error') return 'Booking link extraction failed'
   if (s === 'running' || s === 'queued') return 'Booking links in progress…'
   return 'Booking links…'
+}
+
+function pipelineProgressPercent(run: JobPipelineRunRecord | null): number {
+  if (!run) return 0
+  const direct = Number(run.progress_pct)
+  if (Number.isFinite(direct) && direct >= 0) return Math.max(0, Math.min(100, Math.round(direct)))
+  const steps = run.steps || []
+  if (!steps.length) return 0
+  const total = steps.reduce((sum, step) => sum + (Number(step.progress_pct) || 0), 0)
+  return Math.max(0, Math.min(100, Math.round(total / steps.length)))
+}
+
+function pipelineCurrentMessage(run: JobPipelineRunRecord | null): string {
+  if (!run) return ''
+  const msg = (run.current_message || '').trim()
+  if (msg) return msg
+  const activeStep = (run.steps || []).find((s) => (s.status || '').toLowerCase() === 'running')
+  if (activeStep?.current_message) return activeStep.current_message
+  const status = (run.status || '').toLowerCase()
+  if (status === 'done') return 'Pipeline completed'
+  if (status === 'error') return 'Pipeline failed'
+  if (status === 'paused') return 'Pipeline paused'
+  if (status === 'queued') return 'Pipeline queued'
+  return 'Pipeline running'
 }
 
 const AVAILABILITY_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
@@ -317,6 +343,14 @@ export default function BotKnowledgeTab() {
     inProgress.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
     return inProgress[0] ?? null
   }, [selectedBot, jobs])
+
+  const latestFailedSourcesJob = useMemo(() => {
+    if (!jobs.length) return null
+    const failed = jobs
+      .filter((j) => ['error', 'failed'].includes((j.stage || '').toLowerCase()))
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    return failed[0] ?? null
+  }, [jobs])
 
   useEffect(() => {
     if (!selectedBot || !activeSourcesJob) {
@@ -1168,6 +1202,11 @@ export default function BotKnowledgeTab() {
             {t('botKnowledge.subtitle', 'Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.')}
           </p>
         )}
+        {!sourcesTrainingJobId && latestFailedSourcesJob?.last_error && (
+          <div className="alert error" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+            {latestFailedSourcesJob.last_error}
+          </div>
+        )}
         <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           {sourcesTrainingJobId && sourcesTrainingStatus ? (
             <span className="primary" style={{ opacity: 0.6, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', padding: '0.6rem 1.1rem', borderRadius: '10px', border: '1px solid transparent', fontWeight: 500, fontSize: '1rem' }} aria-disabled>
@@ -1574,10 +1613,16 @@ export default function BotKnowledgeTab() {
           <p className="card-subtitle" style={{ marginTop: 0 }}>
             {t('botKnowledge.jobPipelineSubtitle', 'Config-defined sequential jobs executed after crawl/import.')}
           </p>
+          <div className="progress-track" style={{ marginBottom: '0.5rem' }}>
+            <div className="progress-fill" style={{ width: `${pipelineProgressPercent(jobPipelineRun)}%` }} />
+          </div>
+          <div className="muted" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+            {pipelineCurrentMessage(jobPipelineRun)}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600 }}>
               {t('botKnowledge.statusLabel', 'Status: ')}
-              {jobPipelineRun.status}
+              {jobPipelineRun.status} · {pipelineProgressPercent(jobPipelineRun)}%
             </span>
             {jobPipelineRun.updated_at && (
               <span className="muted" style={{ fontSize: '0.875rem' }}>
@@ -1595,11 +1640,16 @@ export default function BotKnowledgeTab() {
               <div key={`${step.run_id}-${step.step_index}`} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <strong>{step.step_index + 1}. {step.job_id}</strong>
-                  <span className="muted">· {step.status}</span>
+                  <span className="muted">· {step.status} · {Math.max(0, Math.min(100, Math.round(step.progress_pct || 0)))}%</span>
                   {step.linked_job_id && (
                     <span className="muted">· {step.linked_job_type}:{step.linked_job_id}</span>
                   )}
                 </div>
+                {step.current_message && (
+                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                    {step.current_message}
+                  </div>
+                )}
                 {step.last_error && (
                   <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem', color: '#dc2626' }}>
                     {step.last_error}
@@ -1608,6 +1658,28 @@ export default function BotKnowledgeTab() {
               </div>
             ))}
           </div>
+          {(jobPipelineRun.events || []).length > 0 && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                {t('botKnowledge.jobPipelineEvents', 'Recent activity')}
+              </div>
+              <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '10px' }}>
+                {[...(jobPipelineRun.events || [])]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 8)
+                  .map((evt) => (
+                    <div key={evt.event_id} className="url-list-item" style={{ marginBottom: '0.45rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600 }}>{evt.stage_key || evt.event_type}</span>
+                        {typeof evt.progress_pct === 'number' && <span className="muted">· {evt.progress_pct}%</span>}
+                        <span className="muted">· {formatRelativeTime(evt.created_at)}</span>
+                      </div>
+                      {evt.message && <div className="muted" style={{ fontSize: '0.85rem' }}>{evt.message}</div>}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </GlassCard>
       )}
 

@@ -169,10 +169,14 @@ export default function BotMenuListTab() {
   const authedFetch = useCallback(
     async (path: string, init?: RequestInit): Promise<Response> => {
       const token = await getAccessTokenSilently()
+      const method = String(init?.method || 'GET').toUpperCase()
+      const isReadRequest = method === 'GET' || method === 'HEAD'
       return fetch(`${API_BASE}${path}`, {
         ...init,
+        ...(isReadRequest ? { cache: 'no-store' as RequestCache } : {}),
         headers: {
           ...(init?.headers || {}),
+          ...(isReadRequest ? { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       })

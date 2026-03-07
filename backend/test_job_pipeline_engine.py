@@ -5,16 +5,19 @@ from unittest.mock import patch
 from application.services.job_pipeline.engine import JobPipelineEngine
 from domain.entities import Bot, JobPipelineRun, JobPipelineStep
 from domain.interfaces import JobResult
+from application.services.job_pipeline.completion import CompletionCheckResult
 
 
 class _InMemoryPipelineRepo:
     def __init__(self) -> None:
         self.runs: Dict[str, JobPipelineRun] = {}
         self.steps: Dict[str, List[JobPipelineStep]] = {}
+        self.events: Dict[str, List[Dict[str, Any]]] = {}
 
     def create_run(self, run: JobPipelineRun, steps: List[JobPipelineStep]) -> None:
         self.runs[run.run_id] = run
         self.steps[run.run_id] = list(steps)
+        self.events.setdefault(run.run_id, [])
 
     def get_run(self, run_id: str) -> Optional[JobPipelineRun]:
         return self.runs.get(run_id)
@@ -28,6 +31,9 @@ class _InMemoryPipelineRepo:
     def list_steps(self, run_id: str) -> List[JobPipelineStep]:
         return list(self.steps.get(run_id, []))
 
+    def list_events(self, run_id: str) -> List[Any]:
+        return list(self.events.get(run_id, []))
+
     def update_run(self, run: JobPipelineRun) -> None:
         self.runs[run.run_id] = run
 
@@ -37,6 +43,9 @@ class _InMemoryPipelineRepo:
             if existing.step_index == step.step_index:
                 items[idx] = step
                 break
+
+    def append_event(self, event: Any) -> None:
+        self.events.setdefault(event.run_id, []).append(event)
 
 
 class _BotRepo:
@@ -70,6 +79,28 @@ class _Registry:
 
     def resolve(self, runner_ref: str) -> _Runner:
         return self._runners[runner_ref]
+
+
+class _CompletionChecker:
+    def __init__(self, sequence: List[CompletionCheckResult]) -> None:
+        self._sequence = list(sequence)
+        self.calls = 0
+
+    def check(self, context: Dict[str, Any]) -> CompletionCheckResult:
+        self.calls += 1
+        if not self._sequence:
+            return CompletionCheckResult(status="done")
+        if len(self._sequence) == 1:
+            return self._sequence[0]
+        return self._sequence.pop(0)
+
+
+class _CompletionRegistry:
+    def __init__(self, checker: _CompletionChecker) -> None:
+        self._checker = checker
+
+    def resolve(self, checker_ref: str) -> _CompletionChecker:
+        return self._checker
 
 
 class JobPipelineEngineTests(unittest.TestCase):
@@ -208,6 +239,70 @@ class JobPipelineEngineTests(unittest.TestCase):
         self.assertEqual("done", resumed["run"]["status"])
         self.assertEqual(["booking_link"], trace)
         self.assertEqual(["done", "done"], [s["status"] for s in resumed["steps"]])
+
+    def test_waits_for_linked_job_completion(self) -> None:
+        trace: List[str] = []
+        checker = _CompletionChecker(
+            [
+                CompletionCheckResult(status="running", details={"child_status": "queued"}),
+                CompletionCheckResult(status="running", details={"child_status": "running"}),
+                CompletionCheckResult(status="done", details={"child_status": "done"}),
+            ]
+        )
+        engine = JobPipelineEngine(
+            pipeline_repo=_InMemoryPipelineRepo(),
+            bot_repo=_BotRepo(),
+            runner_registry=_Registry(
+                {
+                    "r.booking": _Runner(
+                        JobResult(status="done", linked_job_type="booking_link", linked_job_id="blj_1", output={"status": "queued"}),
+                        trace,
+                    ),
+                }
+            ),
+            completion_registry=_CompletionRegistry(checker),
+        )
+
+        with (
+            patch(
+                "application.services.job_pipeline.engine.get_job_pipeline_jobs",
+                return_value={
+                    "booking_link": {
+                        "runner_ref": "r.booking",
+                        "completion": {
+                            "enabled": True,
+                            "checker_ref": "x.y:Checker",
+                            "poll_interval_sec": 0,
+                            "max_wait_sec": 30,
+                            "status_map": {
+                                "running": ["queued", "running"],
+                                "done": ["done"],
+                                "error": ["failed"],
+                            },
+                        },
+                    },
+                },
+            ),
+            patch(
+                "application.services.job_pipeline.engine.get_job_pipeline_workflow",
+                return_value=["booking_link"],
+            ),
+            patch(
+                "application.services.job_pipeline.engine.get_job_pipeline_default_failure_policy",
+                return_value="continue",
+            ),
+            patch(
+                "application.services.job_pipeline.engine.get_job_pipeline_gates",
+                return_value={},
+            ),
+            patch("application.services.job_pipeline.engine.time.sleep", return_value=None),
+        ):
+            snapshot = engine.start(bot_id="bot_1")
+
+        self.assertEqual(["booking_link"], trace)
+        self.assertEqual("done", snapshot["run"]["status"])
+        self.assertEqual("done", snapshot["steps"][0]["status"])
+        self.assertGreaterEqual(checker.calls, 3)
 
 
 if __name__ == "__main__":

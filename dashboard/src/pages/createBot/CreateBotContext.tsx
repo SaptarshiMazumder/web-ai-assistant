@@ -199,6 +199,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     uploadPdfSources,
     uploadTextSources,
     uploadDocsSources,
+    getLatestJobPipeline,
     setSelectedBotId,
     orgs,
     activeOrgId,
@@ -916,7 +917,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       if (st === 'importing') return 85
       if (st === 'prompt_queued') return 92
       if (st === 'prompt_generating') return 96
-      if (st === 'import_submitted') return 100
+      if (st === 'import_submitted') return 92
+      if (st === 'pipeline_queued') return 93
+      if (st === 'pipeline_running') return 95
+      if (st === 'pipeline_resume_requested') return 95
+      if (st === 'pipeline_paused') return 96
+      if (st === 'pipeline_error') return 100
       if (st === 'done') return 100
       if (st === 'error') return 100
       return 15
@@ -927,6 +933,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       if (jobId) {
         urlStatus = await getJobStatus(botId, jobId)
       }
+      const pipelineRun = jobId ? await getLatestJobPipeline(botId) : null
+      const pipelineStatus = (pipelineRun?.status || '').toLowerCase()
+      const pipelineRelevant = !!pipelineRun && (pipelineRun.trigger || '').toLowerCase() === 'post_crawl'
+      const pipelineTerminal = pipelineRelevant ? ['done', 'error'].includes(pipelineStatus) : false
+      const rawPipelineProgress = Number(pipelineRun?.progress_pct ?? 0)
+      const pipelineProgress =
+        Number.isFinite(rawPipelineProgress) && rawPipelineProgress >= 0
+          ? Math.max(0, Math.min(100, Math.round(rawPipelineProgress)))
+          : null
       const pdfStatuses: Record<string, any> = {}
       for (const id of pdfJobIds) {
         const st = await getJobStatus(botId, id)
@@ -942,7 +957,16 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setExtraJobStatusById(extraStatuses)
 
       const urlStage = (urlStatus?.stage || '').toLowerCase()
-      const urlTerminal = urlStage === 'done' || urlStage === 'import_submitted' || urlStage === 'error' || urlStage === 'cancelled'
+      let urlTerminal = urlStage === 'done' || urlStage === 'error' || urlStage === 'cancelled'
+      if (urlStage === 'import_submitted') {
+        if (pipelineRelevant) {
+          urlTerminal = pipelineTerminal
+        } else {
+          const updatedAtMs = urlStatus?.updated_at ? new Date(urlStatus.updated_at).getTime() : 0
+          const importSubmittedGraceMs = 30_000
+          urlTerminal = updatedAtMs > 0 && Date.now() - updatedAtMs >= importSubmittedGraceMs
+        }
+      }
 
       const pdfStages = Object.values(pdfStatuses).map((s: any) => (s?.stage || '').toLowerCase())
       const pdfTerminal = pdfStages.length > 0 ? pdfStages.every((st) => ['done', 'import_submitted', 'error', 'cancelled'].includes(st)) : true
@@ -957,20 +981,35 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setTrainingDocsCount(docs)
 
       const stageName = urlStatus?.stage || pdfStages[0] || extraStages[0] || 'crawling'
-      setTrainingStageName(stageName)
+      let resolvedStageName = stageName
+      if (urlStage === 'import_submitted' && pipelineRelevant && !pipelineTerminal) {
+        const pipelineStage = (pipelineRun?.current_stage_key || pipelineStatus || '').toLowerCase()
+        if (pipelineStage === 'queued') resolvedStageName = 'pipeline_queued'
+        else if (pipelineStage === 'paused') resolvedStageName = 'pipeline_paused'
+        else if (pipelineStage === 'resume_requested') resolvedStageName = 'pipeline_resume_requested'
+        else resolvedStageName = 'pipeline_running'
+      } else if (urlStage === 'import_submitted' && pipelineRelevant && pipelineStatus === 'error') {
+        resolvedStageName = 'pipeline_error'
+      }
+      setTrainingStageName(resolvedStageName)
 
       const totalUrls = contentHosting === 'own' ? selectedUrls.length : trainingUrls.length
       const urlProgress =
         jobId && urlStatus
           ? totalUrls > 0 && urlStatus.pages_crawled
             ? Math.min(Math.round((urlStatus.pages_crawled / totalUrls) * 100), 95)
-            : stagePercent(urlStatus.stage || 'queued')
+            : urlStage === 'import_submitted' && pipelineRelevant && typeof pipelineProgress === 'number'
+              ? Math.max(92, Math.min(99, pipelineProgress))
+              : stagePercent(urlStatus.stage || 'queued')
           : null
 
       const allJobProgresses = allStatuses.map((s: any) => stagePercent(s?.stage || 'queued'))
       const parts: number[] = []
       if (typeof urlProgress === 'number') parts.push(urlProgress)
       parts.push(...allJobProgresses)
+      if (pipelineRelevant && !pipelineTerminal && typeof pipelineProgress === 'number') {
+        parts.push(Math.max(92, Math.min(99, pipelineProgress)))
+      }
       const combined = parts.length ? Math.min(Math.round(parts.reduce((a, b) => a + b, 0) / parts.length), 100) : 0
       setTrainingProgress(combined)
 
@@ -978,6 +1017,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setTrainingStage('complete')
         setTrainingProgress(100)
         if (urlStage === 'error') setLocalError(urlStatus?.last_error || t('createBot.trainingFailed', 'Training failed'))
+        if (pipelineRelevant && pipelineStatus === 'error') {
+          setLocalError((pipelineRun?.last_error as string) || t('createBot.trainingFailed', 'Training failed'))
+        }
         const pdfError = Object.values(pdfStatuses).find((s: any) => (s?.stage || '').toLowerCase() === 'error')
         if (pdfError) {
           setLocalError((pdfError as any).last_error || t('createBot.pdfProcessingFailed', 'PDF processing failed'))
@@ -991,7 +1033,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     pollStatus()
     const timer = window.setInterval(pollStatus, 1500)
     return () => window.clearInterval(timer)
-  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, contentHosting, selectedUrls.length, trainingUrls.length, t])
+  }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, getLatestJobPipeline, contentHosting, selectedUrls.length, trainingUrls.length, t])
 
   const steps = getCreateBotSteps()
   const nextPath = getCreateBotNextPath(location.pathname, steps)
