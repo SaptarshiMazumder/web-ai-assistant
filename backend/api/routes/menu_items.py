@@ -8,10 +8,11 @@ import logging
 import os
 import re
 import uuid
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, Response as FastAPIResponse, UploadFile
 from google.cloud import storage  # type: ignore[import-untyped]
 
 from application.services.asset_image_service import optimize_asset_image
@@ -45,6 +46,9 @@ _ALLOWED_IMAGE_TYPES = {
     "image/webp",
     "image/svg+xml",
 }
+_PAGE_SIZE_DEFAULT = 1000
+_PAGE_SIZE_MAX = 1000
+_LIST_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60"
 
 _PRICE_PATTERN = re.compile(
     r"(?:[¥￥]\s*\d[\d,]*(?:\.\d+)?(?:\s*[-~〜]\s*[¥￥]?\s*\d[\d,]*(?:\.\d+)?)?"
@@ -107,6 +111,41 @@ def _menu_limit() -> int:
         return max(1, min(int(raw), 1000))
     except ValueError:
         return 500
+
+
+def _normalize_page_size(value: int) -> int:
+    try:
+        return max(1, min(int(value), _PAGE_SIZE_MAX))
+    except Exception:
+        return _PAGE_SIZE_DEFAULT
+
+
+def _normalize_offset(value: int) -> int:
+    try:
+        return max(0, int(value))
+    except Exception:
+        return 0
+
+
+def _asset_list_etag(
+    *,
+    bot_id: str,
+    asset_type: str,
+    page_size: int,
+    offset: int,
+    total_count: int,
+    latest_updated: Optional[str],
+) -> str:
+    raw = f"{bot_id}|{asset_type}|{page_size}|{offset}|{total_count}|{latest_updated or ''}"
+    return '"' + hashlib.sha1(raw.encode("utf-8")).hexdigest() + '"'
+
+
+def _matches_if_none_match(request: Request, etag: str) -> bool:
+    header = (request.headers.get("if-none-match") or "").strip()
+    if not header:
+        return False
+    values = [part.strip() for part in header.split(",") if part.strip()]
+    return "*" in values or etag in values
 
 
 def _menu_status_stale_seconds() -> int:
@@ -232,18 +271,52 @@ def _asset_to_response(a: BotAsset) -> BotAssetResponse:
 @router.get("/v1/org/bots/{bot_id}/menu-items", response_model=BotAssetListResponse)
 async def list_menu_items(
     bot_id: str,
+    request: Request,
+    response: FastAPIResponse,
+    page_size: int = _PAGE_SIZE_DEFAULT,
+    offset: int = 0,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
-    assets = asset_repo().list_assets_for_bot(bot_id, asset_type="menu_item")
-    limit = _menu_limit()
+    safe_page_size = _normalize_page_size(page_size)
+    safe_offset = _normalize_offset(offset)
+    assets, total_count, latest_updated = asset_repo().list_assets_for_bot_paginated(
+        bot_id,
+        asset_type="menu_item",
+        page_size=safe_page_size,
+        offset=safe_offset,
+    )
+    etag = _asset_list_etag(
+        bot_id=bot_id,
+        asset_type="menu_item",
+        page_size=safe_page_size,
+        offset=safe_offset,
+        total_count=total_count,
+        latest_updated=latest_updated,
+    )
+    headers = {
+        "ETag": etag,
+        "Cache-Control": _LIST_CACHE_CONTROL,
+        "Vary": "Authorization",
+    }
+    if request is not None and _matches_if_none_match(request, etag):
+        return FastAPIResponse(status_code=304, headers=headers)
+    if response is not None:
+        for key, value in headers.items():
+            response.headers[key] = value
+
+    menu_limit = _menu_limit()
     return BotAssetListResponse(
         bot_id=bot_id,
         assets=[_asset_to_response(a) for a in assets],
-        count=len(assets),
-        limit=limit,
+        count=total_count,
+        limit=menu_limit,
+        total_count=total_count,
+        page_size=safe_page_size,
+        offset=safe_offset,
+        has_more=(safe_offset + len(assets)) < total_count,
     )
 
 

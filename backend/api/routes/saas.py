@@ -100,6 +100,7 @@ from domain.platform_profiles import (
     ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
     get_available_suggested_message_types,
+    get_job_pipeline_config,
     get_menu_category_order,
     get_menu_texts,
     get_platform_asset_instructions,
@@ -1616,10 +1617,35 @@ async def v1_org_platform_config(
         {**p, "availableSuggestedMessageTypes": get_available_suggested_message_types(p.get("id"))}
         for p in platforms_raw
     ]
+    pipeline_cfg = get_job_pipeline_config()
+    workflows = pipeline_cfg.get("workflows") if isinstance(pipeline_cfg.get("workflows"), dict) else {}
+    default_steps_raw = workflows.get("default")
+    default_steps = (
+        [str(step_id).strip() for step_id in default_steps_raw if str(step_id).strip()]
+        if isinstance(default_steps_raw, list)
+        else []
+    )
+    overrides_raw = workflows.get("platform_overrides")
+    platform_overrides: Dict[str, List[str]] = {}
+    if isinstance(overrides_raw, dict):
+        for platform_id, steps_raw in overrides_raw.items():
+            normalized_platform_id = str(platform_id or "").strip().lower()
+            if not normalized_platform_id:
+                continue
+            if not isinstance(steps_raw, list):
+                continue
+            normalized_steps = [str(step_id).strip() for step_id in steps_raw if str(step_id).strip()]
+            if normalized_steps:
+                platform_overrides[normalized_platform_id] = normalized_steps
     return {
         "platforms": platforms,
         "defaultSuggestedMessages": default_suggested,
         "defaultAvailableSuggestedMessageTypes": default_available_types,
+        "jobPipelineWorkflow": {
+            "workflowId": "default",
+            "default": default_steps,
+            "platformOverrides": platform_overrides,
+        },
     }
 
 

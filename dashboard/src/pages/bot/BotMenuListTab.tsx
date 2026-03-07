@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useTranslation } from 'react-i18next'
@@ -16,9 +16,16 @@ import {
   Square,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
+import {
+  buildPagedListCacheKey,
+  readPagedListCache,
+  writePagedListCache,
+  type PagedListCacheEntry,
+} from './pagedAssetListCache'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 const MENU_LIMIT_FALLBACK = 500
+const MENU_PAGE_SIZE = 10
 
 type MenuItemRecord = {
   asset_id: string
@@ -39,6 +46,10 @@ type MenuItemListResponse = {
   assets: MenuItemRecord[]
   count?: number
   limit?: number
+  total_count?: number
+  page_size?: number
+  offset?: number
+  has_more?: boolean
 }
 
 type IndexJobRecord = {
@@ -125,6 +136,7 @@ export default function BotMenuListTab() {
   const [items, setItems] = useState<MenuItemRecord[]>([])
   const [itemCount, setItemCount] = useState(0)
   const [itemLimit, setItemLimit] = useState(MENU_LIMIT_FALLBACK)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -169,14 +181,10 @@ export default function BotMenuListTab() {
   const authedFetch = useCallback(
     async (path: string, init?: RequestInit): Promise<Response> => {
       const token = await getAccessTokenSilently()
-      const method = String(init?.method || 'GET').toUpperCase()
-      const isReadRequest = method === 'GET' || method === 'HEAD'
       return fetch(`${API_BASE}${path}`, {
         ...init,
-        ...(isReadRequest ? { cache: 'no-store' as RequestCache } : {}),
         headers: {
           ...(init?.headers || {}),
-          ...(isReadRequest ? { 'Cache-Control': 'no-cache', Pragma: 'no-cache' } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       })
@@ -184,21 +192,70 @@ export default function BotMenuListTab() {
     [getAccessTokenSilently]
   )
 
-  const loadItems = useCallback(async () => {
+  const loadItems = useCallback(async (page: number) => {
     if (!botId) return
-    setLoading(true)
+    const safePage = Math.max(1, page || 1)
+    const offset = (safePage - 1) * MENU_PAGE_SIZE
+    const cacheKey = buildPagedListCacheKey('menu_items', botId, MENU_PAGE_SIZE, offset)
+    const cached = readPagedListCache<MenuItemListResponse>(cacheKey)
+    if (cached?.payload) {
+      const cachedItems = cached.payload.assets || []
+      setItems(cachedItems)
+      const cachedTotal =
+        typeof cached.payload.total_count === 'number'
+          ? cached.payload.total_count
+          : typeof cached.payload.count === 'number'
+            ? cached.payload.count
+            : cachedItems.length
+      setItemCount(cachedTotal)
+      setItemLimit(typeof cached.payload.limit === 'number' ? cached.payload.limit : MENU_LIMIT_FALLBACK)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     setError(null)
     try {
-      const resp = await authedFetch(`/v1/org/bots/${botId}/menu-items`)
+      const headers: Record<string, string> = {}
+      if (cached?.etag) headers['If-None-Match'] = cached.etag
+      const resp = await authedFetch(
+        `/v1/org/bots/${botId}/menu-items?page_size=${MENU_PAGE_SIZE}&offset=${offset}`,
+        Object.keys(headers).length ? { headers } : undefined
+      )
+      if (resp.status === 304 && cached?.payload) {
+        return
+      }
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
       const data = (await resp.json()) as MenuItemListResponse
       const nextItems = data.assets || []
+      const totalCount =
+        typeof data.total_count === 'number'
+          ? data.total_count
+          : typeof data.count === 'number'
+            ? data.count
+            : nextItems.length
+      const totalPages = Math.max(1, Math.ceil(totalCount / MENU_PAGE_SIZE))
+      if (safePage > totalPages) {
+        setCurrentPage(totalPages)
+        return
+      }
       setItems(nextItems)
-      setItemCount(typeof data.count === 'number' ? data.count : nextItems.length)
+      setItemCount(totalCount)
       setItemLimit(typeof data.limit === 'number' ? data.limit : MENU_LIMIT_FALLBACK)
+      const etag = resp.headers.get('etag') || undefined
+      const entry: PagedListCacheEntry<MenuItemListResponse> = {
+        savedAt: Date.now(),
+        etag,
+        payload: {
+          ...data,
+          assets: nextItems,
+          count: totalCount,
+          total_count: totalCount,
+        },
+      }
+      writePagedListCache(cacheKey, entry)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -207,8 +264,12 @@ export default function BotMenuListTab() {
   }, [botId, authedFetch])
 
   useEffect(() => {
-    void loadItems()
-  }, [loadItems])
+    void loadItems(currentPage)
+  }, [loadItems, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [botId])
 
   useEffect(() => {
     setSelectedIds((prev) => {
@@ -220,6 +281,16 @@ export default function BotMenuListTab() {
       return next
     })
   }, [items])
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil((itemCount || 0) / MENU_PAGE_SIZE)),
+    [itemCount]
+  )
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const loadExtractPages = useCallback(async () => {
     if (!botId) return
@@ -317,7 +388,7 @@ export default function BotMenuListTab() {
             if (extracting) {
               // Job just finished while we were watching
               setExtractResult(`Extracted ${data.assets_created} new menu items.`)
-              void loadItems()
+              void loadItems(currentPage)
             }
             setExtracting(false)
             setStoppingExtract(false)
@@ -350,7 +421,7 @@ export default function BotMenuListTab() {
     return () => {
       if (intervalId) clearInterval(intervalId)
     }
-  }, [botId, extracting, authedFetch, loadItems, t])
+  }, [botId, extracting, authedFetch, loadItems, t, currentPage])
 
   const toggleExtractSettings = async () => {
     const nextOpen = !showExtractSettings
@@ -406,7 +477,7 @@ export default function BotMenuListTab() {
       setAddKeywords('')
       setAddFile(null)
       setAddPreview(null)
-      await loadItems()
+      await loadItems(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -444,7 +515,7 @@ export default function BotMenuListTab() {
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
       setEditingId(null)
-      await loadItems()
+      await loadItems(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -464,7 +535,7 @@ export default function BotMenuListTab() {
         const body = await resp.json().catch(() => ({}))
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
-      await loadItems()
+      await loadItems(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -521,7 +592,7 @@ export default function BotMenuListTab() {
         setExtracting(false)
         if (typeof data.assets_count === 'number') setItemCount(data.assets_count)
         if (typeof data.assets_limit === 'number') setItemLimit(data.assets_limit)
-        await loadItems()
+        await loadItems(currentPage)
       }
 
     } catch (err) {
@@ -605,7 +676,7 @@ export default function BotMenuListTab() {
         )
       )
       setSelectedIds(new Set())
-      await loadItems()
+      await loadItems(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -1148,8 +1219,9 @@ export default function BotMenuListTab() {
         {/* Menu item list */}
         {
           !loading && items.length > 0 && (
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-              {items.map((a) => {
+            <>
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                {items.map((a, idx) => {
                 const isEditing = editingId === a.asset_id
                 const isDeleting = deleting === a.asset_id
                 const structured = getStructuredMenuFields(a)
@@ -1162,6 +1234,8 @@ export default function BotMenuListTab() {
                         <img
                           src={`${API_BASE}${a.image_url}`}
                           alt={a.name}
+                          loading={idx < 2 ? 'eager' : 'lazy'}
+                          decoding="async"
                           style={{
                             width: '100%',
                             height: 160,
@@ -1303,6 +1377,8 @@ export default function BotMenuListTab() {
                       <img
                         src={`${API_BASE}${a.image_url}`}
                         alt={a.name}
+                        loading={idx < 2 ? 'eager' : 'lazy'}
+                        decoding="async"
                         style={{
                           width: '100%',
                           height: 180,
@@ -1441,8 +1517,33 @@ export default function BotMenuListTab() {
                     </div>
                   </GlassCard>
                 )
-              })}
-            </div>
+                })}
+              </div>
+              {totalPages > 1 && (
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <UiButton
+                    variant="secondary"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    {t('botMenuList.prevPage', 'Previous')}
+                  </UiButton>
+                  <span style={{ fontSize: '0.84rem', color: '#64748b' }}>
+                    {t('botMenuList.pageCounter', 'Page {{page}} / {{total}}', {
+                      page: currentPage,
+                      total: totalPages,
+                    })}
+                  </span>
+                  <UiButton
+                    variant="secondary"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    {t('botMenuList.nextPage', 'Next')}
+                  </UiButton>
+                </div>
+              )}
+            </>
           )
         }
       </div >

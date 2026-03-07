@@ -4782,6 +4782,46 @@ class PostgresBotAssetRepository:
         finally:
             con.close()
 
+    def list_assets_for_bot_paginated(
+        self,
+        bot_id: str,
+        *,
+        active_only: bool = False,
+        asset_type: Optional[str] = None,
+        page_size: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[BotAsset], int, Optional[str]]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return [], 0, None
+        lim = max(1, min(int(page_size or 50), 200))
+        off = max(0, int(offset or 0))
+        con = _connect()
+        try:
+            where = "bot_id=%s"
+            params: list = [bid]
+            if active_only:
+                where += " AND is_active=TRUE"
+            if asset_type:
+                where += " AND asset_type=%s"
+                params.append(asset_type)
+
+            stats_row = con.execute(
+                f"SELECT COUNT(*), MAX(updated_at) FROM bot_assets WHERE {where}",
+                tuple(params),
+            ).fetchone()
+            total_count = int(stats_row[0] or 0) if stats_row else 0
+            latest_updated = str(stats_row[1]) if stats_row and stats_row[1] is not None else None
+
+            page_params = [*params, lim, off]
+            rows = con.execute(
+                f"SELECT {self._SELECT_COLS} FROM bot_assets WHERE {where} ORDER BY created_at ASC LIMIT %s OFFSET %s",
+                tuple(page_params),
+            ).fetchall()
+            return [self._row_to_asset(r) for r in rows], total_count, latest_updated
+        finally:
+            con.close()
+
     def delete_asset(self, bot_id: str, asset_id: str) -> None:
         bid = (bot_id or "").strip()
         aid = (asset_id or "").strip()

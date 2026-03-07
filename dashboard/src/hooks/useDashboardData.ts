@@ -250,6 +250,26 @@ export type JobPipelineRunRecord = {
   events: JobPipelineEventRecord[]
 }
 
+export type PlatformConfigJobPipelineWorkflow = {
+  workflowId: string
+  default: string[]
+  platformOverrides: Record<string, string[]>
+}
+
+export type PlatformConfigPayload = {
+  platforms: Array<{
+    id: string
+    widget_key: string
+    domain_key: string
+    label: string
+    url_placeholder?: string
+    availableSuggestedMessageTypes?: string[]
+  }>
+  defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
+  defaultAvailableSuggestedMessageTypes: string[]
+  jobPipelineWorkflow: PlatformConfigJobPipelineWorkflow
+}
+
 export type ConversationSessionRecord = {
   session_id: string
   bot_id: string
@@ -600,18 +620,7 @@ type DashboardData = {
   generateSuggestedMessages: (botId: string) => Promise<unknown[] | null>
   generatingSuggestions: boolean
   fetchPlatformSuggestedMessages: (platform: string, lang?: string) => Promise<Array<{ id: string; label: string; type: string; prompt?: string }>>
-  fetchPlatformConfig: (lang?: string) => Promise<{
-    platforms: Array<{
-      id: string
-      widget_key: string
-      domain_key: string
-      label: string
-      url_placeholder?: string
-      availableSuggestedMessageTypes?: string[]
-    }>
-    defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
-    defaultAvailableSuggestedMessageTypes: string[]
-  }>
+  fetchPlatformConfig: (lang?: string) => Promise<PlatformConfigPayload>
 }
 
 const DashboardDataContext = createContext<DashboardData | undefined>(undefined)
@@ -2259,18 +2268,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   async function fetchPlatformConfig(
     lang?: string
-  ): Promise<{
-    platforms: Array<{
-      id: string
-      widget_key: string
-      domain_key: string
-      label: string
-      url_placeholder?: string
-      availableSuggestedMessageTypes?: string[]
-    }>
-    defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
-    defaultAvailableSuggestedMessageTypes: string[]
-  }> {
+  ): Promise<PlatformConfigPayload> {
     try {
       const langParam = lang ? `?lang=${encodeURIComponent(lang)}` : ''
       const path = withOrgParam(`/v1/org/platform-config${langParam}`)
@@ -2285,14 +2283,46 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         }>
         defaultSuggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }>
         defaultAvailableSuggestedMessageTypes?: string[]
+        jobPipelineWorkflow?: {
+          workflowId?: string
+          default?: string[]
+          platformOverrides?: Record<string, string[]>
+        }
       }>(path)
+      const rawWorkflow = result.jobPipelineWorkflow
+      const workflowDefault = Array.isArray(rawWorkflow?.default)
+        ? (rawWorkflow.default as unknown[])
+            .filter((stepId) => typeof stepId === 'string')
+            .map((stepId) => String(stepId).trim())
+            .filter(Boolean)
+        : []
+      const rawOverrides = rawWorkflow?.platformOverrides
+      const workflowOverrides: Record<string, string[]> = {}
+      if (rawOverrides && typeof rawOverrides === 'object') {
+        for (const [platformId, rawSteps] of Object.entries(rawOverrides)) {
+          const pid = String(platformId || '').trim().toLowerCase()
+          if (!pid || !Array.isArray(rawSteps)) continue
+          const steps = rawSteps.filter((stepId) => typeof stepId === 'string').map((stepId) => stepId.trim()).filter(Boolean)
+          if (steps.length > 0) workflowOverrides[pid] = steps
+        }
+      }
       return {
         platforms: result.platforms ?? [],
         defaultSuggestedMessages: result.defaultSuggestedMessages ?? [],
         defaultAvailableSuggestedMessageTypes: result.defaultAvailableSuggestedMessageTypes ?? ['ai_response'],
+        jobPipelineWorkflow: {
+          workflowId: String(rawWorkflow?.workflowId || 'default').trim() || 'default',
+          default: workflowDefault,
+          platformOverrides: workflowOverrides,
+        },
       }
     } catch {
-      return { platforms: [], defaultSuggestedMessages: [], defaultAvailableSuggestedMessageTypes: ['ai_response'] }
+      return {
+        platforms: [],
+        defaultSuggestedMessages: [],
+        defaultAvailableSuggestedMessageTypes: ['ai_response'],
+        jobPipelineWorkflow: { workflowId: 'default', default: [], platformOverrides: {} },
+      }
     }
   }
 

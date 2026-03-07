@@ -125,10 +125,12 @@ class MenuExtractionCompletionChecker:
         raw_status = _normalize_status(getattr(job, "status", ""))
         mapped = _map_child_status(raw_status, context)
         discovered = int(getattr(job, "assets_discovered", 0) or 0)
+        downloaded = int(getattr(job, "assets_downloaded", 0) or 0)
         created = int(getattr(job, "assets_created", 0) or 0)
         details = {
             "child_status": raw_status,
             "assets_discovered": discovered,
+            "assets_downloaded": downloaded,
             "assets_created": created,
         }
 

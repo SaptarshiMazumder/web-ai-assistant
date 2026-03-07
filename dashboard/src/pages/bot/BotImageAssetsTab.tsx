@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useTranslation } from 'react-i18next'
@@ -16,9 +16,16 @@ import {
   Square,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
+import {
+  buildPagedListCacheKey,
+  readPagedListCache,
+  writePagedListCache,
+  type PagedListCacheEntry,
+} from './pagedAssetListCache'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 const ASSET_LIMIT_FALLBACK = 50
+const ASSETS_PAGE_SIZE = 10
 
 type AssetRecord = {
   asset_id: string
@@ -38,6 +45,10 @@ type AssetListResponse = {
   assets: AssetRecord[]
   count?: number
   limit?: number
+  total_count?: number
+  page_size?: number
+  offset?: number
+  has_more?: boolean
 }
 
 type IndexJobRecord = {
@@ -79,6 +90,7 @@ export default function BotImageAssetsTab() {
   const [assets, setAssets] = useState<AssetRecord[]>([])
   const [assetCount, setAssetCount] = useState(0)
   const [assetLimit, setAssetLimit] = useState(ASSET_LIMIT_FALLBACK)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -134,21 +146,70 @@ export default function BotImageAssetsTab() {
     [getAccessTokenSilently]
   )
 
-  const loadAssets = useCallback(async () => {
+  const loadAssets = useCallback(async (page: number) => {
     if (!botId) return
-    setLoading(true)
+    const safePage = Math.max(1, page || 1)
+    const offset = (safePage - 1) * ASSETS_PAGE_SIZE
+    const cacheKey = buildPagedListCacheKey('image_assets', botId, ASSETS_PAGE_SIZE, offset)
+    const cached = readPagedListCache<AssetListResponse>(cacheKey)
+    if (cached?.payload) {
+      const cachedAssets = cached.payload.assets || []
+      setAssets(cachedAssets)
+      const cachedTotal =
+        typeof cached.payload.total_count === 'number'
+          ? cached.payload.total_count
+          : typeof cached.payload.count === 'number'
+            ? cached.payload.count
+            : cachedAssets.length
+      setAssetCount(cachedTotal)
+      setAssetLimit(typeof cached.payload.limit === 'number' ? cached.payload.limit : ASSET_LIMIT_FALLBACK)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     setError(null)
     try {
-      const resp = await authedFetch(`/v1/org/bots/${botId}/image-assets`)
+      const headers: Record<string, string> = {}
+      if (cached?.etag) headers['If-None-Match'] = cached.etag
+      const resp = await authedFetch(
+        `/v1/org/bots/${botId}/image-assets?page_size=${ASSETS_PAGE_SIZE}&offset=${offset}`,
+        Object.keys(headers).length ? { headers } : undefined
+      )
+      if (resp.status === 304 && cached?.payload) {
+        return
+      }
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
       const data = (await resp.json()) as AssetListResponse
       const nextAssets = data.assets || []
+      const totalCount =
+        typeof data.total_count === 'number'
+          ? data.total_count
+          : typeof data.count === 'number'
+            ? data.count
+            : nextAssets.length
+      const totalPages = Math.max(1, Math.ceil(totalCount / ASSETS_PAGE_SIZE))
+      if (safePage > totalPages) {
+        setCurrentPage(totalPages)
+        return
+      }
       setAssets(nextAssets)
-      setAssetCount(typeof data.count === 'number' ? data.count : nextAssets.length)
+      setAssetCount(totalCount)
       setAssetLimit(typeof data.limit === 'number' ? data.limit : ASSET_LIMIT_FALLBACK)
+      const etag = resp.headers.get('etag') || undefined
+      const entry: PagedListCacheEntry<AssetListResponse> = {
+        savedAt: Date.now(),
+        etag,
+        payload: {
+          ...data,
+          assets: nextAssets,
+          count: totalCount,
+          total_count: totalCount,
+        },
+      }
+      writePagedListCache(cacheKey, entry)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -157,8 +218,8 @@ export default function BotImageAssetsTab() {
   }, [botId, authedFetch])
 
   useEffect(() => {
-    void loadAssets()
-  }, [loadAssets])
+    void loadAssets(currentPage)
+  }, [loadAssets, currentPage])
 
   useEffect(() => {
     setSelectedIds((prev) => {
@@ -170,6 +231,20 @@ export default function BotImageAssetsTab() {
       return next
     })
   }, [assets])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [botId])
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil((assetCount || 0) / ASSETS_PAGE_SIZE)),
+    [assetCount]
+  )
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const loadExtractPages = useCallback(async () => {
     if (!botId) return
@@ -267,7 +342,7 @@ export default function BotImageAssetsTab() {
             if (extracting) {
               // Job just finished while we were watching
               setExtractResult(`Extracted ${data.assets_created} new assets.`)
-              void loadAssets()
+              void loadAssets(currentPage)
             }
             setExtracting(false)
             setStoppingExtract(false)
@@ -300,7 +375,7 @@ export default function BotImageAssetsTab() {
     return () => {
       if (intervalId) clearInterval(intervalId)
     }
-  }, [botId, extracting, authedFetch, loadAssets, t])
+  }, [botId, extracting, authedFetch, loadAssets, t, currentPage])
 
   const toggleExtractSettings = async () => {
     const nextOpen = !showExtractSettings
@@ -356,7 +431,7 @@ export default function BotImageAssetsTab() {
       setAddKeywords('')
       setAddFile(null)
       setAddPreview(null)
-      await loadAssets()
+      await loadAssets(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -394,7 +469,7 @@ export default function BotImageAssetsTab() {
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
       setEditingId(null)
-      await loadAssets()
+      await loadAssets(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -414,7 +489,7 @@ export default function BotImageAssetsTab() {
         const body = await resp.json().catch(() => ({}))
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
-      await loadAssets()
+      await loadAssets(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -471,7 +546,7 @@ export default function BotImageAssetsTab() {
         setExtracting(false)
         if (typeof data.assets_count === 'number') setAssetCount(data.assets_count)
         if (typeof data.assets_limit === 'number') setAssetLimit(data.assets_limit)
-        await loadAssets()
+        await loadAssets(currentPage)
       }
 
     } catch (err) {
@@ -555,7 +630,7 @@ export default function BotImageAssetsTab() {
         )
       )
       setSelectedIds(new Set())
-      await loadAssets()
+      await loadAssets(currentPage)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -1098,10 +1173,9 @@ export default function BotImageAssetsTab() {
         {/* Asset list */}
         {
           !loading && assets.length > 0 && (
-            <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-              {assets
-                .filter((a) => a.image_url && a.image_url.trim() !== '')
-                .map((a) => {
+            <>
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                {assets.map((a, idx) => {
                   const isEditing = editingId === a.asset_id
                   const isDeleting = deleting === a.asset_id
 
@@ -1113,6 +1187,8 @@ export default function BotImageAssetsTab() {
                           <img
                             src={`${API_BASE}${a.image_url}`}
                             alt={a.name}
+                            loading={idx < 2 ? 'eager' : 'lazy'}
+                            decoding="async"
                             style={{
                               width: '100%',
                               height: 160,
@@ -1254,6 +1330,8 @@ export default function BotImageAssetsTab() {
                         <img
                           src={`${API_BASE}${a.image_url}`}
                           alt={a.name}
+                          loading={idx < 2 ? 'eager' : 'lazy'}
+                          decoding="async"
                           style={{
                             width: '100%',
                             height: 180,
@@ -1365,7 +1443,32 @@ export default function BotImageAssetsTab() {
                     </GlassCard>
                   )
                 })}
-            </div>
+              </div>
+              {totalPages > 1 && (
+                <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <UiButton
+                    variant="secondary"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    {t('botImageAssets.prevPage', 'Previous')}
+                  </UiButton>
+                  <span style={{ fontSize: '0.84rem', color: '#64748b' }}>
+                    {t('botImageAssets.pageCounter', 'Page {{page}} / {{total}}', {
+                      page: currentPage,
+                      total: totalPages,
+                    })}
+                  </span>
+                  <UiButton
+                    variant="secondary"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                  >
+                    {t('botImageAssets.nextPage', 'Next')}
+                  </UiButton>
+                </div>
+              )}
+            </>
           )
         }
       </div >

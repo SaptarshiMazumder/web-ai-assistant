@@ -3,6 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
 import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord, type JobPipelineRunRecord } from '../../hooks/useDashboardData'
 import {
+  buildUnifiedSourcesProgress,
+  type UnifiedSourcesProgress,
+} from './sourcesProgressModel'
+import {
   categorizeUrls,
   getAllExpandablePaths,
   getAllUrlsFromCategory,
@@ -19,6 +23,9 @@ import { useTranslation } from 'react-i18next'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
+const SOURCES_PROGRESS_SNAPSHOT_TTL_MS = 30_000
+const SOURCES_PROGRESS_SNAPSHOT_STORAGE_PREFIX = 'dashboard.sources.progress.snapshot.'
+const SOURCES_PROGRESS_HIDDEN_RUN_STORAGE_PREFIX = 'dashboard.sources.progress.hidden_run.'
 
 function isJobStale(job: { updated_at?: string | null }): boolean {
   const updated = job.updated_at ? new Date(job.updated_at).getTime() : 0
@@ -39,65 +46,62 @@ function formatRelativeTime(iso: string): string {
   return 'Just now'
 }
 
-function statusLabel(stage: string): string {
-  const s = (stage || '').toLowerCase()
-  if (s === 'complete' || s === 'done') return '✓ Trained'
-  if (s === 'crawling' || s === 'running' || s === 'pending' || s === 'queued') return 'Training'
-  if (s === 'prompt_queued' || s === 'prompt_generating') return 'Generating prompt'
-  if (s === 'uploading' || s === 'importing' || s === 'import_submitted') return 'Importing'
-  if (s === 'failed' || s === 'error') return 'Failed'
-  if (s === 'cancelled') return 'Cancelled'
-  return stage || '—'
-}
-
-/** Rough progress 0–100 for training stage (for progress bar). */
-function trainingProgressPercent(stage: string | undefined): number {
-  const s = (stage || '').toLowerCase()
-  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled') return 100
-  if (s === 'import_submitted') return 92
-  if (s === 'prompt_generating') return 96
-  if (s === 'prompt_queued') return 90
-  if (s === 'uploading' || s === 'importing') return 75
-  if (s === 'crawling' || s === 'running' || s === 'pending') return 45
-  if (s === 'queued') return 15
-  return 10
-}
-
-/** Rough progress 0–100 for training stage (for progress bar). */
-function trainingProgressDisplayPercent(
-  stage: string | undefined,
-  pagesCrawled: number | undefined,
-  totalUrls: number
-): number {
-  const s = (stage || '').toLowerCase()
-  if (s === 'done' || s === 'complete' || s === 'error' || s === 'failed' || s === 'cancelled') return 100
-  if (s === 'import_submitted') return 92
-  if (s === 'prompt_generating') return 96
-  if (s === 'prompt_queued') return 90
-  if (s === 'uploading' || s === 'importing') return 75
-  if (s === 'crawling' || s === 'running' || s === 'pending') {
-    if (totalUrls > 0 && pagesCrawled != null && pagesCrawled >= 0) {
-      const pct = Math.round((pagesCrawled / totalUrls) * 100)
-      return Math.min(99, Math.max(0, pct))
-    }
-    return 45
-  }
-  if (s === 'queued') return 15
-  return 10
-}
-
-/** Human-readable label for training progress (Sources section). */
-function trainingProgressLabel(stage: string | undefined): string {
-  const s = (stage || '').toLowerCase()
-  if (s === 'queued' || s === 'crawling' || s === 'running' || s === 'pending' || s === 'uploading' || s === 'importing' || s === 'import_submitted' || s === 'prompt_queued' || s === 'prompt_generating') {
-    return 'Training in progress…'
-  }
-  return 'Training…'
-}
-
 const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled'])
 
 const BOOKING_LINK_JOB_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
+
+type ReservationPlatformConfigItem = {
+  id: string
+  widget_key: string
+  domain_key: string
+  label: string
+  url_placeholder?: string
+}
+
+type JobPipelineWorkflowConfig = {
+  workflowId: string
+  default: string[]
+  platformOverrides: Record<string, string[]>
+}
+
+function normalizeJobIdList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const cleaned = raw
+    .map((stepId) => String(stepId || '').trim())
+    .filter(Boolean)
+  return Array.from(new Set(cleaned))
+}
+
+function resolveWidgetPlatformId(
+  widgetConfig: Record<string, unknown> | null | undefined,
+  platforms: ReservationPlatformConfigItem[],
+): string {
+  if (!widgetConfig || typeof widgetConfig !== 'object') return ''
+
+  const explicitPlatform = String(widgetConfig.reservationPlatform || '').trim().toLowerCase()
+  if (explicitPlatform) return explicitPlatform
+
+  for (const linksKey of ['reservation_links', 'reservationLinks']) {
+    const rawLinks = widgetConfig[linksKey]
+    if (!rawLinks || typeof rawLinks !== 'object' || Array.isArray(rawLinks)) continue
+    for (const [platformId, rawUrl] of Object.entries(rawLinks as Record<string, unknown>)) {
+      if (!String(rawUrl || '').trim()) continue
+      const normalizedPlatformId = String(platformId || '').trim().toLowerCase()
+      if (normalizedPlatformId) return normalizedPlatformId
+    }
+  }
+
+  for (const platform of platforms) {
+    const widgetKey = String(platform.widget_key || '').trim()
+    if (!widgetKey) continue
+    const rawUrl = String(widgetConfig[widgetKey] || '').trim()
+    if (!rawUrl) continue
+    const normalizedPlatformId = String(platform.id || '').trim().toLowerCase()
+    if (normalizedPlatformId) return normalizedPlatformId
+  }
+
+  return ''
+}
 
 function bookingStatusLabel(status?: string): string {
   const s = (status || '').toLowerCase()
@@ -105,30 +109,6 @@ function bookingStatusLabel(status?: string): string {
   if (s === 'failed' || s === 'error') return 'Booking link extraction failed'
   if (s === 'running' || s === 'queued') return 'Booking links in progress…'
   return 'Booking links…'
-}
-
-function pipelineProgressPercent(run: JobPipelineRunRecord | null): number {
-  if (!run) return 0
-  const direct = Number(run.progress_pct)
-  if (Number.isFinite(direct) && direct >= 0) return Math.max(0, Math.min(100, Math.round(direct)))
-  const steps = run.steps || []
-  if (!steps.length) return 0
-  const total = steps.reduce((sum, step) => sum + (Number(step.progress_pct) || 0), 0)
-  return Math.max(0, Math.min(100, Math.round(total / steps.length)))
-}
-
-function pipelineCurrentMessage(run: JobPipelineRunRecord | null): string {
-  if (!run) return ''
-  const msg = (run.current_message || '').trim()
-  if (msg) return msg
-  const activeStep = (run.steps || []).find((s) => (s.status || '').toLowerCase() === 'running')
-  if (activeStep?.current_message) return activeStep.current_message
-  const status = (run.status || '').toLowerCase()
-  if (status === 'done') return 'Pipeline completed'
-  if (status === 'error') return 'Pipeline failed'
-  if (status === 'paused') return 'Pipeline paused'
-  if (status === 'queued') return 'Pipeline queued'
-  return 'Pipeline running'
 }
 
 const AVAILABILITY_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
@@ -139,6 +119,34 @@ type BookingLinkEntry = {
   reasons?: string[]
   sources?: string[]
   snippets?: string[]
+}
+
+type SourcesTrainingStatusSnapshot = {
+  stage?: string
+  pages_crawled?: number
+  docs_count?: number
+  last_error?: string
+  updated_at?: string
+}
+
+function sameSourcesTrainingStatus(
+  a: SourcesTrainingStatusSnapshot | null,
+  b: SourcesTrainingStatusSnapshot | null
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  return (
+    (a.stage || '') === (b.stage || '') &&
+    Number(a.pages_crawled || 0) === Number(b.pages_crawled || 0) &&
+    Number(a.docs_count || 0) === Number(b.docs_count || 0) &&
+    (a.last_error || '') === (b.last_error || '') &&
+    (a.updated_at || '') === (b.updated_at || '')
+  )
+}
+
+type SourcesProgressSnapshotPayload = {
+  saved_at: number
+  progress: UnifiedSourcesProgress
 }
 
 export default function BotKnowledgeTab() {
@@ -201,36 +209,109 @@ export default function BotKnowledgeTab() {
   const [discoveryErrorType, setDiscoveryErrorType] = useState<'error' | 'warning' | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [discoverTrainingJobId, setDiscoverTrainingJobId] = useState<string | null>(null)
-  const [discoverTrainingStatus, setDiscoverTrainingStatus] = useState<{
-    stage?: string
-    docs_count?: number
-    last_error?: string
-  } | null>(null)
-  const [discoverTrainingUrlCount, setDiscoverTrainingUrlCount] = useState(0)
   const [discoverTrainingSuccess, setDiscoverTrainingSuccess] = useState(false)
 
   const [sourcesTrainingJobId, setSourcesTrainingJobId] = useState<string | null>(null)
-  const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<{
-    stage?: string
-    pages_crawled?: number
-    docs_count?: number
-    last_error?: string
-  } | null>(null)
+  const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<SourcesTrainingStatusSnapshot | null>(null)
 
   const [bookingLinkJob, setBookingLinkJob] = useState<BookingLinkJobRecord | null>(null)
   const [jobPipelineRun, setJobPipelineRun] = useState<JobPipelineRunRecord | null>(null)
+  const [jobPipelineHydrated, setJobPipelineHydrated] = useState(false)
+  const [hiddenProgressRunKey, setHiddenProgressRunKey] = useState<string | null>(null)
+  const [progressDisplayHydrated, setProgressDisplayHydrated] = useState(false)
+  const [persistedSourcesProgress, setPersistedSourcesProgress] = useState<UnifiedSourcesProgress | null>(null)
+  const [persistedSourcesProgressSavedAt, setPersistedSourcesProgressSavedAt] = useState(0)
 
   const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
   const [bookingTestUrl, setBookingTestUrl] = useState('')
 
-  // Restaurant reservation: one profile per agent (from platform_profiles.yml)
-  const [reservationPlatform, setReservationPlatform] = useState('')
-  const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({})
-  const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
+  const [platforms, setPlatforms] = useState<ReservationPlatformConfigItem[]>([])
+  const [jobPipelineWorkflowConfig, setJobPipelineWorkflowConfig] = useState<JobPipelineWorkflowConfig>({
+    workflowId: 'default',
+    default: [],
+    platformOverrides: {},
+  })
+
+  const selectedBotId = selectedBot?.bot_id || null
+  const getJobStatusRef = useRef(getJobStatus)
+  const loadJobsRef = useRef(loadJobs)
+  const loadSourcesRef = useRef(loadSources)
+  const listBookingLinkJobsRef = useRef(listBookingLinkJobs)
+  const getBookingLinkJobRef = useRef(getBookingLinkJob)
+  const getLatestJobPipelineRef = useRef(getLatestJobPipeline)
+  const getAvailabilityJobRef = useRef(getAvailabilityJob)
+  const fetchPlatformConfigRef = useRef(fetchPlatformConfig)
+
+  useEffect(() => { getJobStatusRef.current = getJobStatus }, [getJobStatus])
+  useEffect(() => { loadJobsRef.current = loadJobs }, [loadJobs])
+  useEffect(() => { loadSourcesRef.current = loadSources }, [loadSources])
+  useEffect(() => { listBookingLinkJobsRef.current = listBookingLinkJobs }, [listBookingLinkJobs])
+  useEffect(() => { getBookingLinkJobRef.current = getBookingLinkJob }, [getBookingLinkJob])
+  useEffect(() => { getLatestJobPipelineRef.current = getLatestJobPipeline }, [getLatestJobPipeline])
+  useEffect(() => { getAvailabilityJobRef.current = getAvailabilityJob }, [getAvailabilityJob])
+  useEffect(() => { fetchPlatformConfigRef.current = fetchPlatformConfig }, [fetchPlatformConfig])
 
   useEffect(() => {
-    fetchPlatformConfig('en').then((r) => setPlatforms(r.platforms))
-  }, [fetchPlatformConfig])
+    setJobPipelineHydrated(false)
+  }, [selectedBotId])
+
+  useEffect(() => {
+    setProgressDisplayHydrated(false)
+    setPersistedSourcesProgress(null)
+    setPersistedSourcesProgressSavedAt(0)
+    setHiddenProgressRunKey(null)
+    if (!selectedBotId) {
+      setProgressDisplayHydrated(true)
+      return
+    }
+
+    try {
+      const hiddenKey = `${SOURCES_PROGRESS_HIDDEN_RUN_STORAGE_PREFIX}${selectedBotId}`
+      const hidden = window.localStorage.getItem(hiddenKey)
+      setHiddenProgressRunKey(hidden || null)
+    } catch {
+      setHiddenProgressRunKey(null)
+    }
+
+    try {
+      const snapshotKey = `${SOURCES_PROGRESS_SNAPSHOT_STORAGE_PREFIX}${selectedBotId}`
+      const raw = window.sessionStorage.getItem(snapshotKey)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Partial<SourcesProgressSnapshotPayload> | null
+      const savedAt = Number(parsed?.saved_at || 0)
+      const progress = parsed?.progress as UnifiedSourcesProgress | undefined
+      if (!savedAt || !progress || typeof progress !== 'object') return
+      setPersistedSourcesProgress(progress)
+      setPersistedSourcesProgressSavedAt(savedAt)
+    } catch {
+      setPersistedSourcesProgress(null)
+      setPersistedSourcesProgressSavedAt(0)
+    }
+    setProgressDisplayHydrated(true)
+  }, [selectedBotId])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadPlatformConfig = async () => {
+      const result = await fetchPlatformConfigRef.current('en')
+      if (cancelled) return
+      setPlatforms(result.platforms)
+      setJobPipelineWorkflowConfig({
+        workflowId: String(result.jobPipelineWorkflow?.workflowId || 'default').trim() || 'default',
+        default: normalizeJobIdList(result.jobPipelineWorkflow?.default),
+        platformOverrides: Object.fromEntries(
+          Object.entries(result.jobPipelineWorkflow?.platformOverrides || {}).map(([platformId, rawSteps]) => [
+            String(platformId || '').trim().toLowerCase(),
+            normalizeJobIdList(rawSteps),
+          ])
+        ),
+      })
+    }
+    void loadPlatformConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [availabilityTestJob, setAvailabilityTestJob] = useState<AvailabilityJobRecord | null>(null)
   const [availabilityTestError, setAvailabilityTestError] = useState<string | null>(null)
   const [availabilityTestRunning, setAvailabilityTestRunning] = useState(false)
@@ -242,28 +323,24 @@ export default function BotKnowledgeTab() {
 
   useEffect(() => {
     if (!allowKnowledgeDiscovery) return
-    if (!selectedBot || !discoverTrainingJobId) return
+    if (!selectedBotId || !discoverTrainingJobId) return
     let cancelled = false
     const poll = async () => {
-      const status = await getJobStatus(selectedBot.bot_id, discoverTrainingJobId!)
+      const status = await getJobStatusRef.current(selectedBotId, discoverTrainingJobId)
       if (cancelled || !status) return
-      setDiscoverTrainingStatus({ stage: status.stage, docs_count: status.docs_count, last_error: status.last_error })
       if (status.stage && DISCOVER_TERMINAL_STAGES.has(status.stage)) {
-        void loadSources(selectedBot.bot_id)
-        void loadJobs(selectedBot.bot_id)
+        void loadSourcesRef.current(selectedBotId)
+        void loadJobsRef.current(selectedBotId)
         setDiscoverTrainingJobId(null)
         if (status.stage && DISCOVER_SUCCESS_STAGES.has(status.stage)) {
           setDiscoverTrainingSuccess(true)
           if (discoverSuccessTimeoutRef.current) window.clearTimeout(discoverSuccessTimeoutRef.current)
           discoverSuccessTimeoutRef.current = window.setTimeout(() => {
-            setDiscoverTrainingStatus(null)
-            setDiscoverTrainingUrlCount(0)
             setDiscoverTrainingSuccess(false)
             discoverSuccessTimeoutRef.current = null
           }, 3000)
         } else {
-          setDiscoverTrainingStatus(null)
-          setDiscoverTrainingUrlCount(0)
+          setDiscoverTrainingSuccess(false)
         }
       }
     }
@@ -277,7 +354,7 @@ export default function BotKnowledgeTab() {
         discoverSuccessTimeoutRef.current = null
       }
     }
-  }, [allowKnowledgeDiscovery, selectedBot, discoverTrainingJobId, getJobStatus, loadJobs, loadSources])
+  }, [allowKnowledgeDiscovery, selectedBotId, discoverTrainingJobId])
 
   // Initialize booking settings from widget config
   useEffect(() => {
@@ -287,32 +364,19 @@ export default function BotKnowledgeTab() {
       const url = cfg.bookingTestUrl
       if (typeof allow === 'boolean') setAllowRealtimeAvailability(allow)
       if (typeof url === 'string' && url) setBookingTestUrl(url)
-      // Restaurant reservation platform (from config)
-      const platform = String(cfg.reservationPlatform || '').toLowerCase()
-      let inferredPlatform = ''
-      const urls: Record<string, string> = {}
-      for (const p of platforms) {
-        const v = (cfg as Record<string, unknown>)[p.widget_key]
-        if (typeof v === 'string' && v.trim()) {
-          urls[p.id] = v.trim()
-          if (!inferredPlatform) inferredPlatform = p.id
-        }
-      }
-      setPlatformUrls(urls)
-      setReservationPlatform(platform && platforms.some((p) => p.id === platform) ? platform : inferredPlatform)
     }
-  }, [selectedBotWidgetConfig, platforms])
+  }, [selectedBotWidgetConfig])
 
   // Poll availability test job when running
   useEffect(() => {
-    if (!selectedBot || !availabilityTestJob) return
+    if (!selectedBotId || !availabilityTestJob) return
     if (AVAILABILITY_TERMINAL_STATUS.has(availabilityTestJob.status)) {
       setAvailabilityTestRunning(false)
       return
     }
     setAvailabilityTestRunning(true)
     availabilityTestPollRef.current = setInterval(async () => {
-      const updated = await getAvailabilityJob(selectedBot.bot_id, availabilityTestJob.job_id)
+      const updated = await getAvailabilityJobRef.current(selectedBotId, availabilityTestJob.job_id)
       if (updated) {
         setAvailabilityTestJob(updated)
         if (AVAILABILITY_TERMINAL_STATUS.has(updated.status)) {
@@ -330,14 +394,20 @@ export default function BotKnowledgeTab() {
         availabilityTestPollRef.current = null
       }
     }
-  }, [selectedBot, availabilityTestJob?.job_id, availabilityTestJob?.status, getAvailabilityJob])
+  }, [selectedBotId, availabilityTestJob?.job_id, availabilityTestJob?.status])
 
   // Sources section: detect in-progress index job and poll so we can show training progress bar (ignore stale jobs)
   const activeSourcesJob = useMemo(() => {
     if (!selectedBot || !jobs.length) return null
     const inProgress = jobs.filter(
-      (j) =>
-        !SOURCES_JOB_TERMINAL_STAGES.has((j.stage || '').toLowerCase()) && !isJobStale(j)
+      (j) => {
+        const stage = (j.stage || '').toLowerCase()
+        // Exclude terminal stages and post-crawl stages that don't need active polling
+        if (SOURCES_JOB_TERMINAL_STAGES.has(stage)) return false
+        if (['import_submitted', 'prompt_queued', 'prompt_generating'].includes(stage)) return false
+        if (isJobStale(j)) return false
+        return true
+      }
     )
     if (inProgress.length === 0) return null
     inProgress.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
@@ -353,34 +423,46 @@ export default function BotKnowledgeTab() {
   }, [jobs])
 
   useEffect(() => {
-    if (!selectedBot || !activeSourcesJob) {
+    if (!selectedBotId) {
       setSourcesTrainingJobId(null)
       setSourcesTrainingStatus(null)
       return
     }
+    if (!activeSourcesJob) {
+      // Prevent progress flicker on reload while jobs are still hydrating from API.
+      const clearTimer = window.setTimeout(() => {
+        setSourcesTrainingJobId(null)
+        setSourcesTrainingStatus(null)
+      }, 6000)
+      return () => window.clearTimeout(clearTimer)
+    }
     const jobId = activeSourcesJob.job_id
     setSourcesTrainingJobId(jobId)
-    setSourcesTrainingStatus({
+    const initialStatus: SourcesTrainingStatusSnapshot = {
       stage: activeSourcesJob.stage,
       pages_crawled: activeSourcesJob.pages_crawled,
       docs_count: activeSourcesJob.docs_count,
       last_error: activeSourcesJob.last_error,
-    })
+      updated_at: activeSourcesJob.updated_at,
+    }
+    setSourcesTrainingStatus((prev) => (sameSourcesTrainingStatus(prev, initialStatus) ? prev : initialStatus))
     let cancelled = false
     const poll = async () => {
-      const status = await getJobStatus(selectedBot.bot_id, jobId)
+      const status = await getJobStatusRef.current(selectedBotId, jobId)
       if (cancelled || !status) return
-      setSourcesTrainingStatus({
+      const nextStatus: SourcesTrainingStatusSnapshot = {
         stage: status.stage,
         pages_crawled: status.pages_crawled,
         docs_count: status.docs_count,
         last_error: status.last_error,
-      })
+        updated_at: status.updated_at,
+      }
+      setSourcesTrainingStatus((prev) => (sameSourcesTrainingStatus(prev, nextStatus) ? prev : nextStatus))
       if (status.stage && SOURCES_JOB_TERMINAL_STAGES.has(status.stage.toLowerCase())) {
         setSourcesTrainingJobId(null)
         setSourcesTrainingStatus(null)
-        void loadJobs(selectedBot.bot_id)
-        void loadSources(selectedBot.bot_id)
+        void loadJobsRef.current(selectedBotId)
+        void loadSourcesRef.current(selectedBotId)
       }
     }
     const timer = setInterval(poll, 4000)
@@ -389,12 +471,12 @@ export default function BotKnowledgeTab() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [selectedBot, activeSourcesJob?.job_id, getJobStatus, loadJobs, loadSources])
+  }, [selectedBotId, activeSourcesJob?.job_id])
 
 
   // Booking link extraction (RAG) progress
   useEffect(() => {
-    if (!selectedBot) {
+    if (!selectedBotId) {
       setBookingLinkJob(null)
       return
     }
@@ -402,7 +484,7 @@ export default function BotKnowledgeTab() {
     let pollTimer: ReturnType<typeof setInterval> | null = null
 
     const load = async () => {
-      const jobs = await listBookingLinkJobs(selectedBot.bot_id)
+      const jobs = await listBookingLinkJobsRef.current(selectedBotId)
       if (cancelled) return
       if (!jobs.length) {
         setBookingLinkJob(null)
@@ -415,7 +497,7 @@ export default function BotKnowledgeTab() {
       if (isTerminal || stale) return
 
       pollTimer = setInterval(async () => {
-        const current = await getBookingLinkJob(selectedBot.bot_id, latest.job_id)
+        const current = await getBookingLinkJobRef.current(selectedBotId, latest.job_id)
         if (cancelled || !current) return
         setBookingLinkJob(current)
         const terminalNow = BOOKING_LINK_JOB_TERMINAL_STATUS.has((current.status || '').toLowerCase())
@@ -431,50 +513,230 @@ export default function BotKnowledgeTab() {
       cancelled = true
       if (pollTimer) clearInterval(pollTimer)
     }
-  }, [selectedBot, listBookingLinkJobs, getBookingLinkJob])
+  }, [selectedBotId])
 
   // Config-first job pipeline progress
   useEffect(() => {
-    if (!selectedBot) {
+    if (!selectedBotId) {
       setJobPipelineRun(null)
+      setJobPipelineHydrated(false)
       return
     }
     let cancelled = false
     let pollTimer: ReturnType<typeof setInterval> | null = null
 
-    const load = async () => {
-      const run = await getLatestJobPipeline(selectedBot.bot_id)
-      if (cancelled) return
-      setJobPipelineRun(run)
-      if (!run) return
-      const status = (run.status || '').toLowerCase()
-      if (status === 'done' || status === 'error' || status === 'paused') return
-      pollTimer = setInterval(async () => {
-        const current = await getLatestJobPipeline(selectedBot.bot_id)
-        if (cancelled) return
-        if (current) setJobPipelineRun(current)
-        const currentStatus = (current?.status || '').toLowerCase()
-        if (currentStatus === 'done' || currentStatus === 'error' || currentStatus === 'paused') {
-          if (pollTimer) {
-            clearInterval(pollTimer)
-            pollTimer = null
-          }
-        }
-      }, 4000)
+    const normalizeStatus = (run: JobPipelineRunRecord | null): string =>
+      String(run?.status || '').trim().toLowerCase()
+
+    const isTerminalStatus = (run: JobPipelineRunRecord | null): boolean => {
+      const status = normalizeStatus(run)
+      return status === 'done' || status === 'error' || status === 'paused'
     }
 
-    void load()
+    const runMatchesActiveCrawl = (run: JobPipelineRunRecord | null): boolean => {
+      if (!run || !sourcesTrainingJobId) return Boolean(run)
+      const context = run.context && typeof run.context === 'object' ? run.context : {}
+      const runIndexJobId = String((context as Record<string, unknown>).index_job_id || '').trim()
+      if (!runIndexJobId) return false
+      return runIndexJobId === String(sourcesTrainingJobId).trim()
+    }
+
+    const shouldKeepPolling = (run: JobPipelineRunRecord | null): boolean => {
+      if (sourcesTrainingJobId) {
+        // During crawl/import, keep polling until the pipeline run for this crawl appears and reaches a terminal state.
+        if (!run) return true
+        if (!runMatchesActiveCrawl(run)) return true
+        return !isTerminalStatus(run)
+      }
+      if (!run) return false
+      return !isTerminalStatus(run)
+    }
+
+    const pollLatest = async () => {
+      const run = await getLatestJobPipelineRef.current(selectedBotId)
+      if (cancelled) return
+      setJobPipelineHydrated(true)
+      if (sourcesTrainingJobId) {
+        setJobPipelineRun(runMatchesActiveCrawl(run) ? run : null)
+      } else {
+        setJobPipelineRun(run)
+      }
+      if (!shouldKeepPolling(run) && pollTimer) {
+        clearInterval(pollTimer)
+        pollTimer = null
+      }
+    }
+
+    pollTimer = setInterval(() => {
+      void pollLatest()
+    }, 4000)
+    void pollLatest()
+
     return () => {
       cancelled = true
       if (pollTimer) clearInterval(pollTimer)
     }
-  }, [selectedBot, getLatestJobPipeline])
+  }, [selectedBotId, sourcesTrainingJobId])
 
   const handleResumeJobPipeline = useCallback(async () => {
     if (!selectedBot || !jobPipelineRun || (jobPipelineRun.status || '').toLowerCase() !== 'paused') return
     const resumed = await resumeJobPipeline(selectedBot.bot_id, jobPipelineRun.run_id)
     if (resumed) setJobPipelineRun(resumed)
   }, [selectedBot, jobPipelineRun, resumeJobPipeline])
+
+  const plannedPipelineJobIds = useMemo(() => {
+    const fallbackSteps = normalizeJobIdList(jobPipelineWorkflowConfig.default)
+    const platformId = resolveWidgetPlatformId(selectedBotWidgetConfig, platforms)
+    if (!platformId) return fallbackSteps
+    const overrideSteps = normalizeJobIdList(jobPipelineWorkflowConfig.platformOverrides[platformId])
+    return overrideSteps.length > 0 ? overrideSteps : fallbackSteps
+  }, [jobPipelineWorkflowConfig.default, jobPipelineWorkflowConfig.platformOverrides, selectedBotWidgetConfig, platforms])
+
+  const liveUnifiedSourcesProgress = useMemo(
+    () =>
+      buildUnifiedSourcesProgress({
+        crawlJobId: sourcesTrainingJobId,
+        crawlStatus: sourcesTrainingStatus,
+        pipelineRun: jobPipelineRun,
+        plannedPipelineJobIds,
+      }),
+    [sourcesTrainingJobId, sourcesTrainingStatus, jobPipelineRun, plannedPipelineJobIds]
+  )
+
+  useEffect(() => {
+    if (!selectedBotId || !liveUnifiedSourcesProgress) return
+    const savedAt = Date.now()
+    setPersistedSourcesProgress(liveUnifiedSourcesProgress)
+    setPersistedSourcesProgressSavedAt(savedAt)
+    try {
+      const snapshotKey = `${SOURCES_PROGRESS_SNAPSHOT_STORAGE_PREFIX}${selectedBotId}`
+      const payload: SourcesProgressSnapshotPayload = {
+        saved_at: savedAt,
+        progress: liveUnifiedSourcesProgress,
+      }
+      window.sessionStorage.setItem(snapshotKey, JSON.stringify(payload))
+    } catch {
+      // Best effort only.
+    }
+  }, [selectedBotId, liveUnifiedSourcesProgress])
+
+  const fallbackUnifiedSourcesProgress = useMemo(() => {
+    if (liveUnifiedSourcesProgress) return null
+    if (!persistedSourcesProgress || !persistedSourcesProgressSavedAt) return null
+    // Never resurrect completed progress that the user already saw/auto-hidden.
+    if (hiddenProgressRunKey) return null
+    const ageMs = Date.now() - persistedSourcesProgressSavedAt
+    if (ageMs > SOURCES_PROGRESS_SNAPSHOT_TTL_MS) return null
+    // Crawl-only terminal snapshots are stale and cause misleading reload flashes.
+    const isCrawlOnlyTerminal =
+      persistedSourcesProgress.isTerminal &&
+      persistedSourcesProgress.steps.length === 1 &&
+      persistedSourcesProgress.steps[0]?.source === 'crawl'
+    if (isCrawlOnlyTerminal) return null
+    return persistedSourcesProgress
+  }, [liveUnifiedSourcesProgress, persistedSourcesProgress, persistedSourcesProgressSavedAt, hiddenProgressRunKey])
+
+  const unifiedSourcesProgress = liveUnifiedSourcesProgress || fallbackUnifiedSourcesProgress
+  const liveUnifiedProgressRunKey = liveUnifiedSourcesProgress?.runKey || null
+  const unifiedProgressRunKey = unifiedSourcesProgress?.runKey || null
+  const shouldGateTerminalProgressVisibility = Boolean(
+    unifiedSourcesProgress?.isTerminal && !progressDisplayHydrated
+  )
+  // Show progress immediately only when a crawl is actively running/queued (real-time training).
+  // Otherwise, wait for pipeline data to load so the runKey is stable and matches the saved hidden key.
+  const crawlActivelyRunning = Boolean(
+    liveUnifiedSourcesProgress?.steps.some(
+      (s) => s.source === 'crawl' && (s.status === 'queued' || s.status === 'running')
+    )
+  )
+  const unifiedProgressVisible = Boolean(
+    unifiedSourcesProgress &&
+      !shouldGateTerminalProgressVisibility &&
+      (crawlActivelyRunning || jobPipelineHydrated) &&
+      hiddenProgressRunKey !== unifiedProgressRunKey
+  )
+  const unifiedProgressInFlight = Boolean(liveUnifiedSourcesProgress && !liveUnifiedSourcesProgress.isTerminal)
+  const activeUnifiedStep =
+    liveUnifiedSourcesProgress?.steps[liveUnifiedSourcesProgress.activeStepIndex] || null
+  const displayUnifiedStep =
+    unifiedSourcesProgress?.steps[unifiedSourcesProgress.activeStepIndex] || null
+  const activeMenuExtractionStats = useMemo(() => {
+    if (!displayUnifiedStep) return null
+    if (String(displayUnifiedStep.id || '').trim().toLowerCase() !== 'menu_extraction') return null
+    const details = displayUnifiedStep.details
+    if (!details || typeof details !== 'object') return null
+    const foundRaw = Number((details as Record<string, unknown>).assets_discovered || 0)
+    const downloadedRaw = Number((details as Record<string, unknown>).assets_downloaded || 0)
+    const savedRaw = Number((details as Record<string, unknown>).assets_created || 0)
+    const found = Number.isFinite(foundRaw) ? Math.max(0, Math.round(foundRaw)) : 0
+    const downloaded = Number.isFinite(downloadedRaw) ? Math.max(0, Math.round(downloadedRaw)) : 0
+    const saved = Number.isFinite(savedRaw) ? Math.max(0, Math.round(savedRaw)) : 0
+    const prepared = Math.max(saved, downloaded)
+    if (found <= 0 && prepared <= 0) return null
+    return { found, prepared }
+  }, [displayUnifiedStep])
+  const unifiedHasPipelineStep = Boolean(
+    unifiedSourcesProgress?.steps.some((step) => step.source === 'pipeline')
+  )
+  const unifiedOnlyCrawlStep = Boolean(
+    unifiedSourcesProgress &&
+      unifiedSourcesProgress.steps.length === 1 &&
+      unifiedSourcesProgress.steps[0]?.source === 'crawl'
+  )
+  const unifiedCounterReady = Boolean(
+    unifiedSourcesProgress && (!unifiedOnlyCrawlStep || jobPipelineHydrated || unifiedHasPipelineStep)
+  )
+  const crawlStepInFlight = Boolean(
+    activeUnifiedStep &&
+      activeUnifiedStep.source === 'crawl' &&
+      (activeUnifiedStep.status === 'queued' || activeUnifiedStep.status === 'running')
+  )
+  const progressControlState = liveUnifiedSourcesProgress
+
+  useEffect(() => {
+    if (!liveUnifiedProgressRunKey) return
+    // Wait for pipeline data before clearing a saved hidden key — the runKey format
+    // changes from "crawl:xxx" to "pipeline:xxx" once the async pipeline fetch completes.
+    // Clearing before hydration causes the saved key to be destroyed by a transient mismatch.
+    if (!jobPipelineHydrated) return
+    if (hiddenProgressRunKey && hiddenProgressRunKey !== liveUnifiedProgressRunKey) {
+      setHiddenProgressRunKey(null)
+      if (selectedBotId) {
+        try {
+          const hiddenKey = `${SOURCES_PROGRESS_HIDDEN_RUN_STORAGE_PREFIX}${selectedBotId}`
+          window.localStorage.removeItem(hiddenKey)
+        } catch {
+          // ignore storage failures
+        }
+      }
+    }
+  }, [liveUnifiedProgressRunKey, hiddenProgressRunKey, selectedBotId, jobPipelineHydrated])
+
+  useEffect(() => {
+    if (!liveUnifiedSourcesProgress || !liveUnifiedProgressRunKey) return
+    if (hiddenProgressRunKey === liveUnifiedProgressRunKey) return
+    if (!liveUnifiedSourcesProgress.isTerminal || liveUnifiedSourcesProgress.isError) return
+    if (!jobPipelineHydrated && unifiedOnlyCrawlStep) return
+    const timer = window.setTimeout(() => {
+      setHiddenProgressRunKey(liveUnifiedProgressRunKey)
+      if (selectedBotId) {
+        try {
+          const hiddenKey = `${SOURCES_PROGRESS_HIDDEN_RUN_STORAGE_PREFIX}${selectedBotId}`
+          window.localStorage.setItem(hiddenKey, liveUnifiedProgressRunKey)
+        } catch {
+          // ignore storage failures
+        }
+      }
+    }, 2400)
+    return () => window.clearTimeout(timer)
+  }, [
+    liveUnifiedSourcesProgress,
+    liveUnifiedProgressRunKey,
+    hiddenProgressRunKey,
+    jobPipelineHydrated,
+    unifiedOnlyCrawlStep,
+    selectedBotId,
+  ])
 
   const normalizedDiscoverUrl = (discoverInputUrl || '').trim().replace(/\/+$/, '') || undefined
   const urlCategories = useMemo(() => {
@@ -500,9 +762,9 @@ export default function BotKnowledgeTab() {
     if (!botId || !selectedBot || selectedBot.bot_id !== botId) return
     if (lastRefetchedBotIdRef.current === botId) return
     lastRefetchedBotIdRef.current = botId
-    void loadJobs(botId)
-    void loadSources(botId)
-  }, [botId, selectedBot?.bot_id, loadJobs, loadSources])
+    void loadJobsRef.current(botId)
+    void loadSourcesRef.current(botId)
+  }, [botId, selectedBot?.bot_id])
   useEffect(() => {
     if (!botId) {
       lastRefetchedBotIdRef.current = null
@@ -517,12 +779,12 @@ export default function BotKnowledgeTab() {
     if (sources.length > 0 || jobs.length > 0) return
     if (emptyPollCount >= 5) return
     const t = setTimeout(() => {
-      void loadJobs(botId)
-      void loadSources(botId)
+      void loadJobsRef.current(botId)
+      void loadSourcesRef.current(botId)
       setEmptyPollCount((c) => c + 1)
     }, 2000)
     return () => clearTimeout(t)
-  }, [botId, selectedBot?.bot_id, sources.length, jobs.length, emptyPollCount, loadJobs, loadSources])
+  }, [botId, selectedBot?.bot_id, sources.length, jobs.length, emptyPollCount])
 
   const handleDiscover = useCallback(async () => {
     if (!allowKnowledgeDiscovery) return
@@ -773,7 +1035,6 @@ export default function BotKnowledgeTab() {
       const jobId = await queueCrawlUrls(selectedBot.bot_id, urls)
       if (jobId) {
         setDiscoverTrainingJobId(jobId)
-        setDiscoverTrainingUrlCount(urls.length)
         setSelectedDiscovered(new Set())
         setDiscoveredUrls([])
         setDiscoverInputUrl('')
@@ -784,17 +1045,6 @@ export default function BotKnowledgeTab() {
       setTrainingDiscovered(false)
     }
   }, [allowKnowledgeDiscovery, selectedBot, selectedDiscovered, queueCrawlUrls, loadJobs, trainingDiscovered])
-
-  const handleSaveRestaurantPlatforms = useCallback(async () => {
-    if (!selectedBot) return
-    const existing = selectedBotWidgetConfig && typeof selectedBotWidgetConfig === 'object' ? selectedBotWidgetConfig : {}
-    const merged: Record<string, unknown> = { ...existing, reservationPlatform: reservationPlatform || undefined }
-    for (const p of platforms) {
-      const url = (platformUrls[p.id] || '').trim()
-      merged[p.widget_key] = url || undefined
-    }
-    await saveWidgetConfig(selectedBot.bot_id, merged)
-  }, [selectedBot, selectedBotWidgetConfig, reservationPlatform, platformUrls, platforms, saveWidgetConfig])
 
   const handleSaveAvailabilitySettings = useCallback(async () => {
     if (!selectedBot) return
@@ -878,8 +1128,6 @@ export default function BotKnowledgeTab() {
 
   const handleDeleteSelectedSources = useCallback(async () => {
     if (!selectedBot || sourcesSelected.size === 0 || deletingSelectedSources) return
-    const trainingInProgress = !!(sourcesTrainingJobId && sourcesTrainingStatus)
-    if (trainingInProgress) return
     setDeletingSelectedSources(true)
     try {
       for (const sourceId of sourcesSelected) {
@@ -891,7 +1139,7 @@ export default function BotKnowledgeTab() {
     } finally {
       setDeletingSelectedSources(false)
     }
-  }, [selectedBot, sourcesSelected, deletingSelectedSources, sourcesTrainingJobId, sourcesTrainingStatus, deleteSource, loadSources, loadJobs])
+  }, [selectedBot, sourcesSelected, deletingSelectedSources, deleteSource, loadSources, loadJobs])
 
   const handleStopTraining = useCallback(async () => {
     if (!selectedBot || !activeSourcesJob || stoppingTraining) return
@@ -1145,70 +1393,112 @@ export default function BotKnowledgeTab() {
       {/* Sources: main table — one row per source (URL, Drive, Docs, etc.) */}
       <GlassCard style={{ gridColumn: '1 / -1' }}>
         <div className="card-title">{t('botKnowledge.title', 'Sources')} ({sources.length})</div>
-        {sourcesTrainingJobId && sourcesTrainingStatus ? (
-          (() => {
-            const totalUrls = sources.length
-            const pct = trainingProgressDisplayPercent(
-              sourcesTrainingStatus.stage,
-              sourcesTrainingStatus.pages_crawled,
-              totalUrls
-            )
-            return (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                  <span className="discovery-loading-dots" aria-hidden>
-                    <span /><span /><span />
-                  </span>
-                  <span style={{ color: 'var(--ui-flow-accent)', fontWeight: 600 }}>
-                    {trainingProgressLabel(sourcesTrainingStatus.stage)} {pct}%
-                  </span>
-                  {sourcesTrainingStatus.pages_crawled != null && sourcesTrainingStatus.pages_crawled > 0 && (
-                    <span className="muted" style={{ fontSize: '0.875rem' }}>
-                      · {t('botKnowledge.pagesAndDocs', '{{pages}} pages · {{docs}} docs', { pages: sourcesTrainingStatus.pages_crawled, docs: sourcesTrainingStatus.docs_count ?? 0 })}
-                    </span>
-                  )}
+        {unifiedProgressVisible && unifiedSourcesProgress ? (
+          <div style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+              {!unifiedSourcesProgress.isTerminal && (
+                <span className="discovery-loading-dots sources-progress-loader" style={{ color: '#ec4899' }} aria-hidden>
+                  <span /><span /><span />
+                </span>
+              )}
+              <strong style={{ color: 'var(--ui-flow-accent)' }}>
+                {unifiedCounterReady
+                  ? t('botKnowledge.progressStepCounter', 'Step {{current}} of {{total}}', {
+                    current: unifiedSourcesProgress.activeStepIndex + 1,
+                    total: unifiedSourcesProgress.steps.length,
+                  })
+                  : t('botKnowledge.progressStepCounterLoading', 'Preparing training steps...')}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {displayUnifiedStep
+                  ? t(displayUnifiedStep.labelKey, displayUnifiedStep.labelFallback)
+                  : t('botKnowledge.progressStepCounterLoading', 'Preparing training steps...')}
+              </span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--ui-flow-accent)', fontWeight: 600 }}>
+                {Math.max(0, Math.min(100, Math.round(unifiedSourcesProgress.activeStepProgressPct || 0)))}%
+              </span>
+            </div>
+
+            <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
+              <div
+                className="progress-fill"
+                style={{
+                  height: '100%',
+                  width: `${unifiedSourcesProgress.activeStepProgressPct}%`,
+                  borderRadius: '4px',
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+
+            {unifiedSourcesProgress.isError && (unifiedSourcesProgress.headlineMessage || unifiedSourcesProgress.headlineMessageKey) && (
+              <div className="muted" style={{ fontSize: '0.84rem', marginTop: '0.45rem', color: '#dc2626' }}>
+                {unifiedSourcesProgress.headlineMessage ||
+                  (unifiedSourcesProgress.headlineMessageKey
+                    ? t(
+                      unifiedSourcesProgress.headlineMessageKey,
+                      unifiedSourcesProgress.headlineMessageFallback || ''
+                    )
+                    : '')}
+              </div>
+            )}
+
+            {unifiedSourcesProgress.activeCrawlStats &&
+              (unifiedSourcesProgress.activeCrawlStats.pagesCrawled > 0 || unifiedSourcesProgress.activeCrawlStats.docsCount > 0) && (
+                <div className="muted" style={{ fontSize: '0.84rem', marginTop: '0.4rem' }}>
+                  {unifiedSourcesProgress.activeCrawlStats.pagesCrawled > 0
+                    ? t('botKnowledge.learningPagesCount', 'Already read {{pages}} pages', {
+                      pages: unifiedSourcesProgress.activeCrawlStats.pagesCrawled,
+                    })
+                    : t('botKnowledge.learningContentProcessing', 'Processing website content')}
+                </div>
+              )}
+            {!unifiedSourcesProgress.activeCrawlStats && activeMenuExtractionStats && (
+              <div className="muted" style={{ fontSize: '0.84rem', marginTop: '0.4rem' }}>
+                {t('botKnowledge.menuExtractionStats', 'Menu items: found {{found}} · prepared {{prepared}}', {
+                  found: activeMenuExtractionStats.found,
+                  prepared: activeMenuExtractionStats.prepared,
+                })}
+              </div>
+            )}
+
+            {(progressControlState?.showStop || progressControlState?.showResume) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+                {progressControlState?.showStop && (
                   <button
                     type="button"
                     className="primary"
                     onClick={handleStopTraining}
                     disabled={stoppingTraining}
-                    style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
                   >
                     <span aria-hidden style={{ display: 'inline-block', width: 12, height: 12, backgroundColor: 'currentColor', borderRadius: 2 }} />
                     {stoppingTraining ? t('botKnowledge.stopping', 'Stopping...') : t('botKnowledge.stopTraining', 'Stop training')}
                   </button>
-                </div>
-                <div className="progress-track" style={{ height: '8px', borderRadius: '4px', overflow: 'hidden', background: 'var(--ui-flow-border)' }}>
-                  <div
-                    className="progress-fill"
-                    style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      borderRadius: '4px',
-                      transition: 'width 0.3s ease',
-                    }}
-                  />
-                </div>
-                {sourcesTrainingStatus.last_error && (
-                  <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                    {sourcesTrainingStatus.last_error}
-                  </div>
+                )}
+                {progressControlState?.showResume && (
+                  <button type="button" className="secondary" onClick={() => void handleResumeJobPipeline()}>
+                    {t('botKnowledge.resumePipeline', 'Resume pipeline')}
+                  </button>
                 )}
               </div>
-            )
-          })()
+            )}
+          </div>
         ) : (
           <p className="card-subtitle" style={{ marginTop: 0, marginBottom: '1rem' }}>
             {t('botKnowledge.subtitle', 'Every source (URL, PDF, Drive, Docs, etc.) this bot learns from. Add a URL or PDF (Drive/Docs coming soon). Training runs in the background.')}
           </p>
         )}
-        {!sourcesTrainingJobId && latestFailedSourcesJob?.last_error && (
+        {!unifiedProgressInFlight && latestFailedSourcesJob?.last_error && (
           <div className="alert error" style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
             {latestFailedSourcesJob.last_error}
           </div>
         )}
         <div className="knowledge-toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          {sourcesTrainingJobId && sourcesTrainingStatus ? (
+          {crawlStepInFlight ? (
             <span className="primary" style={{ opacity: 0.6, cursor: 'not-allowed', display: 'inline-flex', alignItems: 'center', padding: '0.6rem 1.1rem', borderRadius: '10px', border: '1px solid transparent', fontWeight: 500, fontSize: '1rem' }} aria-disabled>
               {t('botKnowledge.addSource', '+ Add source')}
             </span>
@@ -1223,7 +1513,7 @@ export default function BotKnowledgeTab() {
                 type="button"
                 className={sourcesSelected.size === sources.length ? 'ghost' : 'secondary'}
                 onClick={selectAllSources}
-                disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                disabled={crawlStepInFlight}
               >
                 {sourcesSelected.size === sources.length ? t('botKnowledge.deselectAll', 'Deselect all') : t('botKnowledge.selectAll', 'Select all')}
               </button>
@@ -1232,7 +1522,7 @@ export default function BotKnowledgeTab() {
                   type="button"
                   className="secondary"
                   onClick={handleDeleteSelectedSources}
-                  disabled={deletingSelectedSources || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  disabled={deletingSelectedSources || crawlStepInFlight}
                   style={{ color: '#dc2626' }}
                 >
                   {deletingSelectedSources ? t('botKnowledge.deleting', 'Deleting...') : t('botKnowledge.deleteSelected', 'Delete selected ({{count}})', { count: sourcesSelected.size })}
@@ -1243,7 +1533,7 @@ export default function BotKnowledgeTab() {
                   type="button"
                   className="secondary"
                   onClick={handleSyncSelected}
-                  disabled={syncingSelected || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  disabled={syncingSelected || crawlStepInFlight}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: syncingSelected ? 'spin 1s linear infinite' : 'none' }}>
@@ -1267,7 +1557,7 @@ export default function BotKnowledgeTab() {
                       checked={sources.length > 0 && sourcesSelected.size === sources.length}
                       ref={(el) => { if (el) el.indeterminate = sourcesSelected.size > 0 && sourcesSelected.size < sources.length }}
                       onChange={() => sourcesSelected.size === sources.length ? deselectAllSources() : selectAllSources()}
-                      disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                      disabled={crawlStepInFlight}
                       aria-label={t('botKnowledge.selectAll', 'Select all')}
                       style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                     />
@@ -1292,7 +1582,7 @@ export default function BotKnowledgeTab() {
                             type="checkbox"
                             checked={sourcesSelected.has(s.source_id)}
                             onChange={() => toggleSourcesSelected(s.source_id)}
-                            disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                            disabled={crawlStepInFlight}
                             aria-label={`Select ${sourceDisplayName(s)}`}
                             style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                           />
@@ -1523,7 +1813,7 @@ export default function BotKnowledgeTab() {
               </tbody>
             </table>
           </div>
-        ) : sourcesTrainingJobId && sourcesTrainingStatus ? (
+        ) : unifiedProgressInFlight ? (
           <div className="empty muted" style={{ padding: '1.5rem' }}>
             {t('botKnowledge.trainingSelectedUrls', 'Training your selected URLs... Check progress above.')}
           </div>
@@ -1603,82 +1893,6 @@ export default function BotKnowledgeTab() {
             <p className="card-subtitle" style={{ marginTop: 0 }}>
               {t('botKnowledge.bookingLinksSubtitle', 'Booking links are extracted from your trained knowledge after import completes.')}
             </p>
-          )}
-        </GlassCard>
-      )}
-
-      {jobPipelineRun && (
-        <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">{t('botKnowledge.jobPipelineTitle', 'Automation pipeline')}</div>
-          <p className="card-subtitle" style={{ marginTop: 0 }}>
-            {t('botKnowledge.jobPipelineSubtitle', 'Config-defined sequential jobs executed after crawl/import.')}
-          </p>
-          <div className="progress-track" style={{ marginBottom: '0.5rem' }}>
-            <div className="progress-fill" style={{ width: `${pipelineProgressPercent(jobPipelineRun)}%` }} />
-          </div>
-          <div className="muted" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-            {pipelineCurrentMessage(jobPipelineRun)}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 600 }}>
-              {t('botKnowledge.statusLabel', 'Status: ')}
-              {jobPipelineRun.status} · {pipelineProgressPercent(jobPipelineRun)}%
-            </span>
-            {jobPipelineRun.updated_at && (
-              <span className="muted" style={{ fontSize: '0.875rem' }}>
-                · Updated {formatRelativeTime(jobPipelineRun.updated_at)}
-              </span>
-            )}
-            {(jobPipelineRun.status || '').toLowerCase() === 'paused' && (
-              <button type="button" className="secondary" onClick={() => void handleResumeJobPipeline()}>
-                {t('botKnowledge.resumePipeline', 'Resume pipeline')}
-              </button>
-            )}
-          </div>
-          <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px' }}>
-            {(jobPipelineRun.steps || []).map((step) => (
-              <div key={`${step.run_id}-${step.step_index}`} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <strong>{step.step_index + 1}. {step.job_id}</strong>
-                  <span className="muted">· {step.status} · {Math.max(0, Math.min(100, Math.round(step.progress_pct || 0)))}%</span>
-                  {step.linked_job_id && (
-                    <span className="muted">· {step.linked_job_type}:{step.linked_job_id}</span>
-                  )}
-                </div>
-                {step.current_message && (
-                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                    {step.current_message}
-                  </div>
-                )}
-                {step.last_error && (
-                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem', color: '#dc2626' }}>
-                    {step.last_error}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          {(jobPipelineRun.events || []).length > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.35rem' }}>
-                {t('botKnowledge.jobPipelineEvents', 'Recent activity')}
-              </div>
-              <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '10px' }}>
-                {[...(jobPipelineRun.events || [])]
-                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                  .slice(0, 8)
-                  .map((evt) => (
-                    <div key={evt.event_id} className="url-list-item" style={{ marginBottom: '0.45rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 600 }}>{evt.stage_key || evt.event_type}</span>
-                        {typeof evt.progress_pct === 'number' && <span className="muted">· {evt.progress_pct}%</span>}
-                        <span className="muted">· {formatRelativeTime(evt.created_at)}</span>
-                      </div>
-                      {evt.message && <div className="muted" style={{ fontSize: '0.85rem' }}>{evt.message}</div>}
-                    </div>
-                  ))}
-              </div>
-            </div>
           )}
         </GlassCard>
       )}
@@ -1792,50 +2006,6 @@ export default function BotKnowledgeTab() {
         </GlassCard>
       )}
 
-      {/* Restaurant reservation: one profile per agent (Tabelog, HotPepper, or TableCheck) */}
-      {selectedBotWidgetConfig?.businessType === 'restaurant' && (
-        <GlassCard style={{ gridColumn: '1 / -1' }}>
-          <div className="card-title">{t('botKnowledge.restaurantPlatformsTitle', 'Reservation platform')}</div>
-          <p className="card-subtitle" style={{ marginTop: 0 }}>
-            {t('botKnowledge.restaurantPlatformsSubtitle', 'Select one reservation platform. The agent will use its profile when answering reservation questions.')}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
-            <div className="testing-field">
-              <label className="testing-label">{t('botKnowledge.reservationPlatform', 'Platform')}</label>
-              <select
-                className="design-form-input"
-                value={reservationPlatform}
-                onChange={(e) => setReservationPlatform(e.target.value || '')}
-                style={{ width: '100%', maxWidth: '700px' }}
-              >
-                <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
-                {platforms.map((p) => (
-                  <option key={p.id} value={p.id}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            {reservationPlatform && platforms.some((p) => p.id === reservationPlatform) && (
-              <div className="testing-field">
-                <label className="testing-label">{platforms.find((p) => p.id === reservationPlatform)?.label} URL</label>
-                <input
-                  type="url"
-                  className="design-form-input"
-                  value={platformUrls[reservationPlatform] || ''}
-                  onChange={(e) => setPlatformUrls((prev) => ({ ...prev, [reservationPlatform]: e.target.value }))}
-                  placeholder={platforms.find((p) => p.id === reservationPlatform)?.url_placeholder || ''}
-                  style={{ width: '100%', maxWidth: '700px' }}
-                />
-              </div>
-            )}
-            <div>
-              <button type="button" className="secondary" onClick={() => void handleSaveRestaurantPlatforms()}>
-                {t('botKnowledge.save', 'Save')}
-              </button>
-            </div>
-          </div>
-        </GlassCard>
-      )}
-
       {/* Add more pages — own-website bots only */}
       {allowKnowledgeDiscovery && (
         <GlassCard style={{ gridColumn: '1 / -1' }}>
@@ -1872,13 +2042,13 @@ export default function BotKnowledgeTab() {
                 placeholder={t('botKnowledge.discoverUrlPlaceholder', 'https://example.com')}
                 className="design-form-input"
                 style={{ flex: 1, minWidth: '200px' }}
-                disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                disabled={crawlStepInFlight}
               />
               <button
                 type="button"
                 className="primary"
                 onClick={handleDiscover}
-                disabled={!discoverInputUrl.trim() || loading || isDiscovering || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                disabled={!discoverInputUrl.trim() || loading || isDiscovering || crawlStepInFlight}
               >
                 {isDiscovering ? t('botKnowledge.discovering', 'Discovering...') : t('botKnowledge.discover', 'Discover')}
               </button>
@@ -1891,36 +2061,8 @@ export default function BotKnowledgeTab() {
           </div>
 
           {(discoverTrainingJobId || discoverTrainingSuccess) && (
-            <div className="progress-card" style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-              {discoverTrainingSuccess ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#059669', fontWeight: 500 }}>
-                  <span aria-hidden style={{ fontSize: '1.25rem' }}>✓</span>
-                  <span>{t('botKnowledge.addedToBotKnowledge', 'Added to bot knowledge')}</span>
-                </div>
-              ) : (
-                <>
-                  <div className="progress-label" style={{ color: '#334155' }}>
-                    {t('botKnowledge.trainingInProgress', 'Training in progress... {{count}} page(s)', { count: discoverTrainingUrlCount })}
-                  </div>
-                  <div className="progress-track" style={{ marginTop: '0.5rem' }}>
-                    <div
-                      className="progress-fill"
-                      style={{ width: `${trainingProgressPercent(discoverTrainingStatus?.stage)}%` }}
-                    />
-                  </div>
-                  <div className="muted" style={{ fontSize: '0.875rem', marginTop: '0.35rem' }}>
-                    {discoverTrainingStatus?.stage ? statusLabel(discoverTrainingStatus.stage) : t('botKnowledge.starting', 'Starting...')}
-                    {discoverTrainingStatus?.docs_count != null && discoverTrainingStatus.docs_count > 0 && (
-                      <> · {discoverTrainingStatus.docs_count} doc{discoverTrainingStatus.docs_count === 1 ? '' : 's'}</>
-                    )}
-                  </div>
-                  {discoverTrainingStatus?.last_error && (
-                    <div className="alert error" style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-                      {discoverTrainingStatus.last_error}
-                    </div>
-                  )}
-                </>
-              )}
+            <div className="muted" style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              {t('botKnowledge.progressShownAbove', 'Progress is shown above.')}
             </div>
           )}
 
@@ -1931,7 +2073,7 @@ export default function BotKnowledgeTab() {
                   type="button"
                   className={allDiscoveredSelected ? 'ghost' : 'secondary'}
                   onClick={toggleAllDiscovered}
-                  disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  disabled={crawlStepInFlight}
                 >
                   {allDiscoveredSelected ? t('botKnowledge.deselectAll', 'Deselect all') : t('botKnowledge.selectAll', 'Select all')}
                 </button>
@@ -1939,7 +2081,7 @@ export default function BotKnowledgeTab() {
                   type="button"
                   className={expandedCategories.size > 0 ? 'ghost' : 'secondary'}
                   onClick={expandedCategories.size > 0 ? collapseAllCategories : expandAllCategories}
-                  disabled={!!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  disabled={crawlStepInFlight}
                 >
                   {expandedCategories.size > 0 ? t('botKnowledge.collapseAll', 'Collapse all') : t('botKnowledge.expandAll', 'Expand all')}
                 </button>
@@ -1985,7 +2127,7 @@ export default function BotKnowledgeTab() {
                   type="button"
                   className="primary"
                   onClick={handleTrainDiscovered}
-                  disabled={selectedDiscovered.size === 0 || loading || trainingDiscovered || !!(sourcesTrainingJobId && sourcesTrainingStatus)}
+                  disabled={selectedDiscovered.size === 0 || loading || trainingDiscovered || crawlStepInFlight}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 >
                   {trainingDiscovered ? t('botKnowledge.starting', 'Starting...') : t('botKnowledge.startTraining', '▷ Start training')}

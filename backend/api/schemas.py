@@ -881,6 +881,10 @@ class BotAssetListResponse(BaseModel):
     assets: List[BotAssetResponse] = []
     count: int = 0
     limit: int = 15
+    total_count: int = 0
+    page_size: int = 1000
+    offset: int = 0
+    has_more: bool = False
 
 
 class BotAssetAutoExtractRequest(BaseModel):
