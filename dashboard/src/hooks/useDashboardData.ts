@@ -196,6 +196,38 @@ export type BookingLinkJobRecord = {
   updated_at: string
 }
 
+export type JobPipelineStepRecord = {
+  run_id: string
+  step_index: number
+  job_id: string
+  runner_ref: string
+  on_failure: string
+  status: string
+  linked_job_type?: string | null
+  linked_job_id?: string | null
+  output: Record<string, unknown>
+  last_error?: string | null
+  started_at?: string | null
+  completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type JobPipelineRunRecord = {
+  run_id: string
+  org_id: string
+  bot_id: string
+  workflow_id: string
+  trigger: string
+  status: string
+  current_step_index: number
+  context: Record<string, unknown>
+  last_error?: string | null
+  created_at: string
+  updated_at: string
+  steps: JobPipelineStepRecord[]
+}
+
 export type ConversationSessionRecord = {
   session_id: string
   bot_id: string
@@ -454,6 +486,8 @@ type DashboardData = {
   getDiscoveryJob: (botId: string, jobId: string) => Promise<DiscoveryJobRecord | null>
   listBookingLinkJobs: (botId: string) => Promise<BookingLinkJobRecord[]>
   getBookingLinkJob: (botId: string, jobId: string) => Promise<BookingLinkJobRecord | null>
+  getLatestJobPipeline: (botId: string) => Promise<JobPipelineRunRecord | null>
+  resumeJobPipeline: (botId: string, runId: string) => Promise<JobPipelineRunRecord | null>
   startAvailabilityJob: (
     botId: string,
     payload: {
@@ -1336,6 +1370,32 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(`/v1/org/bots/${botId}/booking-links/${encodeURIComponent(jobId)}`, orgOverride)
       return await fetchAuthedJson<BookingLinkJobRecord>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function getLatestJobPipeline(botId: string): Promise<JobPipelineRunRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/job-pipelines/latest`, orgOverride)
+      const data = await fetchAuthedJson<{ bot_id: string; run?: JobPipelineRunRecord | null }>(path)
+      return data.run || null
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function resumeJobPipeline(botId: string, runId: string): Promise<JobPipelineRunRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/job-pipelines/${encodeURIComponent(runId)}/resume`, orgOverride)
+      const data = await fetchAuthedJson<{ bot_id: string; run: JobPipelineRunRecord }>(path, { method: 'POST' })
+      return data.run || null
     } catch (err) {
       setError((err as Error).message)
       return null
@@ -2435,6 +2495,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getDiscoveryJob,
     listBookingLinkJobs,
     getBookingLinkJob,
+    getLatestJobPipeline,
+    resumeJobPipeline,
     startAvailabilityJob,
     listAvailabilityJobs,
     getAvailabilityJob,

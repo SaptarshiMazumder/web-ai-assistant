@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
-import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord } from '../../hooks/useDashboardData'
+import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord, type JobPipelineRunRecord } from '../../hooks/useDashboardData'
 import {
   categorizeUrls,
   getAllExpandablePaths,
@@ -134,6 +134,8 @@ export default function BotKnowledgeTab() {
     updateSourceSyncSettings,
     listBookingLinkJobs,
     getBookingLinkJob,
+    getLatestJobPipeline,
+    resumeJobPipeline,
     startAvailabilityJob,
     getAvailabilityJob,
     saveWidgetConfig,
@@ -190,6 +192,7 @@ export default function BotKnowledgeTab() {
   } | null>(null)
 
   const [bookingLinkJob, setBookingLinkJob] = useState<BookingLinkJobRecord | null>(null)
+  const [jobPipelineRun, setJobPipelineRun] = useState<JobPipelineRunRecord | null>(null)
 
   const [allowRealtimeAvailability, setAllowRealtimeAvailability] = useState(false)
   const [bookingTestUrl, setBookingTestUrl] = useState('')
@@ -395,6 +398,49 @@ export default function BotKnowledgeTab() {
       if (pollTimer) clearInterval(pollTimer)
     }
   }, [selectedBot, listBookingLinkJobs, getBookingLinkJob])
+
+  // Config-first job pipeline progress
+  useEffect(() => {
+    if (!selectedBot) {
+      setJobPipelineRun(null)
+      return
+    }
+    let cancelled = false
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+
+    const load = async () => {
+      const run = await getLatestJobPipeline(selectedBot.bot_id)
+      if (cancelled) return
+      setJobPipelineRun(run)
+      if (!run) return
+      const status = (run.status || '').toLowerCase()
+      if (status === 'done' || status === 'error' || status === 'paused') return
+      pollTimer = setInterval(async () => {
+        const current = await getLatestJobPipeline(selectedBot.bot_id)
+        if (cancelled) return
+        if (current) setJobPipelineRun(current)
+        const currentStatus = (current?.status || '').toLowerCase()
+        if (currentStatus === 'done' || currentStatus === 'error' || currentStatus === 'paused') {
+          if (pollTimer) {
+            clearInterval(pollTimer)
+            pollTimer = null
+          }
+        }
+      }, 4000)
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+      if (pollTimer) clearInterval(pollTimer)
+    }
+  }, [selectedBot, getLatestJobPipeline])
+
+  const handleResumeJobPipeline = useCallback(async () => {
+    if (!selectedBot || !jobPipelineRun || (jobPipelineRun.status || '').toLowerCase() !== 'paused') return
+    const resumed = await resumeJobPipeline(selectedBot.bot_id, jobPipelineRun.run_id)
+    if (resumed) setJobPipelineRun(resumed)
+  }, [selectedBot, jobPipelineRun, resumeJobPipeline])
 
   const normalizedDiscoverUrl = (discoverInputUrl || '').trim().replace(/\/+$/, '') || undefined
   const urlCategories = useMemo(() => {
@@ -1519,6 +1565,49 @@ export default function BotKnowledgeTab() {
               {t('botKnowledge.bookingLinksSubtitle', 'Booking links are extracted from your trained knowledge after import completes.')}
             </p>
           )}
+        </GlassCard>
+      )}
+
+      {jobPipelineRun && (
+        <GlassCard style={{ gridColumn: '1 / -1' }}>
+          <div className="card-title">{t('botKnowledge.jobPipelineTitle', 'Automation pipeline')}</div>
+          <p className="card-subtitle" style={{ marginTop: 0 }}>
+            {t('botKnowledge.jobPipelineSubtitle', 'Config-defined sequential jobs executed after crawl/import.')}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600 }}>
+              {t('botKnowledge.statusLabel', 'Status: ')}
+              {jobPipelineRun.status}
+            </span>
+            {jobPipelineRun.updated_at && (
+              <span className="muted" style={{ fontSize: '0.875rem' }}>
+                · Updated {formatRelativeTime(jobPipelineRun.updated_at)}
+              </span>
+            )}
+            {(jobPipelineRun.status || '').toLowerCase() === 'paused' && (
+              <button type="button" className="secondary" onClick={() => void handleResumeJobPipeline()}>
+                {t('botKnowledge.resumePipeline', 'Resume pipeline')}
+              </button>
+            )}
+          </div>
+          <div className="url-list knowledge-table-wrap-scroll" style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: '6px', padding: '12px' }}>
+            {(jobPipelineRun.steps || []).map((step) => (
+              <div key={`${step.run_id}-${step.step_index}`} className="url-list-item" style={{ marginBottom: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <strong>{step.step_index + 1}. {step.job_id}</strong>
+                  <span className="muted">· {step.status}</span>
+                  {step.linked_job_id && (
+                    <span className="muted">· {step.linked_job_type}:{step.linked_job_id}</span>
+                  )}
+                </div>
+                {step.last_error && (
+                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: '0.25rem', color: '#dc2626' }}>
+                    {step.last_error}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </GlassCard>
       )}
 

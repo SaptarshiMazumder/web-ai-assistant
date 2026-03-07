@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from domain.platform_profiles import (
     get_default_post_crawl_jobs,
     get_default_source_language,
+    get_knowledge_tabs_for_widget,
     get_menu_category_aliases,
     get_menu_view_all_url_tokens,
     get_reservation_url_for_platform,
@@ -48,6 +49,11 @@ class ModularConfigTests(unittest.TestCase):
                 resolved = u
                 break
         self.assertIn("party", resolved)
+
+    def test_knowledge_tabs_resolve_from_platform_without_url_validation(self):
+        widget_config = {"reservationPlatform": "hotpepper"}
+        tabs = get_knowledge_tabs_for_widget(widget_config)
+        self.assertEqual(["menu"], tabs)
 
 
 if __name__ == "__main__":

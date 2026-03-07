@@ -24,6 +24,17 @@ class ArchitectureGuardTests(unittest.TestCase):
         self.assertNotIn("Hardcode JP for now", text)
         self.assertIn("get_default_source_language()", text)
 
+    def test_single_page_crawl_source_language_is_not_hardcoded(self):
+        text = self._read("infrastructure/tasks/single_page_crawl_tasks.py")
+        self.assertNotIn("Hardcode JP for now", text)
+        self.assertIn("get_default_source_language()", text)
+
+    def test_crawl_uses_pipeline_engine_for_post_crawl(self):
+        text = self._read("infrastructure/tasks/crawl_tasks.py")
+        self.assertIn("_run_post_crawl_pipeline(", text)
+        self.assertNotIn('if "menu_extraction" in jobs', text)
+        self.assertNotIn('if "booking_link" in jobs', text)
+
 
 if __name__ == "__main__":
     unittest.main()

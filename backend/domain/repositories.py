@@ -11,6 +11,8 @@ from .entities import (
     DiscoveryJob,
     Document,
     IndexJob,
+    JobPipelineRun,
+    JobPipelineStep,
     OrgMemberRecord,
     OrgRecord,
     TopicJob,
@@ -219,6 +221,26 @@ class AvailabilityJobRepository(Protocol):
         ...
 
     def update(self, job: AvailabilityJob) -> None:
+        ...
+
+
+class JobPipelineRepository(Protocol):
+    def create_run(self, run: JobPipelineRun, steps: List[JobPipelineStep]) -> None:
+        ...
+
+    def get_run(self, run_id: str) -> Optional[JobPipelineRun]:
+        ...
+
+    def get_latest_run_for_bot(self, bot_id: str) -> Optional[JobPipelineRun]:
+        ...
+
+    def list_steps(self, run_id: str) -> List[JobPipelineStep]:
+        ...
+
+    def update_run(self, run: JobPipelineRun) -> None:
+        ...
+
+    def update_step(self, step: JobPipelineStep) -> None:
         ...
 
 

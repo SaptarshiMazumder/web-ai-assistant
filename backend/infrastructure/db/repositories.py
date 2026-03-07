@@ -19,6 +19,8 @@ from domain.entities import (
     EscalationRecord,
     DiscoveryJob,
     IndexJob,
+    JobPipelineRun,
+    JobPipelineStep,
     InstagramChannel,
     InstagramUserSession,
     LineChannel,
@@ -35,6 +37,7 @@ from domain.repositories import (
     BotSourceRepository,
     DiscoveryJobRepository,
     IndexJobRepository,
+    JobPipelineRepository,
     TopicJobRepository,
 )
 from infrastructure.db.connection import get_connection
@@ -1854,6 +1857,248 @@ class PostgresAvailabilityJobRepository(AvailabilityJobRepository):
                     job.celery_task_id,
                     now,
                     job.job_id,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+
+class PostgresJobPipelineRepository(JobPipelineRepository):
+    def create_run(self, run: JobPipelineRun, steps: List[JobPipelineStep]) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO job_pipeline_runs(
+                  run_id, org_id, bot_id, workflow_id, trigger, status,
+                  current_step_index, context_json, last_error, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    run.run_id,
+                    run.org_id,
+                    run.bot_id,
+                    run.workflow_id,
+                    run.trigger,
+                    run.status,
+                    int(run.current_step_index or 0),
+                    json.dumps(run.context if isinstance(run.context, dict) else {}),
+                    run.last_error,
+                    run.created_at,
+                    run.updated_at,
+                ),
+            )
+            for step in steps or []:
+                con.execute(
+                    """
+                    INSERT INTO job_pipeline_steps(
+                      run_id, step_index, job_id, runner_ref, on_failure, status,
+                      linked_job_type, linked_job_id, output_json, last_error,
+                      started_at, completed_at, created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        step.run_id,
+                        int(step.step_index),
+                        step.job_id,
+                        step.runner_ref,
+                        step.on_failure,
+                        step.status,
+                        step.linked_job_type,
+                        step.linked_job_id,
+                        json.dumps(step.output if isinstance(step.output, dict) else {}),
+                        step.last_error,
+                        step.started_at,
+                        step.completed_at,
+                        step.created_at,
+                        step.updated_at,
+                    ),
+                )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_run(self, run_id: str) -> Optional[JobPipelineRun]:
+        rid = (run_id or "").strip()
+        if not rid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT run_id, org_id, bot_id, workflow_id, trigger, status,
+                       current_step_index, context_json, last_error, created_at, updated_at
+                FROM job_pipeline_runs
+                WHERE run_id = %s
+                """,
+                (rid,),
+            ).fetchone()
+            if not row:
+                return None
+            try:
+                context_json = json.loads(row[7]) if row[7] else {}
+            except Exception:
+                context_json = {}
+            return JobPipelineRun(
+                run_id=row[0],
+                org_id=row[1],
+                bot_id=row[2],
+                workflow_id=row[3],
+                trigger=row[4],
+                status=row[5],
+                current_step_index=row[6] or 0,
+                context=context_json if isinstance(context_json, dict) else {},
+                last_error=row[8],
+                created_at=row[9],
+                updated_at=row[10],
+            )
+        finally:
+            con.close()
+
+    def get_latest_run_for_bot(self, bot_id: str) -> Optional[JobPipelineRun]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT run_id, org_id, bot_id, workflow_id, trigger, status,
+                       current_step_index, context_json, last_error, created_at, updated_at
+                FROM job_pipeline_runs
+                WHERE bot_id = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (bid,),
+            ).fetchone()
+            if not row:
+                return None
+            try:
+                context_json = json.loads(row[7]) if row[7] else {}
+            except Exception:
+                context_json = {}
+            return JobPipelineRun(
+                run_id=row[0],
+                org_id=row[1],
+                bot_id=row[2],
+                workflow_id=row[3],
+                trigger=row[4],
+                status=row[5],
+                current_step_index=row[6] or 0,
+                context=context_json if isinstance(context_json, dict) else {},
+                last_error=row[8],
+                created_at=row[9],
+                updated_at=row[10],
+            )
+        finally:
+            con.close()
+
+    def list_steps(self, run_id: str) -> List[JobPipelineStep]:
+        rid = (run_id or "").strip()
+        if not rid:
+            return []
+        con = _connect()
+        try:
+            rows = con.execute(
+                """
+                SELECT run_id, step_index, job_id, runner_ref, on_failure, status,
+                       linked_job_type, linked_job_id, output_json, last_error,
+                       started_at, completed_at, created_at, updated_at
+                FROM job_pipeline_steps
+                WHERE run_id = %s
+                ORDER BY step_index ASC
+                """,
+                (rid,),
+            ).fetchall()
+            out: List[JobPipelineStep] = []
+            for row in rows or []:
+                try:
+                    output_json = json.loads(row[8]) if row[8] else {}
+                except Exception:
+                    output_json = {}
+                out.append(
+                    JobPipelineStep(
+                        run_id=row[0],
+                        step_index=row[1] or 0,
+                        job_id=row[2],
+                        runner_ref=row[3],
+                        on_failure=row[4],
+                        status=row[5],
+                        linked_job_type=row[6],
+                        linked_job_id=row[7],
+                        output=output_json if isinstance(output_json, dict) else {},
+                        last_error=row[9],
+                        started_at=row[10],
+                        completed_at=row[11],
+                        created_at=row[12],
+                        updated_at=row[13],
+                    )
+                )
+            return out
+        finally:
+            con.close()
+
+    def update_run(self, run: JobPipelineRun) -> None:
+        now = _utc_now()
+        run.updated_at = now
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE job_pipeline_runs
+                SET status = %s,
+                    current_step_index = %s,
+                    context_json = %s,
+                    last_error = %s,
+                    updated_at = %s
+                WHERE run_id = %s
+                """,
+                (
+                    run.status,
+                    int(run.current_step_index or 0),
+                    json.dumps(run.context if isinstance(run.context, dict) else {}),
+                    run.last_error,
+                    now,
+                    run.run_id,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def update_step(self, step: JobPipelineStep) -> None:
+        now = _utc_now()
+        step.updated_at = now
+        con = _connect()
+        try:
+            con.execute(
+                """
+                UPDATE job_pipeline_steps
+                SET status = %s,
+                    linked_job_type = %s,
+                    linked_job_id = %s,
+                    output_json = %s,
+                    last_error = %s,
+                    started_at = %s,
+                    completed_at = %s,
+                    updated_at = %s
+                WHERE run_id = %s AND step_index = %s
+                """,
+                (
+                    step.status,
+                    step.linked_job_type,
+                    step.linked_job_id,
+                    json.dumps(step.output if isinstance(step.output, dict) else {}),
+                    step.last_error,
+                    step.started_at,
+                    step.completed_at,
+                    now,
+                    step.run_id,
+                    int(step.step_index),
                 ),
             )
             con.commit()

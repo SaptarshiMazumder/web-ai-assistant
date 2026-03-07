@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol
 
 
@@ -65,4 +65,18 @@ class AssetPolicy(Protocol):
 
 class FunctionExecutor(Protocol):
     def execute(self, function_id: str, args: Dict[str, Any], context: Dict[str, Any]) -> Any:
+        ...
+
+
+@dataclass(frozen=True)
+class JobResult:
+    status: str  # done|paused|error
+    output: Dict[str, Any] = field(default_factory=dict)
+    linked_job_type: Optional[str] = None
+    linked_job_id: Optional[str] = None
+    error: Optional[str] = None
+
+
+class JobRunner(Protocol):
+    def run(self, context: Dict[str, Any]) -> JobResult:
         ...

@@ -84,6 +84,10 @@ from api.schemas import (
     DiscoveryJobListResponse,
     BookingLinkJobItem,
     BookingLinkJobsResponse,
+    JobPipelineLatestResponse,
+    JobPipelineResumeResponse,
+    JobPipelineRunItem,
+    JobPipelineStepItem,
     WidgetChatRequest,
     WidgetChatResponse,
     WidgetConfigUpdate,
@@ -119,7 +123,7 @@ from application.services.prompt_provider import ConfigPromptProvider
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
-from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service
+from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service, job_pipeline_service
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
@@ -4609,6 +4613,50 @@ async def v1_org_get_booking_link_job(
         created_at=job.created_at,
         updated_at=job.updated_at,
     )
+
+
+@router.get("/v1/org/bots/{bot_id}/job-pipelines/latest", response_model=JobPipelineLatestResponse)
+async def v1_org_get_latest_job_pipeline(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    snapshot = job_pipeline_service().get_latest_for_bot(bot_id)
+    if not snapshot:
+        return JobPipelineLatestResponse(bot_id=bot_id, run=None)
+    run_raw = snapshot.get("run") if isinstance(snapshot, dict) else None
+    steps_raw = snapshot.get("steps") if isinstance(snapshot, dict) else None
+    if not isinstance(run_raw, dict):
+        return JobPipelineLatestResponse(bot_id=bot_id, run=None)
+    steps = [JobPipelineStepItem(**s) for s in (steps_raw or []) if isinstance(s, dict)]
+    run = JobPipelineRunItem(**{**run_raw, "steps": steps})
+    return JobPipelineLatestResponse(bot_id=bot_id, run=run)
+
+
+@router.post("/v1/org/bots/{bot_id}/job-pipelines/{run_id}/resume", response_model=JobPipelineResumeResponse)
+async def v1_org_resume_job_pipeline(
+    bot_id: str,
+    run_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        snapshot = job_pipeline_service().resume(run_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    run_raw = snapshot.get("run") if isinstance(snapshot, dict) else None
+    steps_raw = snapshot.get("steps") if isinstance(snapshot, dict) else None
+    if not isinstance(run_raw, dict):
+        raise HTTPException(status_code=404, detail="Job pipeline run not found")
+    if str(run_raw.get("bot_id") or "").strip() != bot_id:
+        raise HTTPException(status_code=403, detail="Run does not belong to this bot")
+    steps = [JobPipelineStepItem(**s) for s in (steps_raw or []) if isinstance(s, dict)]
+    run = JobPipelineRunItem(**{**run_raw, "steps": steps})
+    return JobPipelineResumeResponse(bot_id=bot_id, run=run)
 
 
 # ========== Admin Endpoints ==========

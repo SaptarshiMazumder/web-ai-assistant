@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -15,18 +16,17 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 from markdownify import markdownify
 
 from domain.entities import Document
+from domain.platform_profiles import get_default_source_language
+from application.services.job_pipeline_service import JobPipelineService
 from infrastructure.celery_app import celery_app
-from infrastructure.db.repositories import PostgresIndexJobRepository
+from infrastructure.db.repositories import (
+    PostgresBotRepository,
+    PostgresIndexJobRepository,
+    PostgresJobPipelineRepository,
+)
 from infrastructure.rag.crawl_service import CRAWL_WAIT_FOR_CONTENT, _normalize_text_encoding
 from infrastructure.rag.robots_policy import robots_policy
 from infrastructure.repositories import GCSDocumentStorageRepository, VertexRAGRepository
-from infrastructure.tasks.booking_link_tasks import booking_link_job_task
-from infrastructure.tasks.crawl_tasks import (
-    _get_post_crawl_jobs,
-    _start_booking_link_job,
-    _start_menu_extraction_job,
-    _start_topic_extraction_job,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,42 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _run_post_crawl_pipeline(
+    *,
+    bot_id: str,
+    index_job_id: str,
+    gcs_prefix: str,
+    root_url: str,
+    crawled_urls: Optional[list[str]] = None,
+) -> None:
+    service = JobPipelineService(
+        pipeline_repo=PostgresJobPipelineRepository(),
+        bot_repo=PostgresBotRepository(),
+    )
+    service.start_post_crawl(
+        bot_id=bot_id,
+        index_job_id=index_job_id,
+        gcs_prefix=gcs_prefix,
+        root_url=root_url,
+        crawled_urls=crawled_urls or [],
+    )
+
+
 def _get_source_language(bot_id: str, source_id: Optional[str]) -> str:
-    # Hardcode JP for now (do not read env or source config).
-    return "ja"
+    try:
+        bot_repo = PostgresBotRepository()
+        bot = bot_repo.get_bot(bot_id)
+        if bot and getattr(bot, "widget_config", None):
+            raw = (bot.widget_config or "").strip()
+            if raw:
+                cfg = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(cfg, dict):
+                    lang = str(cfg.get("language") or cfg.get("botLanguage") or "").strip().lower()
+                    if lang:
+                        return "ja" if lang in ("ja", "jp") else "en"
+    except Exception:
+        pass
+    return get_default_source_language() or "en"
 
 
 def _detect_declared_charset(raw: bytes) -> str:
@@ -422,13 +455,6 @@ async def _execute_single_page_crawl(
     job.gcs_prefix = gcs_prefix
     job_repo.update_job(job)
 
-    if gcs_prefix:
-        post_crawl_jobs = _get_post_crawl_jobs(bot_id)
-        if "topic_extraction" in post_crawl_jobs:
-            _start_topic_extraction_job(bot_id, gcs_prefix)
-        if "menu_extraction" in post_crawl_jobs:
-            _start_menu_extraction_job(bot_id, gcs_prefix)
-
     job.stage = "importing"
     job_repo.update_job(job)
 
@@ -442,13 +468,16 @@ async def _execute_single_page_crawl(
     job.stage = "import_submitted"
     job_repo.update_job(job)
     try:
-        post_crawl_jobs = _get_post_crawl_jobs(bot_id)
-        if "booking_link" in post_crawl_jobs:
-            root_url = url if (url or "").startswith(("http://", "https://")) else ""
-            _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
-    except Exception as booking_error:
+        _run_post_crawl_pipeline(
+            bot_id=bot_id,
+            index_job_id=job_id,
+            gcs_prefix=gcs_prefix,
+            root_url=url if (url or "").startswith(("http://", "https://")) else "",
+            crawled_urls=[url] if url else [],
+        )
+    except Exception as pipeline_error:
         logger.warning(
-            f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"
+            f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
         )
     return {"status": "done", "docs_count": job.docs_count, "gcs_prefix": gcs_prefix}
 

@@ -721,6 +721,50 @@ class BookingLinkJobsResponse(BaseModel):
     jobs: List[BookingLinkJobItem] = []
 
 
+# ========== Job Pipeline ==========
+
+class JobPipelineStepItem(BaseModel):
+    run_id: str
+    step_index: int
+    job_id: str
+    runner_ref: str
+    on_failure: str
+    status: str
+    linked_job_type: Optional[str] = None
+    linked_job_id: Optional[str] = None
+    output: Dict[str, Any] = {}
+    last_error: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class JobPipelineRunItem(BaseModel):
+    run_id: str
+    org_id: str
+    bot_id: str
+    workflow_id: str
+    trigger: str
+    status: str
+    current_step_index: int
+    context: Dict[str, Any] = {}
+    last_error: Optional[str] = None
+    created_at: str
+    updated_at: str
+    steps: List[JobPipelineStepItem] = []
+
+
+class JobPipelineLatestResponse(BaseModel):
+    bot_id: str
+    run: Optional[JobPipelineRunItem] = None
+
+
+class JobPipelineResumeResponse(BaseModel):
+    bot_id: str
+    run: JobPipelineRunItem
+
+
 # ========== LINE Integration ==========
 
 class LineChannelUpsertRequest(BaseModel):

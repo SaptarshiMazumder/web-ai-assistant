@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from application.services.bot_service import BotService
 from application.services.indexing_service import IndexingService
+from application.services.job_pipeline_service import JobPipelineService
 from application.services.org_service import OrgService
 from application.services.conversation_service import ConversationService
 from application.services.analytics_service import AnalyticsService
@@ -12,6 +13,7 @@ from infrastructure.db.repositories import (
     PostgresBotDomainRepository,
     PostgresBotRepository,
     PostgresBotSourceRepository,
+    PostgresJobPipelineRepository,
     PostgresAnalyticsRepository,
     PostgresIndexJobRepository,
     PostgresOrgMembershipRepository,
@@ -91,3 +93,11 @@ def analytics_service() -> AnalyticsService:
 @lru_cache(maxsize=1)
 def asset_repo() -> PostgresBotAssetRepository:
     return PostgresBotAssetRepository()
+
+
+@lru_cache(maxsize=1)
+def job_pipeline_service() -> JobPipelineService:
+    return JobPipelineService(
+        pipeline_repo=PostgresJobPipelineRepository(),
+        bot_repo=PostgresBotRepository(),
+    )

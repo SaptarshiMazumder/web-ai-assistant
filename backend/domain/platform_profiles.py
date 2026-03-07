@@ -94,6 +94,9 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_str(cfg, "instagram_menu_page_payload_prefix")
 
     defaults = _require_dict(cfg, "defaults")
+    jobs_defaults = _require_dict(defaults, "jobs")
+    if not isinstance(jobs_defaults.get("topic_extraction_enabled"), bool):
+        raise ConfigValidationError(f"Missing or invalid 'defaults.jobs.topic_extraction_enabled' in {_CONFIG_PATH}")
     _require_str(defaults, "source_language")
     _require_list(defaults, "knowledge_tabs")
     menu_defaults = _require_dict(defaults, "menu")
@@ -141,6 +144,73 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_dict(functions_defaults, "suggested_type_to_function")
     assets_defaults = _require_dict(defaults, "assets")
     _require_list(assets_defaults, "base_stopwords")
+
+    job_pipeline = _require_dict(cfg, "job_pipeline")
+    _require_dict(job_pipeline, "defaults")
+    jobs_catalog = _require_dict(job_pipeline, "jobs")
+    workflows = _require_dict(job_pipeline, "workflows")
+    workflow_default = _require_list(workflows, "default")
+    for job_id, entry in jobs_catalog.items():
+        if not isinstance(entry, dict):
+            raise ConfigValidationError(f"Invalid job_pipeline.jobs.{job_id} in {_CONFIG_PATH}")
+        _require_str(entry, "runner_ref")
+    for item in workflow_default:
+        jid = str(item or "").strip()
+        if jid and jid not in jobs_catalog:
+            raise ConfigValidationError(
+                f"job_pipeline.workflows.default references unknown job id '{jid}' in {_CONFIG_PATH}"
+            )
+    platform_overrides = workflows.get("platform_overrides")
+    if platform_overrides is not None and not isinstance(platform_overrides, dict):
+        raise ConfigValidationError(f"Invalid job_pipeline.workflows.platform_overrides in {_CONFIG_PATH}")
+    if isinstance(platform_overrides, dict):
+        for platform_id, steps in platform_overrides.items():
+            if str(platform_id or "").strip().lower() not in cfg.get("reservation_platform_config", {}):
+                raise ConfigValidationError(
+                    f"job_pipeline.workflows.platform_overrides has unknown platform '{platform_id}' in {_CONFIG_PATH}"
+                )
+            if not isinstance(steps, list):
+                raise ConfigValidationError(
+                    f"Invalid workflow override list for platform '{platform_id}' in {_CONFIG_PATH}"
+                )
+            for item in steps:
+                jid = str(item or "").strip()
+                if jid and jid not in jobs_catalog:
+                    raise ConfigValidationError(
+                        f"job_pipeline.workflows.platform_overrides.{platform_id} references unknown job id '{jid}' in {_CONFIG_PATH}"
+                    )
+
+    gates = job_pipeline.get("gates")
+    if gates is not None and not isinstance(gates, dict):
+        raise ConfigValidationError(f"Invalid job_pipeline.gates in {_CONFIG_PATH}")
+    if isinstance(gates, dict):
+        for gate_id, gate_entry in gates.items():
+            if not isinstance(gate_entry, dict):
+                raise ConfigValidationError(f"Invalid job_pipeline.gates.{gate_id} in {_CONFIG_PATH}")
+            _require_str(gate_entry, "step_id")
+
+    reservation_url_rules = _require_dict(cfg, "reservation_url_rules")
+    for platform_id, rule in reservation_url_rules.items():
+        if str(platform_id or "").strip().lower() not in cfg.get("reservation_platform_config", {}):
+            raise ConfigValidationError(
+                f"reservation_url_rules has unknown platform '{platform_id}' in {_CONFIG_PATH}"
+            )
+        if not isinstance(rule, dict):
+            raise ConfigValidationError(f"Invalid reservation_url_rules.{platform_id} in {_CONFIG_PATH}")
+        assignment_mode = str(rule.get("assignment_mode") or "candidate").strip().lower()
+        if assignment_mode not in ("candidate", "base_url"):
+            raise ConfigValidationError(
+                f"Invalid reservation_url_rules.{platform_id}.assignment_mode in {_CONFIG_PATH}"
+            )
+        if "base_url_source_key" in rule and not str(rule.get("base_url_source_key") or "").strip():
+            raise ConfigValidationError(
+                f"Invalid reservation_url_rules.{platform_id}.base_url_source_key in {_CONFIG_PATH}"
+            )
+        if "base_path_pattern" in rule and not str(rule.get("base_path_pattern") or "").strip():
+            raise ConfigValidationError(
+                f"Invalid reservation_url_rules.{platform_id}.base_path_pattern in {_CONFIG_PATH}"
+            )
+        _require_list(rule, "allowed_domains")
 
 
 @dataclass
@@ -376,12 +446,92 @@ def get_defaults_config() -> Dict[str, Any]:
 
 
 def get_default_post_crawl_jobs() -> List[str]:
-    return [str(j).strip().lower() for j in DEFAULT_POST_CRAWL_JOBS if str(j).strip()]
+    jobs = [str(j).strip().lower() for j in DEFAULT_POST_CRAWL_JOBS if str(j).strip()]
+    if not is_topic_extraction_enabled():
+        jobs = [j for j in jobs if j != "topic_extraction"]
+    return jobs
+
+
+def get_job_pipeline_config() -> Dict[str, Any]:
+    cfg = _load_platform_config()
+    raw = cfg.get("job_pipeline")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def get_job_pipeline_jobs() -> Dict[str, Dict[str, Any]]:
+    pipeline = get_job_pipeline_config()
+    raw = pipeline.get("jobs")
+    out: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for job_id, entry in raw.items():
+        jid = str(job_id or "").strip()
+        if not jid or not isinstance(entry, dict):
+            continue
+        out[jid] = dict(entry)
+    return out
+
+
+def get_job_pipeline_default_failure_policy() -> str:
+    pipeline = get_job_pipeline_config()
+    defaults = pipeline.get("defaults")
+    if isinstance(defaults, dict):
+        policy = str(defaults.get("on_failure") or "").strip().lower()
+        if policy in ("continue", "stop"):
+            return policy
+    return "continue"
+
+
+def get_job_pipeline_workflow(
+    widget_config: Optional[Dict[str, Any]],
+    *,
+    workflow_id: str = "default",
+) -> List[str]:
+    """Resolve workflow steps from YAML by platform override, falling back to default workflow."""
+    pipeline = get_job_pipeline_config()
+    workflows = pipeline.get("workflows") if isinstance(pipeline.get("workflows"), dict) else {}
+    default_steps_raw = workflows.get(workflow_id)
+    default_steps = [str(v).strip() for v in default_steps_raw if str(v).strip()] if isinstance(default_steps_raw, list) else []
+    if not isinstance(widget_config, dict):
+        return default_steps
+
+    platform_id = str(widget_config.get("reservationPlatform") or "").strip().lower()
+    if not platform_id:
+        cfg = get_reservation_config_from_widget(widget_config)
+        platform_id = str((cfg or {}).get("platform_id") or "").strip().lower()
+    if not platform_id:
+        return default_steps
+
+    platform_overrides = workflows.get("platform_overrides") if isinstance(workflows.get("platform_overrides"), dict) else {}
+    steps_raw = platform_overrides.get(platform_id)
+    if not isinstance(steps_raw, list):
+        return default_steps
+    resolved = [str(v).strip() for v in steps_raw if str(v).strip()]
+    return resolved if resolved else default_steps
+
+
+def get_job_pipeline_gates() -> Dict[str, Dict[str, Any]]:
+    pipeline = get_job_pipeline_config()
+    gates = pipeline.get("gates")
+    out: Dict[str, Dict[str, Any]] = {}
+    if not isinstance(gates, dict):
+        return out
+    for gate_id, entry in gates.items():
+        gid = str(gate_id or "").strip()
+        if gid and isinstance(entry, dict):
+            out[gid] = dict(entry)
+    return out
 
 
 def get_default_source_language() -> str:
     defaults = get_defaults_config()
     return str(defaults.get("source_language") or "").strip().lower()
+
+
+def is_topic_extraction_enabled() -> bool:
+    defaults = get_defaults_config()
+    jobs = defaults.get("jobs") if isinstance(defaults.get("jobs"), dict) else {}
+    return bool(jobs.get("topic_extraction_enabled"))
 
 
 def get_default_knowledge_tabs() -> List[str]:
@@ -520,6 +670,16 @@ def get_reservation_url_for_platform(widget_config: Dict[str, Any], platform_id:
     return str(normalize_reservation_links(widget_config).get(str(platform_id or "").strip().lower()) or "").strip()
 
 
+def get_reservation_url_rule(platform_id: str) -> Dict[str, Any]:
+    cfg = _load_platform_config()
+    rules = cfg.get("reservation_url_rules")
+    if not isinstance(rules, dict):
+        return {}
+    pid = str(platform_id or "").strip().lower()
+    raw = rules.get(pid)
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
 def get_asset_rules_from_widget(widget_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Get asset rules and term config from platform profile or default.
@@ -639,13 +799,17 @@ def get_knowledge_tabs_for_widget(widget_config: Dict[str, Any]) -> List[str]:
     - tabelog, hotpepper: ["menu"] — Menu tab only
     - tablecheck, others: ["image"] — Image tab only (default)
     """
-    cfg = get_reservation_config_from_widget(widget_config)
     default_tabs = get_default_knowledge_tabs()
-    if not cfg:
+    if not isinstance(widget_config, dict):
         return default_tabs
-    platform_id = cfg.get("platform_id")
+
+    normalized_links = normalize_reservation_links(widget_config)
+    platform_id = str(widget_config.get("reservationPlatform") or "").strip().lower()
+    if not platform_id and normalized_links:
+        platform_id = next(iter(normalized_links.keys()), "")
     if not platform_id:
         return default_tabs
+
     rpc = _load_platform_config().get("reservation_platform_config") or {}
     entry = rpc.get(platform_id) if isinstance(rpc, dict) else {}
     if not isinstance(entry, dict):
@@ -681,6 +845,8 @@ def get_post_crawl_jobs_for_widget(widget_config: Dict[str, Any]) -> List[str]:
     jobs = entry.get("post_crawl_jobs")
     if isinstance(jobs, list) and jobs:
         out = [str(j).strip().lower() for j in jobs if str(j).strip()]
+        if not is_topic_extraction_enabled():
+            out = [j for j in out if j != "topic_extraction"]
         if out:
             return out
     return default_jobs

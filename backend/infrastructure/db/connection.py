@@ -443,6 +443,44 @@ _SCHEMA_SQL: Iterable[str] = (
     )
     """,
     "CREATE INDEX IF NOT EXISTS asset_extraction_jobs_bot_updated ON asset_extraction_jobs (bot_id, updated_at DESC)",
+    # ── Config-first job pipeline ──
+    """
+    CREATE TABLE IF NOT EXISTS job_pipeline_runs (
+      run_id TEXT PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      bot_id TEXT NOT NULL,
+      workflow_id TEXT NOT NULL,
+      trigger TEXT NOT NULL,
+      status TEXT NOT NULL,
+      current_step_index INTEGER NOT NULL DEFAULT 0,
+      context_json TEXT NOT NULL DEFAULT '{}',
+      last_error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS job_pipeline_runs_bot_updated ON job_pipeline_runs (bot_id, updated_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS job_pipeline_steps (
+      run_id TEXT NOT NULL,
+      step_index INTEGER NOT NULL,
+      job_id TEXT NOT NULL,
+      runner_ref TEXT NOT NULL,
+      on_failure TEXT NOT NULL DEFAULT 'continue',
+      status TEXT NOT NULL,
+      linked_job_type TEXT,
+      linked_job_id TEXT,
+      output_json TEXT NOT NULL DEFAULT '{}',
+      last_error TEXT,
+      started_at TEXT,
+      completed_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (run_id, step_index)
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS job_pipeline_steps_run ON job_pipeline_steps (run_id, step_index)",
+    "CREATE INDEX IF NOT EXISTS job_pipeline_steps_status ON job_pipeline_steps (status, updated_at DESC)",
     # ── Escalation optional-message flow ──
     "ALTER TABLE instagram_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",

@@ -23,6 +23,7 @@ from infrastructure.db.repositories import (
     PostgresBotAssetRepository,
     PostgresBotRepository,
     PostgresIndexJobRepository,
+    PostgresJobPipelineRepository,
     PostgresTopicJobRepository,
 )
 from infrastructure.rag.error_handling import safe_execute
@@ -40,6 +41,7 @@ from domain.platform_profiles import (
     get_post_crawl_jobs_for_widget,
 )
 from infrastructure.tasks.booking_link_tasks import booking_link_job_task
+from application.services.job_pipeline_service import JobPipelineService
 
 logger = logging.getLogger(__name__)
 
@@ -392,6 +394,27 @@ def _start_booking_link_job(*, bot_id: str, index_job_id: str, root_url: str) ->
     async_result = booking_link_job_task.apply_async((job.job_id, bot_id), countdown=max(0, delay_sec))
     job.celery_task_id = async_result.id
     repo.update(job)
+
+
+def _run_post_crawl_pipeline(
+    *,
+    bot_id: str,
+    index_job_id: str,
+    gcs_prefix: str,
+    root_url: str,
+    crawled_urls: Optional[List[str]] = None,
+) -> None:
+    service = JobPipelineService(
+        pipeline_repo=PostgresJobPipelineRepository(),
+        bot_repo=PostgresBotRepository(),
+    )
+    service.start_post_crawl(
+        bot_id=bot_id,
+        index_job_id=index_job_id,
+        gcs_prefix=gcs_prefix,
+        root_url=root_url,
+        crawled_urls=crawled_urls or [],
+    )
 
 
 def _extract_topics_from_docs(bot_id: str, docs: List[Any]) -> None:
@@ -975,20 +998,6 @@ async def _execute_crawl(
             job_repo.update_job(job)
             # Continue even if upload fails - at least we tried
 
-        # Start post-crawl jobs (topic_extraction, menu_extraction) once docs are in GCS
-        if gcs_prefix:
-            post_crawl_jobs = _get_post_crawl_jobs(bot_id)
-            try:
-                if "topic_extraction" in post_crawl_jobs:
-                    _emit_event("stage", {"stage": "topics_queued"})
-                    _start_topic_extraction_job(bot_id, gcs_prefix)
-                if "menu_extraction" in post_crawl_jobs:
-                    _start_menu_extraction_job(bot_id, gcs_prefix)
-            except Exception as job_error:
-                logger.warning(f"Post-crawl job queue failed: {type(job_error).__name__}: {str(job_error)[:200]}")
-
-
-
         # Import to RAG with error handling
         job.stage = "importing"
         job_repo.update_job(job)
@@ -1007,13 +1016,16 @@ async def _execute_crawl(
             job_repo.update_job(job)
             _emit_event("stage", {"stage": "import_submitted"})
             try:
-                post_crawl_jobs = _get_post_crawl_jobs(bot_id)
-                if "booking_link" in post_crawl_jobs:
-                    root_url = job.url if (job.url or "").startswith(("http://", "https://")) else ""
-                    _start_booking_link_job(bot_id=bot_id, index_job_id=job_id, root_url=root_url)
-            except Exception as booking_error:
+                _run_post_crawl_pipeline(
+                    bot_id=bot_id,
+                    index_job_id=job_id,
+                    gcs_prefix=gcs_prefix,
+                    root_url=job.url if (job.url or "").startswith(("http://", "https://")) else "",
+                    crawled_urls=getattr(job, "crawled_urls", None) or [],
+                )
+            except Exception as pipeline_error:
                 logger.warning(
-                    f"Booking link extraction queue failed: {type(booking_error).__name__}: {str(booking_error)[:200]}"
+                    f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
                 )
         except Exception as import_error:
             error_msg = str(import_error)[:200]

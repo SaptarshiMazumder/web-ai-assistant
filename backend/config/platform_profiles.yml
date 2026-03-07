@@ -13,10 +13,119 @@
 # - booking_link: discover reservation/booking URLs from RAG (for generic bots; Tabelog/HotPepper use explicit URL)
 # - menu_extraction: extract menu items from crawled pages (for Tabelog, HotPepper)
 default_post_crawl_jobs:
-  - topic_extraction
   - booking_link
 
+job_pipeline:
+  defaults:
+    on_failure: continue
+  jobs:
+    discovery:
+      runner_ref: application.services.job_pipeline.runners.discovery:DiscoveryRunner
+      retries: 0
+      timeout_sec: 1200
+      on_failure: continue
+      dashboard_label:
+        en: "URL discovery"
+        ja: "URL検出"
+    crawl_import:
+      runner_ref: application.services.job_pipeline.runners.crawl_import:CrawlImportRunner
+      retries: 0
+      timeout_sec: 1800
+      on_failure: stop
+      dashboard_label:
+        en: "Crawl and import"
+        ja: "クロールと取り込み"
+    prompt_generation:
+      runner_ref: application.services.job_pipeline.runners.prompt_generation:PromptGenerationRunner
+      retries: 0
+      timeout_sec: 300
+      on_failure: continue
+      dashboard_label:
+        en: "Prompt generation"
+        ja: "プロンプト生成"
+    booking_link:
+      runner_ref: application.services.job_pipeline.runners.booking_link:BookingLinkRunner
+      retries: 0
+      timeout_sec: 120
+      on_failure: continue
+      dashboard_label:
+        en: "Booking link extraction"
+        ja: "予約リンク抽出"
+    menu_extraction:
+      runner_ref: application.services.job_pipeline.runners.menu_extraction:MenuExtractionRunner
+      retries: 0
+      timeout_sec: 120
+      on_failure: continue
+      dashboard_label:
+        en: "Menu extraction"
+        ja: "メニュー抽出"
+    reservation_url:
+      runner_ref: application.services.job_pipeline.runners.reservation_url:ReservationUrlRunner
+      retries: 0
+      timeout_sec: 60
+      on_failure: continue
+      dashboard_label:
+        en: "Reservation URL automation"
+        ja: "予約URL自動設定"
+  workflows:
+    default:
+      - prompt_generation
+      - booking_link
+    platform_overrides:
+      tabelog:
+        - prompt_generation
+        - menu_extraction
+        - reservation_url
+      hotpepper:
+        - prompt_generation
+        - menu_extraction
+        - reservation_url
+      tablecheck:
+        - prompt_generation
+        - booking_link
+  gates:
+    discovery_manual_selection:
+      step_id: discovery
+      pause_on_step: true
+      resume_event: urls_selected
+
+reservation_url_rules:
+  tabelog:
+    assignment_mode: base_url
+    base_url_source_key: root_url
+    base_path_pattern: "^/[^/]+/[^/]+/[^/]+/\\d+/?"
+    allowed_domains:
+      - tabelog.com
+    include_path_patterns:
+      - "^/[a-z0-9\\-_/]+/?$"
+    exclude_path_patterns:
+      - "/map"
+      - "/dtlmap"
+      - "/review"
+    path_keyword_scores:
+      reserve: 8
+      booking: 6
+      yoyaku: 6
+  hotpepper:
+    assignment_mode: base_url
+    base_url_source_key: root_url
+    base_path_pattern: "^/(?:[a-z]{2}/)?strJ\\d+/?"
+    allowed_domains:
+      - hotpepper.jp
+    include_path_patterns:
+      - "^/(?:[a-z]{2}/)?strJ\\d+/?$"
+    exclude_path_patterns:
+      - "/map"
+      - "/coupon"
+      - "/photo"
+    path_keyword_scores:
+      strj: 8
+      reserve: 6
+      yoyaku: 6
+
 defaults:
+  jobs:
+    topic_extraction_enabled: false
   source_language: ja
   knowledge_tabs: [image]
   menu:
@@ -187,19 +296,19 @@ reservation_platform_config:
     domain_key: tabelog.com
     url_placeholder: "https://tabelog.com/tokyo/A1304/A130401/13224546/"
     knowledge_tabs: [menu]  # Menu tab only; no Image tab
-    post_crawl_jobs: [topic_extraction, menu_extraction]  # Skip booking_link; reservation URL is explicit
+    post_crawl_jobs: [menu_extraction]  # Skip booking_link; reservation URL is explicit
   hotpepper:
     widget_key: hotPepperUrl
     domain_key: hotpepper.jp
     url_placeholder: "https://www.hotpepper.jp/strJ001234567/"
     knowledge_tabs: [menu]  # Menu tab only; no Image tab
-    post_crawl_jobs: [topic_extraction, menu_extraction]  # Skip booking_link; reservation URL is explicit
+    post_crawl_jobs: [menu_extraction]  # Skip booking_link; reservation URL is explicit
   tablecheck:
     widget_key: tableCheckUrl
     domain_key: tablecheck.com
     url_placeholder: "https://www.tablecheck.com/en/shops/your-restaurant/reserve"
     knowledge_tabs: [image]  # Image tab only; no Menu tab
-    post_crawl_jobs: [topic_extraction, booking_link]  # No menu extraction (Image tab only)
+    post_crawl_jobs: [booking_link]  # No menu extraction (Image tab only)
 
 # Default asset rules (used when no platform or platform doesn't override)
 default_asset_rules:

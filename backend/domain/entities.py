@@ -175,6 +175,41 @@ class AvailabilityJob:
     celery_task_id: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
+
+
+@dataclass
+class JobPipelineRun:
+    run_id: str
+    org_id: str
+    bot_id: str
+    workflow_id: str
+    trigger: str
+    status: str  # queued|running|paused|done|error
+    current_step_index: int = 0
+    context: Dict[str, Any] = field(default_factory=dict)
+    last_error: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
+class JobPipelineStep:
+    run_id: str
+    step_index: int
+    job_id: str
+    runner_ref: str
+    on_failure: str  # continue|stop
+    status: str  # queued|running|paused|done|error
+    linked_job_type: Optional[str] = None
+    linked_job_id: Optional[str] = None
+    output: Dict[str, Any] = field(default_factory=dict)
+    last_error: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
 @dataclass
 class ConversationSession:
     session_id: str
