@@ -1087,10 +1087,6 @@ export default function BotKnowledgeTab() {
     startAvailabilityJob,
   ])
 
-  if (!selectedBot) {
-    return <div className="empty-panel">{t('botKnowledge.selectBotToManage', 'Select a bot to manage knowledge.')}</div>
-  }
-
   const handleDeleteSource = useCallback(
     async (sourceId: string) => {
       if (!selectedBot || deletingSourceId) return
@@ -1383,6 +1379,10 @@ export default function BotKnowledgeTab() {
         !SOURCES_JOB_TERMINAL_STAGES.has((j.stage || '').toLowerCase()) &&
         !isJobStale(j)
     )
+  }
+
+  if (!selectedBot) {
+    return <div className="empty-panel">{t('botKnowledge.selectBotToManage', 'Select a bot to manage knowledge.')}</div>
   }
 
   return (

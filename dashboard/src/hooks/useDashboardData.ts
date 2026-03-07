@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 
 export type BotSummary = {
@@ -708,6 +708,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   const [newMemberRole, setNewMemberRole] = useState('org_admin')
 
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const prevActiveOrgIdRef = useRef<string | null>(null)
 
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
 
@@ -2444,13 +2445,17 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!activeOrgId) return
-    setBots([])
-    setSelectedBotId(null)
-    setSelectedBot(null)
-    setDomains([])
-    setJobs([])
-    setIndexStatus(null)
-    setActiveCrawlUrl('')
+    // Only reset bot state when SWITCHING orgs, not on initial resolution (null → value)
+    if (prevActiveOrgIdRef.current !== null && prevActiveOrgIdRef.current !== activeOrgId) {
+      setBots([])
+      setSelectedBotId(null)
+      setSelectedBot(null)
+      setDomains([])
+      setJobs([])
+      setIndexStatus(null)
+      setActiveCrawlUrl('')
+    }
+    prevActiveOrgIdRef.current = activeOrgId
   }, [activeOrgId])
 
   useEffect(() => {
