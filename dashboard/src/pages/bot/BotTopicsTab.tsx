@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { RefreshCw, Trash2, X, Check, Plus, FolderPlus, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useDashboardData, type ExtractedTopic } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import { useDialog } from '../../contexts/DialogContext'
 
 const CATEGORY_COLOR_STORAGE_PREFIX = 'webai.topicCategoryColors.'
 
@@ -72,6 +74,8 @@ function categoryLabel(category: string): string {
 
 export default function BotTopicsTab() {
   const { botId } = useParams()
+  const { t } = useTranslation()
+  const dialog = useDialog()
   const {
     selectedBot,
     loading,
@@ -152,20 +156,35 @@ export default function BotTopicsTab() {
     }
   }
 
-  const handleAddBox = () => {
-    const name = window.prompt('Category name for the new box (e.g. Pricing, Location):')
-    if (!name?.trim()) return
-    const trimmed = name.trim()
+  const handleAddBox = async () => {
+    const name = await dialog.prompt({
+      title: t('botTopics.addCategoryTitle', 'Add category'),
+      label: t('botTopics.categoryNameLabel', 'Category name'),
+      placeholder: t('botTopics.categoryNamePlaceholder', 'e.g. Pricing, Location'),
+      confirmLabel: t('common.add', 'Add'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      required: true,
+    })
+    const trimmed = name?.trim()
+    if (!trimmed) return
     setEmptyCategories((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]))
   }
 
   const handleAddTopic = async (category: string) => {
     if (!botId) return
-    const name = window.prompt('Topic name:')
-    if (!name?.trim()) return
+    const name = await dialog.prompt({
+      title: t('botTopics.addTopicTitle', 'Add topic'),
+      label: t('botTopics.topicNameLabel', 'Topic name'),
+      placeholder: t('botTopics.topicNamePlaceholder', 'Topic name'),
+      confirmLabel: t('common.add', 'Add'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      required: true,
+    })
+    const trimmedName = name?.trim()
+    if (!trimmedName) return
     setError(null)
     try {
-      const created = await createExtractedTopic(botId, name.trim(), category)
+      const created = await createExtractedTopic(botId, trimmedName, category)
       if (created) {
         setEmptyCategories((prev) => prev.filter((c) => c !== category))
         await loadTopics()
@@ -197,7 +216,14 @@ export default function BotTopicsTab() {
   }
 
   const handleDelete = async (topicId: string) => {
-    if (!botId || !window.confirm('Are you sure you want to delete this topic?')) return
+    if (!botId) return
+    const confirmed = await dialog.confirm({
+      title: t('botTopics.deleteTopicConfirm', 'Are you sure you want to delete this topic?'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      tone: 'danger',
+    })
+    if (!confirmed) return
     try {
       await deleteExtractedTopic(botId, topicId)
       await loadTopics()

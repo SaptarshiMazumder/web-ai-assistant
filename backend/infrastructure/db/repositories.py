@@ -13,9 +13,11 @@ from domain.entities import (
     BotAsset,
     BotDomainRecord,
     BotRecord,
+    ConversationChannelContact,
     BotSource,
     ConversationMessage,
     ConversationSession,
+    ConversationSessionHandoff,
     EscalationRecord,
     DiscoveryJob,
     IndexJob,
@@ -83,6 +85,14 @@ def _new_message_id() -> str:
 
 def _new_escalation_id() -> str:
     return "esc_" + secrets.token_urlsafe(24).replace("-", "_").replace(".", "_")
+
+
+def _new_contact_id() -> str:
+    return "cc_" + secrets.token_urlsafe(18).replace("-", "_").replace(".", "_")
+
+
+def _new_handoff_id() -> str:
+    return "hof_" + secrets.token_urlsafe(18).replace("-", "_").replace(".", "_")
 
 
 def _new_pipeline_event_id() -> str:
@@ -2225,6 +2235,89 @@ class PostgresJobPipelineRepository(JobPipelineRepository):
 
 
 class PostgresConversationRepository:
+    _SESSION_SELECT = """
+        s.session_id, s.bot_id, s.org_id, s.channel, s.status, s.title, s.site_url, s.site_title,
+        s.message_count, s.started_at, s.last_active_at, s.ended_at, s.user_agent, s.ip,
+        COALESCE(h.assistant_state, 'bot') AS assistant_state,
+        CASE
+          WHEN COALESCE(h.assistant_state, 'bot') IN ('awaiting_support_details', 'human_handoff') THEN TRUE
+          ELSE FALSE
+        END AS handoff_active,
+        esc.escalation_id AS support_request_id,
+        esc.status AS support_request_status
+    """
+    _SESSION_SUPPORT_JOIN = """
+        LEFT JOIN conversation_session_handoffs h ON h.session_id = s.session_id
+        LEFT JOIN LATERAL (
+          SELECT e.escalation_id, e.status
+          FROM conversation_escalations e
+          WHERE e.session_id = s.session_id
+          ORDER BY e.created_at DESC, e.escalation_id DESC
+          LIMIT 1
+        ) esc ON TRUE
+    """
+
+    @staticmethod
+    def _conversation_session_from_row(row) -> ConversationSession:
+        return ConversationSession(
+            session_id=row[0],
+            bot_id=row[1],
+            org_id=row[2],
+            channel=row[3],
+            status=row[4],
+            title=row[5],
+            site_url=row[6],
+            site_title=row[7],
+            message_count=row[8] or 0,
+            started_at=row[9],
+            last_active_at=row[10],
+            ended_at=row[11],
+            user_agent=row[12],
+            ip=row[13],
+            assistant_state=(row[14] or "bot") if len(row) > 14 else "bot",
+            handoff_active=bool(row[15]) if len(row) > 15 else False,
+            support_request_id=row[16] if len(row) > 16 else None,
+            support_request_status=row[17] if len(row) > 17 else None,
+        )
+
+    @staticmethod
+    def _contact_from_row(row) -> ConversationChannelContact:
+        metadata_raw = row[5] if len(row) > 5 else "{}"
+        try:
+            metadata = json.loads(metadata_raw) if isinstance(metadata_raw, str) else (metadata_raw or {})
+        except (TypeError, ValueError):
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        return ConversationChannelContact(
+            contact_id=row[0],
+            bot_id=row[1],
+            channel=row[2],
+            external_user_id=row[3],
+            display_name=row[4],
+            metadata=metadata,
+            current_session_id=row[6] if len(row) > 6 else None,
+            created_at=row[7],
+            updated_at=row[8],
+        )
+
+    @staticmethod
+    def _handoff_from_row(row) -> ConversationSessionHandoff:
+        return ConversationSessionHandoff(
+            handoff_id=row[0],
+            bot_id=row[1],
+            session_id=row[2],
+            contact_id=row[3],
+            source_channel=row[4],
+            assistant_state=row[5],
+            support_request_id=row[6],
+            started_by=row[7],
+            ended_reason=row[8],
+            created_at=row[9],
+            updated_at=row[10],
+            ended_at=row[11],
+        )
+
     def create_session(
         self,
         *,
@@ -2294,31 +2387,21 @@ class PostgresConversationRepository:
         try:
             row = con.execute(
                 """
-                SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
-                       message_count, started_at, last_active_at, ended_at, user_agent, ip
-                FROM conversation_sessions
-                WHERE session_id = %s
+                SELECT
+                  """
+                + self._SESSION_SELECT
+                + """
+                FROM conversation_sessions s
+                """
+                + self._SESSION_SUPPORT_JOIN
+                + """
+                WHERE s.session_id = %s
                 """,
                 (sid,),
             ).fetchone()
             if not row:
                 return None
-            return ConversationSession(
-                session_id=row[0],
-                bot_id=row[1],
-                org_id=row[2],
-                channel=row[3],
-                status=row[4],
-                title=row[5],
-                site_url=row[6],
-                site_title=row[7],
-                message_count=row[8] or 0,
-                started_at=row[9],
-                last_active_at=row[10],
-                ended_at=row[11],
-                user_agent=row[12],
-                ip=row[13],
-            )
+            return self._conversation_session_from_row(row)
         finally:
             con.close()
 
@@ -2339,11 +2422,16 @@ class PostgresConversationRepository:
             if before_ts:
                 rows = con.execute(
                     """
-                    SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
-                           message_count, started_at, last_active_at, ended_at, user_agent, ip
-                    FROM conversation_sessions
-                    WHERE bot_id = %s AND (last_active_at, session_id) < (%s, %s)
-                    ORDER BY last_active_at DESC, session_id DESC
+                    SELECT
+                      """
+                    + self._SESSION_SELECT
+                    + """
+                    FROM conversation_sessions s
+                    """
+                    + self._SESSION_SUPPORT_JOIN
+                    + """
+                    WHERE s.bot_id = %s AND (s.last_active_at, s.session_id) < (%s, %s)
+                    ORDER BY s.last_active_at DESC, s.session_id DESC
                     LIMIT %s
                     """,
                     (bid, before_ts, before_id or "", lim),
@@ -2351,36 +2439,21 @@ class PostgresConversationRepository:
             else:
                 rows = con.execute(
                     """
-                    SELECT session_id, bot_id, org_id, channel, status, title, site_url, site_title,
-                           message_count, started_at, last_active_at, ended_at, user_agent, ip
-                    FROM conversation_sessions
-                    WHERE bot_id = %s
-                    ORDER BY last_active_at DESC, session_id DESC
+                    SELECT
+                      """
+                    + self._SESSION_SELECT
+                    + """
+                    FROM conversation_sessions s
+                    """
+                    + self._SESSION_SUPPORT_JOIN
+                    + """
+                    WHERE s.bot_id = %s
+                    ORDER BY s.last_active_at DESC, s.session_id DESC
                     LIMIT %s
                     """,
                     (bid, lim),
                 ).fetchall()
-            result = []
-            for row in rows or []:
-                result.append(
-                    ConversationSession(
-                        session_id=row[0],
-                        bot_id=row[1],
-                        org_id=row[2],
-                        channel=row[3],
-                        status=row[4],
-                        title=row[5],
-                        site_url=row[6],
-                        site_title=row[7],
-                        message_count=row[8] or 0,
-                        started_at=row[9],
-                        last_active_at=row[10],
-                        ended_at=row[11],
-                        user_agent=row[12],
-                        ip=row[13],
-                    )
-                )
-            return result
+            return [self._conversation_session_from_row(row) for row in rows or []]
         finally:
             con.close()
 
@@ -2414,6 +2487,26 @@ class PostgresConversationRepository:
                 (now, sid),
             )
             con.commit()
+        finally:
+            con.close()
+
+    def update_session_title(self, session_id: str, title: Optional[str]) -> bool:
+        sid = (session_id or "").strip()
+        next_title = (title or "").strip()
+        if not sid or not next_title:
+            return False
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE conversation_sessions
+                SET title = %s
+                WHERE session_id = %s
+                """,
+                (next_title, sid),
+            )
+            con.commit()
+            return result.rowcount > 0
         finally:
             con.close()
 
@@ -2572,6 +2665,324 @@ class PostgresConversationRepository:
         finally:
             con.close()
 
+    def get_channel_contact(
+        self,
+        *,
+        bot_id: str,
+        channel: str,
+        external_user_id: str,
+    ) -> Optional[ConversationChannelContact]:
+        bid = (bot_id or "").strip()
+        ch = (channel or "").strip().lower()
+        external_id = (external_user_id or "").strip()
+        if not bid or not ch or not external_id:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT contact_id, bot_id, channel, external_user_id, display_name, metadata_json,
+                       current_session_id, created_at, updated_at
+                FROM conversation_channel_contacts
+                WHERE bot_id = %s AND channel = %s AND external_user_id = %s
+                """,
+                (bid, ch, external_id),
+            ).fetchone()
+            if not row:
+                return None
+            return self._contact_from_row(row)
+        finally:
+            con.close()
+
+    def upsert_channel_contact(
+        self,
+        *,
+        bot_id: str,
+        channel: str,
+        external_user_id: str,
+        current_session_id: Optional[str] = None,
+        display_name: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> ConversationChannelContact:
+        bid = (bot_id or "").strip()
+        ch = (channel or "").strip().lower()
+        external_id = (external_user_id or "").strip()
+        name = (display_name or "").strip() or None
+        if not bid or not ch or not external_id:
+            raise ValueError("bot_id, channel, and external_user_id are required")
+        now = _utc_now()
+        con = _connect()
+        try:
+            existing_row = con.execute(
+                """
+                SELECT contact_id, bot_id, channel, external_user_id, display_name, metadata_json,
+                       current_session_id, created_at, updated_at
+                FROM conversation_channel_contacts
+                WHERE bot_id = %s AND channel = %s AND external_user_id = %s
+                """,
+                (bid, ch, external_id),
+            ).fetchone()
+            if existing_row:
+                existing = self._contact_from_row(existing_row)
+                next_metadata = dict(existing.metadata or {})
+                if isinstance(metadata, dict):
+                    next_metadata.update(metadata)
+                next_name = name or existing.display_name
+                next_session_id = (current_session_id or "").strip() or existing.current_session_id
+                con.execute(
+                    """
+                    UPDATE conversation_channel_contacts
+                    SET display_name = %s,
+                        metadata_json = %s,
+                        current_session_id = %s,
+                        updated_at = %s
+                    WHERE contact_id = %s
+                    """,
+                    (
+                        next_name,
+                        json.dumps(next_metadata),
+                        next_session_id,
+                        now,
+                        existing.contact_id,
+                    ),
+                )
+                con.commit()
+                return ConversationChannelContact(
+                    contact_id=existing.contact_id,
+                    bot_id=existing.bot_id,
+                    channel=existing.channel,
+                    external_user_id=existing.external_user_id,
+                    display_name=next_name,
+                    metadata=next_metadata,
+                    current_session_id=next_session_id,
+                    created_at=existing.created_at,
+                    updated_at=now,
+                )
+
+            contact_id = _new_contact_id()
+            metadata_payload = metadata if isinstance(metadata, dict) else {}
+            next_session_id = (current_session_id or "").strip() or None
+            con.execute(
+                """
+                INSERT INTO conversation_channel_contacts(
+                  contact_id, bot_id, channel, external_user_id, display_name, metadata_json,
+                  current_session_id, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    contact_id,
+                    bid,
+                    ch,
+                    external_id,
+                    name,
+                    json.dumps(metadata_payload),
+                    next_session_id,
+                    now,
+                    now,
+                ),
+            )
+            con.commit()
+            return ConversationChannelContact(
+                contact_id=contact_id,
+                bot_id=bid,
+                channel=ch,
+                external_user_id=external_id,
+                display_name=name,
+                metadata=metadata_payload,
+                current_session_id=next_session_id,
+                created_at=now,
+                updated_at=now,
+            )
+        finally:
+            con.close()
+
+    def get_session_handoff(self, session_id: str) -> Optional[ConversationSessionHandoff]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT handoff_id, bot_id, session_id, contact_id, source_channel, assistant_state,
+                       support_request_id, started_by, ended_reason, created_at, updated_at, ended_at
+                FROM conversation_session_handoffs
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if not row:
+                return None
+            return self._handoff_from_row(row)
+        finally:
+            con.close()
+
+    def upsert_session_handoff(
+        self,
+        *,
+        bot_id: str,
+        session_id: str,
+        assistant_state: str,
+        contact_id: Optional[str] = None,
+        source_channel: Optional[str] = None,
+        support_request_id: Optional[str] = None,
+        started_by: Optional[str] = None,
+        ended_reason: Optional[str] = None,
+        ended_at: Optional[str] = None,
+    ) -> ConversationSessionHandoff:
+        bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
+        state = (assistant_state or "").strip() or "bot"
+        if not bid or not sid:
+            raise ValueError("bot_id and session_id are required")
+        now = _utc_now()
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT handoff_id, bot_id, session_id, contact_id, source_channel, assistant_state,
+                       support_request_id, started_by, ended_reason, created_at, updated_at, ended_at
+                FROM conversation_session_handoffs
+                WHERE session_id = %s
+                """,
+                (sid,),
+            ).fetchone()
+            if row:
+                existing = self._handoff_from_row(row)
+                next_contact_id = contact_id if contact_id is not None else existing.contact_id
+                next_source_channel = source_channel if source_channel is not None else existing.source_channel
+                next_support_request_id = support_request_id if support_request_id is not None else existing.support_request_id
+                next_started_by = started_by if started_by is not None else existing.started_by
+                con.execute(
+                    """
+                    UPDATE conversation_session_handoffs
+                    SET bot_id = %s,
+                        contact_id = %s,
+                        source_channel = %s,
+                        assistant_state = %s,
+                        support_request_id = %s,
+                        started_by = %s,
+                        ended_reason = %s,
+                        updated_at = %s,
+                        ended_at = %s
+                    WHERE session_id = %s
+                    """,
+                    (
+                        bid,
+                        next_contact_id,
+                        next_source_channel,
+                        state,
+                        next_support_request_id,
+                        next_started_by,
+                        ended_reason,
+                        now,
+                        ended_at,
+                        sid,
+                    ),
+                )
+                con.commit()
+                return ConversationSessionHandoff(
+                    handoff_id=existing.handoff_id,
+                    bot_id=bid,
+                    session_id=sid,
+                    contact_id=next_contact_id,
+                    source_channel=next_source_channel,
+                    assistant_state=state,
+                    support_request_id=next_support_request_id,
+                    started_by=next_started_by,
+                    ended_reason=ended_reason,
+                    created_at=existing.created_at,
+                    updated_at=now,
+                    ended_at=ended_at,
+                )
+
+            handoff_id = _new_handoff_id()
+            con.execute(
+                """
+                INSERT INTO conversation_session_handoffs(
+                  handoff_id, bot_id, session_id, contact_id, source_channel, assistant_state,
+                  support_request_id, started_by, ended_reason, created_at, updated_at, ended_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    handoff_id,
+                    bid,
+                    sid,
+                    contact_id,
+                    source_channel,
+                    state,
+                    support_request_id,
+                    started_by,
+                    ended_reason,
+                    now,
+                    now,
+                    ended_at,
+                ),
+            )
+            con.commit()
+            return ConversationSessionHandoff(
+                handoff_id=handoff_id,
+                bot_id=bid,
+                session_id=sid,
+                contact_id=contact_id,
+                source_channel=source_channel,
+                assistant_state=state,
+                support_request_id=support_request_id,
+                started_by=started_by,
+                ended_reason=ended_reason,
+                created_at=now,
+                updated_at=now,
+                ended_at=ended_at,
+            )
+        finally:
+            con.close()
+
+    @staticmethod
+    def _escalation_record_from_row(row) -> EscalationRecord:
+        return EscalationRecord(
+            escalation_id=row[0],
+            bot_id=row[1],
+            session_id=row[2],
+            visitor_email=row[3],
+            status=row[5],
+            created_at=row[6],
+            details=row[4],
+            session_title=row[7],
+            site_url=row[8],
+            site_title=row[9],
+            last_active_at=row[10],
+            session_status=row[11],
+            notification_read_at=row[12] if len(row) > 12 else None,
+            notification_is_unread=bool(row[13]) if len(row) > 13 else False,
+        )
+
+    def get_open_escalation_for_session(self, bot_id: str, session_id: str) -> Optional[EscalationRecord]:
+        bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
+        if not bid or not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                       s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                FROM conversation_escalations e
+                LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                WHERE e.bot_id = %s AND e.session_id = %s AND e.status = 'open'
+                ORDER BY e.created_at DESC, e.escalation_id DESC
+                LIMIT 1
+                """,
+                (bid, sid),
+            ).fetchone()
+            if not row:
+                return None
+            return self._escalation_record_from_row(row)
+        finally:
+            con.close()
+
     def create_escalation(self, *, bot_id: str, session_id: str, visitor_email: str, details: Optional[str] = None) -> EscalationRecord:
         bid = (bot_id or "").strip()
         sid = (session_id or "").strip()
@@ -2631,8 +3042,29 @@ class PostgresConversationRepository:
         finally:
             con.close()
 
+    def count_unread_escalations_for_bot(self, bot_id: str, user_id: str) -> int:
+        bid = (bot_id or "").strip()
+        uid = (user_id or "").strip()
+        if not bid or not uid:
+            return 0
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT COUNT(1)
+                FROM conversation_escalations e
+                LEFT JOIN conversation_escalation_reads r
+                  ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                WHERE e.bot_id = %s AND r.read_at IS NULL
+                """,
+                (uid, bid),
+            ).fetchone()
+            return int(row[0]) if row else 0
+        finally:
+            con.close()
+
     def list_escalations_for_bot(
-        self, bot_id: str, *, limit: int = 10, before: Optional[str] = None
+        self, bot_id: str, *, limit: int = 10, before: Optional[str] = None, user_id: Optional[str] = None
     ) -> List[EscalationRecord]:
         bid = (bot_id or "").strip()
         if not bid:
@@ -2645,91 +3077,202 @@ class PostgresConversationRepository:
                 before_ts, before_id = before.split("|", 1)
             else:
                 before_ts = before
+        uid = (user_id or "").strip()
         con = _connect()
         try:
-            if before_ts:
-                rows = con.execute(
-                    """
-                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
-                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
-                    FROM conversation_escalations e
-                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
-                    WHERE e.bot_id = %s AND (e.created_at, e.escalation_id) < (%s, %s)
-                    ORDER BY e.created_at DESC
-                    LIMIT %s
-                    """,
-                    (bid, before_ts, before_id or "", lim),
-                ).fetchall()
+            if uid:
+                if before_ts:
+                    rows = con.execute(
+                        """
+                        SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                               s.title, s.site_url, s.site_title, s.last_active_at, s.status,
+                               r.read_at,
+                               CASE WHEN r.read_at IS NULL THEN TRUE ELSE FALSE END AS is_unread
+                        FROM conversation_escalations e
+                        LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                        LEFT JOIN conversation_escalation_reads r
+                          ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                        WHERE e.bot_id = %s AND (e.created_at, e.escalation_id) < (%s, %s)
+                        ORDER BY e.created_at DESC, e.escalation_id DESC
+                        LIMIT %s
+                        """,
+                        (uid, bid, before_ts, before_id or "", lim),
+                    ).fetchall()
+                else:
+                    rows = con.execute(
+                        """
+                        SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                               s.title, s.site_url, s.site_title, s.last_active_at, s.status,
+                               r.read_at,
+                               CASE WHEN r.read_at IS NULL THEN TRUE ELSE FALSE END AS is_unread
+                        FROM conversation_escalations e
+                        LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                        LEFT JOIN conversation_escalation_reads r
+                          ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                        WHERE e.bot_id = %s
+                        ORDER BY e.created_at DESC, e.escalation_id DESC
+                        LIMIT %s
+                        """,
+                        (uid, bid, lim),
+                    ).fetchall()
             else:
-                rows = con.execute(
-                    """
-                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
-                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
-                    FROM conversation_escalations e
-                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
-                    WHERE e.bot_id = %s
-                    ORDER BY e.created_at DESC
-                    LIMIT %s
-                    """,
-                    (bid, lim),
-                ).fetchall()
-            result = []
-            for row in rows or []:
-                result.append(
-                    EscalationRecord(
-                        escalation_id=row[0],
-                        bot_id=row[1],
-                        session_id=row[2],
-                        visitor_email=row[3],
-                        status=row[5],
-                        created_at=row[6],
-                        details=row[4],
-                        session_title=row[7],
-                        site_url=row[8],
-                        site_title=row[9],
-                        last_active_at=row[10],
-                        session_status=row[11],
-                    )
-                )
-            return result
+                if before_ts:
+                    rows = con.execute(
+                        """
+                        SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                               s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                        FROM conversation_escalations e
+                        LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                        WHERE e.bot_id = %s AND (e.created_at, e.escalation_id) < (%s, %s)
+                        ORDER BY e.created_at DESC, e.escalation_id DESC
+                        LIMIT %s
+                        """,
+                        (bid, before_ts, before_id or "", lim),
+                    ).fetchall()
+                else:
+                    rows = con.execute(
+                        """
+                        SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                               s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                        FROM conversation_escalations e
+                        LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                        WHERE e.bot_id = %s
+                        ORDER BY e.created_at DESC, e.escalation_id DESC
+                        LIMIT %s
+                        """,
+                        (bid, lim),
+                    ).fetchall()
+            return [self._escalation_record_from_row(row) for row in rows or []]
         finally:
             con.close()
 
-    def get_escalation_for_session(self, bot_id: str, session_id: str) -> Optional[EscalationRecord]:
+    def get_escalation_for_session(self, bot_id: str, session_id: str, *, user_id: Optional[str] = None) -> Optional[EscalationRecord]:
         bid = (bot_id or "").strip()
         sid = (session_id or "").strip()
         if not bid or not sid:
             return None
+        uid = (user_id or "").strip()
         con = _connect()
         try:
-            row = con.execute(
-                """
-                SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
-                       s.title, s.site_url, s.site_title, s.last_active_at, s.status
-                FROM conversation_escalations e
-                LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
-                WHERE e.bot_id = %s AND e.session_id = %s
-                ORDER BY e.created_at DESC
-                LIMIT 1
-                """,
-                (bid, sid),
-            ).fetchone()
+            if uid:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status,
+                           r.read_at,
+                           CASE WHEN r.read_at IS NULL THEN TRUE ELSE FALSE END AS is_unread
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    LEFT JOIN conversation_escalation_reads r
+                      ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                    WHERE e.bot_id = %s AND e.session_id = %s
+                    ORDER BY e.created_at DESC, e.escalation_id DESC
+                    LIMIT 1
+                    """,
+                    (uid, bid, sid),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    WHERE e.bot_id = %s AND e.session_id = %s
+                    ORDER BY e.created_at DESC, e.escalation_id DESC
+                    LIMIT 1
+                    """,
+                    (bid, sid),
+                ).fetchone()
             if not row:
                 return None
-            return EscalationRecord(
-                escalation_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                visitor_email=row[3],
-                status=row[5],
-                created_at=row[6],
-                details=row[4],
-                session_title=row[7],
-                site_url=row[8],
-                site_title=row[9],
-                last_active_at=row[10],
-                session_status=row[11],
-            )
+            return self._escalation_record_from_row(row)
+        finally:
+            con.close()
+
+    def get_latest_escalation_for_visitor(self, bot_id: str, visitor_email: str, *, user_id: Optional[str] = None) -> Optional[EscalationRecord]:
+        bid = (bot_id or "").strip()
+        email = (visitor_email or "").strip().lower()
+        if not bid or not email:
+            return None
+        uid = (user_id or "").strip()
+        con = _connect()
+        try:
+            if uid:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status,
+                           r.read_at,
+                           CASE WHEN r.read_at IS NULL THEN TRUE ELSE FALSE END AS is_unread
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    LEFT JOIN conversation_escalation_reads r
+                      ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                    WHERE e.bot_id = %s AND e.visitor_email = %s
+                    ORDER BY e.created_at DESC, e.escalation_id DESC
+                    LIMIT 1
+                    """,
+                    (uid, bid, email),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    WHERE e.bot_id = %s AND e.visitor_email = %s
+                    ORDER BY e.created_at DESC, e.escalation_id DESC
+                    LIMIT 1
+                    """,
+                    (bid, email),
+                ).fetchone()
+            if not row:
+                return None
+            return self._escalation_record_from_row(row)
+        finally:
+            con.close()
+
+    def get_escalation_by_id(self, bot_id: str, escalation_id: str, *, user_id: Optional[str] = None) -> Optional[EscalationRecord]:
+        bid = (bot_id or "").strip()
+        eid = (escalation_id or "").strip()
+        if not bid or not eid:
+            return None
+        uid = (user_id or "").strip()
+        con = _connect()
+        try:
+            if uid:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status,
+                           r.read_at,
+                           CASE WHEN r.read_at IS NULL THEN TRUE ELSE FALSE END AS is_unread
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    LEFT JOIN conversation_escalation_reads r
+                      ON r.escalation_id = e.escalation_id AND r.user_id = %s
+                    WHERE e.bot_id = %s AND e.escalation_id = %s
+                    LIMIT 1
+                    """,
+                    (uid, bid, eid),
+                ).fetchone()
+            else:
+                row = con.execute(
+                    """
+                    SELECT e.escalation_id, e.bot_id, e.session_id, e.visitor_email, e.details, e.status, e.created_at,
+                           s.title, s.site_url, s.site_title, s.last_active_at, s.status
+                    FROM conversation_escalations e
+                    LEFT JOIN conversation_sessions s ON s.session_id = e.session_id
+                    WHERE e.bot_id = %s AND e.escalation_id = %s
+                    LIMIT 1
+                    """,
+                    (bid, eid),
+                ).fetchone()
+            if not row:
+                return None
+            return self._escalation_record_from_row(row)
         finally:
             con.close()
 
@@ -2740,9 +3283,38 @@ class PostgresConversationRepository:
             return False
         con = _connect()
         try:
-            con.execute(
+            result = con.execute(
                 "UPDATE conversation_escalations SET status = %s WHERE bot_id = %s AND escalation_id = %s",
                 (status, bid, eid),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+    def mark_escalation_read(self, bot_id: str, escalation_id: str, user_id: str) -> bool:
+        bid = (bot_id or "").strip()
+        eid = (escalation_id or "").strip()
+        uid = (user_id or "").strip()
+        if not bid or not eid or not uid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            exists = con.execute(
+                "SELECT 1 FROM conversation_escalations WHERE bot_id = %s AND escalation_id = %s",
+                (bid, eid),
+            ).fetchone()
+            if not exists:
+                return False
+            con.execute(
+                """
+                INSERT INTO conversation_escalation_reads(escalation_id, user_id, read_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (escalation_id, user_id)
+                DO UPDATE SET read_at = EXCLUDED.read_at
+                """,
+                (eid, uid, now),
             )
             con.commit()
             return True
@@ -3623,10 +4195,12 @@ class PostgresLineUserSessionRepository:
         line_user_id: str,
         bot_id: str,
         session_id: str,
+        display_name: Optional[str] = None,
     ) -> LineUserSession:
         """Get existing mapping or create one. Returns the mapping."""
         uid = (line_user_id or "").strip()
         bid = (bot_id or "").strip()
+        name = (display_name or "").strip() or None
         if not uid or not bid:
             raise ValueError("line_user_id and bot_id are required")
         now = _utc_now()
@@ -3634,7 +4208,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg, display_name
                 FROM line_user_sessions
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
@@ -3649,13 +4223,14 @@ class PostgresLineUserSessionRepository:
                     created_at=row[4],
                     updated_at=row[5],
                     awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                    display_name=row[7] if len(row) > 7 else None,
                 )
             con.execute(
                 """
-                INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, created_at, updated_at)
-                VALUES (%s, %s, %s, FALSE, FALSE, %s, %s)
+                INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, display_name, created_at, updated_at)
+                VALUES (%s, %s, %s, FALSE, FALSE, %s, %s, %s)
                 """,
-                (uid, bid, session_id, now, now),
+                (uid, bid, session_id, name, now, now),
             )
             con.commit()
             return LineUserSession(
@@ -3666,6 +4241,7 @@ class PostgresLineUserSessionRepository:
                 awaiting_escalation_msg=False,
                 created_at=now,
                 updated_at=now,
+                display_name=name,
             )
         finally:
             con.close()
@@ -3679,7 +4255,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg, display_name
                 FROM line_user_sessions
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
@@ -3695,6 +4271,7 @@ class PostgresLineUserSessionRepository:
                 created_at=row[4],
                 updated_at=row[5],
                 awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                display_name=row[7] if len(row) > 7 else None,
             )
         finally:
             con.close()
@@ -3707,7 +4284,7 @@ class PostgresLineUserSessionRepository:
         try:
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg, display_name
                 FROM line_user_sessions
                 WHERE session_id = %s
                 """,
@@ -3723,7 +4300,30 @@ class PostgresLineUserSessionRepository:
                 created_at=row[4],
                 updated_at=row[5],
                 awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                display_name=row[7] if len(row) > 7 else None,
             )
+        finally:
+            con.close()
+
+    def set_display_name(self, *, line_user_id: str, bot_id: str, display_name: Optional[str]) -> bool:
+        uid = (line_user_id or "").strip()
+        bid = (bot_id or "").strip()
+        name = (display_name or "").strip() or None
+        if not uid or not bid:
+            return False
+        now = _utc_now()
+        con = _connect()
+        try:
+            result = con.execute(
+                """
+                UPDATE line_user_sessions
+                SET display_name = %s, updated_at = %s
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (name, now, uid, bid),
+            )
+            con.commit()
+            return result.rowcount > 0
         finally:
             con.close()
 
@@ -3809,7 +4409,7 @@ class PostgresLineUserSessionRepository:
             con.commit()
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, display_name
                 FROM line_user_sessions
                 WHERE session_id = %s
                 """,
@@ -3824,6 +4424,7 @@ class PostgresLineUserSessionRepository:
                 is_escalated=bool(row[3]),
                 created_at=row[4],
                 updated_at=row[5],
+                display_name=row[6] if len(row) > 6 else None,
             )
         finally:
             con.close()
@@ -3847,7 +4448,7 @@ class PostgresLineUserSessionRepository:
             con.commit()
             row = con.execute(
                 """
-                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT line_user_id, bot_id, session_id, is_escalated, created_at, updated_at, display_name
                 FROM line_user_sessions
                 WHERE session_id = %s
                 """,
@@ -3862,6 +4463,7 @@ class PostgresLineUserSessionRepository:
                 is_escalated=bool(row[3]),
                 created_at=row[4],
                 updated_at=row[5],
+                display_name=row[6] if len(row) > 6 else None,
             )
         finally:
             con.close()
@@ -4312,6 +4914,36 @@ class PostgresInstagramUserSessionRepository:
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
                 (uid, bid),
+            ).fetchone()
+            if not row:
+                return None
+            return InstagramUserSession(
+                ig_user_id=row[0],
+                bot_id=row[1],
+                session_id=row[2],
+                is_escalated=bool(row[3]),
+                created_at=row[4],
+                updated_at=row[5],
+                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+                awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
+            )
+        finally:
+            con.close()
+
+    def get_by_session_id(self, session_id: str) -> Optional[InstagramUserSession]:
+        sid = (session_id or "").strip()
+        if not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg,
+                       COALESCE(awaiting_staff_takeover, FALSE)
+                FROM instagram_user_sessions
+                WHERE session_id = %s
+                """,
+                (sid,),
             ).fetchone()
             if not row:
                 return None

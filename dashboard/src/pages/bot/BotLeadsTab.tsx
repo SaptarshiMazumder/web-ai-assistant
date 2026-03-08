@@ -4,28 +4,12 @@ import { CalendarDays, ExternalLink, User, UsersRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader } from '../../components/ui'
+import { getEscalationContact } from '../../utils/escalationIdentity'
 
 function formatLeadDate(iso: string, locale?: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString(locale || undefined, { dateStyle: 'medium', timeStyle: 'short' })
-}
-
-function parseLeadContact(raw: string) {
-  const value = (raw || '').trim()
-  const lineMatch = value.match(/^line:(.+)$/i)
-  if (lineMatch) {
-    const id = lineMatch[1].trim()
-    return { typeEn: 'LINE ID', typeJa: 'LINE ID', value: id || value }
-  }
-
-  const instaMatch = value.match(/^(instagram|ig):(.+)$/i)
-  if (instaMatch) {
-    const id = instaMatch[2].trim()
-    return { typeEn: 'Instagram ID', typeJa: 'Instagram ID', value: id || value }
-  }
-
-  return { typeEn: 'Email', typeJa: 'メール', value }
 }
 
 export default function BotLeadsTab() {
@@ -47,6 +31,21 @@ export default function BotLeadsTab() {
       })
       .finally(() => setLoading(false))
   }, [botId, listEscalations])
+
+  function leadStatusLabel(status?: string | null) {
+    switch ((status || '').toLowerCase()) {
+      case 'resolved':
+        return tr('Resolved', '解決済み')
+      case 'canceled':
+        return tr('Canceled', 'キャンセル')
+      case 'expired':
+        return tr('Expired', '期限切れ')
+      case 'open':
+        return tr('Open', '未対応')
+      default:
+        return status || tr('Unknown', '不明')
+    }
+  }
 
   if (!botId || !selectedBot) {
     return <div className="empty-panel">{tr('Select a bot to view leads.', 'リードを表示するボットを選択してください。')}</div>
@@ -81,28 +80,22 @@ export default function BotLeadsTab() {
               </thead>
               <tbody>
                 {leads.map((lead) => {
-                  const contact = parseLeadContact(lead.visitor_email)
+                  const contact = getEscalationContact(lead, tr)
                   return (
                     <tr key={lead.escalation_id}>
                       <td className="leads-email">
-                        <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--ui-flow-muted)' }}>
-                          {isJa ? contact.typeJa : contact.typeEn}
-                        </div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.02em', color: 'var(--ui-flow-muted)' }}>{contact.label}</div>
                         <div>{contact.value}</div>
                       </td>
                       <td className="leads-date">{formatLeadDate(lead.created_at, isJa ? 'ja-JP' : undefined)}</td>
                       <td>
                         <span className={`leads-status leads-status--${lead.status}`}>
-                          {lead.status === 'resolved'
-                            ? tr('Resolved', '解決済み')
-                            : lead.status === 'open'
-                              ? tr('Open', '未対応')
-                              : lead.status}
+                          {leadStatusLabel(lead.status)}
                         </span>
                       </td>
                       <td>
                         <Link
-                          to={`/bots/${botId}/conversations?session=${lead.session_id}`}
+                          to={`/bots/${botId}/conversations?session=${lead.linked_session_id || lead.session_id}`}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'var(--ui-flow-accent)', fontSize: '0.85rem', fontWeight: 500 }}
                         >
                           <ExternalLink size={13} />

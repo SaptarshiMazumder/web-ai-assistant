@@ -4,6 +4,7 @@ import { Check, CheckCircle, Clock, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData, type EscalationRecord } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader } from '../../components/ui'
+import { getEscalationSubtitle, getEscalationTitle } from '../../utils/escalationIdentity'
 
 export default function BotEscalationsTab() {
   const { botId } = useParams()
@@ -47,7 +48,44 @@ export default function BotEscalationsTab() {
   }
 
   function titleForEscalation(e: EscalationRecord) {
-    return e.title || e.site_title || e.site_url || e.session_id
+    return getEscalationTitle(e, tr)
+  }
+
+  function sessionTargetForEscalation(e: EscalationRecord) {
+    return e.linked_session_id || e.session_id
+  }
+
+  function subtitleForEscalation(e: EscalationRecord) {
+    return getEscalationSubtitle(e, tr)
+  }
+
+  function escalationStatusMeta(status?: string | null) {
+    switch ((status || '').toLowerCase()) {
+      case 'resolved':
+        return {
+          className: 'resolved',
+          icon: <CheckCircle size={14} />,
+          label: tr('Resolved', '解決済み'),
+        }
+      case 'canceled':
+        return {
+          className: 'ended',
+          icon: <RotateCcw size={14} />,
+          label: tr('Canceled', 'キャンセル'),
+        }
+      case 'expired':
+        return {
+          className: 'ended',
+          icon: <Clock size={14} />,
+          label: tr('Expired', '期限切れ'),
+        }
+      default:
+        return {
+          className: 'pending',
+          icon: <Clock size={14} />,
+          label: tr('Pending', '保留'),
+        }
+    }
   }
 
   async function handleResolve(escalationId: string) {
@@ -92,25 +130,30 @@ export default function BotEscalationsTab() {
               key={e.escalation_id}
               type="button"
               className="conversation-row"
-              onClick={() => navigate(`/bots/${botId}/conversations?session=${encodeURIComponent(e.session_id)}`)}
+              onClick={() => navigate(`/bots/${botId}/conversations?session=${encodeURIComponent(sessionTargetForEscalation(e))}`)}
             >
+              {(() => {
+                const statusMeta = escalationStatusMeta(e.status)
+                const isOpen = (e.status || '').toLowerCase() === 'open'
+                return (
+                  <>
               <div className="conversation-row-top">
                 <div className="conversation-title">{titleForEscalation(e)}</div>
                 <div className="conversation-time">{formatTime(e.created_at)}</div>
               </div>
               <div className="conversation-meta escalation-meta-row">
-                <span className="escalation-email">{e.visitor_email}</span>
+                <span className="escalation-email">{subtitleForEscalation(e)}</span>
                 <div className="escalation-status-actions">
-                  {e.status === 'resolved' ? (
+                  {!isOpen ? (
                     <>
-                      <span className="conversation-status resolved">
-                        <CheckCircle size={14} />
-                        {tr('Resolved', '解決済み')}
+                      <span className={`conversation-status ${statusMeta.className}`}>
+                        {statusMeta.icon}
+                        {statusMeta.label}
                       </span>
                       <button
                         type="button"
                         className="icon-pill"
-                        aria-label={tr('Undo resolve', '解決を取り消す')}
+                        aria-label={tr('Reopen support request', 'サポート依頼を再開する')}
                         onClick={(evt) => {
                           evt.stopPropagation()
                           void handleReopen(e.escalation_id)
@@ -121,9 +164,9 @@ export default function BotEscalationsTab() {
                     </>
                   ) : (
                     <>
-                      <span className="conversation-status pending">
-                        <Clock size={14} />
-                        {tr('Pending', '保留')}
+                      <span className={`conversation-status ${statusMeta.className}`}>
+                        {statusMeta.icon}
+                        {statusMeta.label}
                       </span>
                       <button
                         type="button"
@@ -145,6 +188,9 @@ export default function BotEscalationsTab() {
                   {e.details}
                 </div>
               )}
+                  </>
+                )
+              })()}
             </button>
           ))}
         </div>

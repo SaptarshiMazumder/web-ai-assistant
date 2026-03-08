@@ -67,6 +67,8 @@ from api.schemas import (
     EscalationListResponse,
     EscalationRecordResponse,
     EscalationStatusUpdateRequest,
+    BotOverviewSetupItemResponse,
+    BotOverviewSetupResponse,
     OrgCreateRequest,
     OrgListResponse,
     OrgMemberAddRequest,
@@ -97,10 +99,11 @@ from api.schemas import (
 from domain.personas import list_personas, list_categories, get_persona, get_persona_system_prompt, get_default_persona_id
 from domain.platform_profiles import (
     RESERVATION_PLATFORM_CONFIG,
-    ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
     get_available_suggested_message_types,
+    get_dashboard_overview_setup_sections,
     get_job_pipeline_config,
+    get_knowledge_tabs_for_widget,
     get_menu_category_order,
     get_menu_texts,
     get_platform_asset_instructions,
@@ -112,9 +115,15 @@ from domain.platform_profiles import (
     get_reservation_url_for_platform,
     get_reservation_config_from_widget,
     get_reservation_platforms_list,
+    get_suggested_messages_by_language_for_widget,
     get_suggested_messages_for_platform,
     get_suggested_messages_for_widget,
     normalize_reservation_links,
+)
+from application.services.answer_normalization_service import (
+    RENDER_TARGET_WEB_MARKDOWN,
+    build_answer_link_candidates,
+    normalize_answer_links,
 )
 from application.services.platform_strategy import normalize_menu_category
 from application.services.default_prompt_service import (
@@ -124,6 +133,7 @@ from application.services.default_prompt_service import (
 from application.services.prompt_provider import ConfigPromptProvider
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
+from common.language_utils import detect_user_language, normalize_lang
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service, job_pipeline_service
 from common.di.container import analytics_service
@@ -135,6 +145,14 @@ _prompt_provider = ConfigPromptProvider()
 
 # Prefixes that indicate availability check failed; don't inject as success.
 _AVAILABILITY_ERROR_PREFIXES = ("Could not complete availability check", "The availability check is taking longer")
+_CHAT_NO_CITATIONS_MESSAGES = {
+    "en": "I can’t find that in the information I’ve learned for {host_label} yet. Try asking about something else, or add more sources in the dashboard.",
+    "ja": "{host_label} について学習済みの情報では、まだその内容を見つけられませんでした。別の聞き方を試すか、ダッシュボードでソースを追加してください。",
+}
+_CHAT_STREAM_NO_CITATIONS_MESSAGES = {
+    "en": "I can’t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl.",
+    "ja": "{host_label} のインデックス済みコンテンツでは、その内容を見つけられませんでした。サイト上の別の内容について質問するか、クロールをやり直してください。",
+}
 
 
 def _is_real_availability_summary(text: Optional[str]) -> bool:
@@ -169,9 +187,7 @@ def _get_bot_language(bot) -> str:
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
         try:
             wc = json.loads(bot.widget_config)
-            lang = (wc.get("language") or "").strip().lower()
-            if lang in ("ja", "jp"):
-                return "ja"
+            return normalize_lang(wc.get("language") or wc.get("botLanguage") or "en")
         except (TypeError, ValueError):
             pass
     return "en"
@@ -179,10 +195,19 @@ def _get_bot_language(bot) -> str:
 
 def _get_language_from_widget_config_dict(widget_config: Optional[Dict[str, Any]]) -> str:
     if isinstance(widget_config, dict):
-        lang = str(widget_config.get("language") or "").strip().lower()
-        if lang in ("ja", "jp"):
-            return "ja"
+        return normalize_lang(widget_config.get("language") or widget_config.get("botLanguage") or "en")
     return "en"
+
+
+def _parse_widget_config(raw: Optional[str]) -> Optional[Dict[str, Any]]:
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -196,6 +221,7 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
 
     resolved = dict(widget_config)
     lang = _get_language_from_widget_config_dict(resolved)
+    resolved["suggestedMessagesByLanguage"] = get_suggested_messages_by_language_for_widget(resolved)
     suggested = get_suggested_messages_for_widget(resolved, lang=lang)
     if suggested:
         resolved["suggestedMessages"] = [
@@ -209,7 +235,7 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
         resolved["reservation_links"] = reservation_links
 
     # Local import keeps dependency surface small for route startup.
-    from domain.platform_profiles import get_knowledge_tabs_for_widget, resolve_platform_profile
+    from domain.platform_profiles import resolve_platform_profile
 
     platform_name = str(resolved.get("reservationPlatform") or "").strip().lower()
     platform_url = get_reservation_url_for_platform(resolved, platform_name) if platform_name else ""
@@ -220,6 +246,71 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
 
     resolved["knowledge_tabs"] = get_knowledge_tabs_for_widget(resolved)
     return resolved
+
+
+def _normalize_widget_suggested_messages_storage(
+    widget_config: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not isinstance(widget_config, dict):
+        return widget_config
+    normalized = dict(widget_config)
+    by_lang = get_suggested_messages_by_language_for_widget(normalized)
+    lang = _get_language_from_widget_config_dict(normalized)
+    normalized["suggestedMessagesByLanguage"] = by_lang
+    normalized["suggestedMessages"] = by_lang.get(lang, [])
+    return normalized
+
+
+def _build_bot_overview_setup_sections(bot, *, lang: Optional[str] = None) -> List[BotOverviewSetupItemResponse]:
+    raw_widget_config = _parse_widget_config(getattr(bot, "widget_config", None)) or {}
+    resolved_lang = str(lang or _get_language_from_widget_config_dict(raw_widget_config) or "en").strip().lower()
+    resolved_lang = "ja" if resolved_lang in ("ja", "jp") else "en"
+
+    configured_sections = get_dashboard_overview_setup_sections(lang=resolved_lang)
+    knowledge_tabs = set(get_knowledge_tabs_for_widget(raw_widget_config))
+    suggested_messages = get_suggested_messages_for_widget(raw_widget_config, lang=resolved_lang)
+    domains = bot_service().list_domains(bot.bot_id)
+    sources = indexing_service().list_sources_for_bot(bot.bot_id)
+    escalation_cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
+    _, menu_asset_count, _ = asset_repo().list_assets_for_bot_paginated(
+        bot.bot_id,
+        active_only=False,
+        asset_type="menu_item",
+        page_size=1,
+        offset=0,
+    )
+    _, image_asset_count, _ = asset_repo().list_assets_for_bot_paginated(
+        bot.bot_id,
+        active_only=False,
+        asset_type="image",
+        page_size=1,
+        offset=0,
+    )
+
+    status_by_source = {
+        "sources": len(sources) > 0,
+        "widget_config": bool(raw_widget_config),
+        "suggested_messages": len(suggested_messages) > 0,
+        "verified_domain": any(bool(getattr(domain, "verified_at", None)) for domain in domains),
+        "human_support": bool(escalation_cfg.get("enabled")),
+        "menu_assets": menu_asset_count > 0,
+        "image_assets": image_asset_count > 0,
+    }
+
+    sections: List[BotOverviewSetupItemResponse] = []
+    for section in configured_sections:
+        required_tabs = set(section.get("required_knowledge_tabs") or [])
+        if required_tabs and not required_tabs.issubset(knowledge_tabs):
+            continue
+        sections.append(
+            BotOverviewSetupItemResponse(
+                id=section["id"],
+                label=section["label"],
+                done=bool(status_by_source.get(section["status_source"])),
+                route=section["route"],
+            )
+        )
+    return sections
 
 
 def _build_deterministic_instruction_for_bot(
@@ -322,8 +413,27 @@ def _get_url_bank_for_chat(widget_config: Dict[str, Any], *, limit: int = 20) ->
 
 
 def _normalize_lang_value(value: Any) -> str:
-    raw = str(value or "").strip().lower()
-    return "ja" if raw in ("ja", "jp") else "en"
+    return normalize_lang(value)
+
+
+def _resolve_turn_language(*, message: str, fallback: str) -> str:
+    return detect_user_language(message, fallback=fallback)
+
+
+def _chat_no_citations_message(*, lang: str, host_label: str, streamed: bool = False) -> str:
+    normalized_lang = _normalize_lang_value(lang)
+    messages = _CHAT_STREAM_NO_CITATIONS_MESSAGES if streamed else _CHAT_NO_CITATIONS_MESSAGES
+    template = messages.get(normalized_lang) or messages["en"]
+    return template.format(host_label=host_label)
+
+
+def _chat_handoff_paused_message(*, lang: str) -> str:
+    normalized_lang = _normalize_lang_value(lang)
+    messages = {
+        "ja": "現在サポート対応中のため、このチャットではボットを一時停止しています。担当チームからの案内をお待ちください。",
+        "en": "Your support request is active, so the bot is paused for this chat. Please wait for our team to follow up.",
+    }
+    return messages.get(normalized_lang) or messages["en"]
 
 
 def _normalize_http_url(value: Any) -> str:
@@ -971,6 +1081,9 @@ async def v1_widget_chat(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
+    bot_lang = _get_language_from_widget_config_dict(widget_config)
+    turn_lang = _resolve_turn_language(message=msg, fallback=bot_lang)
+    suggested_messages = get_suggested_messages_for_widget(widget_config, lang=turn_lang)
 
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
@@ -980,7 +1093,7 @@ async def v1_widget_chat(
             pass
     system_instruction = _resolve_system_instruction(
         agent_config,
-        lang=_get_bot_language(bot),
+        lang=turn_lang,
         bot_name=getattr(bot, "display_name", "") or "",
         widget_config=widget_config,
     )
@@ -1003,6 +1116,21 @@ async def v1_widget_chat(
         role="user",
         content=msg,
     )
+    if getattr(session, "handoff_active", False):
+        answer = _chat_handoff_paused_message(lang=turn_lang)
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=answer,
+            citations=[],
+        )
+        return WidgetChatResponse(
+            answer=answer,
+            citations=[],
+            session_id=session.session_id,
+            suggested_messages=suggested_messages,
+        )
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
 
@@ -1039,7 +1167,7 @@ async def v1_widget_chat(
         system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
 
     # Inject reservation config from platform profile if applicable
-    reservation_cfg = get_reservation_config_from_widget(widget_config, lang=_get_bot_language(bot))
+    reservation_cfg = get_reservation_config_from_widget(widget_config, lang=turn_lang)
     if reservation_cfg:
         extra_evidence.append({
             "url": reservation_cfg["url"],
@@ -1056,10 +1184,10 @@ async def v1_widget_chat(
     asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
     if asset_instruction:
         system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
-    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=_get_bot_language(bot))
+    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=turn_lang)
     if platform_asset_instruction:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
-    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=_get_bot_language(bot))
+    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=turn_lang)
     if json_response_instruction:
         system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
 
@@ -1092,7 +1220,7 @@ async def v1_widget_chat(
                 "host_label": host_label,
             }
         )
-        answer = f"I can’t find that in the information I’ve learned for {host_label} yet. Try asking about something else, or add more sources in the dashboard."
+        answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1104,6 +1232,7 @@ async def v1_widget_chat(
             answer=answer,
             citations=[],
             session_id=session.session_id,
+            suggested_messages=suggested_messages,
         )
 
     chat_debug_emit(
@@ -1115,12 +1244,15 @@ async def v1_widget_chat(
         }
     )
     answer = str(result.get("answer") or "")
-
-    # Ensure reservation URLs use the canonical one from config
-    if reservation_cfg:
-        answer = ensure_canonical_reservation_url_in_text(
-            answer, reservation_cfg["url"], reservation_cfg["domain_key"]
-        )
+    answer = normalize_answer_links(
+        answer,
+        candidates=build_answer_link_candidates(
+            reservation_config=reservation_cfg,
+            url_bank=url_bank,
+            sources=sources,
+        ),
+        render_target=RENDER_TARGET_WEB_MARKDOWN,
+    ).text
 
     platform_features = get_platform_features_from_widget(widget_config)
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
@@ -1153,7 +1285,13 @@ async def v1_widget_chat(
         content=answer,
         citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
     )
-    return WidgetChatResponse(answer=answer, citations=citations, assets=assets, session_id=session.session_id)
+    return WidgetChatResponse(
+        answer=answer,
+        citations=citations,
+        assets=assets,
+        session_id=session.session_id,
+        suggested_messages=suggested_messages,
+    )
 
 
 @router.post("/v1/pk/{publishable_key}/chat/stream")
@@ -1241,6 +1379,10 @@ async def v1_widget_chat_stream(
         except (TypeError, ValueError):
             pass
 
+    bot_lang = _get_language_from_widget_config_dict(widget_config_stream)
+    turn_lang = _resolve_turn_language(message=msg, fallback=bot_lang)
+    suggested_messages = get_suggested_messages_for_widget(widget_config_stream, lang=turn_lang)
+
     agent_config = {}
     if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
         try:
@@ -1249,7 +1391,7 @@ async def v1_widget_chat_stream(
             pass
     system_instruction = _resolve_system_instruction(
         agent_config,
-        lang=_get_bot_language(bot),
+        lang=turn_lang,
         bot_name=getattr(bot, "display_name", "") or "",
         widget_config=widget_config_stream,
     )
@@ -1272,6 +1414,37 @@ async def v1_widget_chat_stream(
         role="user",
         content=msg,
     )
+    if getattr(session, "handoff_active", False):
+        answer = _chat_handoff_paused_message(lang=turn_lang)
+
+        async def _handoff_gen():
+            yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=answer,
+                citations=[],
+            )
+            yield json.dumps(
+                {
+                    "type": "done",
+                    "answer": answer,
+                    "citations": [],
+                    "suggested_messages": suggested_messages,
+                    "session_id": session.session_id,
+                },
+                ensure_ascii=False,
+            ) + "\n"
+
+        return StreamingResponse(
+            _handoff_gen(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
 
@@ -1308,7 +1481,7 @@ async def v1_widget_chat_stream(
         system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
 
     # Inject restaurant reservation instructions if applicable
-    reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=_get_bot_language(bot))
+    reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=turn_lang)
     if reservation_cfg_stream:
         extra_evidence_stream.append({
             "url": reservation_cfg_stream["url"],
@@ -1325,10 +1498,10 @@ async def v1_widget_chat_stream(
     asset_instruction_stream = build_asset_instruction(bot.bot_id, asset_rules=asset_rules_stream)
     if asset_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
-    platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=_get_bot_language(bot))
+    platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=turn_lang)
     if platform_asset_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
-    json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=_get_bot_language(bot))
+    json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=turn_lang)
     if json_response_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
 
@@ -1366,7 +1539,7 @@ async def v1_widget_chat_stream(
                                 "host_label": host_label,
                             }
                         )
-                        answer = f"I can?t find that in the indexed content for {host_label}. Try asking about something on the site, or re-run Crawl."
+                        answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label, streamed=True)
                         conversation_service().add_message(
                             session_id=session.session_id,
                             bot_id=bot.bot_id,
@@ -1379,16 +1552,22 @@ async def v1_widget_chat_stream(
                                 "type": "done",
                                 "answer": answer,
                                 "citations": [],
+                                "suggested_messages": suggested_messages,
                                 "session_id": session.session_id,
                             },
                             ensure_ascii=False,
                         ) + "\n"
                     else:
                         answer = str(evt.get("answer") or "")
-                        if reservation_cfg_stream:
-                            answer = ensure_canonical_reservation_url_in_text(
-                                answer, reservation_cfg_stream["url"], reservation_cfg_stream["domain_key"]
-                            )
+                        answer = normalize_answer_links(
+                            answer,
+                            candidates=build_answer_link_candidates(
+                                reservation_config=reservation_cfg_stream,
+                                url_bank=url_bank_stream,
+                                sources=sources,
+                            ),
+                            render_target=RENDER_TARGET_WEB_MARKDOWN,
+                        ).text
                         platform_features_stream = get_platform_features_from_widget(widget_config_stream)
                         menu_extraction_enabled_stream = platform_features_stream.get("menu_extraction_enabled") if platform_features_stream else False
                         allowed_asset_types_stream = {"menu_item"} if menu_extraction_enabled_stream else None
@@ -1432,6 +1611,7 @@ async def v1_widget_chat_stream(
                                 "answer": answer,
                                 "citations": citations,
                                 "assets": asset_cards_stream,
+                                "suggested_messages": suggested_messages,
                                 "session_id": session.session_id,
                             },
                             ensure_ascii=False,
@@ -1707,12 +1887,7 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
     bot = bot_service().get_bot_record(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
-    widget_config: Optional[Dict[str, Any]] = None
-    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-        try:
-            widget_config = json.loads(bot.widget_config)
-        except (TypeError, ValueError):
-            pass
+    widget_config = _parse_widget_config(getattr(bot, "widget_config", None))
     widget_config = _build_widget_config_dashboard_view(widget_config)
     return BotDetailResponse(
         bot=BotSummary(
@@ -1725,6 +1900,24 @@ async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends
             updated_at=bot.updated_at,
         ),
         widget_config=widget_config,
+    )
+
+
+@router.get("/v1/org/bots/{bot_id}/overview-setup", response_model=BotOverviewSetupResponse)
+async def v1_org_get_bot_overview_setup(
+    bot_id: str,
+    lang: Optional[str] = None,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    bot = bot_service().get_bot_record(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Unknown bot_id")
+    return BotOverviewSetupResponse(
+        bot_id=bot_id,
+        sections=_build_bot_overview_setup_sections(bot, lang=lang),
     )
 
 
@@ -1805,6 +1998,8 @@ async def v1_org_update_bot_widget_config(
         # Keep legacy explicit fields for backward compatibility in this phase.
         for platform_id, (widget_key, _) in RESERVATION_PLATFORM_CONFIG.items():
             merged[widget_key] = merged_links.get(platform_id, "")
+
+    merged = _normalize_widget_suggested_messages_storage(merged)
 
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
@@ -2194,21 +2389,24 @@ Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 chara
             "type": "ai_response",
         })
 
-    # Save to widget_config
+    # Save to widget_config for the bot's current language while preserving the other language buckets.
     existing_config: dict = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
         try:
             existing_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    # Preserve existing escalate and show_menu messages
-    prev_messages = existing_config.get("suggestedMessages") or []
+    existing_config = _normalize_widget_suggested_messages_storage(existing_config if isinstance(existing_config, dict) else {})
+    by_lang = existing_config.get("suggestedMessagesByLanguage") if isinstance(existing_config.get("suggestedMessagesByLanguage"), dict) else {}
+    prev_messages = by_lang.get(bot_lang) if isinstance(by_lang.get(bot_lang), list) else []
     preserve_types = {"escalate", "show_menu"}
     preserved = [m for m in prev_messages if isinstance(m, dict) and m.get("type") in preserve_types]
-    existing_config["suggestedMessages"] = suggested_messages + preserved
+    by_lang[bot_lang] = suggested_messages + preserved
+    existing_config["suggestedMessagesByLanguage"] = by_lang
+    existing_config = _normalize_widget_suggested_messages_storage(existing_config)
     bot_service().update_widget_config(bot_id, json.dumps(existing_config))
 
-    return {"suggestedMessages": existing_config.get("suggestedMessages") or []}
+    return {"suggestedMessages": by_lang.get(bot_lang) or []}
 
 
 @router.get("/v1/org/bots/{bot_id}/escalation-config", response_model=EscalationConfigResponse)
@@ -2403,10 +2601,15 @@ async def v1_org_test_chat(
     sources = result.get("sources") or []
     citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
     answer = str(result.get("answer") or "")
-    if reservation_cfg_test:
-        answer = ensure_canonical_reservation_url_in_text(
-            answer, reservation_cfg_test["url"], reservation_cfg_test["domain_key"]
-        )
+    answer = normalize_answer_links(
+        answer,
+        candidates=build_answer_link_candidates(
+            reservation_config=reservation_cfg_test,
+            url_bank=url_bank_test,
+            sources=sources,
+        ),
+        render_target=RENDER_TARGET_WEB_MARKDOWN,
+    ).text
     platform_features_test = get_platform_features_from_widget(widget_config_test)
     menu_extraction_enabled_test = platform_features_test.get("menu_extraction_enabled") if platform_features_test else False
     allowed_asset_types_test = {"menu_item"} if menu_extraction_enabled_test else None
@@ -2551,6 +2754,10 @@ async def v1_org_list_conversations(
                 started_at=s.started_at,
                 last_active_at=s.last_active_at,
                 ended_at=s.ended_at,
+                assistant_state=getattr(s, "assistant_state", "bot") or "bot",
+                handoff_active=bool(getattr(s, "handoff_active", False)),
+                support_request_id=getattr(s, "support_request_id", None),
+                support_request_status=getattr(s, "support_request_status", None),
             )
             for s in sessions
         ],
@@ -2649,6 +2856,13 @@ async def v1_org_search_conversations(
             f"""
             SELECT s.session_id, s.bot_id, s.org_id, s.channel, s.status, s.title, s.site_url, s.site_title,
                    s.message_count, s.started_at, s.last_active_at, s.ended_at,
+                   COALESCE(h.assistant_state, 'bot') AS assistant_state,
+                   CASE
+                     WHEN COALESCE(h.assistant_state, 'bot') IN ('awaiting_support_details', 'human_handoff') THEN TRUE
+                     ELSE FALSE
+                   END AS handoff_active,
+                   esc.escalation_id,
+                   esc.status,
                    (
                      SELECT m.content
                      FROM conversation_messages m
@@ -2657,6 +2871,14 @@ async def v1_org_search_conversations(
                      LIMIT 1
                    ) AS snippet
             FROM conversation_sessions s
+            LEFT JOIN conversation_session_handoffs h ON h.session_id = s.session_id
+            LEFT JOIN LATERAL (
+              SELECT e.escalation_id, e.status
+              FROM conversation_escalations e
+              WHERE e.session_id = s.session_id
+              ORDER BY e.created_at DESC, e.escalation_id DESC
+              LIMIT 1
+            ) esc ON TRUE
             WHERE {where_sql}
             ORDER BY s.last_active_at DESC, s.session_id DESC
             LIMIT %s
@@ -2679,7 +2901,11 @@ async def v1_org_search_conversations(
                     started_at=r[9],
                     last_active_at=r[10],
                     ended_at=r[11],
-                    snippet=(r[12] or "").strip() or None,
+                    assistant_state=(r[12] or "bot").strip() if r[12] else "bot",
+                    handoff_active=bool(r[13]),
+                    support_request_id=r[14],
+                    support_request_status=r[15],
+                    snippet=(r[16] or "").strip() or None,
                 )
             )
 
@@ -2801,6 +3027,105 @@ async def v1_org_export_conversations_csv(
     return StreamingResponse(_iter_csv(), media_type="text/csv")
 
 
+def _parse_line_visitor_id(visitor_email: Optional[str]) -> Optional[str]:
+    value = (visitor_email or "").strip()
+    if not value or ":" not in value:
+        return None
+    prefix, user_id = value.split(":", 1)
+    if prefix.strip().lower() != "line":
+        return None
+    normalized = user_id.strip()
+    return normalized or None
+
+
+def _has_messaging_visitor_prefix(visitor_email: Optional[str]) -> bool:
+    value = (visitor_email or "").strip().lower()
+    return value.startswith("line:") or value.startswith("instagram:") or value.startswith("ig:")
+
+
+async def _resolve_line_escalation_metadata(
+    bot_id: str,
+    visitor_email: Optional[str],
+    cache: Optional[Dict[str, Tuple[Optional[str], Optional[str]]]] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    line_user_id = _parse_line_visitor_id(visitor_email)
+    if not line_user_id:
+        return None, None
+
+    cache_key = f"{bot_id}:{line_user_id}"
+    if cache is not None and cache_key in cache:
+        return cache[cache_key]
+
+    from infrastructure.db.repositories import PostgresLineChannelRepository, PostgresLineUserSessionRepository
+    from infrastructure.clients.line_client import get_profile as get_line_profile
+
+    line_session_repo = PostgresLineUserSessionRepository()
+    contact = conversation_service().get_channel_contact(
+        bot_id=bot_id,
+        channel="line",
+        external_user_id=line_user_id,
+    )
+    visitor_name = (getattr(contact, "display_name", None) or "").strip() or None
+    if not visitor_name:
+        mapping = line_session_repo.get(line_user_id=line_user_id, bot_id=bot_id)
+        visitor_name = (getattr(mapping, "display_name", None) or "").strip() or None
+
+    if not visitor_name:
+        line_channel_repo = PostgresLineChannelRepository()
+        line_channel = line_channel_repo.get_by_bot_id(bot_id)
+        if line_channel and line_channel.is_active and getattr(line_channel, "line_channel_access_token", None):
+            try:
+                profile = await get_line_profile(line_user_id, line_channel.line_channel_access_token)
+            except Exception:
+                profile = None
+            fetched_name = str((profile or {}).get("displayName") or "").strip()
+            if fetched_name:
+                visitor_name = fetched_name
+                line_session_repo.set_display_name(
+                    line_user_id=line_user_id,
+                    bot_id=bot_id,
+                    display_name=visitor_name,
+                )
+
+    result = (visitor_name, None)
+    if cache is not None:
+        cache[cache_key] = result
+    return result
+
+
+async def _build_escalation_record_response(
+    record,
+    cache: Optional[Dict[str, Tuple[Optional[str], Optional[str]]]] = None,
+) -> EscalationRecordResponse:
+    visitor_name, linked_session_id = await _resolve_line_escalation_metadata(record.bot_id, record.visitor_email, cache)
+    session_title = (getattr(record, "session_title", None) or "").strip() or None
+    if not visitor_name and _has_messaging_visitor_prefix(record.visitor_email):
+        if session_title and session_title != record.session_id:
+            visitor_name = session_title
+    if visitor_name:
+        conversation_service().set_session_title(record.session_id, visitor_name)
+        if linked_session_id and linked_session_id != record.session_id:
+            conversation_service().set_session_title(linked_session_id, visitor_name)
+    return EscalationRecordResponse(
+        escalation_id=record.escalation_id,
+        bot_id=record.bot_id,
+        session_id=record.session_id,
+        visitor_email=record.visitor_email,
+        visitor_name=visitor_name,
+        status=record.status,
+        created_at=record.created_at,
+        details=record.details,
+        title=visitor_name or record.session_title,
+        site_url=record.site_url,
+        site_title=record.site_title,
+        last_active_at=record.last_active_at,
+        session_status=record.session_status,
+        linked_session_id=record.session_id,
+        notification_read_at=record.notification_read_at,
+        notification_is_unread=record.notification_is_unread,
+    )
+
+
 @router.get("/v1/org/bots/{bot_id}/escalations/counts", response_model=EscalationCountsResponse)
 async def v1_org_escalation_counts(
     bot_id: str,
@@ -2811,7 +3136,8 @@ async def v1_org_escalation_counts(
     _assert_bot_org(bot_id, resolved_org)
     total = conversation_service().count_escalations(bot_id)
     open_count = conversation_service().count_open_escalations(bot_id)
-    return EscalationCountsResponse(bot_id=bot_id, total=total, open=open_count)
+    unread_count = conversation_service().count_unread_escalations(bot_id, user.user_id)
+    return EscalationCountsResponse(bot_id=bot_id, total=total, open=open_count, unread=unread_count)
 
 
 @router.get("/v1/org/bots/{bot_id}/escalations", response_model=EscalationListResponse)
@@ -2824,32 +3150,25 @@ async def v1_org_list_escalations(
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
-    escalations = conversation_service().list_escalations(bot_id, limit=limit, before=cursor)
+    escalations = conversation_service().list_escalations_for_user(
+        bot_id,
+        user_id=user.user_id,
+        limit=limit,
+        before=cursor,
+    )
     total_count = conversation_service().count_escalations(bot_id)
     next_cursor = (
         f"{escalations[-1].created_at}|{escalations[-1].escalation_id}"
         if escalations and len(escalations) >= min(max(int(limit or 10), 1), 200)
         else None
     )
+    line_cache: Dict[str, Tuple[Optional[str], Optional[str]]] = {}
+    escalation_items = await asyncio.gather(
+        *[_build_escalation_record_response(e, line_cache) for e in escalations]
+    ) if escalations else []
     return EscalationListResponse(
         bot_id=bot_id,
-        escalations=[
-            EscalationRecordResponse(
-                escalation_id=e.escalation_id,
-                bot_id=e.bot_id,
-                session_id=e.session_id,
-                visitor_email=e.visitor_email,
-                status=e.status,
-                created_at=e.created_at,
-                details=e.details,
-                title=e.session_title,
-                site_url=e.site_url,
-                site_title=e.site_title,
-                last_active_at=e.last_active_at,
-                session_status=e.session_status,
-            )
-            for e in escalations
-        ],
+        escalations=escalation_items,
         next_cursor=next_cursor,
         total_count=total_count,
     )
@@ -2864,23 +3183,28 @@ async def v1_org_get_escalation_for_session(
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
-    record = conversation_service().get_escalation_for_session(bot_id, session_id)
+    record = conversation_service().get_escalation_for_session(bot_id, session_id, user_id=user.user_id)
     if not record:
         raise HTTPException(status_code=404, detail="No escalation for this session")
-    return EscalationRecordResponse(
-        escalation_id=record.escalation_id,
-        bot_id=record.bot_id,
-        session_id=record.session_id,
-        visitor_email=record.visitor_email,
-        status=record.status,
-        created_at=record.created_at,
-        details=record.details,
-        title=record.session_title,
-        site_url=record.site_url,
-        site_title=record.site_title,
-        last_active_at=record.last_active_at,
-        session_status=record.session_status,
-    )
+    return await _build_escalation_record_response(record)
+
+
+@router.post("/v1/org/bots/{bot_id}/escalations/{escalation_id}/read", response_model=EscalationRecordResponse)
+async def v1_org_mark_escalation_read(
+    bot_id: str,
+    escalation_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    marked = conversation_service().mark_escalation_read(bot_id, escalation_id, user.user_id)
+    if not marked:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    record = conversation_service().get_escalation_by_id(bot_id, escalation_id, user_id=user.user_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    return await _build_escalation_record_response(record)
 
 
 @router.post("/v1/org/bots/{bot_id}/escalations/{escalation_id}/status")
@@ -2894,11 +3218,33 @@ async def v1_org_update_escalation_status(
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     status = (payload.status or "").strip().lower()
-    if status not in {"open", "resolved"}:
+    if status not in {"open", "resolved", "canceled", "expired"}:
         raise HTTPException(status_code=400, detail="Invalid escalation status")
-    updated = conversation_service().update_escalation_status(bot_id, escalation_id, status)
-    if not updated:
+    current_record = conversation_service().get_escalation_by_id(bot_id, escalation_id, user_id=user.user_id)
+    if not current_record:
         raise HTTPException(status_code=404, detail="Escalation not found")
+    session_id = current_record.session_id
+    if status == "resolved":
+        session_id = conversation_service().resolve_support_request(bot_id=bot_id, escalation_id=escalation_id)
+        if not session_id:
+            raise HTTPException(status_code=404, detail="Escalation not found")
+        conversation_service().mark_escalation_read(bot_id, escalation_id, user.user_id)
+    else:
+        updated = conversation_service().update_escalation_status(bot_id, escalation_id, status)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Escalation not found")
+        if status in {"canceled", "expired"}:
+            handoff = conversation_service().get_session_handoff(session_id)
+            if handoff and handoff.assistant_state in {"awaiting_support_details", "human_handoff"}:
+                if not handoff.support_request_id or handoff.support_request_id == escalation_id:
+                    conversation_service().release_handoff(
+                        bot_id=bot_id,
+                        session_id=session_id,
+                        ended_reason="staff_released" if status == "canceled" else "session_expired",
+                    )
+        if status != "open":
+            conversation_service().mark_escalation_read(bot_id, escalation_id, user.user_id)
+    esc_record = conversation_service().get_escalation_by_id(bot_id, escalation_id, user_id=user.user_id)
 
     # When resolving, de-escalate any LINE / Instagram user session and notify user
     if status == "resolved":
@@ -2906,18 +3252,9 @@ async def v1_org_update_escalation_status(
             from infrastructure.db.repositories import PostgresLineUserSessionRepository, PostgresLineChannelRepository
             from infrastructure.clients.line_client import push_message as line_push
 
-            esc_record = conversation_service().get_escalation_for_session(bot_id, "")
-            # We need the session_id from the escalation -- look it up by escalation_id
-            # The escalation record holds session_id, get it from the list
-            all_escs = conversation_service().list_escalations(bot_id, limit=200)
-            session_id = None
-            for e in all_escs:
-                if e.escalation_id == escalation_id:
-                    session_id = e.session_id
-                    break
             if session_id:
                 line_session_repo = PostgresLineUserSessionRepository()
-                mapping = line_session_repo.de_escalate_by_session_id(session_id)
+                mapping = line_session_repo.get_by_session_id(session_id)
                 if mapping:
                     line_channel_repo = PostgresLineChannelRepository()
                     lc = line_channel_repo.get_by_bot_id(bot_id)
@@ -2940,7 +3277,7 @@ async def v1_org_update_escalation_status(
 
             if session_id:
                 ig_session_repo = PostgresInstagramUserSessionRepository()
-                ig_mapping = ig_session_repo.de_escalate_by_session_id(session_id)
+                ig_mapping = ig_session_repo.get_by_session_id(session_id)
                 if ig_mapping:
                     ig_channel_repo = PostgresInstagramChannelRepository()
                     ig_ch = ig_channel_repo.get_by_bot_id(bot_id)
@@ -2956,7 +3293,12 @@ async def v1_org_update_escalation_status(
         except Exception:
             pass  # Best-effort; don't block the status update
 
-    return {"status": status}
+    return {
+        "status": status,
+        "escalation_id": escalation_id,
+        "session_id": session_id,
+        "notification_is_unread": bool(getattr(esc_record, "notification_is_unread", False)),
+    }
 
 
 @router.get("/v1/org/bots/{bot_id}/conversations/{session_id}", response_model=ConversationDetailResponse)
@@ -2989,6 +3331,10 @@ async def v1_org_get_conversation(
             )
             for m in messages
         ],
+        assistant_state=getattr(session, "assistant_state", "bot") or "bot",
+        handoff_active=bool(getattr(session, "handoff_active", False)),
+        support_request_id=getattr(session, "support_request_id", None),
+        support_request_status=getattr(session, "support_request_status", None),
     )
 
 
@@ -3031,25 +3377,37 @@ async def v1_org_takeover_conversation(
         from infrastructure.db.repositories import PostgresInstagramUserSessionRepository
 
         repo = PostgresInstagramUserSessionRepository()
-        mapping = repo.escalate_by_session_id(session_id)
+        mapping = repo.get_by_session_id(session_id)
         if not mapping:
             raise HTTPException(status_code=404, detail="No Instagram session found for this conversation")
+        conversation_service().begin_handoff(
+            bot_id=bot_id,
+            session_id=session_id,
+            source_channel="instagram",
+            started_by="staff",
+        )
     elif ch == "line":
         from infrastructure.db.repositories import PostgresLineUserSessionRepository, PostgresLineChannelRepository
         from infrastructure.clients.line_client import push_message as line_push
 
         repo = PostgresLineUserSessionRepository()
-        mapping = repo.escalate_by_session_id(session_id)
+        mapping = repo.get_by_session_id(session_id)
         if not mapping:
             raise HTTPException(status_code=404, detail="No LINE session found for this conversation")
-        # Notify end user that a staff member has taken over
+        conversation_service().begin_handoff(
+            bot_id=bot_id,
+            session_id=session_id,
+            source_channel="line",
+            started_by="staff",
+        )
+        # Notify the end user that the conversation has been transferred to support
         try:
             lc = PostgresLineChannelRepository().get_by_bot_id(bot_id)
             if lc and lc.is_active:
                 msg = (
-                    "スタッフが対応を引き継ぎました。このままLINEでお返事いたしますので、少々お待ちください。"
+                    "この会話はサポート担当へ転送されました。このままLINEでご案内しますので、少々お待ちください。"
                     if is_ja
-                    else "A team member has taken over this conversation. They will reply to you here on LINE shortly."
+                    else "This conversation has been transferred to our support team. They will reply to you here on LINE shortly."
                 )
                 import asyncio
                 asyncio.ensure_future(
@@ -3059,7 +3417,13 @@ async def v1_org_takeover_conversation(
             pass  # Best-effort
     else:
         raise HTTPException(status_code=400, detail="Takeover only supported for Instagram and LINE conversations")
-    return ConversationTakeoverResponse()
+    updated_session = conversation_service().get_session(session_id)
+    return ConversationTakeoverResponse(
+        assistant_state=getattr(updated_session, "assistant_state", "human_handoff") or "human_handoff",
+        handoff_active=bool(getattr(updated_session, "handoff_active", True)),
+        support_request_id=getattr(updated_session, "support_request_id", None),
+        support_request_status=getattr(updated_session, "support_request_status", None),
+    )
 
 
 @router.get("/v1/pk/{publishable_key}/conversations", response_model=ConversationListResponse)
@@ -3093,6 +3457,10 @@ async def v1_pk_list_conversations(
                 started_at=s.started_at,
                 last_active_at=s.last_active_at,
                 ended_at=s.ended_at,
+                assistant_state=getattr(s, "assistant_state", "bot") or "bot",
+                handoff_active=bool(getattr(s, "handoff_active", False)),
+                support_request_id=getattr(s, "support_request_id", None),
+                support_request_status=getattr(s, "support_request_status", None),
             )
             for s in sessions
         ],
@@ -3131,6 +3499,10 @@ async def v1_pk_get_conversation(
             for m in messages
             if m.role != "system"
         ],
+        assistant_state=getattr(session, "assistant_state", "bot") or "bot",
+        handoff_active=bool(getattr(session, "handoff_active", False)),
+        support_request_id=getattr(session, "support_request_id", None),
+        support_request_status=getattr(session, "support_request_status", None),
     )
 
 
@@ -3171,20 +3543,21 @@ async def v1_pk_escalate_support(
             user_agent=request.headers.get("user-agent"),
             ip=request.client.host if request.client else None,
         )
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="system",
-            content="Escalated to support",
-        )
     visitor_email = (payload.visitor_email or "").strip().lower()
     if not visitor_email or "@" not in visitor_email:
         raise HTTPException(status_code=400, detail="visitor_email is required")
-    record = conversation_service().create_escalation(
+    record = conversation_service().request_support(
         bot_id=bot.bot_id,
         session_id=session.session_id,
         visitor_email=visitor_email,
         details=(payload.details or "").strip() or None,
+        source_channel="chat",
+    )
+    conversation_service().add_message(
+        session_id=session.session_id,
+        bot_id=bot.bot_id,
+        role="system",
+        content="Escalated to support",
     )
     from infrastructure.email import maybe_send_escalation_email
 

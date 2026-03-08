@@ -22,7 +22,7 @@ function getActivePrimaryId(pathname: string): string {
 }
 
 export default function DashboardLayout() {
-  const { loading, error, selectedBotWidgetConfig } = useDashboardData()
+  const { loading, error, selectedBotWidgetConfig, selectedBotUnreadNotifications } = useDashboardData()
   const location = useLocation()
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const { t } = useTranslation()
@@ -43,6 +43,25 @@ export default function DashboardLayout() {
   )
 
   const showSecondaryPanel = activePrimaryId === 'bots' && !!botId
+  const notificationBadgeLabel = selectedBotUnreadNotifications > 99 ? '99+' : String(selectedBotUnreadNotifications)
+
+  function renderSecondaryNavContent(item: (typeof secondaryItems)[number]) {
+    const Icon = item.icon
+    const showNotificationBadge = item.id === 'notifications' && selectedBotUnreadNotifications > 0
+    return (
+      <span className="nav-link-content">
+        <span className="nav-icon-wrap">
+          <Icon className="nav-icon" aria-hidden />
+          {showNotificationBadge && (
+            <span className="nav-notification-badge" aria-label={t('nav.notifications', 'Notifications')}>
+              {notificationBadgeLabel}
+            </span>
+          )}
+        </span>
+        <span className="nav-label-text">{t(item.label)}</span>
+      </span>
+    )
+  }
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -119,7 +138,6 @@ export default function DashboardLayout() {
                     <div key={groupIndex} className={group.header ? 'nav-category' : 'nav-group-container'}>
                       {group.header && <div className="nav-category-header">{t(group.header)}</div>}
                       {group.items.map((item) => {
-                        const Icon = item.icon
                         return (
                           <div key={item.id}>
                             {item.separator && <hr className="nav-separator" />}
@@ -131,10 +149,7 @@ export default function DashboardLayout() {
                                   end={item.to === '/' || item.id === 'overview'}
                                   onClick={() => setMobileSidebarOpen(false)}
                                 >
-                                  <span className="nav-link-content">
-                                    <Icon className="nav-icon" aria-hidden="true" />
-                                    {t(item.label)}
-                                  </span>
+                                  {renderSecondaryNavContent(item)}
                                 </NavLink>
                               </div>
                             </div>
@@ -154,7 +169,6 @@ export default function DashboardLayout() {
                 <hr className="nav-separator" style={{ margin: '0.5rem 0 1rem' }} />
                 <nav className="sidebar-nav">
                   {secondaryItems.filter(item => item.id === 'settings').map((item) => {
-                    const Icon = item.icon
                     return (
                       <div key={item.id} className="nav-group">
                         <div className="nav-row">
@@ -163,10 +177,7 @@ export default function DashboardLayout() {
                             to={item.to}
                             onClick={() => setMobileSidebarOpen(false)}
                           >
-                            <span className="nav-link-content">
-                              <Icon className="nav-icon" aria-hidden="true" />
-                              {t(item.label)}
-                            </span>
+                            {renderSecondaryNavContent(item)}
                           </NavLink>
                         </div>
                       </div>

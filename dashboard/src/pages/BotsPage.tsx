@@ -5,10 +5,12 @@ import { useDashboardData } from '../hooks/useDashboardData'
 import PageHeader from '../components/PageHeader'
 import { AnimatedPage, EmptyState, GlassCard, SectionHeader, StatusDot, UiButton } from '../components/ui'
 import { useTranslation } from 'react-i18next'
+import { useDialog } from '../contexts/DialogContext'
 
 export default function BotsPage() {
   const { bots, loading, isSuperAdmin, activeOrgId, deleteBot, renameBot } = useDashboardData()
   const { t } = useTranslation()
+  const dialog = useDialog()
   const navigate = useNavigate()
   const [selectedBotIds, setSelectedBotIds] = useState<Set<string>>(new Set())
   const [openMenuBotId, setOpenMenuBotId] = useState<string | null>(null)
@@ -47,7 +49,12 @@ export default function BotsPage() {
 
   const handleDeleteSelected = async () => {
     if (!selectedCount) return
-    const ok = window.confirm(t('botsPage.deleteMultipleConfirm', 'Delete {{count}} selected bot(s)? This cannot be undone.', { count: selectedCount }))
+    const ok = await dialog.confirm({
+      title: t('botsPage.deleteMultipleConfirm', 'Delete {{count}} selected bot(s)? This cannot be undone.', { count: selectedCount }),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      tone: 'danger',
+    })
     if (!ok) return
     const ids = Array.from(selectedBotIds)
     for (const botId of ids) {
@@ -57,14 +64,28 @@ export default function BotsPage() {
   }
 
   const handleRenameBot = async (botId: string, currentName: string) => {
-    const nextName = window.prompt(t('botsPage.enterNewBotName', 'Enter new bot name:'), currentName)?.trim()
-    if (!nextName || nextName === currentName) return
-    await renameBot(botId, nextName)
+    const nextName = await dialog.prompt({
+      title: t('botsPage.enterNewBotName', 'Enter new bot name:'),
+      label: t('botSettings.botName', 'Bot Name'),
+      placeholder: t('botSettings.enterBotName', 'Enter bot name'),
+      defaultValue: currentName,
+      confirmLabel: t('botsPage.rename', 'Rename'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      required: true,
+    })
+    const trimmedName = nextName?.trim()
+    if (!trimmedName || trimmedName === currentName) return
+    await renameBot(botId, trimmedName)
     setOpenMenuBotId(null)
   }
 
   const handleDeleteOne = async (botId: string, name: string) => {
-    const ok = window.confirm(t('botsPage.deleteOneConfirm', 'Delete "{{name}}"? This cannot be undone.', { name }))
+    const ok = await dialog.confirm({
+      title: t('botsPage.deleteOneConfirm', 'Delete "{{name}}"? This cannot be undone.', { name }),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      tone: 'danger',
+    })
     if (!ok) return
     await deleteBot(botId)
     setSelectedBotIds((prev) => {

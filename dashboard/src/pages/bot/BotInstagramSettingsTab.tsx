@@ -5,6 +5,7 @@ import { useDashboardData } from '../../hooks/useDashboardData'
 import { CheckCircle, AlertCircle, Loader2, Trash2, Zap, Instagram, ExternalLink, LogIn } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard } from '../../components/ui'
 import { useTranslation } from 'react-i18next'
+import { useDialog } from '../../contexts/DialogContext'
 
 type InstagramChannelConfig = {
   channel_id: string
@@ -26,6 +27,7 @@ const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_B
 export default function BotInstagramSettingsTab() {
   const { botId } = useParams()
   const { selectedBot } = useDashboardData()
+  const dialog = useDialog()
   const { getAccessTokenSilently } = useAuth0()
   const [searchParams, setSearchParams] = useSearchParams()
   const { i18n } = useTranslation()
@@ -149,7 +151,12 @@ export default function BotInstagramSettingsTab() {
 
   async function handleDisconnect() {
     if (!botId) return
-    const confirmed = window.confirm(tr('Disconnect Instagram integration? Your bot will stop responding to DMs.', 'Instagram連携を解除しますか？ボットはDMに返信しなくなります。'))
+    const confirmed = await dialog.confirm({
+      title: tr('Disconnect Instagram integration? Your bot will stop responding to DMs.', 'Instagram連携を解除しますか？ボットはDMに返信しなくなります。'),
+      confirmLabel: tr('Disconnect', '連携解除'),
+      cancelLabel: tr('Cancel', 'キャンセル'),
+      tone: 'danger',
+    })
     if (!confirmed) return
     setDisconnecting(true)
     setError(null)

@@ -4,37 +4,39 @@ import { Bot, User, Search, Download, ArrowLeft, XCircle, MessageCircle, Message
 import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import type {
+  ConversationDetailRecord,
   ConversationMessageRecord,
   ConversationSessionRecord,
   EscalationRecord,
 } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import { getEscalationContact } from '../../utils/escalationIdentity'
+import { parseMessageLinks } from '../../utils/messageLinks'
 
 export default function BotConversationsTab() {
   const { i18n } = useTranslation()
   const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
   const isJa = lang.startsWith('ja') || lang.startsWith('jp')
   const tr = (en: string, ja: string) => (isJa ? ja : en)
-  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, listEscalations, getConversation, endConversation, getEscalationForSession, takeOverConversation } =
+  const { selectedBot, listConversations, searchConversations, exportConversationsCsv, getConversation, endConversation, getEscalationForSession, takeOverConversation, markEscalationRead } =
     useDashboardData()
   const [sessions, setSessions] = useState<ConversationSessionRecord[]>([])
+  const [selectedConversation, setSelectedConversation] = useState<ConversationDetailRecord | null>(null)
   const [messages, setMessages] = useState<ConversationMessageRecord[]>([])
   const [escalation, setEscalation] = useState<EscalationRecord | null>(null)
-  const [escalatedSessionIds, setEscalatedSessionIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list')
   const [query, setQuery] = useState('')
   const [searchParams] = useSearchParams()
-  const [takenOver, setTakenOver] = useState<Set<string>>(new Set())
   const [takingOver, setTakingOver] = useState(false)
 
   useEffect(() => {
     if (!selectedBot) return
     setSessions([])
+    setSelectedConversation(null)
     setMessages([])
     setEscalation(null)
-    setEscalatedSessionIds(new Set())
     setSelectedSession(null)
     setMobileView('list')
     void loadSessions()
@@ -44,8 +46,19 @@ export default function BotConversationsTab() {
   const pageSize = 200
 
   const selectedSessionRecord = useMemo(
-    () => sessions.find((s) => s.session_id === selectedSession) || null,
-    [sessions, selectedSession]
+    () => {
+      const base = sessions.find((s) => s.session_id === selectedSession) || null
+      if (!base) return null
+      if (!selectedConversation || selectedConversation.session_id !== base.session_id) return base
+      return {
+        ...base,
+        assistant_state: selectedConversation.assistant_state,
+        handoff_active: selectedConversation.handoff_active,
+        support_request_id: selectedConversation.support_request_id,
+        support_request_status: selectedConversation.support_request_status,
+      }
+    },
+    [sessions, selectedSession, selectedConversation]
   )
 
   useEffect(() => {
@@ -72,6 +85,21 @@ export default function BotConversationsTab() {
     return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
+  function renderMessageContent(message: string, keyBase: string) {
+    const parts = parseMessageLinks(message)
+    if (!parts || parts.length === 0) return message
+    return parts.map((part, idx) => {
+      if (part.type === 'text') {
+        return <span key={`${keyBase}-text-${idx}`}>{part.content}</span>
+      }
+      return (
+        <a key={`${keyBase}-link-${idx}`} href={part.url} target="_blank" rel="noopener noreferrer">
+          {part.text}
+        </a>
+      )
+    })
+  }
+
   type SessionStatus = 'active' | 'away' | 'ended' | null
 
   function statusForSession(s: ConversationSessionRecord | null): SessionStatus {
@@ -93,6 +121,21 @@ export default function BotConversationsTab() {
     return ''
   }
 
+  function supportStatusLabel(status?: string | null) {
+    switch ((status || '').toLowerCase()) {
+      case 'resolved':
+        return tr('Resolved', '解決済み')
+      case 'canceled':
+        return tr('Canceled', 'キャンセル')
+      case 'expired':
+        return tr('Expired', '期限切れ')
+      case 'open':
+        return tr('Pending', '保留')
+      default:
+        return tr('Pending', '保留')
+    }
+  }
+
   async function loadSessions() {
     if (!selectedBot) return
     setLoading(true)
@@ -100,11 +143,7 @@ export default function BotConversationsTab() {
       const convData = query.trim()
         ? await searchConversations(selectedBot.bot_id, { q: query.trim(), limit: pageSize })
         : await listConversations(selectedBot.bot_id, pageSize)
-      const escData = await listEscalations(selectedBot.bot_id, pageSize)
       setSessions(convData.sessions || [])
-      setEscalatedSessionIds(
-        new Set((escData.escalations || []).map((e) => e.session_id))
-      )
     } finally {
       setLoading(false)
     }
@@ -120,8 +159,22 @@ export default function BotConversationsTab() {
         getConversation(selectedBot.bot_id, sessionId, 200),
         getEscalationForSession(selectedBot.bot_id, sessionId),
       ])
-      setMessages(data || [])
+      setSelectedConversation(data || null)
+      setMessages(data?.messages || [])
       setEscalation(escalationInfo || null)
+      if (escalationInfo?.notification_is_unread) {
+        void markEscalationRead(selectedBot.bot_id, escalationInfo.escalation_id).then((updated) => {
+          if (updated) {
+            setEscalation(updated)
+          } else {
+            setEscalation((prev) =>
+              prev && prev.escalation_id === escalationInfo.escalation_id
+                ? { ...prev, notification_is_unread: false, notification_read_at: new Date().toISOString() }
+                : prev
+            )
+          }
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -153,6 +206,7 @@ export default function BotConversationsTab() {
   async function handleEndSession() {
     if (!selectedBot || !selectedSession) return
     await endConversation(selectedBot.bot_id, selectedSession)
+    setSelectedConversation(null)
     setSelectedSession(null)
     setMobileView('list')
     setMessages([])
@@ -163,8 +217,17 @@ export default function BotConversationsTab() {
     if (!selectedBot || !selectedSession || takingOver) return
     setTakingOver(true)
     try {
-      await takeOverConversation(selectedBot.bot_id, selectedSession)
-      setTakenOver((prev) => new Set(prev).add(selectedSession))
+      const state = await takeOverConversation(selectedBot.bot_id, selectedSession)
+      if (state) {
+        setSelectedConversation((prev) => prev ? { ...prev, ...state } : prev)
+        setSessions((prev) =>
+          prev.map((item) => (
+            item.session_id === selectedSession
+              ? { ...item, ...state }
+              : item
+          ))
+        )
+      }
     } finally {
       setTakingOver(false)
     }
@@ -259,7 +322,7 @@ export default function BotConversationsTab() {
                   <span className="conversation-pill conversation-pill--channel">
                     {channelLabel(s.channel).emoji} {channelLabel(s.channel).label}
                   </span>
-                  {escalatedSessionIds.has(s.session_id) && (
+                  {Boolean(s.support_request_id || s.support_request_status) && (
                     <span className="conversation-pill conversation-pill--escalated">{tr('Support requested', 'サポート依頼')}</span>
                   )}
                   {(s.channel || '').toLowerCase() === 'line' && (
@@ -325,15 +388,18 @@ export default function BotConversationsTab() {
                 </>
               )}
               {escalation && (
+                (() => {
+                  const escalationContact = getEscalationContact(escalation, tr)
+                  return (
                 <div className="conversation-escalation-box conversation-escalation-box--top">
                   <div className="conversation-escalation-title">{tr('Support requested', 'サポート依頼')}</div>
                   <div className="conversation-escalation-row">
-                    <span>{tr('Email', 'メール')}</span>
-                    <span>{escalation.visitor_email}</span>
+                    <span>{escalationContact.label}</span>
+                    <span>{escalationContact.value}</span>
                   </div>
                   <div className="conversation-escalation-row">
                     <span>{tr('Status', 'ステータス')}</span>
-                    <span>{escalation.status === 'resolved' ? tr('Resolved', '解決済み') : tr('Pending', '保留')}</span>
+                    <span>{supportStatusLabel(escalation.status)}</span>
                   </div>
                   <div className="conversation-escalation-row">
                     <span>{tr('Requested', '依頼日時')}</span>
@@ -346,6 +412,8 @@ export default function BotConversationsTab() {
                     </div>
                   )}
                 </div>
+                  )
+                })()
               )}
               <div className="conversation-actions">
                 <UiButton variant="secondary" onClick={() => { setSelectedSession(null); setMobileView('list') }} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -353,11 +421,11 @@ export default function BotConversationsTab() {
                   {tr('Back to list', '一覧に戻る')}
                 </UiButton>
                 {selectedSessionRecord && (selectedSessionRecord.channel || '').toLowerCase() === 'line' && (
-                  takenOver.has(selectedSession!) || escalation?.status === 'open' ? (
+                  selectedSessionRecord.handoff_active ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.85rem', color: 'var(--ui-flow-accent)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                         <HandMetal size={14} />
-                        {tr("You've taken over — bot is paused", '引き継ぎ済み — ボットは一時停止中')}
+                        {tr('Transferred to support — bot is paused', 'サポートへ転送済み — ボットは一時停止中')}
                       </span>
                       <a
                         href="https://chat.line.biz/"
@@ -420,7 +488,9 @@ export default function BotConversationsTab() {
                         </div>
                         <div className={`conversation-message conversation-message--${m.role}`}>
                           {m.sender_name && <div className="conversation-sender-name">{m.sender_name}</div>}
-                          <div className="conversation-message-content">{m.content}</div>
+                          <div className="conversation-message-content">
+                            {renderMessageContent(m.content, m.message_id || `${m.role}-${idx}`)}
+                          </div>
                           <div className="conversation-message-time">
                             {formatMessageTime(m.created_at || null)}
                           </div>

@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import { useDialog } from '../../contexts/DialogContext'
 
 export default function BotSettingsTab() {
   const { t } = useTranslation()
+  const dialog = useDialog()
   const { selectedBot, deleteBot, renameBot, saveWidgetConfig, selectedBotWidgetConfig, loading, error } = useDashboardData()
   const navigate = useNavigate()
 
@@ -24,9 +26,12 @@ export default function BotSettingsTab() {
   const handleDelete = async () => {
     if (!selectedBot) return
 
-    const confirmed = window.confirm(
-      t('botSettings.deleteConfirm', 'Are you sure you want to delete "{{name}}"? This action cannot be undone and will delete all associated data including domains, knowledge base, and crawl jobs.', { name: selectedBot.display_name })
-    )
+    const confirmed = await dialog.confirm({
+      title: t('botSettings.deleteConfirm', 'Are you sure you want to delete "{{name}}"? This action cannot be undone and will delete all associated data including domains, knowledge base, and crawl jobs.', { name: selectedBot.display_name }),
+      confirmLabel: t('botSettings.deleteBot', 'Delete Bot'),
+      cancelLabel: t('botSettings.cancel', 'Cancel'),
+      tone: 'danger',
+    })
 
     if (!confirmed) return
 

@@ -73,6 +73,22 @@ def _is_valid_i18n_text(value: Any) -> bool:
     return False
 
 
+def _normalize_lang(lang: str) -> str:
+    lang_key = (lang or "en").strip().lower()
+    return "ja" if lang_key in ("ja", "jp") else "en"
+
+
+def _resolve_i18n_text(value: Any, *, lang: str = "en", fallback: str = "") -> str:
+    if isinstance(value, str):
+        return value.strip() or fallback
+    if isinstance(value, dict):
+        lang_key = _normalize_lang(lang)
+        text = str(value.get(lang_key) or value.get("en") or value.get("ja") or "").strip()
+        if text:
+            return text
+    return fallback
+
+
 def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     if not isinstance(cfg, dict) or not cfg:
         raise ConfigValidationError(f"Config file is empty: {_CONFIG_PATH}")
@@ -102,6 +118,35 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_str(cfg, "line_menu_page_payload_prefix")
     _require_str(cfg, "instagram_menu_quick_payload")
     _require_str(cfg, "instagram_menu_page_payload_prefix")
+    dashboard = _require_dict(cfg, "dashboard")
+    overview_sections = _require_list(dashboard, "overview_setup_sections")
+    seen_section_ids = set()
+    for idx, section in enumerate(overview_sections):
+        if not isinstance(section, dict):
+            raise ConfigValidationError(f"Invalid dashboard.overview_setup_sections[{idx}] in {_CONFIG_PATH}")
+        section_id = str(section.get("id") or "").strip()
+        route = str(section.get("route") or "").strip()
+        status_source = str(section.get("status_source") or "").strip()
+        if not section_id:
+            raise ConfigValidationError(f"Missing dashboard.overview_setup_sections[{idx}].id in {_CONFIG_PATH}")
+        if section_id in seen_section_ids:
+            raise ConfigValidationError(f"Duplicate dashboard.overview_setup_sections id '{section_id}' in {_CONFIG_PATH}")
+        seen_section_ids.add(section_id)
+        if not _is_valid_i18n_text(section.get("label")):
+            raise ConfigValidationError(
+                f"Missing or invalid dashboard.overview_setup_sections[{idx}].label in {_CONFIG_PATH}"
+            )
+        if not route:
+            raise ConfigValidationError(f"Missing dashboard.overview_setup_sections[{idx}].route in {_CONFIG_PATH}")
+        if not status_source:
+            raise ConfigValidationError(
+                f"Missing dashboard.overview_setup_sections[{idx}].status_source in {_CONFIG_PATH}"
+            )
+        required_tabs = section.get("required_knowledge_tabs")
+        if required_tabs is not None and not isinstance(required_tabs, list):
+            raise ConfigValidationError(
+                f"Invalid dashboard.overview_setup_sections[{idx}].required_knowledge_tabs in {_CONFIG_PATH}"
+            )
 
     defaults = _require_dict(cfg, "defaults")
     jobs_defaults = _require_dict(defaults, "jobs")
@@ -538,8 +583,7 @@ def get_reservation_platforms_list(*, lang: str = "en") -> List[Dict[str, Any]]:
     Return list of reservation platforms from config (for dashboard dropdowns).
     No hardcoding: add platforms in platform_profiles.yml only.
     """
-    lang = (lang or "en").strip().lower()
-    lang = "ja" if lang in ("ja", "jp") else "en"
+    lang = _normalize_lang(lang)
     cfg = _load_platform_config()
     rpc = cfg.get("reservation_platform_config") or {}
     out: List[Dict[str, Any]] = []
@@ -548,11 +592,7 @@ def get_reservation_platforms_list(*, lang: str = "en") -> List[Dict[str, Any]]:
         if domain_key in PLATFORM_PROFILES:
             profile = PLATFORM_PROFILES[domain_key]
             metadata = profile.metadata if isinstance(getattr(profile, "metadata", None), dict) else {}
-            sn = metadata.get("service_name")
-            if isinstance(sn, dict):
-                label = str(sn.get(lang) or sn.get("en") or pid).strip() or pid
-            elif isinstance(sn, str) and sn.strip():
-                label = sn.strip()
+            label = _resolve_i18n_text(metadata.get("service_name"), lang=lang, fallback=pid) or pid
         entry = rpc.get(pid) if isinstance(rpc, dict) else {}
         url_placeholder = str(entry.get("url_placeholder") or "").strip() if isinstance(entry, dict) else ""
         out.append({
@@ -563,6 +603,44 @@ def get_reservation_platforms_list(*, lang: str = "en") -> List[Dict[str, Any]]:
             "url_placeholder": url_placeholder,
         })
     return out
+
+
+def get_dashboard_overview_setup_sections(*, lang: str = "en") -> List[Dict[str, Any]]:
+    """
+    Return bot overview summary pill definitions from config.
+    Sections can be gated by required_knowledge_tabs so the dashboard stays YAML-driven.
+    """
+    lang = _normalize_lang(lang)
+    cfg = _load_platform_config()
+    dashboard = cfg.get("dashboard") if isinstance(cfg.get("dashboard"), dict) else {}
+    raw_sections = dashboard.get("overview_setup_sections")
+    if not isinstance(raw_sections, list):
+        return []
+
+    sections: List[Dict[str, Any]] = []
+    for raw_section in raw_sections:
+        if not isinstance(raw_section, dict):
+            continue
+        section_id = str(raw_section.get("id") or "").strip()
+        route = str(raw_section.get("route") or "").strip()
+        status_source = str(raw_section.get("status_source") or "").strip()
+        label = _resolve_i18n_text(raw_section.get("label"), lang=lang, fallback=section_id)
+        if not section_id or not route or not status_source or not label:
+            continue
+        required_tabs_raw = raw_section.get("required_knowledge_tabs")
+        required_tabs = (
+            [str(tab).strip().lower() for tab in required_tabs_raw if str(tab).strip()]
+            if isinstance(required_tabs_raw, list)
+            else []
+        )
+        sections.append({
+            "id": section_id,
+            "label": label,
+            "route": route,
+            "status_source": status_source,
+            "required_knowledge_tabs": required_tabs,
+        })
+    return sections
 
 
 def get_defaults_config() -> Dict[str, Any]:
@@ -1083,6 +1161,77 @@ def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
 
 
 _VALID_SUGGESTED_TYPES = ("ai_response", "show_menu", "escalate")
+_SUPPORTED_SUGGESTED_LANGS = ("en", "ja")
+
+
+def _normalize_suggested_lang(lang: Optional[str]) -> str:
+    raw = (lang or "en").strip().lower()
+    return "ja" if raw in ("ja", "jp") else "en"
+
+
+def _resolve_suggested_items(items: List[Dict[str, Any]], *, lang: str) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        label = _resolve_label_or_prompt(raw.get("label"), lang)
+        if not label:
+            continue
+        prompt = _resolve_label_or_prompt(raw.get("prompt"), lang) or label
+        raw_type = str(raw.get("type") or "ai_response").strip() or "ai_response"
+        if raw_type not in _VALID_SUGGESTED_TYPES:
+            raw_type = "ai_response"
+        item: Dict[str, Any] = {
+            "id": str(raw.get("id") or "").strip() or f"suggest_{len(out) + 1}",
+            "label": label,
+            "prompt": prompt,
+            "type": raw_type,
+        }
+        urls = raw.get("urls")
+        if isinstance(urls, list):
+            item["urls"] = [str(url).strip() for url in urls if str(url).strip()]
+        message = str(raw.get("message") or "").strip()
+        if message:
+            item["message"] = message
+        out.append(item)
+    return out
+
+
+def _get_default_suggested_messages_for_widget(
+    widget_config: Dict[str, Any],
+    *,
+    lang: str,
+) -> List[Dict[str, Any]]:
+    normalized_lang = _normalize_suggested_lang(lang)
+    features = get_platform_features_from_widget(widget_config)
+    platform_suggested = features.get("suggested_messages") if features else None
+    if isinstance(platform_suggested, list) and platform_suggested:
+        return _resolve_suggested_items(platform_suggested, lang=normalized_lang)
+    return _resolve_suggested_items(DEFAULT_SUGGESTED_MESSAGES, lang=normalized_lang)
+
+
+def get_suggested_messages_by_language_for_widget(widget_config: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+    current_lang = _normalize_suggested_lang(
+        widget_config.get("language") or widget_config.get("botLanguage") or "en"
+    )
+    raw_by_lang = widget_config.get("suggestedMessagesByLanguage")
+    raw_current = widget_config.get("suggestedMessages")
+    resolved: Dict[str, List[Dict[str, Any]]] = {}
+    for lang in _SUPPORTED_SUGGESTED_LANGS:
+        raw_items = None
+        if isinstance(raw_by_lang, dict):
+            candidate = raw_by_lang.get(lang)
+            if isinstance(candidate, list):
+                raw_items = candidate
+        if raw_items is None and lang == current_lang and isinstance(raw_current, list):
+            raw_items = raw_current
+        if isinstance(raw_items, list):
+            resolved_items = _resolve_suggested_items(raw_items, lang=lang)
+            if resolved_items:
+                resolved[lang] = resolved_items
+                continue
+        resolved[lang] = _get_default_suggested_messages_for_widget(widget_config, lang=lang)
+    return resolved
 
 
 def get_available_suggested_message_types(platform_id: Optional[str] = None) -> List[str]:
@@ -1183,54 +1332,10 @@ def get_suggested_messages_for_widget(
     - Else: use platform profile (Tabelog, HotPepper, TableCheck) as initial default
     - Else: use default_suggested_messages
     """
-    lang = (lang or "en").strip().lower()
-    lang = "ja" if lang in ("ja", "jp") else "en"
-
-    def resolve_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
-        for raw in items:
-            if not isinstance(raw, dict):
-                continue
-            label = _resolve_label_or_prompt(raw.get("label"), lang)
-            if not label:
-                continue
-            prompt = _resolve_label_or_prompt(raw.get("prompt"), lang) or label
-            raw_type = str(raw.get("type") or "ai_response").strip() or "ai_response"
-            if raw_type not in ("ai_response", "show_menu", "escalate"):
-                raw_type = "ai_response"
-            out.append({
-                "id": str(raw.get("id") or "").strip() or f"suggest_{len(out) + 1}",
-                "label": label,
-                "prompt": prompt,
-                "type": raw_type,
-            })
-        return out
-
-    # 1. DB first: widget_config.suggestedMessages (saved from dashboard; edits persist)
-    #    Exception: platform bot with generic defaults (Ask a question/質問する) -> use platform
-    wc_suggested = widget_config.get("suggestedMessages")
-    features = get_platform_features_from_widget(widget_config)
-    platform_suggested = features.get("suggested_messages") if features else None
-
-    if isinstance(wc_suggested, list) and wc_suggested:
-        resolved = resolve_items(wc_suggested)
-        if resolved:
-            # If platform has config and DB has generic default (2nd item = Ask question), use platform
-            generic_second = ("ask a question", "質問する")
-            if platform_suggested and len(resolved) >= 2:
-                second_label = (resolved[1].get("label") or "").strip().lower()
-                if second_label in generic_second:
-                    platform_resolved = resolve_items(platform_suggested)
-                    if platform_resolved and len(platform_resolved) >= 2:
-                        plat_second = (platform_resolved[1].get("label") or "").strip().lower()
-                        if plat_second not in generic_second:  # platform has 予約/Reservation
-                            return platform_resolved
-            return resolved
-
-    # 2. Fallback: platform profile (Tabelog, HotPepper, TableCheck) as initial default
-    if platform_suggested:
-        return resolve_items(platform_suggested)
-    return resolve_items(DEFAULT_SUGGESTED_MESSAGES)
+    normalized_lang = _normalize_suggested_lang(lang)
+    by_lang = get_suggested_messages_by_language_for_widget(widget_config)
+    resolved = by_lang.get(normalized_lang) or []
+    return resolved if resolved else _get_default_suggested_messages_for_widget(widget_config, lang=normalized_lang)
 
 
 def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:

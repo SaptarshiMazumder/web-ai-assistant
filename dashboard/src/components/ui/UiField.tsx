@@ -1,13 +1,19 @@
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 
 function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
 }
 
-export function UiInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cx('ui-flow-field-input', className)} {...props} />
-}
+export const UiInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function UiInput(
+  { className, ...props },
+  ref
+) {
+  return <input ref={ref} className={cx('ui-flow-field-input', className)} {...props} />
+})
 
-export function UiTextArea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea className={cx('ui-flow-field-input', className)} {...props} />
-}
+export const UiTextArea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function UiTextArea(
+  { className, ...props },
+  ref
+) {
+  return <textarea ref={ref} className={cx('ui-flow-field-input', className)} {...props} />
+})

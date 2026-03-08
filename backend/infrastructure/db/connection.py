@@ -241,7 +241,60 @@ _SCHEMA_SQL: Iterable[str] = (
       created_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS conversation_escalation_reads (
+      escalation_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      read_at TEXT NOT NULL,
+      PRIMARY KEY (escalation_id, user_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS conversation_channel_contacts (
+      contact_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      external_user_id TEXT NOT NULL,
+      display_name TEXT,
+      metadata_json TEXT NOT NULL DEFAULT '{}',
+      current_session_id TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS conversation_session_handoffs (
+      handoff_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      session_id TEXT NOT NULL UNIQUE,
+      contact_id TEXT,
+      source_channel TEXT,
+      assistant_state TEXT NOT NULL DEFAULT 'bot',
+      support_request_id TEXT,
+      started_by TEXT,
+      ended_reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      ended_at TEXT
+    )
+    """,
     "ALTER TABLE conversation_escalations ADD COLUMN IF NOT EXISTS details TEXT",
+    "CREATE INDEX IF NOT EXISTS conversation_escalation_reads_user_id ON conversation_escalation_reads (user_id, read_at DESC)",
+    "CREATE INDEX IF NOT EXISTS conversation_escalation_reads_escalation_id ON conversation_escalation_reads (escalation_id)",
+    "ALTER TABLE conversation_channel_contacts ADD COLUMN IF NOT EXISTS display_name TEXT",
+    "ALTER TABLE conversation_channel_contacts ADD COLUMN IF NOT EXISTS metadata_json TEXT NOT NULL DEFAULT '{}'",
+    "ALTER TABLE conversation_channel_contacts ADD COLUMN IF NOT EXISTS current_session_id TEXT",
+    "CREATE UNIQUE INDEX IF NOT EXISTS conversation_channel_contacts_identity ON conversation_channel_contacts (bot_id, channel, external_user_id)",
+    "CREATE INDEX IF NOT EXISTS conversation_channel_contacts_session_id ON conversation_channel_contacts (current_session_id)",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS contact_id TEXT",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS source_channel TEXT",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS assistant_state TEXT NOT NULL DEFAULT 'bot'",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS support_request_id TEXT",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS started_by TEXT",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS ended_reason TEXT",
+    "ALTER TABLE conversation_session_handoffs ADD COLUMN IF NOT EXISTS ended_at TEXT",
+    "CREATE INDEX IF NOT EXISTS conversation_session_handoffs_bot_state ON conversation_session_handoffs (bot_id, assistant_state, updated_at DESC)",
+    "CREATE INDEX IF NOT EXISTS conversation_session_handoffs_contact_id ON conversation_session_handoffs (contact_id)",
     "ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sender_name TEXT",
     "CREATE INDEX IF NOT EXISTS conversation_sessions_bot_id ON conversation_sessions (bot_id)",
     "CREATE INDEX IF NOT EXISTS conversation_sessions_last_active ON conversation_sessions (bot_id, last_active_at DESC)",
@@ -518,7 +571,99 @@ _SCHEMA_SQL: Iterable[str] = (
     "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_escalation_msg BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE instagram_user_sessions ADD COLUMN IF NOT EXISTS awaiting_staff_takeover BOOLEAN NOT NULL DEFAULT FALSE",
     "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS awaiting_staff_takeover BOOLEAN NOT NULL DEFAULT FALSE",
-)
+    "ALTER TABLE line_user_sessions ADD COLUMN IF NOT EXISTS display_name TEXT",
+    """
+    INSERT INTO conversation_channel_contacts(
+      contact_id, bot_id, channel, external_user_id, display_name, current_session_id, created_at, updated_at
+    )
+    SELECT
+      'cc_' || md5(bot_id || ':line:' || line_user_id),
+      bot_id,
+      'line',
+      line_user_id,
+      display_name,
+      session_id,
+      created_at,
+      updated_at
+    FROM line_user_sessions
+    ON CONFLICT (bot_id, channel, external_user_id)
+    DO UPDATE SET
+      display_name = COALESCE(EXCLUDED.display_name, conversation_channel_contacts.display_name),
+      current_session_id = COALESCE(EXCLUDED.current_session_id, conversation_channel_contacts.current_session_id),
+      updated_at = EXCLUDED.updated_at
+    """,
+    """
+    INSERT INTO conversation_channel_contacts(
+      contact_id, bot_id, channel, external_user_id, display_name, current_session_id, created_at, updated_at
+    )
+    SELECT
+      'cc_' || md5(bot_id || ':instagram:' || ig_user_id),
+      bot_id,
+      'instagram',
+      ig_user_id,
+      NULL,
+      session_id,
+      created_at,
+      updated_at
+    FROM instagram_user_sessions
+    ON CONFLICT (bot_id, channel, external_user_id)
+    DO UPDATE SET
+      current_session_id = COALESCE(EXCLUDED.current_session_id, conversation_channel_contacts.current_session_id),
+      updated_at = EXCLUDED.updated_at
+    """,
+    """
+    INSERT INTO conversation_session_handoffs(
+      handoff_id, bot_id, session_id, contact_id, source_channel, assistant_state, started_by, created_at, updated_at, ended_at
+    )
+    SELECT
+      'hof_' || md5(lus.bot_id || ':' || lus.session_id),
+      lus.bot_id,
+      lus.session_id,
+      c.contact_id,
+      'line',
+      CASE
+        WHEN COALESCE(lus.awaiting_escalation_msg, FALSE) THEN 'awaiting_support_details'
+        WHEN COALESCE(lus.is_escalated, FALSE) THEN 'human_handoff'
+        ELSE 'bot'
+      END,
+      'legacy_bridge',
+      lus.created_at,
+      lus.updated_at,
+      NULL
+    FROM line_user_sessions lus
+    LEFT JOIN conversation_channel_contacts c
+      ON c.bot_id = lus.bot_id AND c.channel = 'line' AND c.external_user_id = lus.line_user_id
+    WHERE COALESCE(lus.awaiting_escalation_msg, FALSE) OR COALESCE(lus.is_escalated, FALSE)
+    ON CONFLICT (session_id) DO NOTHING
+    """,
+    """
+    INSERT INTO conversation_session_handoffs(
+      handoff_id, bot_id, session_id, contact_id, source_channel, assistant_state, started_by, created_at, updated_at, ended_at
+    )
+    SELECT
+      'hof_' || md5(ius.bot_id || ':' || ius.session_id),
+      ius.bot_id,
+      ius.session_id,
+      c.contact_id,
+      'instagram',
+      CASE
+        WHEN COALESCE(ius.awaiting_escalation_msg, FALSE) THEN 'awaiting_support_details'
+        WHEN COALESCE(ius.is_escalated, FALSE) OR COALESCE(ius.awaiting_staff_takeover, FALSE) THEN 'human_handoff'
+        ELSE 'bot'
+      END,
+      'legacy_bridge',
+      ius.created_at,
+      ius.updated_at,
+      NULL
+    FROM instagram_user_sessions ius
+    LEFT JOIN conversation_channel_contacts c
+      ON c.bot_id = ius.bot_id AND c.channel = 'instagram' AND c.external_user_id = ius.ig_user_id
+    WHERE COALESCE(ius.awaiting_escalation_msg, FALSE)
+       OR COALESCE(ius.is_escalated, FALSE)
+       OR COALESCE(ius.awaiting_staff_takeover, FALSE)
+    ON CONFLICT (session_id) DO NOTHING
+    """,
+  )
 
 _SCHEMA_INITIALIZED = False
 

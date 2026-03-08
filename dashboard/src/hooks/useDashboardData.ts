@@ -1,5 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
+import { useTranslation } from 'react-i18next'
+import { getBotSuggestedMessagesBaseLanguage, setSuggestedMessagesForLanguageInConfig } from '../utils/suggestedMessagesConfig'
+import { useDialog } from '../contexts/DialogContext'
 
 export type BotSummary = {
   bot_id: string
@@ -270,6 +273,20 @@ export type PlatformConfigPayload = {
   jobPipelineWorkflow: PlatformConfigJobPipelineWorkflow
 }
 
+export type BotOverviewSetupSection = {
+  id: string
+  label: string
+  done: boolean
+  route: string
+}
+
+export type ConversationSupportState = {
+  assistant_state: string
+  handoff_active: boolean
+  support_request_id?: string | null
+  support_request_status?: string | null
+}
+
 export type ConversationSessionRecord = {
   session_id: string
   bot_id: string
@@ -282,7 +299,7 @@ export type ConversationSessionRecord = {
   started_at: string
   last_active_at: string
   ended_at?: string | null
-}
+} & ConversationSupportState
 
 export type ConversationCitation = {
   url: string
@@ -300,6 +317,12 @@ export type ConversationMessageRecord = {
   created_at: string
 }
 
+export type ConversationDetailRecord = {
+  bot_id: string
+  session_id: string
+  messages: ConversationMessageRecord[]
+} & ConversationSupportState
+
 export type EscalationConfig = {
   enabled: boolean
   notify_enabled: boolean
@@ -309,11 +332,30 @@ export type EscalationConfig = {
   notification_emails: string
 }
 
+export type LineChannelRecord = {
+  channel_id: string
+  bot_id: string
+  org_id: string
+  line_channel_id: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type LineChannelTestResult = {
+  ok: boolean
+  message: string
+  display_name?: string | null
+  basic_id?: string | null
+  user_id?: string | null
+}
+
 export type EscalationRecord = {
   escalation_id: string
   bot_id: string
   session_id: string
   visitor_email: string
+  visitor_name?: string | null
   details?: string | null
   status: string
   created_at: string
@@ -322,6 +364,9 @@ export type EscalationRecord = {
   site_title?: string | null
   last_active_at?: string | null
   session_status?: string | null
+  linked_session_id?: string | null
+  notification_read_at?: string | null
+  notification_is_unread?: boolean
 }
 
 export type AnalyticsSummary = {
@@ -447,6 +492,7 @@ type DashboardData = {
   bots: BotSummary[]
   selectedBotId: string | null
   selectedBot: BotSummary | null
+  selectedBotUnreadNotifications: number
   domains: DomainRecord[]
   jobs: JobRecord[]
   sources: SourceRecord[]
@@ -584,16 +630,20 @@ type DashboardData = {
       site_url?: string | null
     }
   ) => Promise<void>
-  getConversation: (
-    botId: string,
-    sessionId: string,
-    limit?: number
-  ) => Promise<ConversationMessageRecord[]>
-  endConversation: (botId: string, sessionId: string) => Promise<void>
-  takeOverConversation: (botId: string, sessionId: string) => Promise<void>
+    getConversation: (
+      botId: string,
+      sessionId: string,
+      limit?: number
+    ) => Promise<ConversationDetailRecord | null>
+    endConversation: (botId: string, sessionId: string) => Promise<void>
+    takeOverConversation: (botId: string, sessionId: string) => Promise<ConversationSupportState | null>
+  getBotOverviewSetup: (botId: string, lang?: string, orgIdOverride?: string | null) => Promise<BotOverviewSetupSection[]>
+  getLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelRecord | null>
+  testLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelTestResult | null>
   getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
   saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
-  getEscalationCounts: (botId: string) => Promise<{ total: number; open: number } | null>
+  getEscalationCounts: (botId: string) => Promise<{ total: number; open: number; unread: number } | null>
+  refreshSelectedBotUnreadNotifications: (botIdOverride?: string | null) => Promise<void>
   recomputeAnalytics: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<boolean>
   getAnalyticsSummary: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<AnalyticsSummary | null>
   getAnalyticsTimeseries: (botId: string, args?: { range?: string; from_day?: string | null; to_day?: string | null }) => Promise<AnalyticsTimeseries | null>
@@ -607,7 +657,12 @@ type DashboardData = {
     cursor?: string | null
   ) => Promise<{ escalations: EscalationRecord[]; next_cursor?: string | null; total_count?: number | null }>
   getEscalationForSession: (botId: string, sessionId: string) => Promise<EscalationRecord | null>
-  updateEscalationStatus: (botId: string, escalationId: string, status: 'open' | 'resolved') => Promise<void>
+    updateEscalationStatus: (
+      botId: string,
+      escalationId: string,
+      status: 'open' | 'resolved' | 'canceled' | 'expired'
+    ) => Promise<void>
+  markEscalationRead: (botId: string, escalationId: string) => Promise<EscalationRecord | null>
   getExtractedTopics: (botId: string, activeOnly?: boolean, limit?: number) => Promise<ExtractedTopicsResponse | null>
   extractTopics: (botId: string, clearExisting?: boolean) => Promise<ExtractedTopicsResponse | null>
   updateExtractedTopic: (botId: string, topicId: string, updates: { is_active?: boolean; category?: string }) => Promise<ExtractedTopic | null>
@@ -682,9 +737,12 @@ async function fetchJson<T>(
 }
 
 export function DashboardDataProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
+  const dialog = useDialog()
   const [bots, setBots] = useState<BotSummary[]>([])
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null)
   const [selectedBot, setSelectedBot] = useState<BotSummary | null>(null)
+  const [selectedBotUnreadNotifications, setSelectedBotUnreadNotifications] = useState(0)
   const [selectedBotWidgetConfig, setSelectedBotWidgetConfig] = useState<Record<string, unknown> | null>(null)
   const [domains, setDomains] = useState<DomainRecord[]>([])
   const [jobs, setJobs] = useState<JobRecord[]>([])
@@ -1190,7 +1248,13 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   async function clearGcs() {
     if (!isSuperAdmin) return
-    if (!window.confirm('Delete all crawled content from GCS? This cannot be undone.')) {
+    const confirmed = await dialog.confirm({
+      title: t('dialogs.clearGcsTitle', 'Delete all crawled content from GCS? This cannot be undone.'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      tone: 'danger',
+    })
+    if (!confirmed) {
       return
     }
     setLoading(true)
@@ -1206,7 +1270,13 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
 
   async function clearRag() {
     if (!isSuperAdmin) return
-    if (!window.confirm('Delete all RAG corpora? This cannot be undone.')) {
+    const confirmed = await dialog.confirm({
+      title: t('dialogs.clearRagTitle', 'Delete all RAG corpora? This cannot be undone.'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      tone: 'danger',
+    })
+    if (!confirmed) {
       return
     }
     setLoading(true)
@@ -1715,19 +1785,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     botId: string,
     sessionId: string,
     limit = 200
-  ): Promise<ConversationMessageRecord[]> {
-    if (isSuperAdmin && !activeOrgId) return []
+  ): Promise<ConversationDetailRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(
         `/v1/org/bots/${botId}/conversations/${encodeURIComponent(sessionId)}?limit=${limit}`,
         orgOverride
       )
-      const data = await fetchAuthedJson<{ messages: ConversationMessageRecord[] }>(path)
-      return data.messages || []
+      return await fetchAuthedJson<ConversationDetailRecord>(path)
     } catch (err) {
       setError((err as Error).message)
-      return []
+      return null
     }
   }
 
@@ -1745,18 +1814,75 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function takeOverConversation(botId: string, sessionId: string): Promise<void> {
-    if (isSuperAdmin && !activeOrgId) return
+  async function takeOverConversation(botId: string, sessionId: string): Promise<ConversationSupportState | null> {
+    if (isSuperAdmin && !activeOrgId) return null
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(
         `/v1/org/bots/${botId}/conversations/${encodeURIComponent(sessionId)}/takeover`,
         orgOverride
       )
-      await fetchAuthedJson(path, { method: 'POST' })
+      return await fetchAuthedJson<ConversationSupportState>(path, { method: 'POST' })
     } catch (err) {
       setError((err as Error).message)
       throw err
+    }
+  }
+
+  async function getBotOverviewSetup(
+    botId: string,
+    lang?: string,
+    orgIdOverride?: string | null
+  ): Promise<BotOverviewSetupSection[]> {
+    if (isSuperAdmin && !activeOrgId && !orgIdOverride) return []
+    try {
+      const effectiveOrgId = orgIdOverride ?? (selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId)
+      const langParam = lang ? `?lang=${encodeURIComponent(lang)}` : ''
+      const path = withOrgParam(`/v1/org/bots/${botId}/overview-setup${langParam}`, effectiveOrgId)
+      const result = await fetchAuthedJson<{
+        sections?: Array<{ id?: string; label?: string; done?: boolean; route?: string }>
+      }>(path)
+      if (!Array.isArray(result.sections)) return []
+      return result.sections
+        .map((section) => ({
+          id: String(section?.id || '').trim(),
+          label: String(section?.label || '').trim(),
+          done: section?.done === true,
+          route: String(section?.route || '').trim(),
+        }))
+        .filter((section) => section.id && section.label && section.route)
+    } catch (err) {
+      setError((err as Error).message)
+      return []
+    }
+  }
+
+  async function getLineChannel(botId: string, orgIdOverride?: string | null): Promise<LineChannelRecord | null> {
+    if (isSuperAdmin && !activeOrgId && !orgIdOverride) return null
+    try {
+      const effectiveOrgId = orgIdOverride ?? (selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId)
+      const path = withOrgParam(`/v1/org/bots/${botId}/line-channel`, effectiveOrgId)
+      return await fetchAuthedJson<LineChannelRecord>(path)
+    } catch (err) {
+      const message = (err as Error).message || ''
+      if (message.includes('404') || message.toLowerCase().includes('no line channel configured')) {
+        return null
+      }
+      setError(message)
+      return null
+    }
+  }
+
+  async function testLineChannel(botId: string, orgIdOverride?: string | null): Promise<LineChannelTestResult | null> {
+    if (isSuperAdmin && !activeOrgId && !orgIdOverride) return null
+    try {
+      const effectiveOrgId = orgIdOverride ?? (selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId)
+      const path = withOrgParam(`/v1/org/bots/${botId}/line-channel/test`, effectiveOrgId)
+      return await fetchAuthedJson<LineChannelTestResult>(path, { method: 'POST' })
+    } catch (err) {
+      const message = (err as Error).message || 'Failed to check LINE connection.'
+      setError(message)
+      return { ok: false, message }
     }
   }
 
@@ -1787,16 +1913,26 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function getEscalationCounts(botId: string): Promise<{ total: number; open: number } | null> {
+  async function getEscalationCounts(botId: string): Promise<{ total: number; open: number; unread: number } | null> {
     if (isSuperAdmin && !activeOrgId) return null
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(`/v1/org/bots/${botId}/escalations/counts`, orgOverride)
-      return await fetchAuthedJson<{ bot_id: string; total: number; open: number }>(path)
+      return await fetchAuthedJson<{ bot_id: string; total: number; open: number; unread: number }>(path)
     } catch (err) {
       setError((err as Error).message)
       return null
     }
+  }
+
+  async function refreshSelectedBotUnreadNotifications(botIdOverride: string | null = null): Promise<void> {
+    const targetBotId = botIdOverride || selectedBotId
+    if (!targetBotId || (isSuperAdmin && !activeOrgId)) {
+      setSelectedBotUnreadNotifications(0)
+      return
+    }
+    const counts = await getEscalationCounts(targetBotId)
+    setSelectedBotUnreadNotifications(counts?.unread ?? 0)
   }
 
   async function listEscalations(
@@ -1830,15 +1966,34 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function updateEscalationStatus(
     botId: string,
     escalationId: string,
-    status: 'open' | 'resolved'
+    status: 'open' | 'resolved' | 'canceled' | 'expired'
   ): Promise<void> {
     if (isSuperAdmin && !activeOrgId) return
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(`/v1/org/bots/${botId}/escalations/${encodeURIComponent(escalationId)}/status`, orgOverride)
       await fetchAuthedJson(path, { method: 'POST', body: JSON.stringify({ status }) })
+      if (selectedBotId === botId) {
+        void refreshSelectedBotUnreadNotifications(botId)
+      }
     } catch (err) {
       setError((err as Error).message)
+    }
+  }
+
+  async function markEscalationRead(botId: string, escalationId: string): Promise<EscalationRecord | null> {
+    if (isSuperAdmin && !activeOrgId) return null
+    try {
+      const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
+      const path = withOrgParam(`/v1/org/bots/${botId}/escalations/${encodeURIComponent(escalationId)}/read`, orgOverride)
+      const record = await fetchAuthedJson<EscalationRecord>(path, { method: 'POST' })
+      if (selectedBotId === botId) {
+        void refreshSelectedBotUnreadNotifications(botId)
+      }
+      return record
+    } catch (err) {
+      setError((err as Error).message)
+      return null
     }
   }
 
@@ -2349,10 +2504,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       const path = withOrgParam(`/v1/org/bots/${botId}/generate-suggested-messages`, orgOverride)
       const result = await fetchAuthedJson<{ suggestedMessages: unknown[] }>(path, { method: 'POST' })
       if (result.suggestedMessages?.length) {
-        setSelectedBotWidgetConfig((prev) => ({
-          ...(prev || {}),
-          suggestedMessages: result.suggestedMessages,
-        }))
+        setSelectedBotWidgetConfig((prev) => {
+          const currentLang = getBotSuggestedMessagesBaseLanguage(prev || {})
+          return setSuggestedMessagesForLanguageInConfig(prev || {}, currentLang, result.suggestedMessages as any)
+        })
         return result.suggestedMessages
       }
       return null
@@ -2450,6 +2605,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setBots([])
       setSelectedBotId(null)
       setSelectedBot(null)
+      setSelectedBotUnreadNotifications(0)
       setDomains([])
       setJobs([])
       setIndexStatus(null)
@@ -2479,6 +2635,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   }, [selectedBotId, activeOrgId])
 
   useEffect(() => {
+    if (!selectedBotId || (isSuperAdmin && !activeOrgId)) {
+      setSelectedBotUnreadNotifications(0)
+      return
+    }
+    void refreshSelectedBotUnreadNotifications(selectedBotId)
+    const timer = window.setInterval(() => {
+      void refreshSelectedBotUnreadNotifications(selectedBotId)
+    }, 30000)
+    return () => window.clearInterval(timer)
+  }, [selectedBotId, activeOrgId, isSuperAdmin])
+
+  useEffect(() => {
     if (!selectedBot || !activeCrawlUrl) return
     if (indexStatus?.stage && terminalStages.has(indexStatus.stage)) return
     const timer = window.setInterval(() => {
@@ -2493,6 +2661,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     bots,
     selectedBotId,
     selectedBot,
+    selectedBotUnreadNotifications,
     domains,
     jobs,
     sources,
@@ -2582,6 +2751,9 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getConversation,
     endConversation,
     takeOverConversation,
+    getBotOverviewSetup,
+    getLineChannel,
+    testLineChannel,
     recomputeAnalytics,
     getAnalyticsSummary,
     getAnalyticsTimeseries,
@@ -2589,9 +2761,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getEscalationConfig,
     saveEscalationConfig,
     getEscalationCounts,
+    refreshSelectedBotUnreadNotifications,
     listEscalations,
     getEscalationForSession,
     updateEscalationStatus,
+    markEscalationRead,
     getExtractedTopics,
     extractTopics,
     updateExtractedTopic,

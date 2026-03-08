@@ -89,6 +89,10 @@ export default function CreateBotUrlsPage() {
     if (!sharedDiscoveredUrls.length || !sharedNormalizedDiscoveryUrl) return null
     return categorizeUrls(sharedDiscoveredUrls, sharedNormalizedDiscoveryUrl)
   }, [sharedDiscoveredUrls, sharedNormalizedDiscoveryUrl])
+  const selectedReservationPlatform = useMemo(
+    () => platforms.find((platform) => platform.id === reservationPlatform) || null,
+    [platforms, reservationPlatform]
+  )
 
   useEffect(() => {
     if (!sharedDiscoveryUrl.trim() && websiteUrl.trim()) {
@@ -599,31 +603,41 @@ export default function CreateBotUrlsPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.45rem' }}>
                         {t('botKnowledge.reservationPlatform', 'Platform')}
                       </label>
-                      <select
-                        value={reservationPlatform}
-                        onChange={(e) => setReservationPlatform(e.target.value || '')}
-                        disabled={isSharedDiscovering}
-                        style={{ width: '100%' }}
+                      <div
+                        className="flow-platform-button-grid"
+                        role="group"
+                        aria-label={t('botKnowledge.reservationPlatform', 'Platform')}
                       >
-                        <option value="">{t('botKnowledge.noReservationPlatform', 'None')}</option>
-                        {platforms.map((p) => (
-                          <option key={p.id} value={p.id}>{p.label}</option>
-                        ))}
-                      </select>
+                        {platforms.map((platform) => {
+                          const active = platform.id === reservationPlatform
+                          return (
+                            <button
+                              key={platform.id}
+                              type="button"
+                              className={`flow-platform-button ${active ? 'is-active' : ''}`.trim()}
+                              aria-pressed={active}
+                              disabled={isSharedDiscovering}
+                              onClick={() => setReservationPlatform(active ? '' : platform.id)}
+                            >
+                              {platform.label}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
-                    {reservationPlatform && platforms.some((p) => p.id === reservationPlatform) && (
+                    {selectedReservationPlatform && (
                       <div>
                         <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                          {platforms.find((p) => p.id === reservationPlatform)?.label} URL
+                          {selectedReservationPlatform.label} URL
                         </label>
                         <input
                           type="url"
                           value={platformUrls[reservationPlatform] || ''}
                           onChange={(e) => setPlatformUrl(reservationPlatform, e.target.value)}
-                          placeholder={platforms.find((p) => p.id === reservationPlatform)?.url_placeholder || ''}
+                          placeholder={selectedReservationPlatform.url_placeholder || ''}
                           disabled={isSharedDiscovering}
                           style={{ width: '100%' }}
                         />

@@ -21,8 +21,14 @@ from api.schemas import (
     LineChannelUpsertRequest,
     LineChannelResponse,
     LineChannelDeleteResponse,
+    LineChannelTestResponse,
 )
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
+from application.services.answer_normalization_service import (
+    RENDER_TARGET_PLAIN_TEXT_CHANNEL,
+    build_answer_link_candidates,
+    normalize_answer_links,
+)
 from application.services.asset_policy import ConfigAssetPolicy
 from application.services.channel_adapters import LineChannelAdapter
 from application.services.function_registry import FunctionRegistry
@@ -31,6 +37,7 @@ from application.services.platform_strategy import (
     build_menu_view_all_url_for_category,
     normalize_menu_category,
 )
+from common.language_utils import detect_user_language, normalize_lang
 from common.di.container import asset_repo, bot_service, conversation_service
 from infrastructure.clients.line_client import (
     verify_signature,
@@ -39,11 +46,11 @@ from infrastructure.clients.line_client import (
     build_suggested_flex,
     build_buttons_template,
     build_text_with_quick_replies,
+    get_profile as get_line_profile,
     show_typing as line_show_typing,
 )
 from infrastructure.clients.rag_client import run_vertex_rag, is_quota_exhausted_error
 from domain.platform_profiles import (
-    ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
     get_line_menu_page_payload_prefix,
     get_line_menu_quick_payload,
@@ -119,6 +126,19 @@ _ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
     },
 }
 
+_LINE_EMPTY_ANSWER_MESSAGES = {
+    "en": "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?",
+    "ja": "申し訳ありません。その質問への答えが見つかりませんでした。言い方を変えてもう一度お試しください。",
+}
+_LINE_QUOTA_MESSAGES = {
+    "en": "We're experiencing high demand right now. Please try again in about a minute.",
+    "ja": "現在アクセスが集中しています。1分ほど待ってからもう一度お試しください。",
+}
+_LINE_ERROR_MESSAGES = {
+    "en": "I'm sorry, something went wrong. Please try again in a moment.",
+    "ja": "申し訳ありません。問題が発生しました。少し待ってからもう一度お試しください。",
+}
+
 # Cancel escalation (matches Instagram — no skip, no back-to-bot)
 _CANCEL_KEYWORDS = {"cancel", "キャンセル"}
 
@@ -157,6 +177,11 @@ def _wants_cancel_escalation(text: str) -> bool:
     """True if user wants to cancel escalation and stay with AI (matches Instagram)."""
     lower = (text or "").strip().lower()
     return any(lower == kw or lower.startswith(kw) for kw in _CANCEL_KEYWORDS)
+
+
+def _line_localized_message(messages: Dict[str, str], lang: str) -> str:
+    normalized_lang = normalize_lang(lang)
+    return str(messages.get(normalized_lang) or messages["en"])
 
 
 def _is_truthy(value: Any) -> bool:
@@ -588,7 +613,8 @@ async def _handle_text_message(
                             wc = json.loads(bot.widget_config)
                         except (TypeError, ValueError):
                             pass
-                    lang = "ja" if str(wc.get("language") or "").lower() in ("ja", "jp") else "en"
+                    bot_lang = normalize_lang(wc.get("language") or wc.get("botLanguage") or "en")
+                    lang = detect_user_language(text, fallback=bot_lang)
                     prompt = _menu_text("view_menu_button_prompt", lang)
                     btn_title = _menu_text("view_menu_button_title", lang)
                     tmpl = build_buttons_template(
@@ -613,73 +639,77 @@ async def _handle_text_message(
             widget_config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             pass
-    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
-    lang = "ja" if lang in ("ja", "jp") else "en"
+    bot_lang = normalize_lang(widget_config.get("language") or widget_config.get("botLanguage") or "en")
+    lang = detect_user_language(text, fallback=bot_lang)
     suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
     suggested_type = _resolve_suggested_type(text, suggested_messages or [])
     suggested_function_id = _function_registry.resolve_from_suggested_type(suggested_type or "")
 
-    # Get or create session mapping
+    # Mapping rows only keep the current routed session and display name.
     mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
-
+    line_display_name = (getattr(mapping, "display_name", None) or "").strip() or None
+    if not line_display_name:
+        try:
+            profile = await get_line_profile(line_user_id, access_token)
+        except Exception as exc:
+            logger.debug("LINE profile lookup failed bot_id=%s user_id=%s err=%s", bot.bot_id, line_user_id, exc)
+            profile = None
+        fetched_name = str((profile or {}).get("displayName") or "").strip()
+        if fetched_name:
+            line_display_name = fetched_name
+            _line_user_session_repo.set_display_name(
+                line_user_id=line_user_id,
+                bot_id=bot.bot_id,
+                display_name=line_display_name,
+            )
+    session, contact, _session_changed = conversation_service().resolve_or_create_channel_session(
+        bot_id=bot.bot_id,
+        org_id=bot.org_id,
+        channel="line",
+        external_user_id=line_user_id,
+        current_session_id=getattr(mapping, "session_id", None),
+        display_name=line_display_name,
+        metadata=None,
+        site_url=None,
+        site_title=None,
+        user_agent="LINE",
+        ip=None,
+    )
     if mapping is None:
-        # Create a new conversation session
-        session = conversation_service().get_or_create_session(
-            bot_id=bot.bot_id,
-            org_id=bot.org_id,
-            channel="line",
-            session_id=None,
-            site_url=None,
-            site_title=None,
-            user_agent="LINE",
-            ip=None,
-        )
         mapping = _line_user_session_repo.get_or_create(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
             session_id=session.session_id,
+            display_name=line_display_name,
         )
     else:
-        # Refresh session (may create new if expired)
-        session = conversation_service().get_or_create_session(
-            bot_id=bot.bot_id,
-            org_id=bot.org_id,
-            channel="line",
-            session_id=mapping.session_id,
-            site_url=None,
-            site_title=None,
-            user_agent="LINE",
-            ip=None,
-        )
-        # If session was expired and a new one was created, update mapping
-        if session.session_id != mapping.session_id:
+        if mapping.session_id != session.session_id:
             _line_user_session_repo.update_session_id(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
                 session_id=session.session_id,
             )
-            # Reset escalation state for new session
-            _line_user_session_repo.set_escalated(
+        if line_display_name and line_display_name != (getattr(mapping, "display_name", None) or "").strip():
+            _line_user_session_repo.set_display_name(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
-                escalated=False,
+                display_name=line_display_name,
             )
-            _line_user_session_repo.set_awaiting_escalation_msg(
-                line_user_id=line_user_id,
-                bot_id=bot.bot_id,
-                awaiting=False,
-            )
-            mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
+        mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id) or mapping
+    if line_display_name:
+        conversation_service().set_session_title(session.session_id, line_display_name)
+    assistant_state = getattr(session, "assistant_state", "bot") or "bot"
 
     # ── Escalated: log message only, no bot reply — return BEFORE typing ───
-    if mapping and mapping.is_escalated and not _wants_cancel_escalation(text):
+    if assistant_state == "human_handoff" and not _wants_cancel_escalation(text):
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
+            sender_name=line_display_name,
         )
         return
 
@@ -687,17 +717,17 @@ async def _handle_text_message(
     await line_show_typing(line_user_id, access_token)
 
     # ── De-escalation check (cancel only, matches Instagram) ───────────
-    if mapping and mapping.is_escalated and _wants_cancel_escalation(text):
-        _line_user_session_repo.set_escalated(
-            line_user_id=line_user_id,
+    if assistant_state == "human_handoff" and _wants_cancel_escalation(text):
+        conversation_service().cancel_handoff(
             bot_id=bot.bot_id,
-            escalated=False,
+            session_id=session.session_id,
         )
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
+            sender_name=line_display_name,
         )
         msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
         cancel_msg = msgs["cancel_ack"]
@@ -711,18 +741,19 @@ async def _handle_text_message(
         return
 
     # ── Awaiting optional escalation message ─────────────────────────
-    if mapping and mapping.awaiting_escalation_msg:
+    if assistant_state == "awaiting_support_details":
         if _wants_cancel_escalation(text):
-            _line_user_session_repo.set_awaiting_escalation_msg(
-                line_user_id=line_user_id,
+            conversation_service().release_handoff(
                 bot_id=bot.bot_id,
-                awaiting=False,
+                session_id=session.session_id,
+                ended_reason="user_canceled",
             )
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
                 role="user",
                 content=text,
+                sender_name=line_display_name,
             )
             msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
             cancel_msg = msgs["cancel_ack"]
@@ -735,29 +766,22 @@ async def _handle_text_message(
             )
             return
         user_msg = text.strip()
-        _line_user_session_repo.set_awaiting_escalation_msg(
-            line_user_id=line_user_id,
-            bot_id=bot.bot_id,
-            awaiting=False,
-        )
-        _line_user_session_repo.set_escalated(
-            line_user_id=line_user_id,
-            bot_id=bot.bot_id,
-            escalated=True,
-        )
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
+            sender_name=line_display_name,
         )
         msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
         details = user_msg if user_msg else msgs["email_details_no_message"]
-        conversation_service().create_escalation(
+        conversation_service().request_support(
             bot_id=bot.bot_id,
             session_id=session.session_id,
             visitor_email=f"line:{line_user_id}",
             details=details,
+            contact_id=getattr(contact, "contact_id", None),
+            source_channel="line",
         )
         from infrastructure.email import maybe_send_escalation_email
 
@@ -776,28 +800,25 @@ async def _handle_text_message(
             role="bot",
             content=ack_msg,
         )
-        _line_user_session_repo.set_escalated(
-            line_user_id=line_user_id,
-            bot_id=bot.bot_id,
-            escalated=True,
-        )
         return
 
     # ── Escalation request ───────────────────────────────────────────
     if suggested_function_id == "escalate" or _is_escalate_quick_reply(text, suggested_messages or []):
-        _line_user_session_repo.set_awaiting_escalation_msg(
-            line_user_id=line_user_id,
+        conversation_service().set_awaiting_support_details(
             bot_id=bot.bot_id,
-            awaiting=True,
+            session_id=session.session_id,
+            contact_id=getattr(contact, "contact_id", None),
+            source_channel="line",
         )
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
             content=text,
+            sender_name=line_display_name,
         )
         prompt_msg = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])["prompt"]
-        await reply_message(reply_token, [prompt_msg], access_token, suggested_flex=suggested_flex)
+        await reply_message(reply_token, [prompt_msg], access_token)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -822,6 +843,7 @@ async def _handle_text_message(
             bot_id=bot.bot_id,
             role="user",
             content=text or "View more menu",
+            sender_name=line_display_name,
         )
         await _send_menu_by_category_line(
             bot_id=bot.bot_id,
@@ -864,6 +886,7 @@ async def _handle_text_message(
                 bot_id=bot.bot_id,
                 role="user",
                 content=effective_text,
+                sender_name=line_display_name,
             )
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -885,6 +908,7 @@ async def _handle_text_message(
         bot_id=bot.bot_id,
         role="user",
         content=text,
+        sender_name=line_display_name,
     )
 
     # Get conversation context
@@ -900,8 +924,6 @@ async def _handle_text_message(
             agent_config = json.loads(bot.agent_config)
         except (TypeError, ValueError):
             pass
-    lang = str(widget_config.get("language") or widget_config.get("botLanguage") or "en").strip().lower()
-    lang = "ja" if lang in ("ja", "jp") else "en"
     system_instruction = _prompt_provider.resolve_system_prompt(
         agent_config=agent_config,
         lang=lang,
@@ -962,14 +984,18 @@ async def _handle_text_message(
             extra_evidence=extra_evidence if extra_evidence else None,
             parse_json_response=get_platform_json_response_enabled(widget_config),
         )
+        sources = result.get("sources") or []
         answer = str(result.get("answer") or "").strip()
         if not answer:
-            answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
-
-        if reservation_config:
-            answer = ensure_canonical_reservation_url_in_text(
-                answer, reservation_config["url"], reservation_config["domain_key"]
-            )
+            answer = _line_localized_message(_LINE_EMPTY_ANSWER_MESSAGES, lang)
+        answer = normalize_answer_links(
+            answer,
+            candidates=build_answer_link_candidates(
+                reservation_config=reservation_config,
+                sources=sources,
+            ),
+            render_target=RENDER_TARGET_PLAIN_TEXT_CHANNEL,
+        ).text
 
         answer, asset_cards = _asset_policy.resolve_assets(
             answer=answer,
@@ -983,10 +1009,10 @@ async def _handle_text_message(
     except Exception as e:
         if is_quota_exhausted_error(e):
             logger.warning("RAG quota exhausted for LINE message bot_id=%s", bot.bot_id)
-            answer = "We're experiencing high demand right now. Please try again in about a minute."
+            answer = _line_localized_message(_LINE_QUOTA_MESSAGES, lang)
         else:
             logger.exception("RAG error for LINE message bot_id=%s", bot.bot_id)
-            answer = "I'm sorry, something went wrong. Please try again in a moment."
+            answer = _line_localized_message(_LINE_ERROR_MESSAGES, lang)
 
     # Save bot response
     conversation_service().add_message(
@@ -1104,7 +1130,7 @@ async def v1_org_delete_line_channel(
     return LineChannelDeleteResponse(ok=True, bot_id=bot_id)
 
 
-@router.post("/v1/org/bots/{bot_id}/line-channel/test")
+@router.post("/v1/org/bots/{bot_id}/line-channel/test", response_model=LineChannelTestResponse)
 async def v1_org_test_line_channel(
     bot_id: str,
     org_id: Optional[str] = None,
@@ -1115,7 +1141,10 @@ async def v1_org_test_line_channel(
     _assert_bot_org(bot_id, resolved_org)
     channel = _line_channel_repo.get_by_bot_id(bot_id)
     if not channel:
-        return {"ok": False, "message": "No LINE channel configured. Save your credentials first."}
+        return LineChannelTestResponse(
+            ok=False,
+            message="No LINE channel configured. Save your credentials first.",
+        )
 
     import httpx
     try:
@@ -1126,11 +1155,29 @@ async def v1_org_test_line_channel(
             )
         if resp.status_code == 200:
             info = resp.json()
-            bot_name = info.get("displayName") or info.get("basicId") or "your bot"
-            return {"ok": True, "message": f"Connection successful! LINE bot: {bot_name}"}
+            display_name = str(info.get("displayName") or "").strip() or None
+            basic_id = str(info.get("basicId") or "").strip() or None
+            user_id = str(info.get("userId") or "").strip() or None
+            bot_name = display_name or basic_id or "your bot"
+            return LineChannelTestResponse(
+                ok=True,
+                message=f"Connection successful! LINE bot: {bot_name}",
+                display_name=display_name,
+                basic_id=basic_id,
+                user_id=user_id,
+            )
         elif resp.status_code == 401:
-            return {"ok": False, "message": "Invalid access token. Please check your Channel Access Token and try again."}
+            return LineChannelTestResponse(
+                ok=False,
+                message="Invalid access token. Please check your Channel Access Token and try again.",
+            )
         else:
-            return {"ok": False, "message": f"LINE API returned status {resp.status_code}. Check your credentials."}
+            return LineChannelTestResponse(
+                ok=False,
+                message=f"LINE API returned status {resp.status_code}. Check your credentials.",
+            )
     except Exception as exc:
-        return {"ok": False, "message": f"Could not reach LINE API: {str(exc)}"}
+        return LineChannelTestResponse(
+            ok=False,
+            message=f"Could not reach LINE API: {str(exc)}",
+        )

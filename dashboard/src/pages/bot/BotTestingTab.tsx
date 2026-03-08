@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { WIDGET_SIZE_DIMENSIONS } from '../../constants/widgetSizes'
 import { useDashboardData, type SourceRecord, type DomainRecord, type AvailabilityJobRecord } from '../../hooks/useDashboardData'
 import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
+import { useDialog } from '../../contexts/DialogContext'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
 const DEFAULT_PERSONA_ID = 'default-assistant'
@@ -154,6 +155,7 @@ function pickSourceOrigin(sources: SourceRecord[], botId?: string | null): { ori
 export default function BotTestingTab() {
   const { t, i18n } = useTranslation()
   const { botId } = useParams()
+  const dialog = useDialog()
   const { getAccessTokenSilently } = useAuth0()
   const {
     selectedBot,
@@ -436,7 +438,10 @@ export default function BotTestingTab() {
     } catch (e) {
       setInstructions((prev) => prev.trim() || selectedPersona?.system_prompt || languageFallbackPrompt)
       setInstructionsOverridden(false)
-      alert("Failed to generate prompt: " + (e instanceof Error ? e.message : String(e)))
+      await dialog.alert({
+        title: t('botTesting.generatePromptFailedTitle', 'Failed to generate prompt'),
+        description: e instanceof Error ? e.message : String(e),
+      })
     } finally {
       setIsGenerating(false)
     }

@@ -65,7 +65,12 @@
   const SOFT_WRAP_TOKEN_MIN = 32;
   const SOFT_WRAP_CHUNK = 24;
   const SOFT_WRAP_SEPARATORS = /[\/\-\_\.\?\&\=\#\:\@]/;
-  const suggestedMessages = getInitialSuggestions();
+  let suggestedMessages = getInitialSuggestions();
+
+  function updateSuggestedMessages(next) {
+    if (!Array.isArray(next)) return;
+    suggestedMessages = normalizeSuggestions(next);
+  }
 
   function appendSoftWrappedText(target, text) {
     if (text == null) return;
@@ -293,6 +298,145 @@
       return host;
     } catch (e) {}
     return "";
+  }
+
+  function isGenericLinkText(label) {
+    var s = String(label || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (!s) return true;
+    if (/^sources?$/.test(s) || s === "link" || s === "here") return true;
+    if (s.indexOf("http://") >= 0 || s.indexOf("https://") >= 0) return true;
+    if (s.charAt(0) === "/" && s.indexOf(" ") === -1) return true;
+    if (/^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/.test(s) && s.indexOf(" ") === -1) return true;
+    return false;
+  }
+
+  function isUrlChar(ch) {
+    return !!ch && ch.charCodeAt(0) <= 127 && /[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]/.test(ch);
+  }
+
+  function countChar(text, target) {
+    var count = 0;
+    for (var i = 0; i < text.length; i += 1) {
+      if (text.charAt(i) === target) count += 1;
+    }
+    return count;
+  }
+
+  function trimUrlSuffix(rawToken) {
+    var value = String(rawToken || "");
+    var trailing = "";
+    while (value) {
+      var tail = value.charAt(value.length - 1);
+      if (/[.,;:!?]/.test(tail) || tail === '"' || tail === "'") {
+        trailing = tail + trailing;
+        value = value.slice(0, -1);
+        continue;
+      }
+      var opener = tail === ")" ? "(" : tail === "]" ? "[" : tail === "}" ? "{" : "";
+      if (opener && countChar(value, opener) < countChar(value, tail)) {
+        trailing = tail + trailing;
+        value = value.slice(0, -1);
+        continue;
+      }
+      break;
+    }
+    return { url: value, trailing: trailing };
+  }
+
+  function isValidHttpUrl(url) {
+    try {
+      var parsed = new URL(String(url || ""));
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch (e) {}
+    return false;
+  }
+
+  function pushTextPart(parts, content) {
+    if (!content) return;
+    var last = parts.length ? parts[parts.length - 1] : null;
+    if (last && last.type === "text") {
+      last.content += content;
+      return;
+    }
+    parts.push({ type: "text", content: content });
+  }
+
+  function parseMarkdownLinkAt(text, start) {
+    if (start < 0 || start >= text.length || text.charAt(start) !== "[") return null;
+    var closeBracket = text.indexOf("]", start + 1);
+    if (closeBracket < 0 || closeBracket + 1 >= text.length || text.charAt(closeBracket + 1) !== "(") return null;
+    var depth = 1;
+    for (var i = closeBracket + 2; i < text.length; i += 1) {
+      var ch = text.charAt(i);
+      if (ch === "(") depth += 1;
+      else if (ch === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          return {
+            start: start,
+            end: i + 1,
+            label: text.slice(start + 1, closeBracket),
+            url: text.slice(closeBracket + 2, i),
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  function findNextMarkdownLink(text, fromIndex) {
+    var cursor = fromIndex || 0;
+    while (cursor < text.length) {
+      var openBracket = text.indexOf("[", cursor);
+      if (openBracket < 0) return null;
+      var match = parseMarkdownLinkAt(text, openBracket);
+      if (match) return match;
+      cursor = openBracket + 1;
+    }
+    return null;
+  }
+
+  function consumeUrlToken(text, start, explicitLabel) {
+    var end = start;
+    while (end < text.length && isUrlChar(text.charAt(end))) end += 1;
+    if (end <= start) return null;
+    var rawToken = text.slice(start, end);
+    var trimmed = trimUrlSuffix(rawToken);
+    var url = trimmed.url;
+    if (!isValidHttpUrl(url)) return null;
+    var label = String(explicitLabel || "").trim();
+    if (!label || isGenericLinkText(label)) {
+      label = friendlyLabelFromUrl(url) || "this page";
+    }
+    return {
+      end: end,
+      link: { type: "link", text: label, url: url },
+      trailing: trimmed.trailing,
+    };
+  }
+
+  function appendParsedText(parts, content) {
+    var cursor = 0;
+    while (cursor < content.length) {
+      var match = /https?:\/\//i.exec(content.slice(cursor));
+      if (!match) {
+        pushTextPart(parts, content.slice(cursor));
+        return;
+      }
+      var urlStart = cursor + match.index;
+      if (urlStart > cursor) pushTextPart(parts, content.slice(cursor, urlStart));
+      var consumed = consumeUrlToken(content, urlStart, "");
+      if (!consumed) {
+        pushTextPart(parts, content.slice(urlStart, urlStart + 1));
+        cursor = urlStart + 1;
+        continue;
+      }
+      if (!isPdfLocalUrl(consumed.link.url)) {
+        parts.push(consumed.link);
+      }
+      if (consumed.trailing) pushTextPart(parts, consumed.trailing);
+      cursor = consumed.end;
+    }
   }
 
   function getHostname(url) {
@@ -711,54 +855,40 @@
 
   function parseMarkdownLinks(text) {
     var parts = [];
-    // First: parse markdown links [text](url)
-    var re = /\[([^\]]*)\]\(([^)]*)\)/g;
-    var last = 0;
-    var m;
-    while ((m = re.exec(text)) !== null) {
-      var url = (m[2] || "").trim();
-      if (url && (url.toLowerCase().startsWith("http://") || url.toLowerCase().startsWith("https://"))) {
-        if (m.index > last) parts.push({ type: "text", content: text.slice(last, m.index) });
-        var rawText = (m[1] || "").trim();
-        // Hide PDF synthetic links from users.
-        if (isPdfLocalUrl(url)) {
-          // Drop the link entirely (no clickable link, no visible text).
-        } else {
-          var linkText = rawText || "here";
-          // If the model uses bad link text like "source", replace it.
-          if (/^\s*sources?\s*$/i.test(linkText)) {
-            // Prefer a descriptive label derived from the URL.
-            linkText = friendlyLabelFromUrl(url) || "this page";
-          }
-          parts.push({ type: "link", text: linkText, url: url });
-        }
-        last = m.index + m[0].length;
+    var cursor = 0;
+    while (cursor < text.length) {
+      var markdown = findNextMarkdownLink(text, cursor);
+      if (!markdown) {
+        appendParsedText(parts, text.slice(cursor));
+        break;
       }
+      if (markdown.start > cursor) appendParsedText(parts, text.slice(cursor, markdown.start));
+      var consumed = consumeUrlToken(markdown.url.trim(), 0, markdown.label);
+      if (!consumed) {
+        pushTextPart(parts, text.slice(markdown.start, markdown.end));
+      } else {
+        if (!isPdfLocalUrl(consumed.link.url)) {
+          parts.push(consumed.link);
+        }
+        var suffixText = (consumed.trailing || "") + markdown.url.trim().slice(consumed.end);
+        if (suffixText) pushTextPart(parts, suffixText);
+      }
+      cursor = markdown.end;
     }
-    if (last < text.length) parts.push({ type: "text", content: text.slice(last) });
-    if (!parts.length) return null;
-    // Second pass: find bare URLs in text segments and convert to links
-    var final = [];
-    var urlRe = /\bhttps?:\/\/[^\s<>\[\]"']+/g;
-    parts.forEach(function (p) {
-      if (p.type !== "text") { final.push(p); return; }
-      var content = p.content;
-      var um;
-      var uLast = 0;
-      urlRe.lastIndex = 0;  // Reset: global regex retains lastIndex across exec calls
-      while ((um = urlRe.exec(content)) !== null) {
-        if (um.index > uLast) final.push({ type: "text", content: content.slice(uLast, um.index) });
-        var bareUrl = um[0].replace(/[.,;:!?)]+$/, "");
-        var trailingPunct = um[0].slice(bareUrl.length);
-        if (!isPdfLocalUrl(bareUrl)) {
-          final.push({ type: "link", text: friendlyLabelFromUrl(bareUrl) || "here", url: bareUrl });
-        }
-        uLast = um.index + bareUrl.length;
-        if (trailingPunct) final.push({ type: "text", content: trailingPunct });
-      }
-      if (uLast < content.length) final.push({ type: "text", content: content.slice(uLast) });
-    });
-    return final.length ? final : null;
+    return parts.length ? parts : null;
+  }
+
+  function getVisibleStreamingText(text) {
+    if (!text) return text;
+    var lower = text.toLowerCase();
+    var lastHttp = Math.max(lower.lastIndexOf("https://"), lower.lastIndexOf("http://"));
+    if (lastHttp < 0) return text;
+    var consumed = consumeUrlToken(text, lastHttp, "");
+    if (!consumed) return text;
+    if (consumed.end === text.length && !consumed.trailing) {
+      return text.slice(0, lastHttp);
+    }
+    return text;
   }
 
   function setBubbleText(bubble, text, who) {
@@ -887,7 +1017,7 @@
             pending = pending.slice(STREAM_CHARS_PER_TICK);
           }
           text += slice;
-          setBubbleText(bubble, text, "bot");
+          setBubbleText(bubble, getVisibleStreamingText(text), "bot");
           if (chat) chat.scrollTop = chat.scrollHeight;
           setTimeout(tick, STREAM_TICK_MS);
           return;
@@ -929,6 +1059,7 @@
             if (evt.session_id) setSession(evt.session_id);
           } else if (evt && evt.type === "done") {
             doneEvent = evt;
+            updateSuggestedMessages(evt.suggested_messages || evt.suggestedMessages);
             if (evt.session_id) setSession(evt.session_id);
             startTicker();
           } else if (evt && evt.type === "error") {
@@ -989,6 +1120,7 @@
       } else {
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
         if (data && data.session_id) setSession(data.session_id);
+        updateSuggestedMessages(data && (data.suggested_messages || data.suggestedMessages));
         appendBubble(data.answer || "", "bot", data.citations || []);
         botPending = false;
         renderQuickActions();

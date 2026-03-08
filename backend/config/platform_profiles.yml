@@ -4,6 +4,7 @@
 #
 # Schema:
 #   reservation_platform_config: maps platform_id -> widget_key, domain_key, url_placeholder (optional)
+#   dashboard.overview_setup_sections: summary pills shown on bot overview
 #   post_crawl_jobs: jobs to run automatically after crawl completes (topic_extraction, booking_link, menu_extraction)
 #   default_suggested_messages: fallback when no platform defines suggested_messages
 #   platforms: per-domain config (crawl, menu extraction, prompts, etc.)
@@ -475,6 +476,39 @@ reservation_platform_config:
     url_placeholder: "https://www.tablecheck.com/en/shops/your-restaurant/reserve"
     knowledge_tabs: [image]  # Image tab only; no Menu tab
     post_crawl_jobs: [booking_link]  # No menu extraction (Image tab only)
+
+dashboard:
+  overview_setup_sections:
+    - id: knowledge
+      label: { en: "Knowledge and Training", ja: "知識とトレーニング" }
+      route: knowledge
+      status_source: sources
+    - id: menu_assets
+      label: { en: "Menu List", ja: "メニュー一覧" }
+      route: menu-list
+      status_source: menu_assets
+      required_knowledge_tabs: [menu]
+    - id: image_assets
+      label: { en: "Image Assets", ja: "画像アセット" }
+      route: image-assets
+      status_source: image_assets
+      required_knowledge_tabs: [image]
+    - id: design
+      label: { en: "Design", ja: "デザイン" }
+      route: design
+      status_source: widget_config
+    - id: suggested_messages
+      label: { en: "Suggested messages", ja: "候補メッセージ" }
+      route: suggested-messages
+      status_source: suggested_messages
+    - id: installation
+      label: { en: "Installation", ja: "インストール" }
+      route: overview
+      status_source: verified_domain
+    - id: human_support
+      label: { en: "Human Support", ja: "ヒューマンサポート" }
+      route: human-support
+      status_source: human_support
 
 # Default asset rules (used when no platform or platform doesn't override)
 default_asset_rules:

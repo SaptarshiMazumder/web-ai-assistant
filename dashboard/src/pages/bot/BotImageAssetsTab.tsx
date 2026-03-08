@@ -146,7 +146,7 @@ export default function BotImageAssetsTab() {
     [getAccessTokenSilently]
   )
 
-  const loadAssets = useCallback(async (page: number) => {
+  const loadAssets = useCallback(async (page: number, signal?: AbortSignal) => {
     if (!botId) return
     const safePage = Math.max(1, page || 1)
     const offset = (safePage - 1) * ASSETS_PAGE_SIZE
@@ -171,10 +171,15 @@ export default function BotImageAssetsTab() {
     try {
       const headers: Record<string, string> = {}
       if (cached?.etag) headers['If-None-Match'] = cached.etag
+      const fetchInit: RequestInit = {
+        ...(Object.keys(headers).length ? { headers } : {}),
+        ...(signal ? { signal } : {}),
+      }
       const resp = await authedFetch(
         `/v1/org/bots/${botId}/image-assets?page_size=${ASSETS_PAGE_SIZE}&offset=${offset}`,
-        Object.keys(headers).length ? { headers } : undefined
+        Object.keys(fetchInit).length ? fetchInit : undefined
       )
+      if (signal?.aborted) return
       if (resp.status === 304 && cached?.payload) {
         return
       }
@@ -183,6 +188,7 @@ export default function BotImageAssetsTab() {
         throw new Error((body as { detail?: string }).detail || resp.statusText)
       }
       const data = (await resp.json()) as AssetListResponse
+      if (signal?.aborted) return
       const nextAssets = data.assets || []
       const totalCount =
         typeof data.total_count === 'number'
@@ -211,14 +217,17 @@ export default function BotImageAssetsTab() {
       }
       writePagedListCache(cacheKey, entry)
     } catch (err) {
+      if ((err instanceof DOMException && err.name === 'AbortError') || (err as Error).name === 'AbortError') return
       setError((err as Error).message)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [botId, authedFetch])
 
   useEffect(() => {
-    void loadAssets(currentPage)
+    const controller = new AbortController()
+    void loadAssets(currentPage, controller.signal)
+    return () => controller.abort()
   }, [loadAssets, currentPage])
 
   useEffect(() => {
@@ -325,14 +334,17 @@ export default function BotImageAssetsTab() {
   }, [authedFetch, botId])
 
   useEffect(() => {
+    const controller = new AbortController()
     let intervalId: number | undefined
 
     const checkStatus = async () => {
-      if (!botId) return
+      if (!botId || controller.signal.aborted) return
       try {
-        const resp = await authedFetch(`/v1/org/bots/${botId}/image-assets/extract-status`)
+        const resp = await authedFetch(`/v1/org/bots/${botId}/image-assets/extract-status`, { signal: controller.signal })
+        if (controller.signal.aborted) return
         if (resp.ok) {
           const data = (await resp.json()) as ExtractionStatusResponse
+          if (controller.signal.aborted) return
           setExtractStats(data)
 
           if (data.status === 'queued' || data.status === 'running') {
@@ -361,6 +373,7 @@ export default function BotImageAssetsTab() {
           }
         }
       } catch (e) {
+        if ((e instanceof DOMException && e.name === 'AbortError') || (e as Error).name === 'AbortError') return
         console.error('Failed to check extraction status', e)
       }
     }
@@ -373,6 +386,7 @@ export default function BotImageAssetsTab() {
     }
 
     return () => {
+      controller.abort()
       if (intervalId) clearInterval(intervalId)
     }
   }, [botId, extracting, authedFetch, loadAssets, t, currentPage])

@@ -234,6 +234,7 @@ class WidgetChatResponse(BaseModel):
     citations: List[Citation] = []
     assets: List["AssetCard"] = []
     session_id: Optional[str] = None
+    suggested_messages: List[Dict[str, Any]] = []
 
 
 class CustomPersona(BaseModel):
@@ -300,6 +301,10 @@ class ConversationSessionResponse(BaseModel):
     started_at: str
     last_active_at: str
     ended_at: Optional[str] = None
+    assistant_state: str = "bot"
+    handoff_active: bool = False
+    support_request_id: Optional[str] = None
+    support_request_status: Optional[str] = None
 
 
 class ConversationMessageResponse(BaseModel):
@@ -324,6 +329,10 @@ class ConversationDetailResponse(BaseModel):
     bot_id: str
     session_id: str
     messages: List[ConversationMessageResponse]
+    assistant_state: str = "bot"
+    handoff_active: bool = False
+    support_request_id: Optional[str] = None
+    support_request_status: Optional[str] = None
 
 
 class ConversationEndResponse(BaseModel):
@@ -333,7 +342,11 @@ class ConversationEndResponse(BaseModel):
 
 class ConversationTakeoverResponse(BaseModel):
     ok: bool = True
-    message: str = "Bot will stop replying. You can now reply directly."
+    message: str = "Conversation transferred to support. The bot is now paused for this session."
+    assistant_state: str = "human_handoff"
+    handoff_active: bool = True
+    support_request_id: Optional[str] = None
+    support_request_status: Optional[str] = None
 
 
 class AnalyticsSummaryResponse(BaseModel):
@@ -434,6 +447,7 @@ class EscalationRecordResponse(BaseModel):
     bot_id: str
     session_id: str
     visitor_email: str
+    visitor_name: Optional[str] = None
     details: Optional[str] = None
     status: str
     created_at: str
@@ -442,6 +456,9 @@ class EscalationRecordResponse(BaseModel):
     site_title: Optional[str] = None
     last_active_at: Optional[str] = None
     session_status: Optional[str] = None
+    linked_session_id: Optional[str] = None
+    notification_read_at: Optional[str] = None
+    notification_is_unread: bool = False
 
 
 class EscalationListResponse(BaseModel):
@@ -455,6 +472,19 @@ class EscalationCountsResponse(BaseModel):
     bot_id: str
     total: int
     open: int
+    unread: int = 0
+
+
+class BotOverviewSetupItemResponse(BaseModel):
+    id: str
+    label: str
+    done: bool = False
+    route: str
+
+
+class BotOverviewSetupResponse(BaseModel):
+    bot_id: str
+    sections: List[BotOverviewSetupItemResponse] = []
 
 
 class EscalationStatusUpdateRequest(BaseModel):
@@ -504,6 +534,7 @@ class WidgetConfigUpdate(BaseModel):
     displaySources: Optional[bool] = None
     sourcesLabel: Optional[str] = None
     suggestedMessages: Optional[List[Dict[str, Any]]] = None
+    suggestedMessagesByLanguage: Optional[Dict[str, List[Dict[str, Any]]]] = None
 
 
 # ===========================
@@ -810,6 +841,14 @@ class LineChannelResponse(BaseModel):
 class LineChannelDeleteResponse(BaseModel):
     ok: bool = True
     bot_id: str
+
+
+class LineChannelTestResponse(BaseModel):
+    ok: bool
+    message: str
+    display_name: Optional[str] = None
+    basic_id: Optional[str] = None
+    user_id: Optional[str] = None
 
 
 # ========== Instagram Integration ==========

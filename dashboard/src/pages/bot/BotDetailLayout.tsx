@@ -10,7 +10,7 @@ export default function BotDetailLayout() {
   const { botId } = useParams()
   const location = useLocation()
   const { t } = useTranslation()
-  const { selectedBot, selectedBotWidgetConfig, setSelectedBotId, isSuperAdmin, activeOrgId } = useDashboardData()
+  const { selectedBot, selectedBotWidgetConfig, setSelectedBotId, isSuperAdmin, activeOrgId, selectedBotUnreadNotifications } = useDashboardData()
 
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
   const [dropdownTop, setDropdownTop] = useState(0)
@@ -64,6 +64,7 @@ export default function BotDetailLayout() {
   }
 
   const ActiveIcon = activeSecondaryItem?.icon
+  const notificationBadgeLabel = selectedBotUnreadNotifications > 99 ? '99+' : String(selectedBotUnreadNotifications)
 
   // Redirect when on a knowledge tab that's not available for this platform
   const allowedKnowledgeIds = useMemo(
@@ -108,6 +109,9 @@ export default function BotDetailLayout() {
               <span className="mobile-page-btn-label">
                 {activeSecondaryItem ? t(activeSecondaryItem.label, activeSecondaryItem.label) : ''}
               </span>
+              {activeSecondaryItem?.id === 'notifications' && selectedBotUnreadNotifications > 0 && (
+                <span className="mobile-page-badge">{notificationBadgeLabel}</span>
+              )}
               <ChevronDown className={`mobile-page-chevron${mobileDropdownOpen ? ' open' : ''}`} size={15} strokeWidth={2} />
             </button>
 
@@ -121,6 +125,7 @@ export default function BotDetailLayout() {
                     {group.header && <div className="nav-category-header">{t(group.header, group.header)}</div>}
                     {group.items.map(item => {
                       const Icon = item.icon
+                      const showNotificationBadge = item.id === 'notifications' && selectedBotUnreadNotifications > 0
                       return (
                         <div key={item.id}>
                           {item.separator && <hr className="nav-separator" />}
@@ -131,8 +136,11 @@ export default function BotDetailLayout() {
                             onClick={() => setMobileDropdownOpen(false)}
                           >
                             <span className="nav-link-content">
-                              <Icon className="nav-icon" aria-hidden />
-                              {t(item.label, item.label)}
+                              <span className="nav-icon-wrap">
+                                <Icon className="nav-icon" aria-hidden />
+                                {showNotificationBadge && <span className="nav-notification-badge">{notificationBadgeLabel}</span>}
+                              </span>
+                              <span className="nav-label-text">{t(item.label, item.label)}</span>
                             </span>
                           </NavLink>
                         </div>

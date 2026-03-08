@@ -248,6 +248,39 @@ class ConversationSession:
     ended_at: Optional[str] = None
     user_agent: Optional[str] = None
     ip: Optional[str] = None
+    assistant_state: str = "bot"
+    handoff_active: bool = False
+    support_request_id: Optional[str] = None
+    support_request_status: Optional[str] = None
+
+
+@dataclass
+class ConversationChannelContact:
+    contact_id: str
+    bot_id: str
+    channel: str
+    external_user_id: str
+    display_name: Optional[str]
+    current_session_id: Optional[str]
+    created_at: str
+    updated_at: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ConversationSessionHandoff:
+    handoff_id: str
+    bot_id: str
+    session_id: str
+    assistant_state: str
+    created_at: str
+    updated_at: str
+    contact_id: Optional[str] = None
+    source_channel: Optional[str] = None
+    support_request_id: Optional[str] = None
+    started_by: Optional[str] = None
+    ended_reason: Optional[str] = None
+    ended_at: Optional[str] = None
 
 
 @dataclass
@@ -276,6 +309,10 @@ class EscalationRecord:
     site_title: Optional[str] = None
     last_active_at: Optional[str] = None
     session_status: Optional[str] = None
+    visitor_name: Optional[str] = None
+    linked_session_id: Optional[str] = None
+    notification_read_at: Optional[str] = None
+    notification_is_unread: bool = False
 
 
 @dataclass
@@ -301,6 +338,7 @@ class LineUserSession:
     updated_at: str
     awaiting_escalation_msg: bool = False
     awaiting_staff_takeover: bool = False
+    display_name: Optional[str] = None
 
 
 @dataclass

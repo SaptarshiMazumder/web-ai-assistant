@@ -8,6 +8,7 @@ import {
   Trash2, Zap, MessageCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
+import { useDialog } from '../../contexts/DialogContext'
 
 type LineChannelConfig = {
   channel_id: string
@@ -71,6 +72,7 @@ function StepProgress({
 export default function BotLineSettingsTab() {
   const { botId } = useParams()
   const { selectedBot } = useDashboardData()
+  const dialog = useDialog()
   const { getAccessTokenSilently } = useAuth0()
   const { i18n } = useTranslation()
   const lang = (i18n.resolvedLanguage || i18n.language || '').toLowerCase()
@@ -209,7 +211,12 @@ export default function BotLineSettingsTab() {
 
   async function handleDelete() {
     if (!botId) return
-    const confirmed = window.confirm(tr('Disconnect LINE integration? Your bot will stop responding on LINE.', 'LINE連携を解除しますか？ボットはLINEで返信しなくなります。'))
+    const confirmed = await dialog.confirm({
+      title: tr('Disconnect LINE integration? Your bot will stop responding on LINE.', 'LINE連携を解除しますか？ボットはLINEで返信しなくなります。'),
+      confirmLabel: tr('Disconnect', '連携解除'),
+      cancelLabel: tr('Cancel', 'キャンセル'),
+      tone: 'danger',
+    })
     if (!confirmed) return
     setDeleting(true)
     setError(null)

@@ -2,6 +2,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DashboardDataProvider, useDashboardData } from './hooks/useDashboardData'
 import { BackgroundTaskProvider } from './contexts/BackgroundTaskContext'
+import { DialogProvider } from './contexts/DialogContext'
 import { BackgroundTaskIndicator } from './components/BackgroundTaskIndicator'
 import DashboardLayout from './layouts/DashboardLayout'
 import AccountPage from './pages/AccountPage'
@@ -83,59 +84,61 @@ export default function App() {
 
   return (
     <BackgroundTaskProvider>
-      <DashboardDataProvider>
-        <BrowserRouter>
-          <BackgroundTaskIndicator />
-          <Routes>
-          {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
-          <Route path="/create-bot" element={<CreateBotLayout />}>
-            <Route index element={<CreateBotDetailsPage />} />
-            <Route path="sources" element={<CreateBotUrlsPage />} />
-            <Route path="urls" element={<Navigate to="/create-bot/sources" replace />} />
-            <Route path="additional-sources" element={<CreateBotAdditionalSourcesPage />} />
-            <Route path="progress" element={<CreateBotProgressPage />} />
-            <Route path="widget" element={<CreateBotWidgetPage />} />
-            <Route path="embed" element={<CreateBotEmbedPage />} />
-            <Route path="*" element={<Navigate to="/create-bot" replace />} />
-          </Route>
-          <Route path="/" element={<DashboardLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="dashboard" element={<DashboardRedirect />} />
-            <Route path="org" element={<OrgPage />} />
-            <Route path="org/members" element={<Navigate to="/org" replace />} />
-            <Route path="bots" element={<BotsPage />} />
-            <Route path="bots/:botId" element={<BotDetailLayout />}>
-              <Route index element={<Navigate to="overview" replace />} />
-              <Route path="overview" element={<BotOverviewTab />} />
-              <Route path="notifications" element={<BotNotificationsTab />} />
-              <Route path="knowledge" element={<BotKnowledgeTab />} />
-              <Route path="info-links" element={<Navigate to="../knowledge" replace />} />
-              <Route path="image-assets" element={<BotImageAssetsTab />} />
-              <Route path="menu-list" element={<BotMenuListTab />} />
-              <Route path="sources" element={<Navigate to="knowledge" replace />} />
-              <Route path="sources/new" element={<AddSourcePage />} />
-              <Route path="design" element={<BotDesignTab />} />
-              <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
-              <Route path="human-support" element={<BotHumanSupportTab />} />
-
-              <Route path="testing" element={<BotTestingTab />} />
-              <Route path="conversations" element={<BotConversationsTab />} />
-              <Route path="escalations" element={<BotEscalationsTab />} />
-              <Route path="leads" element={<BotLeadsTab />} />
-              <Route path="website" element={<BotWebsiteSettingsTab />} />
-              <Route path="line" element={<BotLineSettingsTab />} />
-              <Route path="settings" element={<BotSettingsTab />} />
+      <DialogProvider>
+        <DashboardDataProvider>
+          <BrowserRouter>
+            <BackgroundTaskIndicator />
+            <Routes>
+            {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
+            <Route path="/create-bot" element={<CreateBotLayout />}>
+              <Route index element={<CreateBotDetailsPage />} />
+              <Route path="sources" element={<CreateBotUrlsPage />} />
+              <Route path="urls" element={<Navigate to="/create-bot/sources" replace />} />
+              <Route path="additional-sources" element={<CreateBotAdditionalSourcesPage />} />
+              <Route path="progress" element={<CreateBotProgressPage />} />
+              <Route path="widget" element={<CreateBotWidgetPage />} />
+              <Route path="embed" element={<CreateBotEmbedPage />} />
+              <Route path="*" element={<Navigate to="/create-bot" replace />} />
             </Route>
-            <Route path="users" element={<UsersPage />} />
-            <Route path="domain" element={<DomainPage />} />
-            <Route path="account" element={<AccountPage />} />
-            <Route path="billing" element={<BillingPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-        </BrowserRouter>
-      </DashboardDataProvider>
+            <Route path="/" element={<DashboardLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="dashboard" element={<DashboardRedirect />} />
+              <Route path="org" element={<OrgPage />} />
+              <Route path="org/members" element={<Navigate to="/org" replace />} />
+              <Route path="bots" element={<BotsPage />} />
+              <Route path="bots/:botId" element={<BotDetailLayout />}>
+                <Route index element={<Navigate to="overview" replace />} />
+                <Route path="overview" element={<BotOverviewTab />} />
+                <Route path="notifications" element={<BotNotificationsTab />} />
+                <Route path="knowledge" element={<BotKnowledgeTab />} />
+                <Route path="info-links" element={<Navigate to="../knowledge" replace />} />
+                <Route path="image-assets" element={<BotImageAssetsTab />} />
+                <Route path="menu-list" element={<BotMenuListTab />} />
+                <Route path="sources" element={<Navigate to="knowledge" replace />} />
+                <Route path="sources/new" element={<AddSourcePage />} />
+                <Route path="design" element={<BotDesignTab />} />
+                <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
+                <Route path="human-support" element={<BotHumanSupportTab />} />
+
+                <Route path="testing" element={<BotTestingTab />} />
+                <Route path="conversations" element={<BotConversationsTab />} />
+                <Route path="escalations" element={<BotEscalationsTab />} />
+                <Route path="leads" element={<BotLeadsTab />} />
+                <Route path="website" element={<BotWebsiteSettingsTab />} />
+                <Route path="line" element={<BotLineSettingsTab />} />
+                <Route path="settings" element={<BotSettingsTab />} />
+              </Route>
+              <Route path="users" element={<UsersPage />} />
+              <Route path="domain" element={<DomainPage />} />
+              <Route path="account" element={<AccountPage />} />
+              <Route path="billing" element={<BillingPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+          </BrowserRouter>
+        </DashboardDataProvider>
+      </DialogProvider>
     </BackgroundTaskProvider>
   )
 }

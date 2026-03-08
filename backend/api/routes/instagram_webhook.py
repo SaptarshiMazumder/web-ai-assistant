@@ -30,6 +30,11 @@ from api.schemas import (
     InstagramChannelDeleteResponse,
 )
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
+from application.services.answer_normalization_service import (
+    RENDER_TARGET_PLAIN_TEXT_CHANNEL,
+    build_answer_link_candidates,
+    normalize_answer_links,
+)
 from common.di.container import asset_repo, bot_service, conversation_service
 from infrastructure.clients.instagram_client import (
     INSTAGRAM_APP_SECRET,
@@ -57,7 +62,6 @@ from infrastructure.db.repositories import (
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from domain.platform_profiles import (
-    ensure_canonical_reservation_url_in_text,
     get_asset_rules_from_widget,
     get_instagram_menu_page_payload_prefix,
     get_instagram_menu_quick_payload,
@@ -1019,11 +1023,14 @@ async def instagram_webhook_global(request: Request):
                             "pass_thread_control on echo failed for ig_user=%s (may already have control)",
                             ig_recipient_id,
                         )
-                    _ig_user_session_repo.set_escalated(
-                        ig_user_id=ig_recipient_id,
-                        bot_id=channel.bot_id,
-                        escalated=True,
-                    )
+                    mapping = _ig_user_session_repo.get(ig_user_id=ig_recipient_id, bot_id=channel.bot_id)
+                    if mapping:
+                        conversation_service().begin_handoff(
+                            bot_id=channel.bot_id,
+                            session_id=mapping.session_id,
+                            source_channel="instagram",
+                            started_by="staff",
+                        )
                 continue
 
             # Look up which bot owns this IG account
@@ -1173,11 +1180,14 @@ async def instagram_webhook(bot_id: str, request: Request):
                             "pass_thread_control on echo failed for ig_user=%s (may already have control)",
                             ig_recipient_id,
                         )
-                    _ig_user_session_repo.set_escalated(
-                        ig_user_id=ig_recipient_id,
-                        bot_id=bot_id,
-                        escalated=True,
-                    )
+                    mapping = _ig_user_session_repo.get(ig_user_id=ig_recipient_id, bot_id=bot_id)
+                    if mapping:
+                        conversation_service().begin_handoff(
+                            bot_id=bot_id,
+                            session_id=mapping.session_id,
+                            source_channel="instagram",
+                            started_by="staff",
+                        )
                 continue
 
             ig_user_id = ig_sender_id
@@ -1207,19 +1217,6 @@ async def _handle_text_message(
     access_token = channel.page_access_token
 
     effective_text = (text or "").strip() or (quick_payload or "").strip()
-    mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
-    # Don't show typing when escalated and we won't reply (user didn't say "cancel")
-    skip_typing = mapping and mapping.is_escalated and not _wants_cancel_escalation(effective_text)
-    if not skip_typing:
-        logger.info("Instagram typing: showing for ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
-        print(f"[Instagram typing] showing for ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
-        await ig_show_typing(ig_user_id, access_token)
-        # Brief delay so typing indicator can render before reply; Meta docs warn against
-        # typing_on + reply in rapid succession (indicator may not show)
-        await asyncio.sleep(0.5)
-    else:
-        logger.info("Instagram typing: skipped (escalated) ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
-        print(f"[Instagram typing] SKIPPED (escalated) ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
 
     # Load suggested messages from platform profile or default (config-driven)
     ig_quick_replies = None
@@ -1236,57 +1233,53 @@ async def _handle_text_message(
         ig_quick_replies = build_ig_quick_replies(suggested_messages)
     logger.info("Instagram quick replies bot_id=%s quick_reply_count=%s", bot.bot_id, len(ig_quick_replies or []))
 
-    # Get or create session mapping
+    # Mapping rows keep the current routed session; runtime handoff state is session-scoped.
     mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
-
+    session, contact, _session_changed = conversation_service().resolve_or_create_channel_session(
+        bot_id=bot.bot_id,
+        org_id=bot.org_id,
+        channel="instagram",
+        external_user_id=ig_user_id,
+        current_session_id=getattr(mapping, "session_id", None),
+        display_name=None,
+        metadata=None,
+        site_url=None,
+        site_title=None,
+        user_agent="Instagram",
+        ip=None,
+    )
     if mapping is None:
-        session = conversation_service().get_or_create_session(
-            bot_id=bot.bot_id,
-            org_id=bot.org_id,
-            channel="instagram",
-            session_id=None,
-            site_url=None,
-            site_title=None,
-            user_agent="Instagram",
-            ip=None,
-        )
         mapping = _ig_user_session_repo.get_or_create(
             ig_user_id=ig_user_id,
             bot_id=bot.bot_id,
             session_id=session.session_id,
         )
-    else:
-        session = conversation_service().get_or_create_session(
+    elif mapping.session_id != session.session_id:
+        _ig_user_session_repo.update_session_id(
+            ig_user_id=ig_user_id,
             bot_id=bot.bot_id,
-            org_id=bot.org_id,
-            channel="instagram",
-            session_id=mapping.session_id,
-            site_url=None,
-            site_title=None,
-            user_agent="Instagram",
-            ip=None,
+            session_id=session.session_id,
         )
-        if session.session_id != mapping.session_id:
-            _ig_user_session_repo.update_session_id(
-                ig_user_id=ig_user_id,
-                bot_id=bot.bot_id,
-                session_id=session.session_id,
-            )
-            _ig_user_session_repo.set_escalated(
-                ig_user_id=ig_user_id,
-                bot_id=bot.bot_id,
-                escalated=False,
-            )
-            mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
+        mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id) or mapping
+
+    assistant_state = getattr(session, "assistant_state", "bot") or "bot"
+    skip_typing = assistant_state == "human_handoff" and not _wants_cancel_escalation(effective_text)
+    if not skip_typing:
+        logger.info("Instagram typing: showing for ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
+        print(f"[Instagram typing] showing for ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
+        await ig_show_typing(ig_user_id, access_token)
+        await asyncio.sleep(0.5)
+    else:
+        logger.info("Instagram typing: skipped (handoff active) ig_user_id=%s bot_id=%s", ig_user_id, bot.bot_id)
+        print(f"[Instagram typing] SKIPPED (handoff active) ig_user_id={ig_user_id} bot_id={bot.bot_id}", flush=True)
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ De-escalation check ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Escalated: log message + throttled acknowledgment ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
-    if mapping and mapping.is_escalated:
+    if assistant_state == "human_handoff":
         if _wants_cancel_escalation(effective_text):
-            _ig_user_session_repo.set_escalated(
-                ig_user_id=ig_user_id,
+            conversation_service().cancel_handoff(
                 bot_id=bot.bot_id,
-                escalated=False,
+                session_id=session.session_id,
             )
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -1315,12 +1308,12 @@ async def _handle_text_message(
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Awaiting optional escalation message ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
-    if mapping and mapping.awaiting_escalation_msg:
+    if assistant_state == "awaiting_support_details":
         if _wants_cancel_escalation(effective_text):
-            _ig_user_session_repo.set_awaiting_escalation_msg(
-                ig_user_id=ig_user_id,
+            conversation_service().release_handoff(
                 bot_id=bot.bot_id,
-                awaiting=False,
+                session_id=session.session_id,
+                ended_reason="user_canceled",
             )
             conversation_service().add_message(
                 session_id=session.session_id,
@@ -1340,11 +1333,6 @@ async def _handle_text_message(
             )
             return
         user_msg = effective_text.strip()
-        _ig_user_session_repo.set_awaiting_escalation_msg(
-            ig_user_id=ig_user_id,
-            bot_id=bot.bot_id,
-            awaiting=False,
-        )
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1354,11 +1342,13 @@ async def _handle_text_message(
         lang = _normalize_lang(widget_config)
         msgs = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])
         details = user_msg if user_msg else msgs["email_details_no_message"]
-        conversation_service().create_escalation(
+        conversation_service().request_support(
             bot_id=bot.bot_id,
             session_id=session.session_id,
             visitor_email=f"instagram:{ig_user_id}",
             details=details,
+            contact_id=getattr(contact, "contact_id", None),
+            source_channel="instagram",
         )
         from infrastructure.email import maybe_send_escalation_email
 
@@ -1410,19 +1400,15 @@ async def _handle_text_message(
                 ig_user_id,
                 bot.bot_id,
             )
-        _ig_user_session_repo.set_escalated(
-            ig_user_id=ig_user_id,
-            bot_id=bot.bot_id,
-            escalated=True,
-        )
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Escalation request ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
     if _is_escalate_quick_reply(effective_text, suggested_messages or []):
-        _ig_user_session_repo.set_awaiting_escalation_msg(
-            ig_user_id=ig_user_id,
+        conversation_service().set_awaiting_support_details(
             bot_id=bot.bot_id,
-            awaiting=True,
+            session_id=session.session_id,
+            contact_id=getattr(contact, "contact_id", None),
+            source_channel="instagram",
         )
         conversation_service().add_message(
             session_id=session.session_id,
@@ -1433,7 +1419,7 @@ async def _handle_text_message(
         lang = _normalize_lang(widget_config)
         prompt_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["prompt"]
         _record_outbound_send(ig_user_id, bot.bot_id)
-        await send_message(ig_user_id, prompt_msg, access_token, quick_replies=ig_quick_replies)
+        await send_message(ig_user_id, prompt_msg, access_token)
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1569,17 +1555,19 @@ async def _handle_text_message(
             extra_evidence=extra_evidence if extra_evidence else None,
             parse_json_response=get_platform_json_response_enabled(widget_config),
         )
+        sources = result.get("sources") or []
         answer = str(result.get("answer") or "").strip()
         if not answer:
             answer = "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?"
         else:
-            # Ensure any reservation URLs in the response use the canonical one from config
-            if reservation_config:
-                answer = ensure_canonical_reservation_url_in_text(
-                    answer,
-                    reservation_config["url"],
-                    reservation_config["domain_key"],
-                )
+            answer = normalize_answer_links(
+                answer,
+                candidates=build_answer_link_candidates(
+                    reservation_config=reservation_config,
+                    sources=sources,
+                ),
+                render_target=RENDER_TARGET_PLAIN_TEXT_CHANNEL,
+            ).text
             allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
             show_assets = result.get("show_assets")
             if show_assets is False:
@@ -1802,5 +1790,3 @@ async def v1_org_test_instagram_channel(
         return {"ok": False, "message": "Invalid access token. Please generate a new token from the Meta App Dashboard and try again."}
     except Exception as exc:
         return {"ok": False, "message": f"Could not reach Meta Graph API: {str(exc)}"}
-
-

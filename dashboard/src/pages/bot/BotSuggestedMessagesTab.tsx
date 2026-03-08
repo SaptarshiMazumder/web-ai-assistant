@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Check, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_WIDGET_DESIGN_STATE,
-  widgetConfigToState,
-  stateToWidgetConfig,
-  type WidgetDesignState,
   type SuggestedMessageConfig,
 } from '../../components/WidgetDesignForm'
 import { SuggestedMessagesEditor } from '../../components/SuggestedMessagesEditor'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, SectionHeader, UiButton } from '../../components/ui'
+import {
+  getBotSuggestedMessagesBaseLanguage,
+  getSuggestedMessagesForLanguageFromConfig,
+  setSuggestedMessagesForLanguageInConfig,
+  type SuggestedMessagesLanguage,
+} from '../../utils/suggestedMessagesConfig'
 
 const SAVED_FEEDBACK_MS = 2000
 
@@ -25,14 +28,19 @@ export default function BotSuggestedMessagesTab() {
     fetchPlatformConfig,
     loading,
   } = useDashboardData()
-  const [state, setState] = useState<WidgetDesignState>(() => DEFAULT_WIDGET_DESIGN_STATE)
+  const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>(() => DEFAULT_WIDGET_DESIGN_STATE.suggestedMessages)
+  const [editorLanguage, setEditorLanguage] = useState<SuggestedMessagesLanguage>('en')
   const [saving, setSaving] = useState(false)
   const [savedJustNow, setSavedJustNow] = useState(false)
   const [availableTypes, setAvailableTypes] = useState<Array<'ai_response' | 'show_menu' | 'escalate'>>(['ai_response'])
 
   useEffect(() => {
-    setState(widgetConfigToState(selectedBotWidgetConfig ?? null))
-  }, [selectedBotWidgetConfig])
+    setEditorLanguage(getBotSuggestedMessagesBaseLanguage(selectedBotWidgetConfig))
+  }, [selectedBotWidgetConfig, botId])
+
+  useEffect(() => {
+    setSuggestedMessages(getSuggestedMessagesForLanguageFromConfig(selectedBotWidgetConfig, editorLanguage))
+  }, [selectedBotWidgetConfig, editorLanguage])
 
   useEffect(() => {
     fetchPlatformConfig().then((r) => {
@@ -47,12 +55,8 @@ export default function BotSuggestedMessagesTab() {
     })
   }, [fetchPlatformConfig, selectedBotWidgetConfig])
 
-  const update = useCallback(<K extends keyof WidgetDesignState>(key: K, value: WidgetDesignState[K]) => {
-    setState((prev) => ({ ...prev, [key]: value }))
-  }, [])
-
   const handleSuggestedMessagesChange = (next: SuggestedMessageConfig[]) => {
-    update('suggestedMessages', next)
+    setSuggestedMessages(next)
   }
 
   const handleSave = async () => {
@@ -60,7 +64,14 @@ export default function BotSuggestedMessagesTab() {
     setSaving(true)
     setSavedJustNow(false)
     try {
-      await saveWidgetConfig(botId, stateToWidgetConfig(state))
+      const nextConfig = setSuggestedMessagesForLanguageInConfig(
+        selectedBotWidgetConfig ?? {},
+        editorLanguage,
+        suggestedMessages
+      )
+      await saveWidgetConfig(botId, {
+        suggestedMessagesByLanguage: nextConfig.suggestedMessagesByLanguage as Record<string, unknown>,
+      })
       setSavedJustNow(true)
       setTimeout(() => setSavedJustNow(false), SAVED_FEEDBACK_MS)
     } finally {
@@ -74,9 +85,9 @@ export default function BotSuggestedMessagesTab() {
 
   const saveAction = (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-      <UiButton
-        variant="primary"
-        onClick={() => void handleSave()}
+        <UiButton
+          variant="primary"
+          onClick={() => void handleSave()}
         disabled={saving || savedJustNow}
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
       >
@@ -94,6 +105,32 @@ export default function BotSuggestedMessagesTab() {
           </>
         )}
       </UiButton>
+      </div>
+    )
+
+  const languageToggle = (
+    <div style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+      {([
+        { id: 'en', label: 'English' },
+        { id: 'ja', label: 'Japanese' },
+      ] as const).map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          onClick={() => setEditorLanguage(option.id)}
+          style={{
+            padding: '0.5rem 0.85rem',
+            borderRadius: 999,
+            border: `1px solid ${editorLanguage === option.id ? 'var(--ui-flow-accent)' : 'var(--ui-flow-border)'}`,
+            background: editorLanguage === option.id ? 'var(--ui-flow-accent)' : 'transparent',
+            color: editorLanguage === option.id ? '#fff' : 'var(--ui-flow-text)',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   )
 
@@ -105,8 +142,14 @@ export default function BotSuggestedMessagesTab() {
       />
 
       <GlassCard style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ui-flow-text)' }}>
+            {t('widgetDesign.botLanguage', 'Bot language')}
+          </div>
+          {languageToggle}
+        </div>
         <SuggestedMessagesEditor
-          suggestedMessages={state.suggestedMessages}
+          suggestedMessages={suggestedMessages}
           onChange={handleSuggestedMessagesChange}
           title=""
           subtitle=""
@@ -120,4 +163,3 @@ export default function BotSuggestedMessagesTab() {
     </AnimatedPage>
   )
 }
-

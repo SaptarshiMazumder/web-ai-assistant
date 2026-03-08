@@ -3,12 +3,16 @@ import { useParams } from 'react-router-dom'
 import { BellRing, Check, Globe, MessageSquare, Save } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
-  stateToWidgetConfig,
   type SuggestedMessageConfig,
-  widgetConfigToState,
 } from '../../components/WidgetDesignForm'
 import { useDashboardData, type EscalationConfig } from '../../hooks/useDashboardData'
 import { AnimatedPage, GlassCard, GlassField, SectionHeader, UiButton } from '../../components/ui'
+import {
+  getBotSuggestedMessagesBaseLanguage,
+  getSuggestedMessagesForLanguageFromConfig,
+  setSuggestedMessagesForLanguageInConfig,
+  type SuggestedMessagesLanguage,
+} from '../../utils/suggestedMessagesConfig'
 
 const SAVED_FEEDBACK_MS = 2000
 
@@ -38,17 +42,23 @@ export default function BotHumanSupportTab() {
   const defaultEscalationBtnLabel = t('botSuggestedMessages.defaultEscalationBtnLabel', 'Request human support')
 
   const [suggestedMessages, setSuggestedMessages] = useState<SuggestedMessageConfig[]>([])
+  const [editorLanguage, setEditorLanguage] = useState<SuggestedMessagesLanguage>('en')
   const [escalationConfig, setEscalationConfig] = useState<EscalationConfig>(DEFAULT_ESCALATION_CONFIG)
   const [escalationBtnLabel, setEscalationBtnLabel] = useState(defaultEscalationBtnLabel)
   const [activeChannelTab, setActiveChannelTab] = useState<ChannelTab>('website')
   const [savingEscalation, setSavingEscalation] = useState(false)
   const [escalationSavedJustNow, setEscalationSavedJustNow] = useState(false)
+
   useEffect(() => {
-    const next = widgetConfigToState(selectedBotWidgetConfig ?? null)
-    setSuggestedMessages(next.suggestedMessages)
-    const existingEscalateMsg = next.suggestedMessages.find((m) => m.type === 'escalate')
+    setEditorLanguage(getBotSuggestedMessagesBaseLanguage(selectedBotWidgetConfig))
+  }, [selectedBotWidgetConfig, botId])
+
+  useEffect(() => {
+    const nextMessages = getSuggestedMessagesForLanguageFromConfig(selectedBotWidgetConfig, editorLanguage)
+    setSuggestedMessages(nextMessages)
+    const existingEscalateMsg = nextMessages.find((m) => m.type === 'escalate')
     setEscalationBtnLabel(existingEscalateMsg?.label || defaultEscalationBtnLabel)
-  }, [selectedBotWidgetConfig, defaultEscalationBtnLabel])
+  }, [selectedBotWidgetConfig, editorLanguage, defaultEscalationBtnLabel])
 
   useEffect(() => {
     if (!botId) return
@@ -68,9 +78,14 @@ export default function BotHumanSupportTab() {
   const saveMessages = async (next: SuggestedMessageConfig[]) => {
     if (!botId) return
     setSuggestedMessages(next)
-    const currentState = widgetConfigToState(selectedBotWidgetConfig ?? null)
-    currentState.suggestedMessages = next
-    await saveWidgetConfig(botId, stateToWidgetConfig(currentState))
+    const nextConfig = setSuggestedMessagesForLanguageInConfig(
+      selectedBotWidgetConfig ?? {},
+      editorLanguage,
+      next
+    )
+    await saveWidgetConfig(botId, {
+      suggestedMessagesByLanguage: nextConfig.suggestedMessagesByLanguage as Record<string, unknown>,
+    })
   }
 
   const handleSave = async () => {
@@ -106,8 +121,36 @@ export default function BotHumanSupportTab() {
         subtitle={t('botHumanSupport.subtitle', 'Let visitors request human support and notify your team by email.')}
       />
 
-      <GlassCard style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
-        <div style={{ padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
+        <GlassCard style={{ display: 'grid', gap: '1.25rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ui-flow-text)' }}>
+              {t('widgetDesign.botLanguage', 'Bot language')}
+            </div>
+            <div style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {([
+                { id: 'en', label: 'English' },
+                { id: 'ja', label: 'Japanese' },
+              ] as const).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setEditorLanguage(option.id)}
+                  style={{
+                    padding: '0.5rem 0.85rem',
+                    borderRadius: 999,
+                    border: `1px solid ${editorLanguage === option.id ? 'var(--ui-flow-accent)' : 'var(--ui-flow-border)'}`,
+                    background: editorLanguage === option.id ? 'var(--ui-flow-accent)' : 'transparent',
+                    color: editorLanguage === option.id ? '#fff' : 'var(--ui-flow-text)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ padding: '1rem', borderRadius: 14, border: '1px solid var(--ui-flow-border)', background: 'rgba(255,241,239,0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
                 <MessageSquare size={18} style={{ color: 'var(--ui-flow-accent)' }} />
                 <div>
