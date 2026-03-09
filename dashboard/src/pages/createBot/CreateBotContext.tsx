@@ -3,7 +3,18 @@ import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { getDefaultsForLanguage, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
-import { CREATE_BOT_FIRST_PATH, getCreateBotNextPath, getCreateBotPrevPath, getCreateBotSteps } from './flowConfig'
+import {
+  getCreateBotCurrentScreen,
+  getCreateBotFirstPath,
+  getCreateBotNextPath,
+  getCreateBotPrevPath,
+  getCreateBotStepIndex,
+  getDefaultCreateBotFlowConfig,
+  getVisibleCreateBotScreens,
+  type CreateBotFlowConfig,
+  type CreateBotScreen,
+  type CreateBotStepGroup,
+} from './flowConfig'
 
 type TrainingStage = 'idle' | 'training' | 'complete'
 type ContentHosting = 'own' | 'shared'
@@ -73,6 +84,8 @@ export type CreateBotStep2Slice = {
   setReservationPlatform: (value: string) => void
   platformUrls: Record<string, string>
   setPlatformUrl: (platformId: string, url: string) => void
+  actionDestinationLinks: Record<string, string>
+  setActionDestinationLink: (actionKey: string, url: string) => void
   platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
 }
 
@@ -152,6 +165,7 @@ export type CreateBotStep4Slice = {
   setSourcesLabel: (value: string) => void
   suggestedMessages: SuggestedMessageConfig[]
   setSuggestedMessages: (value: SuggestedMessageConfig[]) => void
+  welcomeDefaultsByLanguage: { en: string; ja: string }
 }
 
 /** Flow navigation. Derived from flowConfig; add/remove steps there. */
@@ -159,6 +173,10 @@ export type CreateBotFlowSlice = {
   nextPath: string | null
   prevPath: string | null
   firstPath: string
+  currentScreen: CreateBotScreen | null
+  visibleScreens: CreateBotScreen[]
+  stepGroups: CreateBotStepGroup[]
+  activeStepIndex: number
 }
 
 export type CreateBotContextValue = {
@@ -173,9 +191,9 @@ export type CreateBotContextValue = {
 const CreateBotContext = createContext<CreateBotContextValue | undefined>(undefined)
 
 /**
- * When adding a new step: 1) Add step to flowConfig.ts (path, label, description).
- * 2) Add Route in App.tsx. 3) Define StepNSlice type and add stepN to value below.
- * 4) Add step state and include it in resetFlow().
+ * Create-bot screens are resolved from the config-driven screen registry in flowConfig.ts
+ * plus platform-config YAML from the backend. Add new prebuilt screen ids/components there,
+ * then wire only the state they need in this provider.
  */
 function normalizeUrl(value: string) {
   const trimmed = value.trim()
@@ -209,6 +227,13 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   // Derive bot language from dashboard UI language
   const appLang: 'en' | 'ja' = i18n.language?.startsWith('ja') ? 'ja' : 'en'
   const initDefaults = getDefaultsForLanguage(appLang)
+  const fallbackWelcomeDefaults = useMemo(
+    () => ({
+      en: getDefaultsForLanguage('en').welcomeMessage,
+      ja: getDefaultsForLanguage('ja').welcomeMessage,
+    }),
+    []
+  )
 
   const [botName, setBotName] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -226,11 +251,21 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [customTextEntries, setCustomTextEntries] = useState<CustomTextEntry[]>([{ id: '1', title: '', content: '' }])
   const [reservationPlatform, setReservationPlatform] = useState('')
   const [platformUrls, setPlatformUrlsState] = useState<Record<string, string>>({})
+  const [actionDestinationLinks, setActionDestinationLinksState] = useState<Record<string, string>>({})
   const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
   const [defaultSuggestedMessages, setDefaultSuggestedMessages] = useState<SuggestedMessageConfig[]>([])
+  const [welcomeDefaultsByLanguage, setWelcomeDefaultsByLanguage] = useState<{ en: string; ja: string }>(fallbackWelcomeDefaults)
+  const [createBotFlowConfig, setCreateBotFlowConfig] = useState<CreateBotFlowConfig>(getDefaultCreateBotFlowConfig())
+  const previousWelcomeDefaultsRef = useRef<{ en: string; ja: string }>(fallbackWelcomeDefaults)
 
   const setPlatformUrl = useCallback((platformId: string, url: string) => {
     setPlatformUrlsState((prev) => ({ ...prev, [platformId]: url }))
+  }, [])
+
+  const setActionDestinationLink = useCallback((actionKey: string, url: string) => {
+    const normalizedKey = String(actionKey || '').trim().toLowerCase()
+    if (!normalizedKey) return
+    setActionDestinationLinksState((prev) => ({ ...prev, [normalizedKey]: url }))
   }, [])
 
   const [isDiscovering, setIsDiscovering] = useState(false)
@@ -258,8 +293,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [botLanguage, setBotLanguage] = useState<'en' | 'ja'>(appLang)
 
   useEffect(() => {
-    fetchPlatformConfig(botLanguage).then(({ platforms: p, defaultSuggestedMessages: d }) => {
+    fetchPlatformConfig(botLanguage).then(({ platforms: p, defaultSuggestedMessages: d, defaultWelcomeMessages, createBotFlow }) => {
       setPlatforms(p)
+      setCreateBotFlowConfig(createBotFlow)
       setDefaultSuggestedMessages(
         d.map((m) => ({
           id: m.id,
@@ -268,8 +304,28 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           prompt: m.prompt,
         }))
       )
+      const nextWelcomeDefaults = {
+        en: defaultWelcomeMessages?.web?.en || fallbackWelcomeDefaults.en,
+        ja: defaultWelcomeMessages?.web?.ja || fallbackWelcomeDefaults.ja,
+      }
+      setWelcomeDefaultsByLanguage(nextWelcomeDefaults)
+      setWelcomeMessage((prev) => {
+        const trimmed = prev.trim()
+        const previousDefaults = previousWelcomeDefaultsRef.current
+        if (
+          !trimmed ||
+          trimmed === previousDefaults.en ||
+          trimmed === previousDefaults.ja ||
+          trimmed === fallbackWelcomeDefaults.en ||
+          trimmed === fallbackWelcomeDefaults.ja
+        ) {
+          return nextWelcomeDefaults[botLanguage]
+        }
+        return prev
+      })
+      previousWelcomeDefaultsRef.current = nextWelcomeDefaults
     })
-  }, [botLanguage, fetchPlatformConfig])
+  }, [botLanguage, fetchPlatformConfig, fallbackWelcomeDefaults])
 
   const [widgetPosition, setWidgetPosition] = useState<'bottom-right' | 'bottom-left'>('bottom-right')
   const [widgetPrimaryColor, setWidgetPrimaryColor] = useState('#e4587a')
@@ -304,6 +360,17 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       label === secondaryUrlBankLabel,
     [defaultUrlBankLabel, secondaryUrlBankLabel]
   )
+  const normalizeOneUrl = useCallback((entry: string): string => {
+    const raw = (entry || '').trim()
+    if (!raw) return ''
+    try {
+      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
+      return u.toString()
+    } catch {
+      return ''
+    }
+  }, [])
   const resetFlow = useCallback(() => {
     const defaults = getDefaultsForLanguage(appLang)
     setBotName('')
@@ -317,6 +384,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setSharedUrlRows([{ url: '', label: '' }])
     setReservationPlatform('')
     setPlatformUrlsState({})
+    setActionDestinationLinksState({})
     setTrainingUrls([])
     setPdfFiles([])
     setTextDocFiles([])
@@ -343,7 +411,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setWidgetPrimaryColor('#e4587a')
     setWidgetTitle(defaults.widgetTitle)
     setWidgetSize('medium')
-    setWelcomeMessage(defaults.welcomeMessage)
+    setWelcomeMessage(welcomeDefaultsByLanguage[appLang] || defaults.welcomeMessage)
     setPlaceholder(defaults.placeholder)
     setFooterMessage(defaults.footerMessage)
     setTheme('light')
@@ -360,7 +428,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDisplaySourcesInMessages(false)
     setSourcesLabel(defaults.sourcesLabel)
     setSuggestedMessages(defaultSuggestedMessages.length > 0 ? defaultSuggestedMessages : defaults.suggestedMessages)
-  }, [appLang, defaultSuggestedMessages])
+    previousWelcomeDefaultsRef.current = welcomeDefaultsByLanguage
+  }, [appLang, defaultSuggestedMessages, welcomeDefaultsByLanguage])
 
   // When platform is set, load platform default; else use default from config
   useEffect(() => {
@@ -637,6 +706,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }
       return Array.from(m.values())
     })()
+    const actionDestinationLinksForSave = Object.fromEntries(
+      Object.entries(actionDestinationLinks)
+        .map(([actionKey, url]) => [String(actionKey || '').trim().toLowerCase(), normalizeOneUrl(url)])
+        .filter(([actionKey, url]) => Boolean(actionKey) && Boolean(url))
+    )
 
     try {
       const widgetPayload: Record<string, unknown> = {
@@ -644,6 +718,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         businessType: businessType || undefined,
         language: botLanguage,
         urlBank: urlBankForSave,
+      }
+      if (Object.keys(actionDestinationLinksForSave).length > 0) {
+        widgetPayload.actionDestinationLinks = actionDestinationLinksForSave
       }
       // Save restaurant platform URLs from config-driven platforms
       if (businessType === 'restaurant' && reservationPlatform) {
@@ -665,19 +742,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [botName, createBot, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, saveWidgetConfig, contentHosting, businessType, botLanguage, sharedUrlRows, defaultUrlBankLabel, isFallbackUrlBankLabel, reservationPlatform, platformUrls, platforms, t])
-
-  const normalizeOneUrl = useCallback((entry: string): string => {
-    const raw = (entry || '').trim()
-    if (!raw) return ''
-    try {
-      const u = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`)
-      if (u.protocol !== 'http:' && u.protocol !== 'https:') return ''
-      return u.toString()
-    } catch {
-      return ''
-    }
-  }, [])
+  }, [actionDestinationLinks, activeOrgId, botLanguage, botName, businessType, createBot, defaultUrlBankLabel, isFallbackUrlBankLabel, isSuperAdmin, normalizeOneUrl, orgs, platforms, platformUrls, reservationPlatform, saveWidgetConfig, setSelectedBotId, sharedUrlRows, t])
 
   const sharedUrls = useMemo(() => {
     const out: string[] = []
@@ -785,11 +850,19 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setBotId(created.bot_id)
     setSelectedBotId(created.bot_id)
     try {
+      const actionDestinationLinksForSave = Object.fromEntries(
+        Object.entries(actionDestinationLinks)
+          .map(([actionKey, url]) => [String(actionKey || '').trim().toLowerCase(), normalizeOneUrl(url)])
+          .filter(([actionKey, url]) => Boolean(actionKey) && Boolean(url))
+      )
       const widgetPayloadTrain: Record<string, unknown> = {
         contentHosting: 'shared',
         businessType: businessType || undefined,
         language: botLanguage,
         urlBank,
+      }
+      if (Object.keys(actionDestinationLinksForSave).length > 0) {
+        widgetPayloadTrain.actionDestinationLinks = actionDestinationLinksForSave
       }
       // Save restaurant platform URLs from config-driven platforms
       if (businessType === 'restaurant' && reservationPlatform) {
@@ -903,7 +976,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     return created.bot_id
-  }, [botName, createBot, queueCrawlUrls, saveWidgetConfig, contentHosting, selectedUrls, trainingUrls, setSelectedBotId, orgs, activeOrgId, isSuperAdmin, normalizedWebsiteUrl, websiteUrl, discoveryMethod, businessType, botLanguage, pdfFiles, uploadPdfSources, textDocFiles, plainTextContent, customTextEntries, uploadTextSources, uploadDocsSources, urlBank, normalizeOneUrl, reservationPlatform, platformUrls, platforms, t])
+  }, [actionDestinationLinks, activeOrgId, botLanguage, botName, businessType, contentHosting, createBot, customTextEntries, discoveryMethod, normalizeOneUrl, normalizedWebsiteUrl, orgs, pdfFiles, plainTextContent, platformUrls, platforms, queueCrawlUrls, reservationPlatform, saveWidgetConfig, selectedUrls, setSelectedBotId, t, textDocFiles, trainingUrls, uploadDocsSources, uploadPdfSources, uploadTextSources, urlBank, websiteUrl, isSuperAdmin])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -1035,9 +1108,31 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(timer)
   }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, getLatestJobPipeline, contentHosting, selectedUrls.length, trainingUrls.length, t])
 
-  const steps = getCreateBotSteps()
-  const nextPath = getCreateBotNextPath(location.pathname, steps)
-  const prevPath = getCreateBotPrevPath(location.pathname, steps)
+  const visibleScreens = useMemo(
+    () =>
+      getVisibleCreateBotScreens(createBotFlowConfig, {
+        businessType,
+        reservationPlatform,
+      }),
+    [businessType, createBotFlowConfig, reservationPlatform]
+  )
+  const currentScreen = useMemo(
+    () => getCreateBotCurrentScreen(location.pathname, visibleScreens),
+    [location.pathname, visibleScreens]
+  )
+  const nextPath = useMemo(
+    () => getCreateBotNextPath(location.pathname, visibleScreens),
+    [location.pathname, visibleScreens]
+  )
+  const prevPath = useMemo(
+    () => getCreateBotPrevPath(location.pathname, visibleScreens),
+    [location.pathname, visibleScreens]
+  )
+  const firstPath = useMemo(() => getCreateBotFirstPath(visibleScreens), [visibleScreens])
+  const activeStepIndex = useMemo(
+    () => getCreateBotStepIndex(location.pathname, visibleScreens, createBotFlowConfig.stepGroups),
+    [createBotFlowConfig.stepGroups, location.pathname, visibleScreens]
+  )
 
   const value = useMemo(
     () => ({
@@ -1098,6 +1193,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setReservationPlatform,
         platformUrls,
         setPlatformUrl,
+        actionDestinationLinks,
+        setActionDestinationLink,
         platforms,
       },
       step3: {
@@ -1159,13 +1256,18 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setDisplaySourcesInMessages,
         sourcesLabel,
         setSourcesLabel,
-        suggestedMessages,
-        setSuggestedMessages,
-      },
+          suggestedMessages,
+          setSuggestedMessages,
+          welcomeDefaultsByLanguage,
+        },
       flow: {
         nextPath,
         prevPath,
-        firstPath: CREATE_BOT_FIRST_PATH,
+        firstPath,
+        currentScreen,
+        visibleScreens,
+        stepGroups: createBotFlowConfig.stepGroups,
+        activeStepIndex,
       },
       resetFlow,
     }),
@@ -1248,10 +1350,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       setDisplaySourcesInMessages,
       sourcesLabel,
       setSourcesLabel,
-      suggestedMessages,
-      setSuggestedMessages,
-      botLanguage,
-      setBotLanguage,
+        suggestedMessages,
+        setSuggestedMessages,
+        welcomeDefaultsByLanguage,
+        botLanguage,
+        setBotLanguage,
       continueWithoutSources,
       discoverUrls,
       stopDiscovery,
@@ -1261,13 +1364,20 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       deselectAll,
       startTraining,
       reservationPlatform,
+      actionDestinationLinks,
+      setActionDestinationLink,
       platformUrls,
       platforms,
       resetFlow,
       businessType,
       setBusinessType,
+      activeStepIndex,
+      createBotFlowConfig.stepGroups,
+      currentScreen,
+      firstPath,
       nextPath,
       prevPath,
+      visibleScreens,
     ]
   )
 

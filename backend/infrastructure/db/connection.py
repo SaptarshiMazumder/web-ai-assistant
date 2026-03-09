@@ -389,6 +389,23 @@ _SCHEMA_SQL: Iterable[str] = (
     """,
     "CREATE INDEX IF NOT EXISTS line_channels_bot_id ON line_channels (bot_id)",
     """
+    CREATE TABLE IF NOT EXISTS line_rich_menu_states (
+      state_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL UNIQUE,
+      bot_id TEXT NOT NULL UNIQUE,
+      config_hash TEXT,
+      default_variant TEXT,
+      rich_menu_variants_json TEXT NOT NULL DEFAULT '{}',
+      sync_status TEXT NOT NULL DEFAULT 'pending',
+      last_synced_at TEXT,
+      last_error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS line_rich_menu_states_bot_id ON line_rich_menu_states (bot_id)",
+    "CREATE INDEX IF NOT EXISTS line_rich_menu_states_channel_id ON line_rich_menu_states (channel_id)",
+    """
     CREATE TABLE IF NOT EXISTS line_user_sessions (
       line_user_id TEXT NOT NULL,
       bot_id TEXT NOT NULL,

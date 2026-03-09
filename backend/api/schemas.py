@@ -418,7 +418,6 @@ class ConversationSearchResponse(BaseModel):
 
 
 class EscalationConfigPayload(BaseModel):
-    enabled: Optional[bool] = None
     notify_enabled: Optional[bool] = None
     notify_website: Optional[bool] = None
     notify_instagram: Optional[bool] = None
@@ -427,7 +426,6 @@ class EscalationConfigPayload(BaseModel):
 
 
 class EscalationConfigResponse(BaseModel):
-    enabled: bool = False
     notify_enabled: bool = False
     notify_website: bool = False
     notify_instagram: bool = False
@@ -505,6 +503,7 @@ class WidgetConfigUpdate(BaseModel):
     # Canonical map form (backward-compatible bridge): {platform_id: url}
     reservationLinks: Optional[Dict[str, str]] = None
     reservation_links: Optional[Dict[str, str]] = None
+    actionDestinationLinks: Optional[Dict[str, str]] = None
     # URL for the selected platform (use the field matching reservationPlatform)
     tableCheckUrl: Optional[str] = None
     tabelogUrl: Optional[str] = None
@@ -518,6 +517,7 @@ class WidgetConfigUpdate(BaseModel):
     title: Optional[str] = None
     size: Optional[str] = None
     welcomeMessage: Optional[str] = None
+    welcomeMessagesByChannel: Optional[Dict[str, Dict[str, str]]] = None
     placeholder: Optional[str] = None
     footer: Optional[str] = None
     theme: Optional[str] = None
@@ -835,6 +835,11 @@ class LineChannelResponse(BaseModel):
     is_active: bool
     created_at: str
     updated_at: str
+    managed_rich_menu_enabled: bool = True
+    rich_menu_sync_status: Optional[str] = None
+    rich_menu_last_synced_at: Optional[str] = None
+    rich_menu_last_error: Optional[str] = None
+    rich_menu_variants: Dict[str, str] = Field(default_factory=dict)
     # Secrets are NOT returned
 
 
@@ -848,6 +853,7 @@ class LineChannelTestResponse(BaseModel):
     message: str
     display_name: Optional[str] = None
     basic_id: Optional[str] = None
+    picture_url: Optional[str] = None
     user_id: Optional[str] = None
 
 

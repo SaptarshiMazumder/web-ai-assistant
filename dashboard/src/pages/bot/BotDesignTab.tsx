@@ -51,7 +51,7 @@ export default function BotDesignTab() {
     setSaving(true)
     setSavedJustNow(false)
     try {
-      await saveWidgetConfig(botId, stateToWidgetConfig(state))
+      await saveWidgetConfig(botId, stateToWidgetConfig(state, { includeWelcomeMessage: false }))
       setSavedJustNow(true)
       setTimeout(() => setSavedJustNow(false), SAVED_FEEDBACK_MS)
     } finally {
@@ -81,6 +81,7 @@ export default function BotDesignTab() {
       <WidgetDesignForm
         value={state}
         onChange={update}
+        showWelcomeMessage={false}
         actions={
           <UiButton
             variant="primary"

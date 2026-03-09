@@ -16,6 +16,27 @@
 default_post_crawl_jobs:
   - booking_link
 
+welcome_messages:
+  web:
+    en: "Hello! How can I help you today?"
+    ja: "こんにちは。ご用件をお聞かせください。"
+  line:
+    en: "Hello! How can I help you today?"
+    ja: "こんにちは。ご用件をお聞かせください。"
+
+line_ux:
+  support_messages:
+    acknowledgement:
+      en: "A team member will follow up soon."
+      ja: "担当者が順次ご案内します。"
+  rich_menu:
+    chat_bar_text:
+      en: "Tap to chat"
+      ja: "タップして相談"
+    actions: {}
+    layouts: {}
+  cancel_keywords: []
+
 job_pipeline:
   defaults:
     on_failure: continue
@@ -509,6 +530,85 @@ dashboard:
       label: { en: "Human Support", ja: "ヒューマンサポート" }
       route: human-support
       status_source: human_support
+  create_bot_flow:
+    step_groups:
+      - id: details
+        label: { en: "Name", ja: "名前" }
+        description: { en: "Pick a name customers will see.", ja: "お客様に見える名前を決めます。" }
+      - id: sources
+        label: { en: "Website", ja: "Webサイト" }
+        description: { en: "Add sources from your website.", ja: "Webサイトの情報源を追加します。" }
+      - id: additional_sources
+        label: { en: "More sources", ja: "追加ソース" }
+        description: { en: "Add PDFs, text docs, or custom content.", ja: "PDF、テキスト資料、独自コンテンツを追加します。" }
+      - id: training
+        label: { en: "Agent Training", ja: "エージェント学習" }
+        description: { en: "We'll start learning from what you added.", ja: "追加した内容をもとに学習を始めます。" }
+      - id: widget
+        label: { en: "Design widget", ja: "ウィジェット設定" }
+        description: { en: "Customize your agent's appearance.", ja: "エージェントの見た目を調整します。" }
+      - id: embed
+        label: { en: "Install Agent", ja: "設置" }
+        description: { en: "Make your agent available to customers.", ja: "お客様が使えるように設置します。" }
+    screen_definitions:
+      details:
+        path: ""
+        step_group: details
+        component: details
+      sources:
+        path: "sources"
+        step_group: sources
+        component: source_urls
+      additional_sources:
+        path: "additional-sources"
+        step_group: additional_sources
+        component: additional_sources
+      reservation_destination:
+        path: "reservation-destination"
+        step_group: additional_sources
+        component: action_destination_url
+        action_key: reservation
+        visibility:
+          business_types: [restaurant]
+          requires_selected_reservation_platform: true
+        title:
+          en: "Choose where reservation taps should go"
+          ja: "予約タップ時の移動先を設定"
+        subtitle:
+          en: "You can keep the selected platform URL, or set a customer-facing destination URL of your own."
+          ja: "選択した予約プラットフォームのURLをそのまま使うことも、独自の予約導線URLを設定することもできます。"
+        field_label:
+          en: "Customer-facing reservation URL"
+          ja: "お客様向け予約URL"
+        field_placeholder:
+          en: "https://your-restaurant.com/reserve"
+          ja: "https://your-restaurant.com/reserve"
+        field_helper:
+          en: "Optional. If set, this is the reservation link customers receive in chat and action buttons."
+          ja: "任意です。設定すると、チャットやアクションボタンでお客様に案内する予約リンクとして使用されます。"
+        fallback_notice:
+          en: "Skip this to keep sending customers to {platform_label}: {platform_url}"
+          ja: "スキップすると、予約導線は {platform_label} のURLを使います: {platform_url}"
+      training:
+        path: "progress"
+        step_group: training
+        component: training_progress
+      widget:
+        path: "widget"
+        step_group: widget
+        component: widget_design
+      embed:
+        path: "embed"
+        step_group: embed
+        component: embed_install
+    screen_order:
+      - details
+      - sources
+      - additional_sources
+      - reservation_destination
+      - training
+      - widget
+      - embed
 
 # Default asset rules (used when no platform or platform doesn't override)
 default_asset_rules:

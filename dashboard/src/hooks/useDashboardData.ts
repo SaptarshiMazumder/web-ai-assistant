@@ -3,6 +3,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { useTranslation } from 'react-i18next'
 import { getBotSuggestedMessagesBaseLanguage, setSuggestedMessagesForLanguageInConfig } from '../utils/suggestedMessagesConfig'
 import { useDialog } from '../contexts/DialogContext'
+import { normalizeCreateBotFlowConfig, type CreateBotFlowConfig } from '../pages/createBot/flowConfig'
 
 export type BotSummary = {
   bot_id: string
@@ -270,6 +271,11 @@ export type PlatformConfigPayload = {
   }>
   defaultSuggestedMessages: Array<{ id: string; label: string; type: string; prompt?: string }>
   defaultAvailableSuggestedMessageTypes: string[]
+  defaultWelcomeMessages: {
+    web: { en: string; ja: string }
+    line: { en: string; ja: string }
+  }
+  createBotFlow: CreateBotFlowConfig
   jobPipelineWorkflow: PlatformConfigJobPipelineWorkflow
 }
 
@@ -324,7 +330,6 @@ export type ConversationDetailRecord = {
 } & ConversationSupportState
 
 export type EscalationConfig = {
-  enabled: boolean
   notify_enabled: boolean
   notify_website: boolean
   notify_instagram: boolean
@@ -340,6 +345,11 @@ export type LineChannelRecord = {
   is_active: boolean
   created_at: string
   updated_at: string
+  managed_rich_menu_enabled?: boolean
+  rich_menu_sync_status?: string | null
+  rich_menu_last_synced_at?: string | null
+  rich_menu_last_error?: string | null
+  rich_menu_variants?: Record<string, string>
 }
 
 export type LineChannelTestResult = {
@@ -347,6 +357,7 @@ export type LineChannelTestResult = {
   message: string
   display_name?: string | null
   basic_id?: string | null
+  picture_url?: string | null
   user_id?: string | null
 }
 
@@ -2439,6 +2450,30 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         }>
         defaultSuggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }>
         defaultAvailableSuggestedMessageTypes?: string[]
+        defaultWelcomeMessages?: {
+          web?: { en?: string; ja?: string }
+          line?: { en?: string; ja?: string }
+        }
+        createBotFlow?: {
+          step_groups?: Array<{ id?: string; label?: string; description?: string }>
+          screen_definitions?: Record<string, {
+            path?: string
+            step_group?: string
+            component?: string
+            action_key?: string
+            title?: string
+            subtitle?: string
+            field_label?: string
+            field_placeholder?: string
+            field_helper?: string
+            fallback_notice?: string
+            visibility?: {
+              business_types?: string[]
+              requires_selected_reservation_platform?: boolean
+            }
+          }>
+          screen_order?: string[]
+        }
         jobPipelineWorkflow?: {
           workflowId?: string
           default?: string[]
@@ -2466,9 +2501,20 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         platforms: result.platforms ?? [],
         defaultSuggestedMessages: result.defaultSuggestedMessages ?? [],
         defaultAvailableSuggestedMessageTypes: result.defaultAvailableSuggestedMessageTypes ?? ['ai_response'],
-        jobPipelineWorkflow: {
-          workflowId: String(rawWorkflow?.workflowId || 'default').trim() || 'default',
-          default: workflowDefault,
+          defaultWelcomeMessages: {
+            web: {
+              en: String(result.defaultWelcomeMessages?.web?.en || ''),
+            ja: String(result.defaultWelcomeMessages?.web?.ja || ''),
+          },
+            line: {
+              en: String(result.defaultWelcomeMessages?.line?.en || ''),
+              ja: String(result.defaultWelcomeMessages?.line?.ja || ''),
+            },
+          },
+          createBotFlow: normalizeCreateBotFlowConfig(result.createBotFlow),
+          jobPipelineWorkflow: {
+            workflowId: String(rawWorkflow?.workflowId || 'default').trim() || 'default',
+            default: workflowDefault,
           platformOverrides: workflowOverrides,
         },
       }
@@ -2477,9 +2523,14 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         platforms: [],
         defaultSuggestedMessages: [],
         defaultAvailableSuggestedMessageTypes: ['ai_response'],
-        jobPipelineWorkflow: { workflowId: 'default', default: [], platformOverrides: {} },
+          defaultWelcomeMessages: {
+            web: { en: '', ja: '' },
+            line: { en: '', ja: '' },
+          },
+          createBotFlow: normalizeCreateBotFlowConfig(null),
+          jobPipelineWorkflow: { workflowId: 'default', default: [], platformOverrides: {} },
+        }
       }
-    }
   }
 
   async function fetchPlatformSuggestedMessages(

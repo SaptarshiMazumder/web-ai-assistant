@@ -4,6 +4,7 @@ Mirrors the image-assets API but filters by asset_type="menu_item".
 Reuses the same BotAsset storage, GCS, and schemas.
 """
 
+import asyncio
 import logging
 import os
 import re
@@ -25,7 +26,7 @@ from api.schemas import (
     BotAssetListResponse,
     BotAssetResponse,
 )
-from common.di.container import asset_repo, bot_service
+from common.di.container import asset_repo, bot_service, line_rich_menu_service
 from domain.entities import BotAsset
 from infrastructure.celery_app import celery_app
 from infrastructure.services.indexing_service import _parse_bucket_and_prefix
@@ -245,6 +246,16 @@ def _assert_bot_org(bot_id: str, org_id: str) -> None:
         raise HTTPException(status_code=403, detail="Bot does not belong to this org")
 
 
+def _schedule_line_rich_menu_sync(bot_id: str, *, force: bool = False) -> None:
+    async def _runner() -> None:
+        try:
+            await line_rich_menu_service().sync_for_bot(bot_id, force=force)
+        except Exception:
+            logger.exception("LINE rich menu sync failed after menu-item change bot_id=%s", bot_id)
+
+    asyncio.create_task(_runner())
+
+
 def _asset_to_response(a: BotAsset) -> BotAssetResponse:
     return BotAssetResponse(
         asset_id=a.asset_id,
@@ -388,6 +399,7 @@ async def create_menu_item(
         updated_at=now,
     )
     asset_repo().create_asset(asset)
+    _schedule_line_rich_menu_sync(bot_id, force=True)
     return _asset_to_response(asset)
 
 
@@ -446,6 +458,7 @@ async def update_menu_item(
     existing.is_active = is_active
     existing.updated_at = now
     asset_repo().update_asset(existing)
+    _schedule_line_rich_menu_sync(bot_id, force=True)
     return _asset_to_response(existing)
 
 
@@ -478,6 +491,7 @@ async def delete_menu_item(
         logger.warning("Failed to delete GCS blob for menu item %s: %s", asset_id, e)
 
     asset_repo().delete_asset(bot_id, asset_id)
+    _schedule_line_rich_menu_sync(bot_id, force=True)
     return BotAssetDeleteResponse(bot_id=bot_id, asset_id=asset_id)
 
 
@@ -599,6 +613,8 @@ async def get_menu_extraction_status(
             assets_total=len(current_items),
             limit=limit,
         )
+    if job.status == "done":
+        _schedule_line_rich_menu_sync(bot_id, force=True)
 
     return AssetExtractionStatusResponse(
         job_id=job.job_id,

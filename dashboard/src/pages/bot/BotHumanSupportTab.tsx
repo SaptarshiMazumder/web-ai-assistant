@@ -17,7 +17,6 @@ import {
 const SAVED_FEEDBACK_MS = 2000
 
 const DEFAULT_ESCALATION_CONFIG: EscalationConfig = {
-  enabled: false,
   notify_enabled: false,
   notify_website: false,
   notify_instagram: false,
@@ -92,8 +91,7 @@ export default function BotHumanSupportTab() {
     if (!botId || savingEscalation || escalationSavedJustNow) return
     setSavingEscalation(true)
     try {
-      const toSave = { ...escalationConfig, enabled: true }
-      const saved = await saveEscalationConfig(botId, toSave)
+      const saved = await saveEscalationConfig(botId, escalationConfig)
       if (saved) setEscalationConfig(saved)
 
       const updatedMessages = suggestedMessages.map((m) =>

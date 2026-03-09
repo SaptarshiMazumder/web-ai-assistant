@@ -133,10 +133,29 @@ export default function BotOverviewTab() {
       ? t('botOverview.lineNotConnectedSummary', 'No LINE channel connected yet')
       : lineTest && lineTest.ok === false
         ? t('botOverview.lineErrorSummary', 'LINE connection needs attention')
-        : lineChannel.is_active
-          ? t('botOverview.lineActiveSummary', 'Connected and responding on LINE')
-          : t('botOverview.linePausedSummary', 'Connected on LINE but currently paused')
+      : lineChannel.is_active
+      ? t('botOverview.lineActiveSummary', 'Connected and responding on LINE')
+      : t('botOverview.linePausedSummary', 'Connected on LINE but currently paused')
   const lineAccountName = lineTest?.display_name || lineTest?.basic_id || lineChannel?.line_channel_id || notAvailable
+  const lineAccountPictureUrl = lineTest?.picture_url || null
+  const lineRichMenuStatus = lineChannel?.rich_menu_sync_status || null
+  const lineRichMenuStatusLabel = (() => {
+    switch (lineRichMenuStatus) {
+      case 'synced':
+        return t('botOverview.richMenuSynced', 'Synced')
+      case 'syncing':
+        return t('botOverview.richMenuSyncing', 'Syncing')
+      case 'inactive':
+        return t('botOverview.richMenuInactive', 'Inactive')
+      case 'no_actions':
+        return t('botOverview.richMenuNoActions', 'No actions')
+      case 'error':
+        return t('botOverview.richMenuError', 'Error')
+      default:
+        return notAvailable
+    }
+  })()
+  const lineRichMenuVariants = Object.keys(lineChannel?.rich_menu_variants || {}).length
 
   return (
     <>
@@ -250,6 +269,62 @@ export default function BotOverviewTab() {
               <p style={{ margin: '0 0 0.85rem 0', color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
                 {lineSummary}
               </p>
+              {(lineAccountPictureUrl || (lineTest?.ok && lineAccountName !== notAvailable)) ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.8rem',
+                    marginBottom: '0.9rem',
+                    padding: '0.8rem 0.9rem',
+                    borderRadius: 14,
+                    background: 'rgba(6, 199, 85, 0.06)',
+                    border: '1px solid rgba(6, 199, 85, 0.14)',
+                  }}
+                >
+                  {lineAccountPictureUrl ? (
+                    <img
+                      src={lineAccountPictureUrl}
+                      alt={lineAccountName}
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        background: '#fff',
+                        border: '2px solid rgba(6, 199, 85, 0.18)',
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: 'rgba(6, 199, 85, 0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <LineIcon size={20} style={{ color: 'var(--ui-flow-accent)' }} />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                      {t('botOverview.account', 'Account')}
+                    </div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, wordBreak: 'break-word' }}>
+                      {lineAccountName}
+                    </div>
+                    <div style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', wordBreak: 'break-word' }}>
+                      {lineTest?.basic_id || lineTest?.user_id || notAvailable}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <div className="detail-row">
                 <span>{t('botOverview.account', 'Account')}</span>
                 <span>{lineAccountName}</span>
@@ -266,6 +341,33 @@ export default function BotOverviewTab() {
                 <span>{t('botOverview.lastUpdated', 'Last updated')}</span>
                 <span>{formatDateTime(lineChannel?.updated_at)}</span>
               </div>
+              <div className="detail-row">
+                <span>{t('botOverview.richMenuStatus', 'Rich menu')}</span>
+                <span>{lineRichMenuStatusLabel}</span>
+              </div>
+              <div className="detail-row">
+                <span>{t('botOverview.richMenuVariants', 'Menu variants')}</span>
+                <span>{lineChannel ? String(lineRichMenuVariants) : notAvailable}</span>
+              </div>
+              <div className="detail-row">
+                <span>{t('botOverview.richMenuLastSynced', 'Last menu sync')}</span>
+                <span>{formatDateTime(lineChannel?.rich_menu_last_synced_at)}</span>
+              </div>
+              {lineChannel?.rich_menu_last_error ? (
+                <div
+                  style={{
+                    marginTop: '0.85rem',
+                    padding: '0.75rem 0.85rem',
+                    borderRadius: 12,
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    color: '#b91c1c',
+                    fontSize: '0.88rem',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {lineChannel.rich_menu_last_error}
+                </div>
+              ) : null}
               {lineTest?.message ? (
                 <div
                   style={{

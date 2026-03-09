@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import time
+import asyncio
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -38,7 +39,7 @@ from application.services.platform_strategy import (
     normalize_menu_category,
 )
 from common.language_utils import detect_user_language, normalize_lang
-from common.di.container import asset_repo, bot_service, conversation_service
+from common.di.container import asset_repo, bot_service, conversation_service, line_rich_menu_service
 from infrastructure.clients.line_client import (
     verify_signature,
     reply_message,
@@ -62,6 +63,8 @@ from domain.platform_profiles import (
     get_platform_features_from_widget,
     get_platform_json_response_enabled,
     get_platform_json_response_instruction,
+    get_line_cancel_keywords,
+    get_line_support_messages,
     get_reservation_config_from_widget,
     get_suggested_messages_for_widget,
 )
@@ -103,29 +106,6 @@ def _rate_limit(bot_id: str) -> None:
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
 
-# ── Escalation keyword detection (matches Instagram) ───────────────────
-
-_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
-    "en": {
-        "prompt": "I'll connect you with our staff right away.\n\n"
-        "When you send your message, we'll forward it to our team. The next reply you receive will be from our staff — please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\n"
-        "If you wish to cancel and return to the AI assistant, say \"cancel\" at any time.",
-        "cancel_ack": "Cancelled. How can I help you?",
-        "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
-        "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
-        "email_details_no_message": "User requested human assistance via LINE.",
-    },
-    "ja": {
-        "prompt": "スタッフにおつなぎいたします。\n\n"
-        "送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\n"
-        "AIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。",
-        "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
-        "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
-        "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
-        "email_details_no_message": "LINE経由でサポートを依頼されました。",
-    },
-}
-
 _LINE_EMPTY_ANSWER_MESSAGES = {
     "en": "I'm sorry, I couldn't find an answer to that. Could you try rephrasing?",
     "ja": "申し訳ありません。その質問への答えが見つかりませんでした。言い方を変えてもう一度お試しください。",
@@ -139,8 +119,8 @@ _LINE_ERROR_MESSAGES = {
     "ja": "申し訳ありません。問題が発生しました。少し待ってからもう一度お試しください。",
 }
 
-# Cancel escalation (matches Instagram — no skip, no back-to-bot)
-_CANCEL_KEYWORDS = {"cancel", "キャンセル"}
+# Cancel escalation (config-driven)
+_CANCEL_KEYWORDS = {kw.lower() for kw in get_line_cancel_keywords()}
 
 
 def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
@@ -182,6 +162,52 @@ def _wants_cancel_escalation(text: str) -> bool:
 def _line_localized_message(messages: Dict[str, str], lang: str) -> str:
     normalized_lang = normalize_lang(lang)
     return str(messages.get(normalized_lang) or messages["en"])
+
+
+def _parse_line_postback_action(postback_data: Optional[str]) -> Optional[str]:
+    raw = str(postback_data or "").strip().lower()
+    if not raw:
+        return None
+    if raw == "lineux:support":
+        return "support"
+    if raw == "lineux:back_to_ai":
+        return "back_to_ai"
+    if raw == "lineux:menu":
+        return "menu"
+    return None
+
+
+def _schedule_line_rich_menu_update(*, bot_id: str, line_user_id: str, lang: str, assistant_state: str) -> None:
+    async def _runner() -> None:
+        try:
+            await line_rich_menu_service().ensure_user_menu(
+                bot_id=bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state=assistant_state,
+            )
+        except Exception:
+            logger.exception("LINE rich menu user sync failed bot_id=%s user_id=%s", bot_id, line_user_id)
+
+    asyncio.create_task(_runner())
+
+
+def _build_line_channel_response(channel, *, rich_menu_state=None) -> LineChannelResponse:
+    state = rich_menu_state or line_rich_menu_service().get_state(channel.bot_id)
+    return LineChannelResponse(
+        channel_id=channel.channel_id,
+        bot_id=channel.bot_id,
+        org_id=channel.org_id,
+        line_channel_id=channel.line_channel_id,
+        is_active=channel.is_active,
+        created_at=channel.created_at,
+        updated_at=channel.updated_at,
+        managed_rich_menu_enabled=True,
+        rich_menu_sync_status=getattr(state, "sync_status", None),
+        rich_menu_last_synced_at=getattr(state, "last_synced_at", None),
+        rich_menu_last_error=getattr(state, "last_error", None),
+        rich_menu_variants=dict(getattr(state, "rich_menu_variants", None) or {}),
+    )
 
 
 def _is_truthy(value: Any) -> bool:
@@ -576,59 +602,29 @@ async def line_webhook(bot_id: str, request: Request):
         if not parsed:
             continue
 
-        await _handle_text_message(
+        await _handle_line_event(
             bot=bot,
             channel=channel,
-            line_user_id=parsed.user_id,
-            text=parsed.text,
-            reply_token=parsed.reply_token,
+            event=parsed,
             request=request,
         )
 
     return {"ok": True}
 
 
-async def _handle_text_message(
+async def _handle_line_event(
     *,
     bot,
     channel,
-    line_user_id: str,
-    text: str,
-    reply_token: str,
+    event,
     request: Request,
 ) -> None:
-    """Core handler for a single text message from LINE."""
+    """Core handler for a single LINE text or postback event."""
+    line_user_id = event.user_id
+    text = event.text
+    reply_token = event.reply_token
+    postback_action = _parse_line_postback_action(getattr(event, "postback_data", None))
     access_token = channel.line_channel_access_token
-
-    # ── Early menu path: send button BEFORE session/typing (reply token expires in ~30s) ──
-    if _is_full_menu_request(text, None):
-        try:
-            menu_url = _menu_page_url(getattr(bot, "publishable_key", None), request)
-            if menu_url and menu_url.lower().startswith("https://") and len(menu_url) > 12:
-                items = _get_menu_items_for_bot(bot.bot_id)
-                if items:
-                    wc = {}
-                    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-                        try:
-                            wc = json.loads(bot.widget_config)
-                        except (TypeError, ValueError):
-                            pass
-                    bot_lang = normalize_lang(wc.get("language") or wc.get("botLanguage") or "en")
-                    lang = detect_user_language(text, fallback=bot_lang)
-                    prompt = _menu_text("view_menu_button_prompt", lang)
-                    btn_title = _menu_text("view_menu_button_title", lang)
-                    tmpl = build_buttons_template(
-                        "View full menu",
-                        prompt,
-                        [{"type": "uri", "label": btn_title[:20], "uri": menu_url}],
-                    )
-                    ok = await reply_with_messages(reply_token, [tmpl], access_token)
-                    if ok:
-                        logger.info("LINE menu button sent early bot_id=%s", bot.bot_id)
-                        return
-                    logger.warning("LINE menu button failed early bot_id=%s (see LINE reply failed log)", bot.bot_id)
-        except Exception as e:
-            logger.warning("LINE menu early path failed bot_id=%s: %s", bot.bot_id, e)
 
     # Load suggested messages and session BEFORE typing — we must not show typing when
     # user is escalated and we won't reply (avoids typing bubble stuck until timeout)
@@ -640,11 +636,25 @@ async def _handle_text_message(
         except (TypeError, ValueError):
             pass
     bot_lang = normalize_lang(widget_config.get("language") or widget_config.get("botLanguage") or "en")
-    lang = detect_user_language(text, fallback=bot_lang)
+    existing_contact = conversation_service().get_channel_contact(
+        bot_id=bot.bot_id,
+        channel="line",
+        external_user_id=line_user_id,
+    )
+    stored_lang = normalize_lang(
+        (getattr(existing_contact, "metadata", None) or {}).get("preferred_lang") if existing_contact else bot_lang,
+        fallback=bot_lang,
+    )
+    if event.event_type == "follow":
+        lang = bot_lang
+    elif event.event_type == "message":
+        lang = detect_user_language(text, fallback=stored_lang)
+    else:
+        lang = stored_lang
     suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
-    suggested_type = _resolve_suggested_type(text, suggested_messages or [])
+    suggested_type = _resolve_suggested_type(text, suggested_messages or []) if event.event_type == "message" else None
     suggested_function_id = _function_registry.resolve_from_suggested_type(suggested_type or "")
 
     # Mapping rows only keep the current routed session and display name.
@@ -664,6 +674,28 @@ async def _handle_text_message(
                 bot_id=bot.bot_id,
                 display_name=line_display_name,
             )
+    if event.event_type == "follow":
+        if mapping and line_display_name and line_display_name != (getattr(mapping, "display_name", None) or "").strip():
+            _line_user_session_repo.set_display_name(
+                line_user_id=line_user_id,
+                bot_id=bot.bot_id,
+                display_name=line_display_name,
+            )
+        conversation_service().upsert_channel_contact(
+            bot_id=bot.bot_id,
+            channel="line",
+            external_user_id=line_user_id,
+            current_session_id=getattr(mapping, "session_id", None),
+            display_name=line_display_name,
+            metadata={"preferred_lang": bot_lang},
+        )
+        _schedule_line_rich_menu_update(
+            bot_id=bot.bot_id,
+            line_user_id=line_user_id,
+            lang=bot_lang,
+            assistant_state="bot",
+        )
+        return
     session, contact, _session_changed = conversation_service().resolve_or_create_channel_session(
         bot_id=bot.bot_id,
         org_id=bot.org_id,
@@ -671,7 +703,7 @@ async def _handle_text_message(
         external_user_id=line_user_id,
         current_session_id=getattr(mapping, "session_id", None),
         display_name=line_display_name,
-        metadata=None,
+        metadata={"preferred_lang": lang},
         site_url=None,
         site_title=None,
         user_agent="LINE",
@@ -701,35 +733,50 @@ async def _handle_text_message(
     if line_display_name:
         conversation_service().set_session_title(session.session_id, line_display_name)
     assistant_state = getattr(session, "assistant_state", "bot") or "bot"
+    msgs = get_line_support_messages(lang=lang)
+    page_req = _parse_menu_page_payload(text) if event.event_type == "message" else None
+    is_menu_request_event = bool(
+        postback_action == "menu"
+        or page_req
+        or (event.event_type == "message" and _is_full_menu_request(text, None))
+    )
 
     # ── Escalated: log message only, no bot reply — return BEFORE typing ───
-    if assistant_state == "human_handoff" and not _wants_cancel_escalation(text):
-        conversation_service().add_message(
-            session_id=session.session_id,
+    if assistant_state == "human_handoff" and not (_wants_cancel_escalation(text) or postback_action in {"back_to_ai", "menu"}):
+        if event.event_type == "message" and text:
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text,
+                sender_name=line_display_name,
+            )
+        _schedule_line_rich_menu_update(
             bot_id=bot.bot_id,
-            role="user",
-            content=text,
-            sender_name=line_display_name,
+            line_user_id=line_user_id,
+            lang=lang,
+            assistant_state="human_handoff",
         )
         return
 
     # Show typing only when we will send a reply (avoids stuck typing when escalated)
-    await line_show_typing(line_user_id, access_token)
+    if event.event_type == "message" and postback_action not in {"support", "back_to_ai", "menu"} and not is_menu_request_event:
+        await line_show_typing(line_user_id, access_token)
 
     # ── De-escalation check (cancel only, matches Instagram) ───────────
-    if assistant_state == "human_handoff" and _wants_cancel_escalation(text):
+    if assistant_state == "human_handoff" and (_wants_cancel_escalation(text) or postback_action == "back_to_ai"):
         conversation_service().cancel_handoff(
             bot_id=bot.bot_id,
             session_id=session.session_id,
         )
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=text,
-            sender_name=line_display_name,
-        )
-        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+        if event.event_type == "message" and text:
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text,
+                sender_name=line_display_name,
+            )
         cancel_msg = msgs["cancel_ack"]
         await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
         conversation_service().add_message(
@@ -738,24 +785,30 @@ async def _handle_text_message(
             role="bot",
             content=cancel_msg,
         )
+        _schedule_line_rich_menu_update(
+            bot_id=bot.bot_id,
+            line_user_id=line_user_id,
+            lang=lang,
+            assistant_state="bot",
+        )
         return
 
     # ── Awaiting optional escalation message ─────────────────────────
     if assistant_state == "awaiting_support_details":
-        if _wants_cancel_escalation(text):
+        if _wants_cancel_escalation(text) or postback_action == "back_to_ai":
             conversation_service().release_handoff(
                 bot_id=bot.bot_id,
                 session_id=session.session_id,
                 ended_reason="user_canceled",
             )
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="user",
-                content=text,
-                sender_name=line_display_name,
-            )
-            msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
+            if event.event_type == "message" and text:
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=text,
+                    sender_name=line_display_name,
+                )
             cancel_msg = msgs["cancel_ack"]
             await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
             conversation_service().add_message(
@@ -764,60 +817,83 @@ async def _handle_text_message(
                 role="bot",
                 content=cancel_msg,
             )
+            _schedule_line_rich_menu_update(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state="bot",
+            )
             return
-        user_msg = text.strip()
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=text,
-            sender_name=line_display_name,
-        )
-        msgs = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])
-        details = user_msg if user_msg else msgs["email_details_no_message"]
-        conversation_service().request_support(
-            bot_id=bot.bot_id,
-            session_id=session.session_id,
-            visitor_email=f"line:{line_user_id}",
-            details=details,
-            contact_id=getattr(contact, "contact_id", None),
-            source_channel="line",
-        )
-        from infrastructure.email import maybe_send_escalation_email
+        if postback_action != "menu" and event.event_type != "message":
+            _schedule_line_rich_menu_update(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state="awaiting_support_details",
+            )
+            return
+        if postback_action == "menu":
+            assistant_state = "awaiting_support_details"
+        else:
+            user_msg = text.strip()
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text,
+                sender_name=line_display_name,
+            )
+            details = user_msg if user_msg else msgs["email_details_no_message"]
+            conversation_service().request_support(
+                bot_id=bot.bot_id,
+                session_id=session.session_id,
+                visitor_email=f"line:{line_user_id}",
+                details=details,
+                contact_id=getattr(contact, "contact_id", None),
+                source_channel="line",
+            )
+            from infrastructure.email import maybe_send_escalation_email
 
-        maybe_send_escalation_email(
-            bot,
-            session_id=session.session_id,
-            channel="line",
-            visitor_email=f"line:{line_user_id}",
-            details=details,
-        )
-        ack_msg = msgs["escalation_ack"]
-        await reply_message(reply_token, [ack_msg], access_token)
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=ack_msg,
-        )
-        return
+            maybe_send_escalation_email(
+                bot,
+                session_id=session.session_id,
+                channel="line",
+                visitor_email=f"line:{line_user_id}",
+                details=details,
+            )
+            ack_msg = msgs["escalation_ack"]
+            await reply_message(reply_token, [ack_msg], access_token)
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=ack_msg,
+            )
+            _schedule_line_rich_menu_update(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state="human_handoff",
+            )
+            return
 
     # ── Escalation request ───────────────────────────────────────────
-    if suggested_function_id == "escalate" or _is_escalate_quick_reply(text, suggested_messages or []):
+    if postback_action == "support" or suggested_function_id == "escalate" or _is_escalate_quick_reply(text, suggested_messages or []):
         conversation_service().set_awaiting_support_details(
             bot_id=bot.bot_id,
             session_id=session.session_id,
             contact_id=getattr(contact, "contact_id", None),
             source_channel="line",
         )
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=text,
-            sender_name=line_display_name,
-        )
-        prompt_msg = _ESCALATION_MESSAGES.get(lang, _ESCALATION_MESSAGES["en"])["prompt"]
+        if event.event_type == "message" and text:
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text,
+                sender_name=line_display_name,
+            )
+        prompt_msg = msgs["prompt"]
         await reply_message(reply_token, [prompt_msg], access_token)
         conversation_service().add_message(
             session_id=session.session_id,
@@ -825,26 +901,31 @@ async def _handle_text_message(
             role="bot",
             content=prompt_msg,
         )
+        _schedule_line_rich_menu_update(
+            bot_id=bot.bot_id,
+            line_user_id=line_user_id,
+            lang=lang,
+            assistant_state="awaiting_support_details",
+        )
         return
 
     # ── Menu flow (matches Instagram) ─────────────────────────────────
     platform_features = get_platform_features_from_widget(widget_config)
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
     quick_payload = None  # LINE only has text; show_menu sends SHOW_FULL_MENU as text
-    effective_text = text
+    effective_text = get_line_menu_quick_payload() if postback_action == "menu" else text
     menu_fallback_skip_assets = False  # set True when menu flow fails and we fall back to RAG
 
-    # Parse pagination payload (SHOW_MENU_PAGE:category:offset) whenever sent
-    page_req = _parse_menu_page_payload(effective_text)
     if page_req:
         category, offset = page_req
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="user",
-            content=text or "View more menu",
-            sender_name=line_display_name,
-        )
+        if event.event_type == "message" and text:
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=text or "View more menu",
+                sender_name=line_display_name,
+            )
         await _send_menu_by_category_line(
             bot_id=bot.bot_id,
             line_user_id=line_user_id,
@@ -864,11 +945,17 @@ async def _handle_text_message(
             role="bot",
             content=f"Shared more {category} menu items.",
         )
+        _schedule_line_rich_menu_update(
+            bot_id=bot.bot_id,
+            line_user_id=line_user_id,
+            lang=lang,
+            assistant_state=assistant_state,
+        )
         return
 
     # Run menu flow when user explicitly requests menu (Menu/SHOW_FULL_MENU),
     # regardless of platform — ensures Menu button always responds
-    if suggested_function_id == "show_menu" or _is_full_menu_request(effective_text, quick_payload):
+    if postback_action == "menu" or suggested_function_id == "show_menu" or _is_full_menu_request(effective_text, quick_payload):
         try:
             await _send_menu_by_category_line(
                 bot_id=bot.bot_id,
@@ -881,18 +968,25 @@ async def _handle_text_message(
                 request=request,
                 widget_config=widget_config,
             )
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="user",
-                content=effective_text,
-                sender_name=line_display_name,
-            )
+            if event.event_type == "message" and effective_text:
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=effective_text,
+                    sender_name=line_display_name,
+                )
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
                 role="bot",
                 content="Shared the categorized menu.",
+            )
+            _schedule_line_rich_menu_update(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state=assistant_state,
             )
             return
         except Exception as e:
@@ -903,13 +997,14 @@ async def _handle_text_message(
 
     # ── Normal AI flow ───────────────────────────────────────────────
     # Save user message
-    conversation_service().add_message(
-        session_id=session.session_id,
-        bot_id=bot.bot_id,
-        role="user",
-        content=text,
-        sender_name=line_display_name,
-    )
+    if event.event_type == "message" and text:
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=text,
+            sender_name=line_display_name,
+        )
 
     # Get conversation context
     recent = conversation_service().list_recent_messages(
@@ -966,8 +1061,8 @@ async def _handle_text_message(
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
     allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
 
-    ai_query = text
-    if text == get_line_menu_quick_payload() or _is_full_menu_request(text, None):
+    ai_query = effective_text or text
+    if effective_text == get_line_menu_quick_payload() or _is_full_menu_request(effective_text, None):
         ai_query = "Menu"
 
     try:
@@ -1042,6 +1137,12 @@ async def _handle_text_message(
         await reply_message(reply_token, chunks[:5], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
     else:
         await reply_message(reply_token, [answer], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
+    _schedule_line_rich_menu_update(
+        bot_id=bot.bot_id,
+        line_user_id=line_user_id,
+        lang=lang,
+        assistant_state=assistant_state,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -1060,15 +1161,7 @@ async def v1_org_get_line_channel(
     channel = _line_channel_repo.get_by_bot_id(bot_id)
     if not channel:
         raise HTTPException(status_code=404, detail="No LINE channel configured for this bot")
-    return LineChannelResponse(
-        channel_id=channel.channel_id,
-        bot_id=channel.bot_id,
-        org_id=channel.org_id,
-        line_channel_id=channel.line_channel_id,
-        is_active=channel.is_active,
-        created_at=channel.created_at,
-        updated_at=channel.updated_at,
-    )
+    return _build_line_channel_response(channel)
 
 
 @router.put("/v1/org/bots/{bot_id}/line-channel", response_model=LineChannelResponse)
@@ -1105,15 +1198,12 @@ async def v1_org_upsert_line_channel(
         line_channel_access_token=access_token,
         is_active=payload.is_active,
     )
-    return LineChannelResponse(
-        channel_id=channel.channel_id,
-        bot_id=channel.bot_id,
-        org_id=channel.org_id,
-        line_channel_id=channel.line_channel_id,
-        is_active=channel.is_active,
-        created_at=channel.created_at,
-        updated_at=channel.updated_at,
-    )
+    rich_menu_state = None
+    try:
+        rich_menu_state = await line_rich_menu_service().sync_for_bot(bot_id, force=True)
+    except Exception:
+        logger.exception("Managed LINE rich-menu sync failed during channel save bot_id=%s", bot_id)
+    return _build_line_channel_response(channel, rich_menu_state=rich_menu_state)
 
 
 @router.delete("/v1/org/bots/{bot_id}/line-channel", response_model=LineChannelDeleteResponse)
@@ -1124,10 +1214,32 @@ async def v1_org_delete_line_channel(
 ):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
+    existing = _line_channel_repo.get_by_bot_id(bot_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="No LINE channel configured for this bot")
+    try:
+        await line_rich_menu_service().cleanup_for_bot(bot_id)
+    except Exception:
+        logger.exception("Managed LINE rich-menu cleanup failed bot_id=%s", bot_id)
     deleted = _line_channel_repo.delete_by_bot_id(bot_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="No LINE channel configured for this bot")
     return LineChannelDeleteResponse(ok=True, bot_id=bot_id)
+
+
+@router.post("/v1/org/bots/{bot_id}/line-channel/rich-menu/resync", response_model=LineChannelResponse)
+async def v1_org_resync_line_rich_menu(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    channel = _line_channel_repo.get_by_bot_id(bot_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="No LINE channel configured for this bot")
+    rich_menu_state = await line_rich_menu_service().sync_for_bot(bot_id, force=True)
+    return _build_line_channel_response(channel, rich_menu_state=rich_menu_state)
 
 
 @router.post("/v1/org/bots/{bot_id}/line-channel/test", response_model=LineChannelTestResponse)
@@ -1157,6 +1269,7 @@ async def v1_org_test_line_channel(
             info = resp.json()
             display_name = str(info.get("displayName") or "").strip() or None
             basic_id = str(info.get("basicId") or "").strip() or None
+            picture_url = str(info.get("pictureUrl") or "").strip() or None
             user_id = str(info.get("userId") or "").strip() or None
             bot_name = display_name or basic_id or "your bot"
             return LineChannelTestResponse(
@@ -1164,6 +1277,7 @@ async def v1_org_test_line_channel(
                 message=f"Connection successful! LINE bot: {bot_name}",
                 display_name=display_name,
                 basic_id=basic_id,
+                picture_url=picture_url,
                 user_id=user_id,
             )
         elif resp.status_code == 401:

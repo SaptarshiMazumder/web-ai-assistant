@@ -15,6 +15,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 
 import yaml
 
@@ -78,6 +79,33 @@ def _normalize_lang(lang: str) -> str:
     return "ja" if lang_key in ("ja", "jp") else "en"
 
 
+_ALLOWED_CREATE_BOT_STEP_GROUP_IDS = {
+    "details",
+    "sources",
+    "additional_sources",
+    "training",
+    "widget",
+    "embed",
+}
+_ALLOWED_CREATE_BOT_COMPONENTS = {
+    "details",
+    "source_urls",
+    "additional_sources",
+    "training_progress",
+    "widget_design",
+    "embed_install",
+    "action_destination_url",
+}
+_CREATE_BOT_SCREEN_I18N_FIELDS = (
+    "title",
+    "subtitle",
+    "field_label",
+    "field_placeholder",
+    "field_helper",
+    "fallback_notice",
+)
+
+
 def _resolve_i18n_text(value: Any, *, lang: str = "en", fallback: str = "") -> str:
     if isinstance(value, str):
         return value.strip() or fallback
@@ -118,6 +146,21 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_str(cfg, "line_menu_page_payload_prefix")
     _require_str(cfg, "instagram_menu_quick_payload")
     _require_str(cfg, "instagram_menu_page_payload_prefix")
+    welcome_messages = _require_dict(cfg, "welcome_messages")
+    for channel_key in ("web", "line"):
+        channel_messages = _require_dict(welcome_messages, channel_key)
+        if not _is_valid_i18n_text(channel_messages):
+            raise ConfigValidationError(
+                f"Missing or invalid 'welcome_messages.{channel_key}' in {_CONFIG_PATH}"
+            )
+    line_ux = _require_dict(cfg, "line_ux")
+    _require_dict(line_ux, "support_messages")
+    rich_menu = _require_dict(line_ux, "rich_menu")
+    _require_dict(rich_menu, "chat_bar_text")
+    _require_dict(rich_menu, "actions")
+    _require_dict(rich_menu, "layouts")
+    if not isinstance(line_ux.get("cancel_keywords"), list):
+        raise ConfigValidationError(f"Missing or invalid 'line_ux.cancel_keywords' in {_CONFIG_PATH}")
     dashboard = _require_dict(cfg, "dashboard")
     overview_sections = _require_list(dashboard, "overview_setup_sections")
     seen_section_ids = set()
@@ -146,6 +189,119 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
         if required_tabs is not None and not isinstance(required_tabs, list):
             raise ConfigValidationError(
                 f"Invalid dashboard.overview_setup_sections[{idx}].required_knowledge_tabs in {_CONFIG_PATH}"
+            )
+    create_bot_flow = _require_dict(dashboard, "create_bot_flow")
+    step_groups = _require_list(create_bot_flow, "step_groups")
+    seen_step_group_ids = set()
+    for idx, group in enumerate(step_groups):
+        if not isinstance(group, dict):
+            raise ConfigValidationError(f"Invalid dashboard.create_bot_flow.step_groups[{idx}] in {_CONFIG_PATH}")
+        group_id = str(group.get("id") or "").strip()
+        if not group_id:
+            raise ConfigValidationError(
+                f"Missing dashboard.create_bot_flow.step_groups[{idx}].id in {_CONFIG_PATH}"
+            )
+        if group_id not in _ALLOWED_CREATE_BOT_STEP_GROUP_IDS:
+            raise ConfigValidationError(
+                f"Unknown dashboard.create_bot_flow.step_groups id '{group_id}' in {_CONFIG_PATH}"
+            )
+        if group_id in seen_step_group_ids:
+            raise ConfigValidationError(
+                f"Duplicate dashboard.create_bot_flow.step_groups id '{group_id}' in {_CONFIG_PATH}"
+            )
+        seen_step_group_ids.add(group_id)
+        if not _is_valid_i18n_text(group.get("label")):
+            raise ConfigValidationError(
+                f"Missing or invalid dashboard.create_bot_flow.step_groups[{idx}].label in {_CONFIG_PATH}"
+            )
+        if not _is_valid_i18n_text(group.get("description")):
+            raise ConfigValidationError(
+                f"Missing or invalid dashboard.create_bot_flow.step_groups[{idx}].description in {_CONFIG_PATH}"
+            )
+
+    screen_definitions = _require_dict(create_bot_flow, "screen_definitions")
+    seen_screen_paths = set()
+    for screen_id, screen in screen_definitions.items():
+        normalized_screen_id = str(screen_id or "").strip()
+        if not normalized_screen_id:
+            raise ConfigValidationError(
+                f"Missing dashboard.create_bot_flow.screen_definitions id in {_CONFIG_PATH}"
+            )
+        if not isinstance(screen, dict):
+            raise ConfigValidationError(
+                f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id} in {_CONFIG_PATH}"
+            )
+        path = str(screen.get("path") or "").strip()
+        step_group = str(screen.get("step_group") or "").strip()
+        component = str(screen.get("component") or "").strip()
+        if step_group not in seen_step_group_ids:
+            raise ConfigValidationError(
+                f"Unknown dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.step_group in {_CONFIG_PATH}"
+            )
+        if component not in _ALLOWED_CREATE_BOT_COMPONENTS:
+            raise ConfigValidationError(
+                f"Unknown dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.component in {_CONFIG_PATH}"
+            )
+        if normalized_screen_id != "details" and not path:
+            raise ConfigValidationError(
+                f"Missing dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.path in {_CONFIG_PATH}"
+            )
+        if path:
+            if path in seen_screen_paths:
+                raise ConfigValidationError(
+                    f"Duplicate dashboard.create_bot_flow.screen_definitions path '{path}' in {_CONFIG_PATH}"
+                )
+            seen_screen_paths.add(path)
+        visibility = screen.get("visibility")
+        if visibility is not None:
+            if not isinstance(visibility, dict):
+                raise ConfigValidationError(
+                    f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility in {_CONFIG_PATH}"
+                )
+            business_types = visibility.get("business_types")
+            if business_types is not None and not isinstance(business_types, list):
+                raise ConfigValidationError(
+                    f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.business_types in {_CONFIG_PATH}"
+                )
+            requires_platform = visibility.get("requires_selected_reservation_platform")
+            if requires_platform is not None and not isinstance(requires_platform, bool):
+                raise ConfigValidationError(
+                    f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.requires_selected_reservation_platform in {_CONFIG_PATH}"
+                )
+        if component == "action_destination_url":
+            action_key = str(screen.get("action_key") or "").strip().lower()
+            if not action_key:
+                raise ConfigValidationError(
+                    f"Missing dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.action_key in {_CONFIG_PATH}"
+                )
+            for field_name in ("title", "subtitle"):
+                if not _is_valid_i18n_text(screen.get(field_name)):
+                    raise ConfigValidationError(
+                        f"Missing or invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.{field_name} in {_CONFIG_PATH}"
+                    )
+            for field_name in _CREATE_BOT_SCREEN_I18N_FIELDS[2:]:
+                field_value = screen.get(field_name)
+                if field_value is not None and not _is_valid_i18n_text(field_value):
+                    raise ConfigValidationError(
+                        f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.{field_name} in {_CONFIG_PATH}"
+                    )
+
+    screen_order = _require_list(create_bot_flow, "screen_order")
+    seen_order_ids = set()
+    for idx, screen_id in enumerate(screen_order):
+        normalized_screen_id = str(screen_id or "").strip()
+        if not normalized_screen_id:
+            raise ConfigValidationError(
+                f"Missing dashboard.create_bot_flow.screen_order[{idx}] in {_CONFIG_PATH}"
+            )
+        if normalized_screen_id in seen_order_ids:
+            raise ConfigValidationError(
+                f"Duplicate dashboard.create_bot_flow.screen_order entry '{normalized_screen_id}' in {_CONFIG_PATH}"
+            )
+        seen_order_ids.add(normalized_screen_id)
+        if normalized_screen_id not in screen_definitions:
+            raise ConfigValidationError(
+                f"dashboard.create_bot_flow.screen_order references unknown screen '{normalized_screen_id}' in {_CONFIG_PATH}"
             )
 
     defaults = _require_dict(cfg, "defaults")
@@ -463,6 +619,7 @@ def _build_platform_registry() -> tuple[
     Dict[str, PlatformProfile],
     Dict[str, Tuple[str, str]],
     List[Dict[str, Any]],
+    Dict[str, Dict[str, str]],
     Dict[str, str],
     Dict[str, List[str]],
     Optional[Dict[str, Any]],
@@ -476,13 +633,15 @@ def _build_platform_registry() -> tuple[
     str,
     str,
     str,
+    Optional[Dict[str, Any]],
 ]:
-    """Load config and build PLATFORM_PROFILES, RESERVATION_PLATFORM_CONFIG, DEFAULT_SUGGESTED_MESSAGES, DEFAULT_ASSET_RULES, DEFAULT_ASSET_TERM_CONFIG, DEFAULT_JSON_RESPONSE_FORMAT, DEFAULT_RAG_INSTRUCTION, DEFAULT_MENU_TEXTS."""
+    """Load config and build platform/profile defaults from YAML."""
     cfg = _load_platform_config()
     _validate_platform_config(cfg)
     profiles: Dict[str, PlatformProfile] = {}
     reservation_config: Dict[str, Tuple[str, str]] = {}
     default_suggested: List[Dict[str, Any]] = []
+    welcome_messages: Dict[str, Dict[str, str]] = {}
     default_asset_rules: Dict[str, str] = {}
     default_asset_term_config: Dict[str, List[str]] = {}
 
@@ -516,6 +675,17 @@ def _build_platform_registry() -> tuple[
     if isinstance(dsm, list):
         default_suggested = [m for m in dsm if isinstance(m, dict)]
 
+    raw_welcome_messages = cfg.get("welcome_messages")
+    if isinstance(raw_welcome_messages, dict):
+        for channel_key in ("web", "line"):
+            channel_messages = raw_welcome_messages.get(channel_key)
+            if not isinstance(channel_messages, dict):
+                continue
+            welcome_messages[channel_key] = {
+                "en": _resolve_i18n_text(channel_messages, lang="en"),
+                "ja": _resolve_i18n_text(channel_messages, lang="ja"),
+            }
+
     # Platform profiles
     platforms = cfg.get("platforms") or {}
     if isinstance(platforms, dict):
@@ -535,11 +705,13 @@ def _build_platform_registry() -> tuple[
     line_menu_prefix = _require_str(cfg, "line_menu_page_payload_prefix")
     ig_menu_payload = _require_str(cfg, "instagram_menu_quick_payload")
     ig_menu_prefix = _require_str(cfg, "instagram_menu_page_payload_prefix")
+    line_ux_cfg = cfg.get("line_ux") if isinstance(cfg.get("line_ux"), dict) else None
 
     return (
         profiles,
         reservation_config,
         default_suggested,
+        welcome_messages,
         default_asset_rules,
         default_asset_term_config,
         default_json,
@@ -554,6 +726,7 @@ def _build_platform_registry() -> tuple[
         line_menu_prefix,
         ig_menu_payload,
         ig_menu_prefix,
+        line_ux_cfg,
     )
 
 
@@ -561,6 +734,7 @@ def _build_platform_registry() -> tuple[
     PLATFORM_PROFILES,
     RESERVATION_PLATFORM_CONFIG,
     DEFAULT_SUGGESTED_MESSAGES,
+    DEFAULT_WELCOME_MESSAGES,
     DEFAULT_ASSET_RULES,
     DEFAULT_ASSET_TERM_CONFIG,
     DEFAULT_JSON_RESPONSE_FORMAT,
@@ -575,6 +749,7 @@ def _build_platform_registry() -> tuple[
     LINE_MENU_PAGE_PAYLOAD_PREFIX,
     INSTAGRAM_MENU_QUICK_PAYLOAD,
     INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX,
+    LINE_UX_CONFIG,
 ) = _build_platform_registry()
 
 
@@ -641,6 +816,74 @@ def get_dashboard_overview_setup_sections(*, lang: str = "en") -> List[Dict[str,
             "required_knowledge_tabs": required_tabs,
         })
     return sections
+
+
+def get_dashboard_create_bot_flow(*, lang: str = "en") -> Dict[str, Any]:
+    """
+    Return the config-driven create-bot flow definition with localized copy.
+    """
+    lang = _normalize_lang(lang)
+    cfg = _load_platform_config()
+    dashboard = cfg.get("dashboard") if isinstance(cfg.get("dashboard"), dict) else {}
+    raw_flow = dashboard.get("create_bot_flow") if isinstance(dashboard.get("create_bot_flow"), dict) else {}
+
+    raw_step_groups = raw_flow.get("step_groups") if isinstance(raw_flow.get("step_groups"), list) else []
+    step_groups: List[Dict[str, Any]] = []
+    for raw_group in raw_step_groups:
+        if not isinstance(raw_group, dict):
+            continue
+        group_id = str(raw_group.get("id") or "").strip()
+        if not group_id:
+            continue
+        step_groups.append(
+            {
+                "id": group_id,
+                "label": _resolve_i18n_text(raw_group.get("label"), lang=lang, fallback=group_id),
+                "description": _resolve_i18n_text(raw_group.get("description"), lang=lang, fallback=""),
+            }
+        )
+
+    raw_defs = raw_flow.get("screen_definitions") if isinstance(raw_flow.get("screen_definitions"), dict) else {}
+    screen_definitions: Dict[str, Dict[str, Any]] = {}
+    for screen_id, raw_screen in raw_defs.items():
+        normalized_screen_id = str(screen_id or "").strip()
+        if not normalized_screen_id or not isinstance(raw_screen, dict):
+            continue
+        resolved: Dict[str, Any] = {
+            "id": normalized_screen_id,
+            "path": str(raw_screen.get("path") or "").strip(),
+            "step_group": str(raw_screen.get("step_group") or "").strip(),
+            "component": str(raw_screen.get("component") or "").strip(),
+        }
+        action_key = str(raw_screen.get("action_key") or "").strip().lower()
+        if action_key:
+            resolved["action_key"] = action_key
+        visibility = raw_screen.get("visibility")
+        if isinstance(visibility, dict):
+            resolved["visibility"] = {
+                "business_types": [
+                    str(item).strip().lower() for item in visibility.get("business_types", []) if str(item).strip()
+                ],
+                "requires_selected_reservation_platform": bool(
+                    visibility.get("requires_selected_reservation_platform")
+                ),
+            }
+        for field_name in _CREATE_BOT_SCREEN_I18N_FIELDS:
+            field_value = raw_screen.get(field_name)
+            if field_value is not None:
+                resolved[field_name] = _resolve_i18n_text(field_value, lang=lang, fallback="")
+        screen_definitions[normalized_screen_id] = resolved
+
+    screen_order = [
+        str(item).strip()
+        for item in (raw_flow.get("screen_order") if isinstance(raw_flow.get("screen_order"), list) else [])
+        if str(item).strip()
+    ]
+    return {
+        "step_groups": step_groups,
+        "screen_definitions": screen_definitions,
+        "screen_order": screen_order,
+    }
 
 
 def get_defaults_config() -> Dict[str, Any]:
@@ -937,6 +1180,34 @@ def normalize_reservation_links(widget_config: Dict[str, Any]) -> Dict[str, str]
     return links
 
 
+def normalize_action_destination_links(widget_config: Dict[str, Any]) -> Dict[str, str]:
+    links: Dict[str, str] = {}
+    if not isinstance(widget_config, dict):
+        return links
+    raw = widget_config.get("actionDestinationLinks")
+    if not isinstance(raw, dict):
+        return links
+    for action_key, url in raw.items():
+        normalized_key = str(action_key or "").strip().lower()
+        normalized_url = str(url or "").strip()
+        if not normalized_key or not normalized_url:
+            continue
+        if not normalized_url.startswith(("http://", "https://")):
+            normalized_url = f"https://{normalized_url}"
+        parsed = urlparse(normalized_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            continue
+        links[normalized_key] = normalized_url
+    return links
+
+
+def get_action_destination_url(widget_config: Dict[str, Any], action_key: str) -> str:
+    normalized_key = str(action_key or "").strip().lower()
+    if not normalized_key:
+        return ""
+    return str(normalize_action_destination_links(widget_config).get(normalized_key) or "").strip()
+
+
 def get_reservation_url_for_platform(widget_config: Dict[str, Any], platform_id: str) -> str:
     return str(normalize_reservation_links(widget_config).get(str(platform_id or "").strip().lower()) or "").strip()
 
@@ -1012,13 +1283,13 @@ def get_reservation_config_from_widget(
         return None
 
     _, domain_key = RESERVATION_PLATFORM_CONFIG[platform_id]
-    raw_url = str(normalized_links.get(platform_id) or "").strip()
-    if not raw_url:
+    platform_url = str(normalized_links.get(platform_id) or "").strip()
+    if not platform_url:
         return None
-    if not raw_url.startswith(("http://", "https://")):
-        raw_url = f"https://{raw_url}"
+    if not platform_url.startswith(("http://", "https://")):
+        platform_url = f"https://{platform_url}"
 
-    profile, resolved_domain = resolve_platform_profile(raw_url)
+    profile, resolved_domain = resolve_platform_profile(platform_url)
     if profile is None or resolved_domain != domain_key:
         return None
 
@@ -1028,6 +1299,8 @@ def get_reservation_config_from_widget(
         return None
     if not reservation.get("enabled", True):
         return None
+
+    customer_url = get_action_destination_url(widget_config, "reservation") or platform_url
 
     # Optional override from widget_config; else use platform profile template
     custom = (widget_config.get("reservationInstruction") or "").strip()
@@ -1041,9 +1314,9 @@ def get_reservation_config_from_widget(
         return None
 
     try:
-        instruction = instruction.format(url=raw_url)
+        instruction = instruction.format(url=customer_url)
     except (KeyError, ValueError):
-        instruction = f"{instruction} {raw_url}"
+        instruction = f"{instruction} {customer_url}"
 
     labels = reservation.get("link_label")
     if isinstance(labels, dict):
@@ -1054,7 +1327,8 @@ def get_reservation_config_from_widget(
         return None
 
     return {
-        "url": raw_url,
+        "url": customer_url,
+        "platform_url": platform_url,
         "instruction": instruction,
         "domain_key": domain_key,
         "link_label": link_label,
@@ -1162,6 +1436,7 @@ def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
 
 _VALID_SUGGESTED_TYPES = ("ai_response", "show_menu", "escalate")
 _SUPPORTED_SUGGESTED_LANGS = ("en", "ja")
+_SUPPORTED_WELCOME_CHANNELS = ("web", "line")
 
 
 def _normalize_suggested_lang(lang: Optional[str]) -> str:
@@ -1338,6 +1613,65 @@ def get_suggested_messages_for_widget(
     return resolved if resolved else _get_default_suggested_messages_for_widget(widget_config, lang=normalized_lang)
 
 
+def has_support_suggested_message_for_widget(widget_config: Dict[str, Any]) -> bool:
+    by_lang = get_suggested_messages_by_language_for_widget(widget_config)
+    for items in by_lang.values():
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("type") or "").strip() == "escalate":
+                return True
+    return False
+
+
+def get_default_welcome_messages() -> Dict[str, Dict[str, str]]:
+    resolved: Dict[str, Dict[str, str]] = {}
+    for channel in _SUPPORTED_WELCOME_CHANNELS:
+        channel_defaults = DEFAULT_WELCOME_MESSAGES.get(channel) if isinstance(DEFAULT_WELCOME_MESSAGES, dict) else {}
+        resolved[channel] = {
+            "en": str((channel_defaults or {}).get("en") or "").strip(),
+            "ja": str((channel_defaults or {}).get("ja") or "").strip(),
+        }
+    return resolved
+
+
+def get_welcome_messages_by_channel_for_widget(widget_config: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
+    current_lang = _normalize_suggested_lang(
+        widget_config.get("language") or widget_config.get("botLanguage") or "en"
+    )
+    defaults = get_default_welcome_messages()
+    raw_by_channel = widget_config.get("welcomeMessagesByChannel")
+    legacy_welcome = str(widget_config.get("welcomeMessage") or "").strip()
+    resolved: Dict[str, Dict[str, str]] = {}
+
+    for channel in _SUPPORTED_WELCOME_CHANNELS:
+        resolved[channel] = {}
+        raw_channel = raw_by_channel.get(channel) if isinstance(raw_by_channel, dict) else None
+        for lang in _SUPPORTED_SUGGESTED_LANGS:
+            value = ""
+            if isinstance(raw_channel, dict):
+                value = str(raw_channel.get(lang) or "").strip()
+            if not value and channel == "web" and lang == current_lang and legacy_welcome:
+                value = legacy_welcome
+            resolved[channel][lang] = value or defaults.get(channel, {}).get(lang, "")
+    return resolved
+
+
+def get_welcome_message_for_widget(
+    widget_config: Dict[str, Any],
+    *,
+    channel: str = "web",
+    lang: str = "en",
+) -> str:
+    normalized_channel = "line" if str(channel or "").strip().lower() == "line" else "web"
+    normalized_lang = _normalize_suggested_lang(lang)
+    by_channel = get_welcome_messages_by_channel_for_widget(widget_config)
+    channel_messages = by_channel.get(normalized_channel) or {}
+    return str(channel_messages.get(normalized_lang) or channel_messages.get("en") or "").strip()
+
+
 def get_platform_asset_instructions(widget_config: Dict[str, Any], *, lang: str = "en") -> Optional[str]:
     """
     Get asset usage instructions from the active platform profile.
@@ -1501,6 +1835,85 @@ def get_instagram_menu_quick_payload() -> str:
 def get_instagram_menu_page_payload_prefix() -> str:
     """Get Instagram menu page payload prefix from config."""
     return str(INSTAGRAM_MENU_PAGE_PAYLOAD_PREFIX or "").strip()
+
+
+def get_line_ux_config() -> Dict[str, Any]:
+    return dict(LINE_UX_CONFIG or {})
+
+
+def get_line_cancel_keywords() -> Tuple[str, ...]:
+    cfg = get_line_ux_config()
+    raw = cfg.get("cancel_keywords")
+    if not isinstance(raw, list):
+        return ("cancel", "キャンセル")
+    return tuple(str(item).strip() for item in raw if str(item).strip())
+
+
+def get_line_support_messages(*, lang: str = "en") -> Dict[str, str]:
+    cfg = get_line_ux_config()
+    messages = cfg.get("support_messages") if isinstance(cfg.get("support_messages"), dict) else {}
+    normalized_lang = _normalize_lang(lang)
+    defaults = {
+        "prompt": "I'll connect you with our staff right away.",
+        "cancel_ack": "Cancelled. You're back with the AI assistant. How can I help?",
+        "escalation_ack": "You're now connected to our support team. They will reply here shortly.",
+        "takeover_ack": "Your conversation has been transferred to support. Our team will reply here.",
+        "resolved_ack": "Your support conversation is complete. You're back with our AI assistant.",
+        "email_details_no_message": "User requested human assistance via LINE.",
+    }
+    resolved: Dict[str, str] = {}
+    for key, fallback in defaults.items():
+        resolved[key] = _resolve_i18n_text(messages.get(key), lang=normalized_lang, fallback=fallback)
+    return resolved
+
+
+def get_line_rich_menu_definition(*, state: str = "normal", lang: str = "en") -> Dict[str, Any]:
+    cfg = get_line_ux_config()
+    rich_menu = cfg.get("rich_menu") if isinstance(cfg.get("rich_menu"), dict) else {}
+    normalized_state = "support" if str(state or "").strip().lower() == "support" else "normal"
+    normalized_lang = _normalize_lang(lang)
+    chat_bar = rich_menu.get("chat_bar_text") if isinstance(rich_menu.get("chat_bar_text"), dict) else {}
+    actions_cfg = rich_menu.get("actions") if isinstance(rich_menu.get("actions"), dict) else {}
+    layouts_cfg = rich_menu.get("layouts") if isinstance(rich_menu.get("layouts"), dict) else {}
+    layout_ids = layouts_cfg.get(normalized_state)
+    if not isinstance(layout_ids, list):
+        layout_ids = layouts_cfg.get("normal") if isinstance(layouts_cfg.get("normal"), list) else []
+    actions: List[Dict[str, Any]] = []
+    for raw_action_id in layout_ids:
+        action_id = str(raw_action_id or "").strip()
+        action_cfg = actions_cfg.get(action_id) if action_id else None
+        if not action_id or not isinstance(action_cfg, dict):
+            continue
+        actions.append(
+            {
+                "id": action_id,
+                "label": _resolve_i18n_text(action_cfg.get("label"), lang=normalized_lang, fallback=action_id.replace("_", " ").title()),
+                "capability": str(action_cfg.get("capability") or action_id).strip() or action_id,
+                "icon": str(action_cfg.get("icon") or action_id).strip() or action_id,
+                "postback_data": str(action_cfg.get("postback_data") or "").strip() or None,
+                "fallback_order": [
+                    str(item).strip()
+                    for item in (action_cfg.get("fallback_order") or [])
+                    if str(item).strip()
+                ],
+                "uri_fallback_order": [
+                    str(item).strip()
+                    for item in (action_cfg.get("uri_fallback_order") or [])
+                    if str(item).strip()
+                ],
+            }
+        )
+    return {
+        "state": normalized_state,
+        "chat_bar_text": _resolve_i18n_text(
+            chat_bar.get(normalized_state),
+            lang=normalized_lang,
+            fallback="Quick actions" if normalized_state == "normal" else "Support options",
+        ),
+        "size": rich_menu.get("size") if isinstance(rich_menu.get("size"), dict) else {},
+        "styles": rich_menu.get("styles") if isinstance(rich_menu.get("styles"), dict) else {},
+        "actions": actions,
+    }
 
 
 def ensure_canonical_reservation_url_in_text(text: str, canonical_url: str, domain_key: str) -> str:

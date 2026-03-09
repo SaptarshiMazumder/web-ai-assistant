@@ -177,6 +177,25 @@ class ConversationService:
             external_user_id=external_user_id,
         )
 
+    def upsert_channel_contact(
+        self,
+        *,
+        bot_id: str,
+        channel: str,
+        external_user_id: str,
+        current_session_id: Optional[str] = None,
+        display_name: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
+    ) -> ConversationChannelContact:
+        return self._repo.upsert_channel_contact(
+            bot_id=bot_id,
+            channel=channel,
+            external_user_id=external_user_id,
+            current_session_id=current_session_id,
+            display_name=display_name,
+            metadata=metadata,
+        )
+
     def get_session_handoff(self, session_id: str) -> Optional[ConversationSessionHandoff]:
         return self._repo.get_session_handoff(session_id)
 

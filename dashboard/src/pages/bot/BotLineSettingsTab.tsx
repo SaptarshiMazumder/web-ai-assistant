@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
-import { useDashboardData } from '../../hooks/useDashboardData'
+import { useDashboardData, type LineChannelTestResult } from '../../hooks/useDashboardData'
 import { useTranslation } from 'react-i18next'
 import {
   Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2,
-  Trash2, Zap, MessageCircle, ChevronLeft, ChevronRight,
+  Trash2, Zap, MessageCircle, ChevronLeft, ChevronRight, RefreshCw,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
 import { useDialog } from '../../contexts/DialogContext'
@@ -18,6 +18,11 @@ type LineChannelConfig = {
   is_active: boolean
   created_at: string
   updated_at: string
+  managed_rich_menu_enabled?: boolean
+  rich_menu_sync_status?: string | null
+  rich_menu_last_synced_at?: string | null
+  rich_menu_last_error?: string | null
+  rich_menu_variants?: Record<string, string>
 }
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
@@ -96,7 +101,8 @@ export default function BotLineSettingsTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [resyncing, setResyncing] = useState(false)
+  const [testResult, setTestResult] = useState<LineChannelTestResult | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -122,12 +128,30 @@ export default function BotLineSettingsTab() {
     })
   }, [getAccessTokenSilently])
 
+  const fetchLineAccountInfo = useCallback(async (showSpinner = false): Promise<LineChannelTestResult | null> => {
+    if (!botId) return null
+    if (showSpinner) setTesting(true)
+    try {
+      const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel/test`, { method: 'POST' })
+      const data = await resp.json() as LineChannelTestResult
+      setTestResult(data)
+      return data
+    } catch (err) {
+      const failed = { ok: false, message: (err as Error).message } satisfies LineChannelTestResult
+      setTestResult(failed)
+      return failed
+    } finally {
+      if (showSpinner) setTesting(false)
+    }
+  }, [botId, authedFetch])
+
   const loadConfig = useCallback(async () => {
     setLoading(true)
     try {
       const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel`)
       if (resp.status === 404) {
         setExisting(null)
+        setTestResult(null)
         return
       }
       if (!resp.ok) {
@@ -138,16 +162,18 @@ export default function BotLineSettingsTab() {
       setExisting(data)
       setLineChannelId(data.line_channel_id)
       setIsActive(data.is_active)
+      await fetchLineAccountInfo(false)
     } catch (err) {
       if ((err as Error).message?.includes('404') || (err as Error).message?.includes('Not Found')) {
         setExisting(null)
+        setTestResult(null)
       } else {
         setError((err as Error).message)
       }
     } finally {
       setLoading(false)
     }
-  }, [botId, authedFetch])
+  }, [botId, authedFetch, fetchLineAccountInfo])
 
   useEffect(() => {
     if (!botId) return
@@ -185,6 +211,7 @@ export default function BotLineSettingsTab() {
       setExisting(data)
       setLineChannelSecret('')
       setLineAccessToken('')
+      await fetchLineAccountInfo(false)
       setSuccess(tr('Connected! Your bot is live on LINE.', '接続完了。ボットはLINEで稼働中です。'))
     } catch (err) {
       setError((err as Error).message)
@@ -195,18 +222,9 @@ export default function BotLineSettingsTab() {
 
   async function handleTestConnection() {
     if (!botId) return
-    setTesting(true)
     setTestResult(null)
     setError(null)
-    try {
-      const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel/test`, { method: 'POST' })
-      const data = await resp.json() as { ok: boolean; message: string }
-      setTestResult(data)
-    } catch (err) {
-      setTestResult({ ok: false, message: (err as Error).message })
-    } finally {
-      setTesting(false)
-    }
+    await fetchLineAccountInfo(true)
   }
 
   async function handleDelete() {
@@ -271,6 +289,9 @@ export default function BotLineSettingsTab() {
           const data = await resp.json().catch(() => ({}))
           throw new Error((data as { detail?: string }).detail || resp.statusText)
         }
+        const data = (await resp.json()) as LineChannelConfig
+        setExisting(data)
+        await fetchLineAccountInfo(false)
         setCurrentStep(4)
       } catch (err) {
         setError((err as Error).message)
@@ -298,6 +319,31 @@ export default function BotLineSettingsTab() {
     return <div className="empty-panel">{tr('Select a bot to configure LINE integration.', 'LINE連携を設定するボットを選択してください。')}</div>
   }
 
+  async function handleResyncMenu() {
+    if (!botId) return
+    setResyncing(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel/rich-menu/resync`, { method: 'POST' })
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}))
+        throw new Error((data as { detail?: string }).detail || resp.statusText)
+      }
+      const data = (await resp.json()) as LineChannelConfig
+      setExisting(data)
+      if (data.rich_menu_sync_status === 'error') {
+        setError(data.rich_menu_last_error || tr('LINE menu sync failed.', 'LINEメニューの同期に失敗しました。'))
+      } else {
+        setSuccess(tr('Managed LINE menu resynced.', 'LINEリッチメニューを再同期しました。'))
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setResyncing(false)
+    }
+  }
+
   if (loading) {
     return (
       <AnimatedPage className="page-body">
@@ -312,6 +358,112 @@ export default function BotLineSettingsTab() {
   /* ═══════════════════════════════════════════════════════════════
      Connected View
      ═══════════════════════════════════════════════════════════════ */
+  const richMenuStatus = existing?.rich_menu_sync_status || 'pending'
+  const richMenuStatusLabel = (() => {
+    switch (richMenuStatus) {
+      case 'synced':
+        return tr('Synced', '同期済み')
+      case 'syncing':
+        return tr('Syncing', '同期中')
+      case 'inactive':
+        return tr('Inactive', '停止中')
+      case 'no_actions':
+        return tr('No actions', '項目なし')
+      case 'error':
+        return tr('Error', 'エラー')
+      default:
+        return tr('Pending', '保留中')
+    }
+  })()
+  const richMenuStatusColor = richMenuStatus === 'synced'
+    ? '#27ae60'
+    : richMenuStatus === 'error'
+      ? '#e74c3c'
+      : 'var(--text-secondary)'
+  const richMenuVariantCount = Object.keys(existing?.rich_menu_variants || {}).length
+  const lineAccountName = testResult?.display_name || testResult?.basic_id || existing?.line_channel_id || lineChannelId.trim()
+  const lineAccountPictureUrl = testResult?.picture_url || null
+
+  function renderLineAccountCard(
+    title: string,
+    subtitle: string,
+    options?: { compact?: boolean; background?: string; border?: string; textColor?: string; mutedColor?: string }
+  ) {
+    if (!testResult?.ok || !lineAccountName) return null
+    const compact = options?.compact === true
+    const background = options?.background || 'rgba(255,255,255,0.14)'
+    const border = options?.border || '1px solid rgba(255,255,255,0.22)'
+    const textColor = options?.textColor || '#fff'
+    const mutedColor = options?.mutedColor || 'rgba(255,255,255,0.78)'
+    return (
+      <div
+        style={{
+          marginTop: compact ? '1rem' : 0,
+          padding: compact ? '0.9rem 1rem' : '1rem',
+          borderRadius: compact ? '14px' : '16px',
+          background,
+          border,
+          display: 'grid',
+          gap: '0.8rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          {lineAccountPictureUrl ? (
+            <img
+              src={lineAccountPictureUrl}
+              alt={lineAccountName}
+              style={{
+                width: compact ? '52px' : '64px',
+                height: compact ? '52px' : '64px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: compact ? '2px solid rgba(255,255,255,0.35)' : '3px solid rgba(255,255,255,0.35)',
+                background: '#fff',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: compact ? '52px' : '64px',
+                height: compact ? '52px' : '64px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.24)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <MessageCircle size={compact ? 24 : 28} color={textColor} />
+            </div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: compact ? '0.78rem' : '0.82rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: mutedColor }}>
+              {title}
+            </div>
+            <div style={{ fontSize: compact ? '1rem' : '1.15rem', fontWeight: 700, color: textColor, lineHeight: 1.25, wordBreak: 'break-word' }}>
+              {lineAccountName}
+            </div>
+            <div style={{ marginTop: '0.2rem', fontSize: compact ? '0.84rem' : '0.9rem', color: mutedColor, wordBreak: 'break-word' }}>
+              {subtitle}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gap: '0.45rem', fontSize: compact ? '0.83rem' : '0.88rem', color: textColor }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+            <span style={{ color: mutedColor }}>{tr('Basic ID', 'Basic ID')}</span>
+            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{testResult?.basic_id || tr('Not available', '未取得')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+            <span style={{ color: mutedColor }}>{tr('Channel ID', 'チャネルID')}</span>
+            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{existing?.line_channel_id || lineChannelId.trim() || tr('Not available', '未取得')}</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (existing) {
     return (
       <AnimatedPage className="page-body">
@@ -339,29 +491,69 @@ export default function BotLineSettingsTab() {
           }} />
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-              <div style={{
-                width: '60px', height: '60px', borderRadius: '16px',
-                background: 'rgba(255,255,255,0.25)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-              }}>
-                <MessageCircle size={30} color="#fff" />
-              </div>
+              {lineAccountPictureUrl ? (
+                <img
+                  src={lineAccountPictureUrl}
+                  alt={lineAccountName}
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '3px solid rgba(255,255,255,0.35)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                    background: '#fff',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '60px', height: '60px', borderRadius: '16px',
+                  background: 'rgba(255,255,255,0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                }}>
+                  <MessageCircle size={30} color="#fff" />
+                </div>
+              )}
               <div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem' }}>
                   {tr('Connected & Active', '接続済み・有効')}
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', fontWeight: 500 }}>
-                  {tr('Channel', 'チャネル')}{' '}
-                  <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 8px', borderRadius: '6px', fontFamily: 'monospace' }}>
-                    {existing.line_channel_id}
-                  </code>
+                  {lineAccountName}
+                  {testResult?.basic_id ? (
+                    <>
+                      {' '}·{' '}
+                      <span>{testResult.basic_id}</span>
+                    </>
+                  ) : null}
                   {' '}&bull;{' '}{existing.is_active ? tr('Active', '有効') : tr('Paused', '一時停止')}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleResyncMenu}
+                disabled={resyncing}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderRadius: '12px',
+                  padding: '0.75rem 1.5rem',
+                  color: '#fff', fontWeight: 600, fontSize: '0.95rem',
+                  cursor: resyncing ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '0.6rem',
+                  transition: 'all 0.2s',
+                  opacity: resyncing ? 0.7 : 1,
+                }}
+                onMouseEnter={(e) => { if (!resyncing) { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)' } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(0)' }}
+              >
+                {resyncing ? (<><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Resyncing...', '再同期中...')}</>) : (<><RefreshCw size={18} /> {tr('Resync LINE menu', 'LINEメニューを再同期')}</>)}
+              </button>
               <button
                 onClick={handleTestConnection}
                 disabled={testing}
@@ -399,10 +591,29 @@ export default function BotLineSettingsTab() {
           {/* Connection Details */}
           <GlassCard>
             <div className="card-title" style={{ marginBottom: '1rem' }}>{tr('Connection Details', '接続情報')}</div>
+            {renderLineAccountCard(
+              tr('Connected LINE account', '接続中のLINEアカウント'),
+              tr('This is the Official Account currently connected to your bot.', '現在このボットに接続されているLINE公式アカウントです。'),
+              {
+                compact: true,
+                background: 'var(--ui-flow-surface)',
+                border: '1px solid var(--ui-flow-border)',
+                textColor: 'var(--text-primary)',
+                mutedColor: 'var(--text-secondary)',
+              }
+            )}
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{tr('Channel ID', 'チャネルID')}</span>
                 <code style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{existing.line_channel_id}</code>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Account name', 'アカウント名')}</span>
+                <span style={{ fontWeight: 600 }}>{lineAccountName || tr('Not available', '未取得')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Basic ID', 'Basic ID')}</span>
+                <span style={{ fontWeight: 500 }}>{testResult?.basic_id || tr('Not available', '未取得')}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{tr('Status', 'ステータス')}</span>
@@ -416,7 +627,38 @@ export default function BotLineSettingsTab() {
                   {new Date(existing.created_at).toLocaleDateString(isJa ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Managed menu', '管理メニュー')}</span>
+                <span style={{ fontWeight: 600, color: richMenuStatusColor }}>{richMenuStatusLabel}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Menu variants', 'メニュー数')}</span>
+                <span style={{ fontWeight: 500 }}>{richMenuVariantCount}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>{tr('Last synced', '最終同期')}</span>
+                <span style={{ fontWeight: 500 }}>
+                  {existing.rich_menu_last_synced_at
+                    ? new Date(existing.rich_menu_last_synced_at).toLocaleString(isJa ? 'ja-JP' : 'en-US')
+                    : tr('Not yet', '未実行')}
+                </span>
+              </div>
             </div>
+            {existing.rich_menu_last_error ? (
+              <div style={{
+                marginTop: '1rem',
+                padding: '0.9rem 1rem',
+                borderRadius: '14px',
+                background: 'rgba(231, 76, 60, 0.08)',
+                border: '1px solid rgba(231, 76, 60, 0.18)',
+                color: '#b42318',
+                fontSize: '0.9rem',
+                lineHeight: 1.5,
+              }}>
+                <strong>{tr('Rich menu error', 'リッチメニューエラー')}</strong>
+                <div>{existing.rich_menu_last_error}</div>
+              </div>
+            ) : null}
           </GlassCard>
 
           {/* Webhook URL */}
@@ -832,6 +1074,18 @@ export default function BotLineSettingsTab() {
               {' '}{tr('-> your channel -> "Messaging API" tab:', '-> 対象チャネル -> 「Messaging API」タブ:')}
             </p>
 
+            {renderLineAccountCard(
+              tr('Connected LINE account', '接続中のLINEアカウント'),
+              tr('Confirm this is the Official Account you want to finish setup for.', '設定を完了する対象のLINE公式アカウントか確認してください。'),
+              {
+                compact: true,
+                background: 'rgba(6,199,85,0.08)',
+                border: '1px solid rgba(6,199,85,0.22)',
+                textColor: 'var(--text-primary)',
+                mutedColor: 'var(--text-secondary)',
+              }
+            )}
+
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
               {tr('1. Copy this address:', '1. このURLをコピー:')}
             </p>
@@ -884,6 +1138,17 @@ export default function BotLineSettingsTab() {
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
               {tr('Your LINE account:', 'LINEアカウント:')} <code style={{ fontFamily: 'monospace', fontWeight: 600 }}>{lineChannelId}</code>
             </p>
+            {renderLineAccountCard(
+              tr('Connected LINE account', '接続中のLINEアカウント'),
+              tr('This is the Official Account that will start receiving messages after activation.', '有効化後、このLINE公式アカウントでメッセージ受信が始まります。'),
+              {
+                compact: true,
+                background: 'rgba(6,199,85,0.08)',
+                border: '1px solid rgba(6,199,85,0.22)',
+                textColor: 'var(--text-primary)',
+                mutedColor: 'var(--text-secondary)',
+              }
+            )}
             <p style={{ margin: '0 0 2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
               {tr('Click the button below to activate your AI bot. After this, your bot will start replying to LINE messages automatically!', '下のボタンを押すとAIボットが有効化され、LINEメッセージへ自動返信を開始します。')}
             </p>

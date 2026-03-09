@@ -2,11 +2,13 @@ import unittest
 from types import SimpleNamespace
 
 from domain.platform_profiles import (
+    get_dashboard_create_bot_flow,
     get_default_post_crawl_jobs,
     get_default_source_language,
     get_knowledge_tabs_for_widget,
     get_menu_category_aliases,
     get_menu_view_all_url_tokens,
+    get_reservation_config_from_widget,
     get_reservation_url_for_platform,
     normalize_reservation_links,
 )
@@ -54,6 +56,29 @@ class ModularConfigTests(unittest.TestCase):
         widget_config = {"reservationPlatform": "hotpepper"}
         tabs = get_knowledge_tabs_for_widget(widget_config)
         self.assertEqual(["menu"], tabs)
+
+    def test_create_bot_flow_is_loaded_from_config(self):
+        flow = get_dashboard_create_bot_flow(lang="en")
+        self.assertTrue(flow.get("step_groups"))
+        self.assertTrue(flow.get("screen_order"))
+        defs = flow.get("screen_definitions") or {}
+        self.assertIn("reservation_destination", defs)
+        self.assertEqual("action_destination_url", defs["reservation_destination"].get("component"))
+
+    def test_reservation_customer_destination_overrides_platform_url(self):
+        widget_config = {
+            "reservationPlatform": "tabelog",
+            "reservationLinks": {
+                "tabelog": "https://tabelog.com/tokyo/A1304/A130401/13224546/",
+            },
+            "actionDestinationLinks": {
+                "reservation": "https://example.com/book-now",
+            },
+        }
+        cfg = get_reservation_config_from_widget(widget_config, lang="en")
+        self.assertIsNotNone(cfg)
+        self.assertEqual("https://example.com/book-now", cfg["url"])
+        self.assertEqual("https://tabelog.com/tokyo/A1304/A130401/13224546/", cfg["platform_url"])
 
 
 if __name__ == "__main__":

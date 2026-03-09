@@ -1,18 +1,16 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
-import { getCreateBotStepIndex, getCreateBotSteps, getCreateBotPrevPath } from './flowConfig'
 import { TrainingProgressCircle } from './TrainingProgressCircle'
+import CreateBotScreenHost from './CreateBotScreenHost'
 
 
 function FlowStepsWithProgress() {
-  const location = useLocation()
-  const { t } = useTranslation()
-  const { step3 } = useCreateBotFlow()
-  const steps = getCreateBotSteps()
-  const activeStep = getCreateBotStepIndex(location.pathname, steps)
+  const { step3, flow } = useCreateBotFlow()
+  const steps = flow.stepGroups
+  const activeStep = flow.activeStepIndex
   const activeId = steps[activeStep]?.id
   const {
     trainingStage,
@@ -24,7 +22,7 @@ function FlowStepsWithProgress() {
     pdfJobIds,
   } = step3
   const hasBackgroundTraining = trainingStage === 'training' || !!jobId || pdfJobIds.length > 0
-  const showProgress = (activeId === 'topics' || activeId === 'widget' || activeId === 'embed') && hasBackgroundTraining
+  const showProgress = (activeId === 'widget' || activeId === 'embed') && hasBackgroundTraining
 
   return (
     <aside className="flow-steps">
@@ -46,8 +44,8 @@ function FlowStepsWithProgress() {
                 )}
               </div>
               <div>
-                <div className="flow-step-title">{t(step.labelKey, step.label)}</div>
-                <div className="flow-step-desc">{t(step.descriptionKey, step.description)}</div>
+                <div className="flow-step-title">{step.label}</div>
+                <div className="flow-step-desc">{step.description}</div>
               </div>
             </div>
           )
@@ -97,25 +95,28 @@ export default function CreateBotLayout() {
           <FlowStepsWithProgress />
           <section className="flow-panel">
             {error && <div className="alert error">{error}</div>}
-            {(() => {
-              const prevPath = getCreateBotPrevPath(location.pathname)
-              return prevPath ? (
-                <button
-                  type="button"
-                  className="flow-mobile-back"
-                  onClick={() => navigate(prevPath)}
-                  aria-label={t('common.goBack', 'Go back')}
-                >
-                  <FlowIcon name="arrow_back" size="md" />
-                </button>
-              ) : null
-            })()}
+            <CreateBotProviderInnerMobileBack navigate={navigate} />
             <div key={location.pathname} className="flow-panel-animate">
-              <Outlet />
+              <CreateBotScreenHost />
             </div>
           </section>
         </div>
       </div>
     </CreateBotProvider>
   )
+}
+
+function CreateBotProviderInnerMobileBack({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+  const { t } = useTranslation()
+  const { flow } = useCreateBotFlow()
+  return flow.prevPath ? (
+    <button
+      type="button"
+      className="flow-mobile-back"
+      onClick={() => navigate(flow.prevPath!)}
+      aria-label={t('common.goBack', 'Go back')}
+    >
+      <FlowIcon name="arrow_back" size="md" />
+    </button>
+  ) : null
 }

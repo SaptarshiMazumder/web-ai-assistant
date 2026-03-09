@@ -109,6 +109,7 @@ export function botTabSecondaryItems(
 
     // Appearance section (was Design)
     { id: 'design', label: 'nav.appearance', to: `/bots/${botId}/design`, icon: Palette, header: 'nav.agentDesign' },
+    { id: 'welcome-messages', label: 'nav.welcomeMessages', to: `/bots/${botId}/welcome-messages`, icon: MessageSquare, header: 'nav.agentDesign' },
     { id: 'suggested-messages', label: 'nav.suggestedMessages', to: `/bots/${botId}/suggested-messages`, icon: MessageSquare, header: 'nav.agentDesign' },
     { id: 'human-support', label: 'nav.humanSupport', to: `/bots/${botId}/human-support`, icon: AlertCircle, header: 'nav.agentDesign' },
     { id: 'testing', label: 'nav.testing', to: `/bots/${botId}/testing`, icon: FlaskConical, header: 'nav.agentDesign' },

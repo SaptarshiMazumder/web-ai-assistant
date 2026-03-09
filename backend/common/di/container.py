@@ -3,6 +3,7 @@ from functools import lru_cache
 from application.services.bot_service import BotService
 from application.services.indexing_service import IndexingService
 from application.services.job_pipeline_service import JobPipelineService
+from application.services.line_rich_menu_service import LineRichMenuService
 from application.services.org_service import OrgService
 from application.services.conversation_service import ConversationService
 from application.services.analytics_service import AnalyticsService
@@ -83,6 +84,11 @@ def url_discovery() -> UrlDiscoveryPort:
 @lru_cache(maxsize=1)
 def conversation_service() -> ConversationService:
     return ConversationService()
+
+
+@lru_cache(maxsize=1)
+def line_rich_menu_service() -> LineRichMenuService:
+    return LineRichMenuService()
 
 
 @lru_cache(maxsize=1)

@@ -13,13 +13,7 @@ import DomainPage from './pages/DomainPage'
 import OrgPage from './pages/OrgPage'
 import SettingsPage from './pages/SettingsPage'
 import UsersPage from './pages/UsersPage'
-import CreateBotDetailsPage from './pages/createBot/CreateBotDetailsPage'
-import CreateBotEmbedPage from './pages/createBot/CreateBotEmbedPage'
 import CreateBotLayout from './pages/createBot/CreateBotLayout'
-import CreateBotProgressPage from './pages/createBot/CreateBotProgressPage'
-import CreateBotUrlsPage from './pages/createBot/CreateBotUrlsPage'
-import CreateBotAdditionalSourcesPage from './pages/createBot/CreateBotAdditionalSourcesPage'
-import CreateBotWidgetPage from './pages/createBot/CreateBotWidgetPage'
 import BotDesignTab from './pages/bot/BotDesignTab'
 import BotDetailLayout from './pages/bot/BotDetailLayout'
 import AddSourcePage from './pages/bot/AddSourcePage'
@@ -32,6 +26,7 @@ import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
 
 import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
+import BotWelcomeMessagesTab from './pages/bot/BotWelcomeMessagesTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
 import BotHumanSupportTab from './pages/bot/BotHumanSupportTab'
 import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
@@ -89,17 +84,8 @@ export default function App() {
           <BrowserRouter>
             <BackgroundTaskIndicator />
             <Routes>
-            {/* Create-bot step order/paths: see flowConfig.ts. When adding a step, add entry there and a Route here. */}
-            <Route path="/create-bot" element={<CreateBotLayout />}>
-              <Route index element={<CreateBotDetailsPage />} />
-              <Route path="sources" element={<CreateBotUrlsPage />} />
-              <Route path="urls" element={<Navigate to="/create-bot/sources" replace />} />
-              <Route path="additional-sources" element={<CreateBotAdditionalSourcesPage />} />
-              <Route path="progress" element={<CreateBotProgressPage />} />
-              <Route path="widget" element={<CreateBotWidgetPage />} />
-              <Route path="embed" element={<CreateBotEmbedPage />} />
-              <Route path="*" element={<Navigate to="/create-bot" replace />} />
-            </Route>
+            <Route path="/create-bot/urls" element={<Navigate to="/create-bot/sources" replace />} />
+            <Route path="/create-bot/*" element={<CreateBotLayout />} />
             <Route path="/" element={<DashboardLayout />}>
               <Route index element={<HomePage />} />
               <Route path="dashboard" element={<DashboardRedirect />} />
@@ -117,6 +103,7 @@ export default function App() {
                 <Route path="sources" element={<Navigate to="knowledge" replace />} />
                 <Route path="sources/new" element={<AddSourcePage />} />
                 <Route path="design" element={<BotDesignTab />} />
+                <Route path="welcome-messages" element={<BotWelcomeMessagesTab />} />
                 <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
                 <Route path="human-support" element={<BotHumanSupportTab />} />
 

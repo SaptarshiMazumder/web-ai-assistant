@@ -384,3 +384,93 @@ async def get_profile(
         logger.warning("LINE get_profile failed: %s %s", resp.status_code, resp.text)
         return None
     return resp.json()
+
+
+async def create_rich_menu(rich_menu: dict, access_token: str) -> str:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(
+            f"{LINE_API_BASE}/richmenu",
+            json=rich_menu,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("LINE create_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE rich menu create failed ({resp.status_code})")
+    payload = resp.json()
+    rich_menu_id = str(payload.get("richMenuId") or "").strip()
+    if not rich_menu_id:
+        raise RuntimeError("LINE rich menu create returned no richMenuId")
+    return rich_menu_id
+
+
+async def upload_rich_menu_image(rich_menu_id: str, image_bytes: bytes, access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            f"{LINE_API_DATA}/richmenu/{rich_menu_id}/content",
+            content=image_bytes,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "image/png",
+            },
+        )
+    if resp.status_code != 200:
+        logger.error("LINE upload_rich_menu_image failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE rich menu image upload failed ({resp.status_code})")
+
+
+async def set_default_rich_menu(rich_menu_id: str, access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(
+            f"{LINE_API_BASE}/user/all/richmenu/{rich_menu_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if resp.status_code != 200:
+        logger.error("LINE set_default_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE default rich menu link failed ({resp.status_code})")
+
+
+async def clear_default_rich_menu(access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.delete(
+            f"{LINE_API_BASE}/user/all/richmenu",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if resp.status_code not in (200, 204):
+        logger.error("LINE clear_default_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE default rich menu unlink failed ({resp.status_code})")
+
+
+async def link_user_rich_menu(user_id: str, rich_menu_id: str, access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.post(
+            f"{LINE_API_BASE}/user/{user_id}/richmenu/{rich_menu_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if resp.status_code != 200:
+        logger.error("LINE link_user_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE user rich menu link failed ({resp.status_code})")
+
+
+async def unlink_user_rich_menu(user_id: str, access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.delete(
+            f"{LINE_API_BASE}/user/{user_id}/richmenu",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if resp.status_code not in (200, 204):
+        logger.error("LINE unlink_user_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE user rich menu unlink failed ({resp.status_code})")
+
+
+async def delete_rich_menu(rich_menu_id: str, access_token: str) -> None:
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.delete(
+            f"{LINE_API_BASE}/richmenu/{rich_menu_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if resp.status_code not in (200, 204):
+        logger.error("LINE delete_rich_menu failed: %s %s", resp.status_code, resp.text)
+        raise RuntimeError(f"LINE rich menu delete failed ({resp.status_code})")

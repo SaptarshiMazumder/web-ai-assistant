@@ -27,6 +27,7 @@ from domain.entities import (
     InstagramChannel,
     InstagramUserSession,
     LineChannel,
+    LineRichMenuState,
     LineUserSession,
     OrgMemberRecord,
     OrgRecord,
@@ -4071,6 +4072,10 @@ def _new_line_channel_id() -> str:
     return "lch_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
 
+def _new_line_rich_menu_state_id() -> str:
+    return "lrm_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
 class PostgresLineChannelRepository:
     """CRUD for LINE channel credentials linked to a bot."""
 
@@ -4180,6 +4185,175 @@ class PostgresLineChannelRepository:
                 "DELETE FROM line_channels WHERE bot_id = %s",
                 (bid,),
             )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+
+class PostgresLineRichMenuStateRepository:
+    """Persistence for managed LINE rich-menu sync state per bot/channel."""
+
+    @staticmethod
+    def _state_from_row(row) -> LineRichMenuState:
+        variants_raw = row[5] if len(row) > 5 else "{}"
+        try:
+            variants = json.loads(variants_raw) if isinstance(variants_raw, str) else (variants_raw or {})
+        except (TypeError, ValueError):
+            variants = {}
+        return LineRichMenuState(
+            state_id=row[0],
+            channel_id=row[1],
+            bot_id=row[2],
+            config_hash=row[3],
+            default_variant=row[4],
+            rich_menu_variants=variants if isinstance(variants, dict) else {},
+            sync_status=row[6] or "pending",
+            last_synced_at=row[7],
+            last_error=row[8],
+            created_at=row[9],
+            updated_at=row[10],
+        )
+
+    def get_by_bot_id(self, bot_id: str) -> Optional[LineRichMenuState]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT state_id, channel_id, bot_id, config_hash, default_variant, rich_menu_variants_json,
+                       sync_status, last_synced_at, last_error, created_at, updated_at
+                FROM line_rich_menu_states
+                WHERE bot_id = %s
+                """,
+                (bid,),
+            ).fetchone()
+            return self._state_from_row(row) if row else None
+        finally:
+            con.close()
+
+    def upsert(
+        self,
+        *,
+        channel_id: str,
+        bot_id: str,
+        config_hash: Optional[str],
+        default_variant: Optional[str],
+        rich_menu_variants: Optional[Dict[str, str]],
+        sync_status: str,
+        last_synced_at: Optional[str] = None,
+        last_error: Optional[str] = None,
+    ) -> LineRichMenuState:
+        cid = (channel_id or "").strip()
+        bid = (bot_id or "").strip()
+        if not cid or not bid:
+            raise ValueError("channel_id and bot_id are required")
+        now = _utc_now()
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT state_id, channel_id, bot_id, config_hash, default_variant, rich_menu_variants_json,
+                       sync_status, last_synced_at, last_error, created_at, updated_at
+                FROM line_rich_menu_states
+                WHERE bot_id = %s
+                """,
+                (bid,),
+            ).fetchone()
+            payload = json.dumps(rich_menu_variants or {})
+            synced_at = (last_synced_at or "").strip() or None
+            error_text = (last_error or "").strip() or None
+            if row:
+                existing = self._state_from_row(row)
+                con.execute(
+                    """
+                    UPDATE line_rich_menu_states
+                    SET channel_id = %s,
+                        config_hash = %s,
+                        default_variant = %s,
+                        rich_menu_variants_json = %s,
+                        sync_status = %s,
+                        last_synced_at = %s,
+                        last_error = %s,
+                        updated_at = %s
+                    WHERE state_id = %s
+                    """,
+                    (
+                        cid,
+                        config_hash,
+                        default_variant,
+                        payload,
+                        sync_status,
+                        synced_at,
+                        error_text,
+                        now,
+                        existing.state_id,
+                    ),
+                )
+                con.commit()
+                return LineRichMenuState(
+                    state_id=existing.state_id,
+                    channel_id=cid,
+                    bot_id=bid,
+                    config_hash=config_hash,
+                    default_variant=default_variant,
+                    rich_menu_variants=rich_menu_variants or {},
+                    sync_status=sync_status,
+                    last_synced_at=synced_at,
+                    last_error=error_text,
+                    created_at=existing.created_at,
+                    updated_at=now,
+                )
+
+            state_id = _new_line_rich_menu_state_id()
+            con.execute(
+                """
+                INSERT INTO line_rich_menu_states(
+                  state_id, channel_id, bot_id, config_hash, default_variant, rich_menu_variants_json,
+                  sync_status, last_synced_at, last_error, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    state_id,
+                    cid,
+                    bid,
+                    config_hash,
+                    default_variant,
+                    payload,
+                    sync_status,
+                    synced_at,
+                    error_text,
+                    now,
+                    now,
+                ),
+            )
+            con.commit()
+            return LineRichMenuState(
+                state_id=state_id,
+                channel_id=cid,
+                bot_id=bid,
+                config_hash=config_hash,
+                default_variant=default_variant,
+                rich_menu_variants=rich_menu_variants or {},
+                sync_status=sync_status,
+                last_synced_at=synced_at,
+                last_error=error_text,
+                created_at=now,
+                updated_at=now,
+            )
+        finally:
+            con.close()
+
+    def delete_by_bot_id(self, bot_id: str) -> bool:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return False
+        con = _connect()
+        try:
+            result = con.execute("DELETE FROM line_rich_menu_states WHERE bot_id = %s", (bid,))
             con.commit()
             return result.rowcount > 0
         finally:

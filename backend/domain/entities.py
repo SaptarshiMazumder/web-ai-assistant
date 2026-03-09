@@ -329,6 +329,21 @@ class LineChannel:
 
 
 @dataclass
+class LineRichMenuState:
+    state_id: str
+    channel_id: str
+    bot_id: str
+    config_hash: Optional[str]
+    default_variant: Optional[str]
+    rich_menu_variants: Dict[str, str]
+    sync_status: str
+    last_synced_at: Optional[str]
+    last_error: Optional[str]
+    created_at: str
+    updated_at: str
+
+
+@dataclass
 class LineUserSession:
     line_user_id: str
     bot_id: str

@@ -101,6 +101,7 @@ from domain.platform_profiles import (
     RESERVATION_PLATFORM_CONFIG,
     get_asset_rules_from_widget,
     get_available_suggested_message_types,
+    get_dashboard_create_bot_flow,
     get_dashboard_overview_setup_sections,
     get_job_pipeline_config,
     get_knowledge_tabs_for_widget,
@@ -110,14 +111,20 @@ from domain.platform_profiles import (
     get_platform_features_from_widget,
     get_platform_json_response_enabled,
     get_platform_json_response_instruction,
+    has_support_suggested_message_for_widget,
     get_prompt_fallback_config,
     get_prompt_generation_config,
+    get_line_support_messages,
     get_reservation_url_for_platform,
     get_reservation_config_from_widget,
     get_reservation_platforms_list,
     get_suggested_messages_by_language_for_widget,
     get_suggested_messages_for_platform,
     get_suggested_messages_for_widget,
+    get_default_welcome_messages,
+    get_welcome_message_for_widget,
+    get_welcome_messages_by_channel_for_widget,
+    normalize_action_destination_links,
     normalize_reservation_links,
 )
 from application.services.answer_normalization_service import (
@@ -135,7 +142,7 @@ from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from common.language_utils import detect_user_language, normalize_lang
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
-from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, org_service, url_discovery, user_service, job_pipeline_service
+from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, line_rich_menu_service, org_service, url_discovery, user_service, job_pipeline_service
 from common.di.container import analytics_service
 from common.logging.chat_debug import chat_debug_emit
 from infrastructure.availability.chat_availability import maybe_run_chat_availability
@@ -193,6 +200,43 @@ def _get_bot_language(bot) -> str:
     return "en"
 
 
+def _get_line_session_language(*, bot_id: str, line_user_id: str, fallback: str) -> str:
+    contact = conversation_service().get_channel_contact(
+        bot_id=bot_id,
+        channel="line",
+        external_user_id=line_user_id,
+    )
+    metadata = getattr(contact, "metadata", None) or {}
+    return normalize_lang(metadata.get("preferred_lang"), fallback=fallback)
+
+
+def _schedule_line_rich_menu_sync(bot_id: str, *, force: bool = False) -> None:
+    async def _runner() -> None:
+        try:
+            await line_rich_menu_service().sync_for_bot(bot_id, force=force)
+        except Exception:
+            logger.exception("LINE rich menu sync failed bot_id=%s", bot_id)
+
+    asyncio.create_task(_runner())
+
+
+def _schedule_line_user_menu(*, bot_id: str, line_user_id: str, assistant_state: str, fallback_lang: str) -> None:
+    lang = _get_line_session_language(bot_id=bot_id, line_user_id=line_user_id, fallback=fallback_lang)
+
+    async def _runner() -> None:
+        try:
+            await line_rich_menu_service().ensure_user_menu(
+                bot_id=bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state=assistant_state,
+            )
+        except Exception:
+            logger.exception("LINE user rich menu update failed bot_id=%s user_id=%s", bot_id, line_user_id)
+
+    asyncio.create_task(_runner())
+
+
 def _get_language_from_widget_config_dict(widget_config: Optional[Dict[str, Any]]) -> str:
     if isinstance(widget_config, dict):
         return normalize_lang(widget_config.get("language") or widget_config.get("botLanguage") or "en")
@@ -219,7 +263,7 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
     if not isinstance(widget_config, dict):
         return widget_config
 
-    resolved = dict(widget_config)
+    resolved = _normalize_widget_welcome_messages_storage(dict(widget_config))
     lang = _get_language_from_widget_config_dict(resolved)
     resolved["suggestedMessagesByLanguage"] = get_suggested_messages_by_language_for_widget(resolved)
     suggested = get_suggested_messages_for_widget(resolved, lang=lang)
@@ -233,6 +277,9 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
     if reservation_links:
         resolved["reservationLinks"] = reservation_links
         resolved["reservation_links"] = reservation_links
+    action_destination_links = normalize_action_destination_links(resolved)
+    if action_destination_links:
+        resolved["actionDestinationLinks"] = action_destination_links
 
     # Local import keeps dependency surface small for route startup.
     from domain.platform_profiles import resolve_platform_profile
@@ -248,6 +295,23 @@ def _build_widget_config_dashboard_view(widget_config: Optional[Dict[str, Any]])
     return resolved
 
 
+def _normalize_widget_welcome_messages_storage(
+    widget_config: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not isinstance(widget_config, dict):
+        return widget_config
+    normalized = dict(widget_config)
+    lang = _get_language_from_widget_config_dict(normalized)
+    welcome_by_channel = get_welcome_messages_by_channel_for_widget(normalized)
+    normalized["welcomeMessagesByChannel"] = welcome_by_channel
+    normalized["welcomeMessage"] = get_welcome_message_for_widget(
+        normalized,
+        channel="web",
+        lang=lang,
+    )
+    return normalized
+
+
 def _normalize_widget_suggested_messages_storage(
     widget_config: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -261,6 +325,18 @@ def _normalize_widget_suggested_messages_storage(
     return normalized
 
 
+def _normalize_widget_config_storage(
+    widget_config: Dict[str, Any],
+) -> Dict[str, Any]:
+    normalized = dict(widget_config) if isinstance(widget_config, dict) else widget_config
+    if isinstance(normalized, dict):
+        action_destination_links = normalize_action_destination_links(normalized)
+        if action_destination_links:
+            normalized["actionDestinationLinks"] = action_destination_links
+    normalized = _normalize_widget_welcome_messages_storage(normalized)
+    return _normalize_widget_suggested_messages_storage(normalized)
+
+
 def _build_bot_overview_setup_sections(bot, *, lang: Optional[str] = None) -> List[BotOverviewSetupItemResponse]:
     raw_widget_config = _parse_widget_config(getattr(bot, "widget_config", None)) or {}
     resolved_lang = str(lang or _get_language_from_widget_config_dict(raw_widget_config) or "en").strip().lower()
@@ -271,7 +347,6 @@ def _build_bot_overview_setup_sections(bot, *, lang: Optional[str] = None) -> Li
     suggested_messages = get_suggested_messages_for_widget(raw_widget_config, lang=resolved_lang)
     domains = bot_service().list_domains(bot.bot_id)
     sources = indexing_service().list_sources_for_bot(bot.bot_id)
-    escalation_cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
     _, menu_asset_count, _ = asset_repo().list_assets_for_bot_paginated(
         bot.bot_id,
         active_only=False,
@@ -292,7 +367,7 @@ def _build_bot_overview_setup_sections(bot, *, lang: Optional[str] = None) -> Li
         "widget_config": bool(raw_widget_config),
         "suggested_messages": len(suggested_messages) > 0,
         "verified_domain": any(bool(getattr(domain, "verified_at", None)) for domain in domains),
-        "human_support": bool(escalation_cfg.get("enabled")),
+        "human_support": has_support_suggested_message_for_widget(raw_widget_config),
         "menu_assets": menu_asset_count > 0,
         "image_assets": image_asset_count > 0,
     }
@@ -505,7 +580,6 @@ def _require_admin_key(x_admin_key: Optional[str]) -> None:
 def _parse_escalation_config(raw: Optional[str]) -> Dict[str, Any]:
     if not raw or not raw.strip():
         return {
-            "enabled": False,
             "notify_enabled": False,
             "notify_website": False,
             "notify_instagram": False,
@@ -516,7 +590,6 @@ def _parse_escalation_config(raw: Optional[str]) -> Dict[str, Any]:
         data = json.loads(raw)
     except (TypeError, ValueError):
         return {
-            "enabled": False,
             "notify_enabled": False,
             "notify_website": False,
             "notify_instagram": False,
@@ -525,7 +598,6 @@ def _parse_escalation_config(raw: Optional[str]) -> Dict[str, Any]:
         }
     legacy = bool(data.get("notify_enabled"))
     return {
-        "enabled": bool(data.get("enabled")),
         "notify_enabled": legacy,
         "notify_website": bool(data.get("notify_website")) if "notify_website" in data else legacy,
         "notify_instagram": bool(data.get("notify_instagram")) if "notify_instagram" in data else legacy,
@@ -878,7 +950,9 @@ async def v1_pk_widget_config(publishable_key: str):
             config = json.loads(bot.widget_config)
         except (TypeError, ValueError):
             config = {}
-    
+
+    config = _normalize_widget_welcome_messages_storage(config)
+
     # Fallback: if no custom title is set, use the bot's display_name
     if not config.get("title"):
         config["title"] = getattr(bot, "display_name", "Chat")
@@ -891,6 +965,9 @@ async def v1_pk_widget_config(publishable_key: str):
     if reservation_links:
         config["reservationLinks"] = reservation_links
         config["reservation_links"] = reservation_links
+    action_destination_links = normalize_action_destination_links(config)
+    if action_destination_links:
+        config["actionDestinationLinks"] = action_destination_links
 
     return config
 
@@ -988,7 +1065,6 @@ async def v1_pk_escalation_config(publishable_key: str):
         raise HTTPException(status_code=404, detail="Unknown bot publishable key")
     cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
     return EscalationConfigResponse(
-        enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
         notify_website=cfg["notify_website"],
         notify_instagram=cfg["notify_instagram"],
@@ -1821,6 +1897,8 @@ async def v1_org_platform_config(
         "platforms": platforms,
         "defaultSuggestedMessages": default_suggested,
         "defaultAvailableSuggestedMessageTypes": default_available_types,
+        "defaultWelcomeMessages": get_default_welcome_messages(),
+        "createBotFlow": get_dashboard_create_bot_flow(lang=lang or "en"),
         "jobPipelineWorkflow": {
             "workflowId": "default",
             "default": default_steps,
@@ -1939,6 +2017,7 @@ async def v1_org_rename_bot(
     if len(new_name) > 120:
         raise HTTPException(status_code=400, detail="display_name is too long")
     bot_service().update_display_name(bot_id, new_name)
+    _schedule_line_rich_menu_sync(bot_id, force=True)
     updated = bot_service().get_bot_record(bot_id)
     if not updated:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
@@ -1999,10 +2078,11 @@ async def v1_org_update_bot_widget_config(
         for platform_id, (widget_key, _) in RESERVATION_PLATFORM_CONFIG.items():
             merged[widget_key] = merged_links.get(platform_id, "")
 
-    merged = _normalize_widget_suggested_messages_storage(merged)
+    merged = _normalize_widget_config_storage(merged)
 
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
+    _schedule_line_rich_menu_sync(bot_id, force=True)
 
     # Keep deterministic default instructions in sync with businessType/language,
     # but never overwrite explicit custom instructions or explicit non-default persona.
@@ -2422,7 +2502,6 @@ async def v1_org_get_escalation_config(
         raise HTTPException(status_code=404, detail="Unknown bot_id")
     cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
     return EscalationConfigResponse(
-        enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
         notify_website=cfg["notify_website"],
         notify_instagram=cfg["notify_instagram"],
@@ -2444,8 +2523,6 @@ async def v1_org_update_escalation_config(
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
     cfg = _parse_escalation_config(getattr(bot, "escalation_config", None))
-    if payload.enabled is not None:
-        cfg["enabled"] = bool(payload.enabled)
     if payload.notify_enabled is not None:
         cfg["notify_enabled"] = bool(payload.notify_enabled)
     if payload.notify_website is not None:
@@ -2457,8 +2534,8 @@ async def v1_org_update_escalation_config(
     if payload.notification_emails is not None:
         cfg["notification_emails"] = str(payload.notification_emails)
     bot_service().update_escalation_config(bot_id, json.dumps(cfg))
+    _schedule_line_rich_menu_sync(bot_id, force=True)
     return EscalationConfigResponse(
-        enabled=cfg["enabled"],
         notify_enabled=cfg["notify_enabled"],
         notify_website=cfg["notify_website"],
         notify_instagram=cfg["notify_instagram"],
@@ -3245,6 +3322,9 @@ async def v1_org_update_escalation_status(
         if status != "open":
             conversation_service().mark_escalation_read(bot_id, escalation_id, user.user_id)
     esc_record = conversation_service().get_escalation_by_id(bot_id, escalation_id, user_id=user.user_id)
+    bot_record = bot_service().get_bot_record(bot_id)
+    bot_lang = _get_bot_language(bot_record) if bot_record else "en"
+    session = conversation_service().get_session(session_id) if session_id else None
 
     # When resolving, de-escalate any LINE / Instagram user session and notify user
     if status == "resolved":
@@ -3259,13 +3339,25 @@ async def v1_org_update_escalation_status(
                     line_channel_repo = PostgresLineChannelRepository()
                     lc = line_channel_repo.get_by_bot_id(bot_id)
                     if lc and lc.is_active:
-                        import asyncio
+                        line_msgs = get_line_support_messages(
+                            lang=_get_line_session_language(
+                                bot_id=bot_id,
+                                line_user_id=mapping.line_user_id,
+                                fallback=bot_lang,
+                            )
+                        )
                         asyncio.ensure_future(
                             line_push(
                                 mapping.line_user_id,
-                                ["Your conversation has been resolved. You're now back with our AI assistant. How can I help you?"],
+                                [line_msgs["resolved_ack"]],
                                 lc.line_channel_access_token,
                             )
+                        )
+                        _schedule_line_user_menu(
+                            bot_id=bot_id,
+                            line_user_id=mapping.line_user_id,
+                            assistant_state="bot",
+                            fallback_lang=bot_lang,
                         )
         except Exception:
             pass  # Best-effort; don't block the status update
@@ -3292,6 +3384,21 @@ async def v1_org_update_escalation_status(
                         )
         except Exception:
             pass  # Best-effort; don't block the status update
+    elif status in {"canceled", "expired"} and session and (session.channel or "").strip().lower() == "line":
+        try:
+            from infrastructure.db.repositories import PostgresLineUserSessionRepository
+
+            line_session_repo = PostgresLineUserSessionRepository()
+            mapping = line_session_repo.get_by_session_id(session_id)
+            if mapping:
+                _schedule_line_user_menu(
+                    bot_id=bot_id,
+                    line_user_id=mapping.line_user_id,
+                    assistant_state="bot",
+                    fallback_lang=bot_lang,
+                )
+        except Exception:
+            pass
 
     return {
         "status": status,
@@ -3350,6 +3457,20 @@ async def v1_org_end_conversation(
     session = conversation_service().get_session(session_id)
     if not session or session.bot_id != bot_id:
         raise HTTPException(status_code=404, detail="Unknown session_id")
+    if (session.channel or "").strip().lower() == "line":
+        try:
+            from infrastructure.db.repositories import PostgresLineUserSessionRepository
+
+            mapping = PostgresLineUserSessionRepository().get_by_session_id(session_id)
+            if mapping:
+                _schedule_line_user_menu(
+                    bot_id=bot_id,
+                    line_user_id=mapping.line_user_id,
+                    assistant_state="bot",
+                    fallback_lang=_get_bot_language(bot_service().get_bot_record(bot_id)),
+                )
+        except Exception:
+            pass
     conversation_service().end_session(session_id, status="ended")
     return ConversationEndResponse(session_id=session_id, status="ended")
 
@@ -3369,9 +3490,8 @@ async def v1_org_takeover_conversation(
     if not session or session.bot_id != bot_id:
         raise HTTPException(status_code=404, detail="Unknown session_id")
     ch = (session.channel or "").strip().lower()
-    bot = bot_service().get_bot(bot_id)
+    bot = bot_service().get_bot_record(bot_id)
     lang = _get_bot_language(bot) if bot else "en"
-    is_ja = lang.startswith("ja")
 
     if ch == "instagram":
         from infrastructure.db.repositories import PostgresInstagramUserSessionRepository
@@ -3404,14 +3524,20 @@ async def v1_org_takeover_conversation(
         try:
             lc = PostgresLineChannelRepository().get_by_bot_id(bot_id)
             if lc and lc.is_active:
-                msg = (
-                    "この会話はサポート担当へ転送されました。このままLINEでご案内しますので、少々お待ちください。"
-                    if is_ja
-                    else "This conversation has been transferred to our support team. They will reply to you here on LINE shortly."
+                line_lang = _get_line_session_language(
+                    bot_id=bot_id,
+                    line_user_id=mapping.line_user_id,
+                    fallback=lang,
                 )
-                import asyncio
+                msg = get_line_support_messages(lang=line_lang)["takeover_ack"]
                 asyncio.ensure_future(
                     line_push(mapping.line_user_id, [msg], lc.line_channel_access_token)
+                )
+                _schedule_line_user_menu(
+                    bot_id=bot_id,
+                    line_user_id=mapping.line_user_id,
+                    assistant_state="human_handoff",
+                    fallback_lang=line_lang,
                 )
         except Exception:
             pass  # Best-effort

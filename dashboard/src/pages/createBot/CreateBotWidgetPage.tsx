@@ -126,6 +126,7 @@ export default function CreateBotWidgetPage() {
         onChange={onChange}
         banner={banner}
         actions={actions}
+        welcomeDefaultsByLanguage={step4.welcomeDefaultsByLanguage}
       />
     </>
   )

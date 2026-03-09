@@ -8,29 +8,48 @@ from infrastructure.clients.line_client import reply_message
 
 @dataclass(frozen=True)
 class ParsedLineEvent:
+    event_type: str
     text: str
     reply_token: str
     user_id: str
+    postback_data: Optional[str] = None
 
 
 class LineChannelAdapter:
     channel_id = "line"
 
     def parse_event(self, raw_event: Dict[str, Any]) -> Optional[ParsedLineEvent]:
-        if str(raw_event.get("type") or "").strip() != "message":
-            return None
-        message = raw_event.get("message") or {}
-        if str(message.get("type") or "").strip() != "text":
-            return None
-        text = str(message.get("text") or "").strip()
-        if not text:
-            return None
+        event_type = str(raw_event.get("type") or "").strip().lower()
         source = raw_event.get("source") or {}
         user_id = str(source.get("userId") or "").strip()
         reply_token = str(raw_event.get("replyToken") or "").strip()
         if not user_id or not reply_token:
             return None
-        return ParsedLineEvent(text=text, reply_token=reply_token, user_id=user_id)
+        if event_type == "message":
+            message = raw_event.get("message") or {}
+            if str(message.get("type") or "").strip() != "text":
+                return None
+            text = str(message.get("text") or "").strip()
+            if not text:
+                return None
+            return ParsedLineEvent(event_type="message", text=text, reply_token=reply_token, user_id=user_id)
+        if event_type == "postback":
+            postback = raw_event.get("postback") or {}
+            return ParsedLineEvent(
+                event_type="postback",
+                text=str(postback.get("displayText") or "").strip(),
+                reply_token=reply_token,
+                user_id=user_id,
+                postback_data=str(postback.get("data") or "").strip() or None,
+            )
+        if event_type == "follow":
+            return ParsedLineEvent(
+                event_type="follow",
+                text="",
+                reply_token=reply_token,
+                user_id=user_id,
+            )
+        return None
 
     def format_reply(self, texts: List[str]) -> List[str]:
         return [str(t or "") for t in texts if str(t or "").strip()]

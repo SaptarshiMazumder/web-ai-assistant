@@ -96,6 +96,20 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   const size = config.size
   if (size === 'small' || size === 'medium' || size === 'large') d.widgetSize = size
   if (typeof config.welcomeMessage === 'string') d.welcomeMessage = config.welcomeMessage
+  else {
+    const rawByChannel = (config as Record<string, unknown>).welcomeMessagesByChannel
+    const webMessages =
+      rawByChannel && typeof rawByChannel === 'object' && !Array.isArray(rawByChannel)
+        ? (rawByChannel as Record<string, unknown>).web
+        : null
+    const currentLangWelcome =
+      webMessages && typeof webMessages === 'object' && !Array.isArray(webMessages)
+        ? (webMessages as Record<string, unknown>)[d.botLanguage]
+        : null
+    if (typeof currentLangWelcome === 'string' && currentLangWelcome.trim()) {
+      d.welcomeMessage = currentLangWelcome
+    }
+  }
   if (typeof config.placeholder === 'string') d.placeholder = config.placeholder
   if (typeof config.footer === 'string') d.footerMessage = config.footer
   const theme = config.theme
@@ -137,14 +151,18 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
   return d
 }
 
-export function stateToWidgetConfig(s: WidgetDesignState): Record<string, unknown> {
+export function stateToWidgetConfig(
+  s: WidgetDesignState,
+  options?: { includeWelcomeMessage?: boolean }
+): Record<string, unknown> {
+  const includeWelcomeMessage = options?.includeWelcomeMessage !== false
   return {
     language: s.botLanguage,
     position: s.widgetPosition,
     color: s.widgetPrimaryColor,
     title: s.widgetTitle || 'Chat',
     size: s.widgetSize,
-    welcomeMessage: s.welcomeMessage || undefined,
+    ...(includeWelcomeMessage ? { welcomeMessage: s.welcomeMessage || undefined } : {}),
     placeholder: s.placeholder,
     footer: s.footerMessage || undefined,
     theme: s.theme,
@@ -169,7 +187,8 @@ export type WidgetDesignFormProps = {
   onChange: <K extends keyof WidgetDesignState>(key: K, value: WidgetDesignState[K]) => void
   banner?: React.ReactNode
   actions?: React.ReactNode
-
+  showWelcomeMessage?: boolean
+  welcomeDefaultsByLanguage?: Partial<Record<'en' | 'ja', string>>
 }
 
 export function WidgetDesignForm({
@@ -177,7 +196,8 @@ export function WidgetDesignForm({
   onChange,
   banner,
   actions,
-
+  showWelcomeMessage = true,
+  welcomeDefaultsByLanguage,
 }: WidgetDesignFormProps) {
   const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -256,10 +276,15 @@ export function WidgetDesignForm({
                   onChange={(next) => {
                     const lang = next as 'en' | 'ja'
                     update('botLanguage', lang)
-                    // Auto-apply language-specific defaults for widget text
+                    // Auto-apply language-specific defaults for widget text.
                     const defaults = getDefaultsForLanguage(lang)
                     update('widgetTitle', defaults.widgetTitle)
-                    update('welcomeMessage', defaults.welcomeMessage)
+                    if (showWelcomeMessage) {
+                      update(
+                        'welcomeMessage',
+                        (welcomeDefaultsByLanguage?.[lang] || defaults.welcomeMessage) as WidgetDesignState['welcomeMessage']
+                      )
+                    }
                     update('placeholder', defaults.placeholder)
                     update('launcherText', defaults.launcherText)
                     update('sourcesLabel', defaults.sourcesLabel)
@@ -321,18 +346,20 @@ export function WidgetDesignForm({
                 </div>
 
               </div>
-              <div className="design-form-field design-form-field-full">
-                <label className="design-form-label">{t('widgetDesign.initialWelcomeMessage', 'Initial welcome message')}</label>
-                <span className="design-form-hint">{t('widgetDesign.initialWelcomeHint', 'First message shown by the bot when the chat opens.')}</span>
-                <textarea
-                  className="design-form-input"
-                  value={welcomeMessage}
-                  onChange={(e) => update('welcomeMessage', e.target.value)}
-                  placeholder={t('widgetDesign.welcomePlaceholder', 'Welcome! How can I help you today?')}
-                  rows={2}
-                  style={{ resize: 'vertical', width: '100%' }}
-                />
-              </div>
+                {showWelcomeMessage && (
+                  <div className="design-form-field design-form-field-full">
+                    <label className="design-form-label">{t('widgetDesign.initialWelcomeMessage', 'Initial welcome message')}</label>
+                    <span className="design-form-hint">{t('widgetDesign.initialWelcomeHint', 'First message shown by the bot when the chat opens.')}</span>
+                    <textarea
+                      className="design-form-input"
+                      value={welcomeMessage}
+                      onChange={(e) => update('welcomeMessage', e.target.value)}
+                      placeholder={t('widgetDesign.welcomePlaceholder', 'Welcome! How can I help you today?')}
+                      rows={2}
+                      style={{ resize: 'vertical', width: '100%' }}
+                    />
+                  </div>
+                )}
             </div>
           </section>
 
