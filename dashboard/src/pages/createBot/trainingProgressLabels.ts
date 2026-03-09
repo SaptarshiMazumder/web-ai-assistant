@@ -34,8 +34,13 @@ export function getTrainingStageLabel(
   jobId: string | null,
   trainingStage: string,
   trainingStageName: string,
-  t: TFunction
+  t: TFunction,
+  customMessage?: string | null
 ): string {
+  // Use custom message if available (from pipeline)
+  if (customMessage) {
+    return customMessage
+  }
   if (!jobId && trainingStage === 'training') {
     return t('createBot.trainingStageGettingStarted', 'Getting started...')
   }

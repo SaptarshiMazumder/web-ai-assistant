@@ -18,6 +18,7 @@ function FlowStepsWithProgress() {
     trainingPagesCrawled,
     trainingDocsCount,
     trainingStageName,
+    trainingStageMessage,
     jobId,
     pdfJobIds,
   } = step3
@@ -58,6 +59,7 @@ function FlowStepsWithProgress() {
             jobId={jobId}
             trainingStage={trainingStage}
             trainingStageName={trainingStageName}
+            trainingStageMessage={trainingStageMessage}
             trainingPagesCrawled={trainingPagesCrawled}
             trainingDocsCount={trainingDocsCount}
           />

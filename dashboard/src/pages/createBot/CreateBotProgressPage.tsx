@@ -15,6 +15,7 @@ export default function CreateBotProgressPage() {
     trainingPagesCrawled,
     trainingDocsCount,
     trainingStageName,
+    trainingStageMessage,
     botId,
     jobId,
     pdfJobIds,
@@ -52,7 +53,7 @@ export default function CreateBotProgressPage() {
   const currentStageLabel =
     !jobId && pdfJobs.length > 0
       ? t('createBot.preparingPdfFiles', 'Preparing your PDF files...')
-      : getTrainingStageLabel(jobId, trainingStage, trainingStageName, t)
+      : getTrainingStageLabel(jobId, trainingStage, trainingStageName, t, trainingStageMessage)
 
   const isComplete = trainingStage === 'complete'
   const isIdle = trainingStage === 'idle'

@@ -18,6 +18,7 @@ type Props = {
   jobId: string | null
   trainingStage: string
   trainingStageName: string
+  trainingStageMessage: string | null
   trainingPagesCrawled: number
   trainingDocsCount: number
 }
@@ -27,11 +28,12 @@ export function TrainingProgressCircle({
   jobId,
   trainingStage,
   trainingStageName,
+  trainingStageMessage,
   trainingPagesCrawled,
   trainingDocsCount,
 }: Props) {
   const { t } = useTranslation()
-  const label = getTrainingStageLabel(jobId, trainingStage, trainingStageName, t)
+  const label = getTrainingStageLabel(jobId, trainingStage, trainingStageName, t, trainingStageMessage)
   const offset = CIRCUMFERENCE * (1 - progress / 100)
 
   return (

@@ -96,6 +96,7 @@ export type CreateBotStep3Slice = {
   trainingPagesCrawled: number
   trainingDocsCount: number
   trainingStageName: string
+  trainingStageMessage: string | null
   botId: string | null
   jobId: string | null
   pdfJobIds: string[]
@@ -282,6 +283,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [trainingPagesCrawled, setTrainingPagesCrawled] = useState(0)
   const [trainingDocsCount, setTrainingDocsCount] = useState(0)
   const [trainingStageName, setTrainingStageName] = useState('')
+  const [trainingStageMessage, setTrainingStageMessage] = useState<string | null>(null)
   const [botId, setBotId] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
   const [pdfJobIds, setPdfJobIds] = useState<string[]>([])
@@ -399,6 +401,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setTrainingPagesCrawled(0)
     setTrainingDocsCount(0)
     setTrainingStageName('')
+    setTrainingStageMessage(null)
     setBotId(null)
     setJobId(null)
     setPdfJobIds([])
@@ -1055,16 +1058,22 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
       const stageName = urlStatus?.stage || pdfStages[0] || extraStages[0] || 'crawling'
       let resolvedStageName = stageName
+      let stageMessage: string | null = null
       if (urlStage === 'import_submitted' && pipelineRelevant && !pipelineTerminal) {
         const pipelineStage = (pipelineRun?.current_stage_key || pipelineStatus || '').toLowerCase()
         if (pipelineStage === 'queued') resolvedStageName = 'pipeline_queued'
         else if (pipelineStage === 'paused') resolvedStageName = 'pipeline_paused'
         else if (pipelineStage === 'resume_requested') resolvedStageName = 'pipeline_resume_requested'
         else resolvedStageName = 'pipeline_running'
+        // Extract the pipeline's current_message if available
+        if (pipelineRun?.current_message) {
+          stageMessage = pipelineRun.current_message
+        }
       } else if (urlStage === 'import_submitted' && pipelineRelevant && pipelineStatus === 'error') {
         resolvedStageName = 'pipeline_error'
       }
       setTrainingStageName(resolvedStageName)
+      setTrainingStageMessage(stageMessage)
 
       const totalUrls = contentHosting === 'own' ? selectedUrls.length : trainingUrls.length
       const urlProgress =
@@ -1203,6 +1212,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         trainingPagesCrawled,
         trainingDocsCount,
         trainingStageName,
+        trainingStageMessage,
         botId,
         jobId,
         pdfJobIds,
