@@ -24,11 +24,48 @@ welcome_messages:
     en: "Hello! How can I help you today?"
     ja: "こんにちは。ご用件をお聞かせください。"
 
-line_ux:
-  support_messages:
+support_messages:
+  web:
+    requested:
+      en: "Support requested"
+      ja: "サポート依頼済み"
+    disabled:
+      en: "Support is currently unavailable."
+      ja: "現在サポート受付は利用できません。"
+    modal_title:
+      en: "Contact support"
+      ja: "サポートに相談"
+    modal_subtitle:
+      en: "Enter your email so our team can reach you."
+      ja: "折り返しのためのメールアドレスをご入力ください。"
+    email_placeholder:
+      en: "you@example.com"
+      ja: "you@example.com"
+    details_label:
+      en: "Details (optional)"
+      ja: "詳細（任意）"
+    details_placeholder:
+      en: "Tell us a bit more about your request (optional)"
+      ja: "必要であれば、ご相談内容を入力してください。"
+    cancel_button:
+      en: "Cancel"
+      ja: "キャンセル"
+    submit_button:
+      en: "Submit"
+      ja: "送信"
+    invalid_email:
+      en: "Please enter a valid email."
+      ja: "有効なメールアドレスを入力してください。"
+    submit_failed:
+      en: "Failed to submit support request."
+      ja: "サポート依頼の送信に失敗しました。"
+    submit_success:
+      en: "Thanks. We've notified our team and they'll follow up soon."
+      ja: "サポート依頼を受け付けました。担当者より順次ご案内します。"
+  line:
     prompt:
-      en: "I'll connect you with our staff right away. If you'd like, send any extra details here."
-      ja: "サポート担当におつなぎします。必要であれば、このまま詳細をお送りください。"
+      en: "I'll connect you with our staff right away.\n\nSend your message here and we'll pass it to our team. The next reply will come from our staff, so please wait for them to respond.\n\nIf you want to cancel and return to the AI assistant, say \"cancel\" at any time."
+      ja: "サポート担当におつなぎします。\n\nこのあと送っていただいた内容は担当者にお渡しします。次の返信はサポート担当から届きますので、そのままお待ちください。\n\nキャンセルしてAIアシスタントに戻る場合は、いつでも「キャンセル」と送信してください。"
     cancel_ack:
       en: "Cancelled. You're back with the AI assistant. How can I help?"
       ja: "キャンセルしました。AIアシスタントに戻りました。ご用件をどうぞ。"
@@ -44,16 +81,40 @@ line_ux:
     email_details_no_message:
       en: "User requested human assistance via LINE."
       ja: "LINE経由でサポート対応の依頼がありました。"
-    acknowledgement:
-      en: "A team member will follow up soon."
-      ja: "担当者が順次ご案内します。"
+  instagram:
+    prompt:
+      en: "I'll connect you with our staff right away.\n\nWhen you send your message, we'll forward it to our team. The next reply you receive will be from our staff, so please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\nIf you wish to cancel and return to the AI assistant, say \"cancel\" at any time."
+      ja: "スタッフにおつなぎいたします。\n\n送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\nAIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。"
+    cancel_ack:
+      en: "Cancelled. How can I help you?"
+      ja: "キャンセルしました。何かお手伝いできますか？"
+    escalation_ack:
+      en: "We've notified our team. Someone will reply shortly — please wait for our staff to respond."
+      ja: "スタッフに通知しました。まもなく返信いたしますので、お待ちください。"
+    takeover_ack:
+      en: "A team member is now assisting you. Please wait for their reply."
+      ja: "スタッフが対応いたします。お返事をお待ちください。"
+    resolved_ack:
+      en: "Your conversation has been resolved. You're now back with our AI assistant. How can I help you?"
+      ja: "サポート対応が完了しました。AIアシスタントに戻りました。ご用件をどうぞ。"
+    email_details_no_message:
+      en: "User requested human assistance via Instagram."
+      ja: "Instagram経由でサポートを依頼されました。"
+
+line_ux:
+  acknowledgement:
+    en: "A team member will follow up soon."
+    ja: "担当者が順次ご案内します。"
   rich_menu:
     chat_bar_text:
       en: "Tap to chat"
       ja: "タップして相談"
     actions: {}
     layouts: {}
-  cancel_keywords: []
+  cancel_keywords:
+    - cancel
+    - キャンセル
+    - aiに戻る
 
 job_pipeline:
   defaults:

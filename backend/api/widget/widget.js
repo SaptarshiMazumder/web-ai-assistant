@@ -55,6 +55,10 @@
         try {
           params.set("suggestedMessages", JSON.stringify(merged[key]));
         } catch (e) {}
+      } else if (key === "supportMessages" && merged[key] && typeof merged[key] === "object") {
+        try {
+          params.set("supportMessages", JSON.stringify(merged[key]));
+        } catch (e) {}
       } else {
         params.set(key, String(merged[key]));
       }

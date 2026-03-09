@@ -153,8 +153,47 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
             raise ConfigValidationError(
                 f"Missing or invalid 'welcome_messages.{channel_key}' in {_CONFIG_PATH}"
             )
+    support_messages = _require_dict(cfg, "support_messages")
+    support_fields = {
+        "web": (
+            "requested",
+            "disabled",
+            "modal_title",
+            "modal_subtitle",
+            "email_placeholder",
+            "details_label",
+            "details_placeholder",
+            "cancel_button",
+            "submit_button",
+            "invalid_email",
+            "submit_failed",
+            "submit_success",
+        ),
+        "line": (
+            "prompt",
+            "cancel_ack",
+            "escalation_ack",
+            "takeover_ack",
+            "resolved_ack",
+            "email_details_no_message",
+        ),
+        "instagram": (
+            "prompt",
+            "cancel_ack",
+            "escalation_ack",
+            "takeover_ack",
+            "resolved_ack",
+            "email_details_no_message",
+        ),
+    }
+    for channel_key, fields in support_fields.items():
+        channel_support = _require_dict(support_messages, channel_key)
+        for field in fields:
+            if not _is_valid_i18n_text(channel_support.get(field)):
+                raise ConfigValidationError(
+                    f"Missing or invalid 'support_messages.{channel_key}.{field}' in {_CONFIG_PATH}"
+                )
     line_ux = _require_dict(cfg, "line_ux")
-    _require_dict(line_ux, "support_messages")
     rich_menu = _require_dict(line_ux, "rich_menu")
     _require_dict(rich_menu, "chat_bar_text")
     _require_dict(rich_menu, "actions")
@@ -620,6 +659,7 @@ def _build_platform_registry() -> tuple[
     Dict[str, Tuple[str, str]],
     List[Dict[str, Any]],
     Dict[str, Dict[str, str]],
+    Dict[str, Any],
     Dict[str, str],
     Dict[str, List[str]],
     Optional[Dict[str, Any]],
@@ -642,6 +682,7 @@ def _build_platform_registry() -> tuple[
     reservation_config: Dict[str, Tuple[str, str]] = {}
     default_suggested: List[Dict[str, Any]] = []
     welcome_messages: Dict[str, Dict[str, str]] = {}
+    support_messages: Dict[str, Any] = {}
     default_asset_rules: Dict[str, str] = {}
     default_asset_term_config: Dict[str, List[str]] = {}
 
@@ -686,6 +727,10 @@ def _build_platform_registry() -> tuple[
                 "ja": _resolve_i18n_text(channel_messages, lang="ja"),
             }
 
+    raw_support_messages = cfg.get("support_messages")
+    if isinstance(raw_support_messages, dict):
+        support_messages = dict(raw_support_messages)
+
     # Platform profiles
     platforms = cfg.get("platforms") or {}
     if isinstance(platforms, dict):
@@ -712,6 +757,7 @@ def _build_platform_registry() -> tuple[
         reservation_config,
         default_suggested,
         welcome_messages,
+        support_messages,
         default_asset_rules,
         default_asset_term_config,
         default_json,
@@ -735,6 +781,7 @@ def _build_platform_registry() -> tuple[
     RESERVATION_PLATFORM_CONFIG,
     DEFAULT_SUGGESTED_MESSAGES,
     DEFAULT_WELCOME_MESSAGES,
+    SUPPORT_MESSAGES_CONFIG,
     DEFAULT_ASSET_RULES,
     DEFAULT_ASSET_TERM_CONFIG,
     DEFAULT_JSON_RESPONSE_FORMAT,
@@ -1625,6 +1672,64 @@ def get_default_welcome_messages() -> Dict[str, Dict[str, str]]:
     return resolved
 
 
+def get_support_messages_config() -> Dict[str, Any]:
+    return dict(SUPPORT_MESSAGES_CONFIG or {})
+
+
+def _resolve_support_messages(
+    *,
+    channel_key: str,
+    lang: str,
+    field_keys: Tuple[str, ...],
+) -> Dict[str, str]:
+    cfg = get_support_messages_config()
+    messages = cfg.get(channel_key) if isinstance(cfg.get(channel_key), dict) else {}
+    normalized_lang = _normalize_lang(lang)
+    resolved: Dict[str, str] = {}
+    for key in field_keys:
+        resolved[key] = _resolve_i18n_text(messages.get(key), lang=normalized_lang)
+    return resolved
+
+
+def get_web_support_messages(*, lang: str = "en") -> Dict[str, str]:
+    messages = _resolve_support_messages(
+        channel_key="web",
+        lang=lang,
+        field_keys=(
+            "requested",
+            "disabled",
+            "modal_title",
+            "modal_subtitle",
+            "email_placeholder",
+            "details_label",
+            "details_placeholder",
+            "cancel_button",
+            "submit_button",
+            "invalid_email",
+            "submit_failed",
+            "submit_success",
+        ),
+    )
+    field_map = {
+        "requested": "requested",
+        "disabled": "disabled",
+        "modal_title": "modalTitle",
+        "modal_subtitle": "modalSubtitle",
+        "email_placeholder": "emailPlaceholder",
+        "details_label": "detailsLabel",
+        "details_placeholder": "detailsPlaceholder",
+        "cancel_button": "cancelButton",
+        "submit_button": "submitButton",
+        "invalid_email": "invalidEmail",
+        "submit_failed": "submitFailed",
+        "submit_success": "submitSuccess",
+    }
+    resolved: Dict[str, str] = {}
+    for config_key, public_key in field_map.items():
+        resolved[public_key] = str(messages.get(config_key) or "")
+    return resolved
+
+
 def get_welcome_messages_by_channel_for_widget(widget_config: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     current_lang = _normalize_suggested_lang(
         widget_config.get("language") or widget_config.get("botLanguage") or "en"
@@ -1834,36 +1939,38 @@ def get_line_cancel_keywords() -> Tuple[str, ...]:
     raw = cfg.get("cancel_keywords")
     if not isinstance(raw, list):
         return ("cancel", "キャンセル")
-    return tuple(str(item).strip() for item in raw if str(item).strip())
+    resolved = tuple(str(item).strip() for item in raw if str(item).strip())
+    return resolved if resolved else ("cancel", "キャンセル")
 
 
 def get_line_support_messages(*, lang: str = "en") -> Dict[str, str]:
-    cfg = get_line_ux_config()
-    messages = cfg.get("support_messages") if isinstance(cfg.get("support_messages"), dict) else {}
-    normalized_lang = _normalize_lang(lang)
-    defaults_by_lang = {
-        "en": {
-            "prompt": "I'll connect you with our staff right away. If you'd like, send any extra details here.",
-            "cancel_ack": "Cancelled. You're back with the AI assistant. How can I help?",
-            "escalation_ack": "You're now connected to our support team. They will reply here shortly.",
-            "takeover_ack": "Your conversation has been transferred to support. Our team will reply here.",
-            "resolved_ack": "Your support conversation is complete. You're back with our AI assistant.",
-            "email_details_no_message": "User requested human assistance via LINE.",
-        },
-        "ja": {
-            "prompt": "サポート担当におつなぎします。必要であれば、このまま詳細をお送りください。",
-            "cancel_ack": "キャンセルしました。AIアシスタントに戻りました。ご用件をどうぞ。",
-            "escalation_ack": "サポート担当に引き継ぎました。このチャットで順番にご案内します。",
-            "takeover_ack": "サポート担当へ引き継ぎました。このチャットで返信します。",
-            "resolved_ack": "サポート対応が完了しました。AIアシスタントに戻りました。",
-            "email_details_no_message": "LINE経由でサポート対応の依頼がありました。",
-        },
-    }
-    defaults = defaults_by_lang.get(normalized_lang) or defaults_by_lang["en"]
-    resolved: Dict[str, str] = {}
-    for key, fallback in defaults.items():
-        resolved[key] = _resolve_i18n_text(messages.get(key), lang=normalized_lang, fallback=fallback)
-    return resolved
+    return _resolve_support_messages(
+        channel_key="line",
+        lang=lang,
+        field_keys=(
+            "prompt",
+            "cancel_ack",
+            "escalation_ack",
+            "takeover_ack",
+            "resolved_ack",
+            "email_details_no_message",
+        ),
+    )
+
+
+def get_instagram_support_messages(*, lang: str = "en") -> Dict[str, str]:
+    return _resolve_support_messages(
+        channel_key="instagram",
+        lang=lang,
+        field_keys=(
+            "prompt",
+            "cancel_ack",
+            "escalation_ack",
+            "takeover_ack",
+            "resolved_ack",
+            "email_details_no_message",
+        ),
+    )
 
 
 def get_line_rich_menu_definition(*, state: str = "normal", lang: str = "en") -> Dict[str, Any]:

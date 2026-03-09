@@ -103,8 +103,10 @@ from domain.platform_profiles import (
     get_available_suggested_message_types,
     get_dashboard_create_bot_flow,
     get_dashboard_overview_setup_sections,
+    get_instagram_support_messages,
     get_job_pipeline_config,
     get_knowledge_tabs_for_widget,
+    get_web_support_messages,
     get_menu_category_order,
     get_menu_texts,
     get_platform_asset_instructions,
@@ -138,10 +140,6 @@ from application.services.default_prompt_service import (
     extract_business_type_from_widget_config,
 )
 from application.services.prompt_provider import ConfigPromptProvider
-from application.services.suggested_message_pack_service import (
-    suggested_message_fast_path_service,
-    suggested_message_pack_builder_service,
-)
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from common.language_utils import detect_user_language, normalize_lang
@@ -354,27 +352,6 @@ def _serialize_suggested_message(item: Dict[str, Any]) -> Dict[str, Any]:
     return payload
 
 
-def _schedule_suggested_message_pack_rebuild(
-    background_tasks: Optional[BackgroundTasks],
-    *,
-    bot_id: str,
-    widget_config: Optional[Dict[str, Any]] = None,
-) -> None:
-    if not bot_id:
-        return
-    if background_tasks is not None:
-        background_tasks.add_task(
-            suggested_message_pack_builder_service().rebuild_for_bot,
-            bot_id,
-            widget_config=widget_config,
-        )
-        return
-    try:
-        suggested_message_pack_builder_service().rebuild_for_bot(bot_id, widget_config=widget_config)
-    except Exception:
-        logger.exception("Suggested message pack rebuild failed bot_id=%s", bot_id)
-
-
 def _build_bot_overview_setup_sections(bot, *, lang: Optional[str] = None) -> List[BotOverviewSetupItemResponse]:
     raw_widget_config = _parse_widget_config(getattr(bot, "widget_config", None)) or {}
     resolved_lang = str(lang or _get_language_from_widget_config_dict(raw_widget_config) or "en").strip().lower()
@@ -563,7 +540,7 @@ def _normalize_http_url(value: Any) -> str:
 
 
 
-from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream, sanitize_answer_citations
+from infrastructure.clients.rag_client import run_vertex_rag, run_vertex_rag_stream
 from infrastructure.assets.asset_resolver import (
     build_asset_instruction,
     process_answer_assets,
@@ -997,6 +974,7 @@ async def v1_pk_widget_config(publishable_key: str):
     
     # Inject suggested messages from platform profile or default (config-driven, all channels)
     lang = _get_language_from_widget_config_dict(config)
+    config["supportMessages"] = get_web_support_messages(lang=lang)
     config["suggestedMessages"] = get_suggested_messages_for_widget(config, lang=lang)
     config.pop("suggestedMessagesEnabled", None)  # removed; always show when config has them
     reservation_links = normalize_reservation_links(config)
@@ -1245,46 +1223,6 @@ async def v1_widget_chat(
         )
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
-
-    if getattr(payload, "suggested_message_id", None):
-        fast_path_result = suggested_message_fast_path_service().try_answer(
-            bot_id=bot.bot_id,
-            widget_config=widget_config,
-            lang=turn_lang,
-            suggested_message_id=str(payload.suggested_message_id or "").strip(),
-            message=msg,
-            model_name=model_name,
-            temperature=temperature,
-            conversation_context=conversation_context or None,
-        )
-        if fast_path_result.hit:
-            sources = list(fast_path_result.citations or [])
-            citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("snippet") or "")) for s in sources]
-            reservation_cfg = get_reservation_config_from_widget(widget_config, lang=turn_lang)
-            url_bank = _get_url_bank_for_chat(widget_config)
-            answer = normalize_answer_links(
-                fast_path_result.answer,
-                candidates=build_answer_link_candidates(
-                    reservation_config=reservation_cfg,
-                    url_bank=url_bank,
-                    sources=sources,
-                ),
-                render_target=RENDER_TARGET_WEB_MARKDOWN,
-            ).text
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="bot",
-                content=answer,
-                citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
-            )
-            return WidgetChatResponse(
-                answer=answer,
-                citations=citations,
-                assets=[],
-                session_id=session.session_id,
-                suggested_messages=suggested_messages,
-            )
 
     # If message asks about availability and bot has booking config, run sync check and inject as evidence
     extra_evidence: List[Dict[str, str]] = []
@@ -1598,69 +1536,6 @@ async def v1_widget_chat_stream(
         )
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
-
-    if getattr(payload, "suggested_message_id", None):
-        fast_path_result, fast_path_stream = suggested_message_fast_path_service().stream_answer(
-            bot_id=bot.bot_id,
-            widget_config=widget_config_stream,
-            lang=turn_lang,
-            suggested_message_id=str(payload.suggested_message_id or "").strip(),
-            message=msg,
-            model_name=model_name,
-            temperature=temperature,
-            conversation_context=conversation_context or None,
-        )
-        if fast_path_result.hit and fast_path_stream is not None:
-            citations = list(fast_path_result.citations or [])
-            reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=turn_lang)
-            url_bank_stream = _get_url_bank_for_chat(widget_config_stream)
-
-            async def _fast_path_gen():
-                yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
-                answer_parts: List[str] = []
-                try:
-                    for delta in fast_path_stream:
-                        answer_parts.append(delta)
-                        yield json.dumps({"type": "delta", "text": delta}, ensure_ascii=False) + "\n"
-                    answer = normalize_answer_links(
-                        sanitize_answer_citations("".join(answer_parts).strip()),
-                        candidates=build_answer_link_candidates(
-                            reservation_config=reservation_cfg_stream,
-                            url_bank=url_bank_stream,
-                            sources=citations,
-                        ),
-                        render_target=RENDER_TARGET_WEB_MARKDOWN,
-                    ).text
-                    conversation_service().add_message(
-                        session_id=session.session_id,
-                        bot_id=bot.bot_id,
-                        role="bot",
-                        content=answer,
-                        citations=citations,
-                    )
-                    yield json.dumps(
-                        {
-                            "type": "done",
-                            "answer": answer,
-                            "citations": citations,
-                            "assets": [],
-                            "suggested_messages": suggested_messages,
-                            "session_id": session.session_id,
-                        },
-                        ensure_ascii=False,
-                    ) + "\n"
-                except Exception as exc:
-                    yield json.dumps({"type": "error", "message": f"{type(exc).__name__}: {str(exc)}"}, ensure_ascii=False) + "\n"
-
-            return StreamingResponse(
-                _fast_path_gen(),
-                media_type="application/x-ndjson",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                    "X-Conversation-Id": session.session_id,
-                },
-            )
 
     # If message asks about availability and bot has booking config, run sync check and inject as evidence
     extra_evidence_stream: List[Dict[str, str]] = []
@@ -2220,7 +2095,6 @@ async def v1_org_update_bot_widget_config(
     config_json = json.dumps(merged)
     bot_service().update_widget_config(bot_id, config_json)
     _schedule_line_rich_menu_sync(bot_id, force=True)
-    _schedule_suggested_message_pack_rebuild(background_tasks, bot_id=bot_id, widget_config=merged)
 
     # Keep deterministic default instructions in sync with businessType/language,
     # but never overwrite explicit custom instructions or explicit non-default persona.
@@ -2624,7 +2498,6 @@ Return ONLY a valid JSON array of exactly 3 strings (each MUST be under 20 chara
     existing_config["suggestedMessagesByLanguage"] = by_lang
     existing_config = _normalize_widget_suggested_messages_storage(existing_config)
     bot_service().update_widget_config(bot_id, json.dumps(existing_config))
-    _schedule_suggested_message_pack_rebuild(background_tasks, bot_id=bot_id, widget_config=existing_config)
 
     return {"suggestedMessages": by_lang.get(bot_lang) or []}
 
@@ -2676,8 +2549,6 @@ async def v1_org_update_escalation_config(
         cfg["notification_emails"] = str(payload.notification_emails)
     bot_service().update_escalation_config(bot_id, json.dumps(cfg))
     _schedule_line_rich_menu_sync(bot_id, force=True)
-    raw_widget_config = _parse_widget_config(getattr(bot, "widget_config", None)) or {}
-    _schedule_suggested_message_pack_rebuild(background_tasks, bot_id=bot_id, widget_config=raw_widget_config)
     return EscalationConfigResponse(
         notify_enabled=cfg["notify_enabled"],
         notify_website=cfg["notify_website"],
@@ -3518,10 +3389,11 @@ async def v1_org_update_escalation_status(
                     ig_ch = ig_channel_repo.get_by_bot_id(bot_id)
                     if ig_ch and ig_ch.is_active:
                         import asyncio
+                        ig_msgs = get_instagram_support_messages(lang=bot_lang)
                         asyncio.ensure_future(
                             ig_send(
                                 ig_mapping.ig_user_id,
-                                "Your conversation has been resolved. You're now back with our AI assistant. How can I help you?",
+                                ig_msgs["resolved_ack"],
                                 ig_ch.page_access_token,
                             )
                         )

@@ -10,7 +10,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 sys.modules.setdefault("jwt", types.SimpleNamespace())
 
-from domain.entities import Bot, IndexJob
+from domain.entities import Bot, IndexJob, SuggestedMessagePack
 from infrastructure.clients.line_client import build_suggested_flex
 
 _FAKE_DB_PKG = types.ModuleType("infrastructure.db")
@@ -41,6 +41,7 @@ _MODULE = importlib.util.module_from_spec(_SPEC)
 sys.modules[_SPEC.name] = _MODULE
 _SPEC.loader.exec_module(_MODULE)
 SuggestedMessagePackBuilderService = _MODULE.SuggestedMessagePackBuilderService
+SuggestedMessageFastPathService = _MODULE.SuggestedMessageFastPathService
 
 
 class _FakeBotRepo:
@@ -73,6 +74,21 @@ class _FakePackRepo:
 
     def replace_for_bot_lang(self, *, bot_id: str, lang: str, packs):
         self.replaced[(bot_id, lang)] = list(packs)
+
+
+class _FakeReadyPackRepo:
+    def __init__(self, pack: SuggestedMessagePack) -> None:
+        self._pack = pack
+
+    def get_latest(self, *, bot_id: str, lang: str, suggested_message_id: str):
+        if (
+            self._pack
+            and bot_id == self._pack.bot_id
+            and lang == self._pack.lang
+            and suggested_message_id == self._pack.suggested_message_id
+        ):
+            return self._pack
+        return None
 
 
 class SuggestedMessagePackBuilderTests(unittest.TestCase):
@@ -255,6 +271,65 @@ class SuggestedMessagePackBuilderTests(unittest.TestCase):
         self.assertEqual("reserve", pack.suggested_message_id)
         self.assertTrue(pack.source_urls[0].startswith("https://www.hotpepper.jp/strJ001234567/"))
         self.assertTrue(any(target.get("source_kind") == "reservation" for target in pack.link_targets))
+
+
+class SuggestedMessageFastPathTests(unittest.TestCase):
+    def test_action_link_answer_appends_url_when_model_omits_it(self) -> None:
+        pack = SuggestedMessagePack(
+            pack_id="pack_1",
+            bot_id="bot_1",
+            org_id="org_1",
+            lang="ja",
+            suggested_message_id="reserve",
+            label="予約",
+            prompt="予約したい",
+            pack_mode="action_link",
+            status="ready",
+            version_hash="v1",
+            source_urls=["https://www.hotpepper.jp/strJ001234567/"],
+            evidence_snippets=[
+                {
+                    "url": "https://www.hotpepper.jp/strJ001234567/",
+                    "title": "予約",
+                    "snippet": "Official reservation link: https://www.hotpepper.jp/strJ001234567/",
+                }
+            ],
+            link_targets=[
+                {
+                    "url": "https://www.hotpepper.jp/strJ001234567/",
+                    "label": "予約ページ",
+                    "source_kind": "reservation",
+                }
+            ],
+            instruction="Use this reservation link only.",
+            citations=[
+                {
+                    "url": "https://www.hotpepper.jp/strJ001234567/",
+                    "title": "予約",
+                    "snippet": "Official reservation link: https://www.hotpepper.jp/strJ001234567/",
+                }
+            ],
+        )
+        service = SuggestedMessageFastPathService(
+            pack_repo=_FakeReadyPackRepo(pack),
+            builder_service=object(),
+        )
+
+        with patch.object(service, "_create_client", return_value=object()):
+            with patch(
+                f"{_SPEC.name}.synthesize_with_evidence",
+                return_value="はい、ご予約ですね。こちらのページからご予約を承っております。",
+            ):
+                result = service.try_answer(
+                    bot_id="bot_1",
+                    widget_config={},
+                    lang="ja",
+                    suggested_message_id="reserve",
+                    message="予約したい",
+                )
+
+        self.assertTrue(result.hit)
+        self.assertIn("https://www.hotpepper.jp/strJ001234567/", result.answer)
 
 
 class LineSuggestedFlexTests(unittest.TestCase):

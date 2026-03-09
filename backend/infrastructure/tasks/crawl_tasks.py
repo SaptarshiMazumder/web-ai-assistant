@@ -35,7 +35,6 @@ from application.services.default_prompt_service import (
     build_default_system_instruction,
     extract_business_type_from_widget_config,
 )
-from application.services.suggested_message_pack_service import suggested_message_pack_builder_service
 from domain.platform_profiles import (
     get_default_post_crawl_jobs,
     get_default_source_language,
@@ -1048,15 +1047,6 @@ async def _execute_crawl(
             except Exception as pipeline_error:
                 logger.warning(
                     f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
-                )
-            try:
-                suggested_message_pack_builder_service().rebuild_for_bot(bot_id)
-            except Exception as pack_error:
-                logger.warning(
-                    "Suggested message pack rebuild failed after crawl bot_id=%s: %s: %s",
-                    bot_id,
-                    type(pack_error).__name__,
-                    str(pack_error)[:200],
                 )
         except Exception as import_error:
             error_msg = _format_exception_message(import_error, max_len=1200)

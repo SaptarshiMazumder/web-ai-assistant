@@ -63,6 +63,7 @@ from infrastructure.db.repositories import (
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from domain.platform_profiles import (
     get_asset_rules_from_widget,
+    get_instagram_support_messages,
     get_instagram_menu_page_payload_prefix,
     get_instagram_menu_quick_payload,
     get_menu_category_order,
@@ -170,28 +171,6 @@ def _rate_limit(bot_id: str) -> None:
 
 
 # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Escalation keyword detection ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
-
-# Instagram: complete handoff — no skip, no back-to-bot
-_IG_ESCALATION_MESSAGES: Dict[str, Dict[str, str]] = {
-    "en": {
-        "prompt": "I'll connect you with our staff right away.\n\n"
-        "When you send your message, we'll forward it to our team. The next reply you receive will be from our staff — please wait for them to respond. From here on, the AI will not reply; our team will take over.\n\n"
-        "If you wish to cancel and return to the AI assistant, say \"cancel\" at any time.",
-        "cancel_ack": "Cancelled. How can I help you?",
-        "escalation_ack": "We've notified our team. Someone will reply shortly — please wait for our staff to respond.",
-        "takeover_ack": "A team member is now assisting you. Please wait for their reply.",
-        "email_details_no_message": "User requested human assistance via Instagram.",
-    },
-    "ja": {
-        "prompt": "スタッフにおつなぎいたします。\n\n"
-        "送信いただいた内容はスタッフに転送されます。次の返信はスタッフからお届けしますので、お待ちください。このあとはAIではなくスタッフがお返事いたします。\n\n"
-        "AIアシスタントに戻りたい場合はいつでも「キャンセル」と送信してください。",
-        "cancel_ack": "キャンセルしました。何かお手伝いできますか？",
-        "escalation_ack": "スタッフに通知しました。まもなく返信いたしますので、お待ちください。",
-        "takeover_ack": "スタッフが対応いたします。お返事をお待ちください。",
-        "email_details_no_message": "Instagram経由でサポートを依頼されました。",
-    },
-}
 
 ESCALATION_KEYWORDS = {
     "human", "agent", "staff", "real person", "operator",
@@ -1288,7 +1267,7 @@ async def _handle_text_message(
                 content=effective_text,
             )
             lang = _normalize_lang(widget_config)
-            cancel_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["cancel_ack"]
+            cancel_msg = get_instagram_support_messages(lang=lang)["cancel_ack"]
             _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
             conversation_service().add_message(
@@ -1322,7 +1301,7 @@ async def _handle_text_message(
                 content=effective_text,
             )
             lang = _normalize_lang(widget_config)
-            cancel_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["cancel_ack"]
+            cancel_msg = get_instagram_support_messages(lang=lang)["cancel_ack"]
             _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
             conversation_service().add_message(
@@ -1340,7 +1319,7 @@ async def _handle_text_message(
             content=effective_text,
         )
         lang = _normalize_lang(widget_config)
-        msgs = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])
+        msgs = get_instagram_support_messages(lang=lang)
         details = user_msg if user_msg else msgs["email_details_no_message"]
         conversation_service().request_support(
             bot_id=bot.bot_id,
@@ -1417,7 +1396,7 @@ async def _handle_text_message(
             content=effective_text,
         )
         lang = _normalize_lang(widget_config)
-        prompt_msg = _IG_ESCALATION_MESSAGES.get(lang, _IG_ESCALATION_MESSAGES["en"])["prompt"]
+        prompt_msg = get_instagram_support_messages(lang=lang)["prompt"]
         _record_outbound_send(ig_user_id, bot.bot_id)
         await send_message(ig_user_id, prompt_msg, access_token)
         conversation_service().add_message(

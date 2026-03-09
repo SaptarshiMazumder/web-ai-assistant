@@ -12,44 +12,31 @@
   const headerIconUrl = params.get("headerIcon") || "";
   const welcomeMessage = params.get("welcomeMessage") || params.get("welcome_message") || "Welcome! How can I help you today?";
   const footerMessage = params.get("footer") || params.get("footerMessage") || "Powered by WebAI";
-  const widgetLang = (() => {
-    const raw = (params.get("language") || params.get("botLanguage") || "").trim().toLowerCase();
-    if (raw === "ja" || raw === "jp") return "ja";
-    if (raw === "en") return "en";
-    const browserLang = (navigator.language || "").trim().toLowerCase();
-    return browserLang.startsWith("ja") ? "ja" : "en";
-  })();
-  const supportUi = widgetLang === "ja"
-    ? {
-        requested: "サポート依頼済み",
-        requestedWithCheck: "\u2713 サポート依頼済み",
-        ariaRequested: "サポート依頼済み",
-        disabled: "現在サポート受付は利用できません。",
-        modalTitle: "サポートに相談",
-        modalSubtitle: "折り返しのためのメールアドレスをご入力ください。",
-        detailsLabel: "詳細（任意）",
-        detailsPlaceholder: "必要であれば、ご相談内容を入力してください。",
-        cancel: "キャンセル",
-        submit: "送信",
-        invalidEmail: "有効なメールアドレスを入力してください。",
-        submitFailed: "サポート依頼の送信に失敗しました。",
-        submitSuccess: "サポート依頼を受け付けました。担当者より順次ご案内します。",
+  const supportMessagesParam = params.get("supportMessages");
+  const supportUi = (() => {
+    let parsed = {};
+    if (supportMessagesParam) {
+      try {
+        parsed = JSON.parse(supportMessagesParam) || {};
+      } catch (e) {
+        parsed = {};
       }
-    : {
-        requested: "Support requested",
-        requestedWithCheck: "\u2713 Support requested",
-        ariaRequested: "Support requested",
-        disabled: "Escalations are currently disabled.",
-        modalTitle: "Escalate to support",
-        modalSubtitle: "Enter your email so support can reach you.",
-        detailsLabel: "Details (optional)",
-        detailsPlaceholder: "Tell us a bit more about your request (optional)",
-        cancel: "Cancel",
-        submit: "Submit",
-        invalidEmail: "Please enter a valid email.",
-        submitFailed: "Failed to submit escalation.",
-        submitSuccess: "Thanks! Support has been notified and will reach out soon.",
-      };
+    }
+    return {
+      requested: typeof parsed.requested === "string" ? parsed.requested : "",
+      disabled: typeof parsed.disabled === "string" ? parsed.disabled : "",
+      modalTitle: typeof parsed.modalTitle === "string" ? parsed.modalTitle : "",
+      modalSubtitle: typeof parsed.modalSubtitle === "string" ? parsed.modalSubtitle : "",
+      emailPlaceholder: typeof parsed.emailPlaceholder === "string" ? parsed.emailPlaceholder : "",
+      detailsLabel: typeof parsed.detailsLabel === "string" ? parsed.detailsLabel : "",
+      detailsPlaceholder: typeof parsed.detailsPlaceholder === "string" ? parsed.detailsPlaceholder : "",
+      cancelButton: typeof parsed.cancelButton === "string" ? parsed.cancelButton : "",
+      submitButton: typeof parsed.submitButton === "string" ? parsed.submitButton : "",
+      invalidEmail: typeof parsed.invalidEmail === "string" ? parsed.invalidEmail : "",
+      submitFailed: typeof parsed.submitFailed === "string" ? parsed.submitFailed : "",
+      submitSuccess: typeof parsed.submitSuccess === "string" ? parsed.submitSuccess : "",
+    };
+  })();
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
   const suggestedMessagesParam = params.get("suggestedMessages");
@@ -225,12 +212,12 @@
     const btn = document.createElement("button");
     btn.type = "button";
     const isSupportDone = item.type === "escalate" && supportRequestSubmitted;
-    btn.textContent = isSupportDone ? supportUi.requestedWithCheck : item.label;
+    btn.textContent = isSupportDone ? `\u2713 ${supportUi.requested || item.label}` : item.label;
     if (isSupportDone) {
       btn.disabled = true;
       btn.classList.add("suggestion-complete");
-      btn.setAttribute("aria-label", supportUi.ariaRequested);
-      btn.title = supportUi.requested;
+      btn.setAttribute("aria-label", supportUi.requested || item.label);
+      btn.title = supportUi.requested || item.label;
     }
     btn.addEventListener("click", () => {
       if (isSupportDone) return;
@@ -579,7 +566,7 @@
 
     const inputEl = document.createElement("input");
     inputEl.type = "email";
-    inputEl.placeholder = "you@email.com";
+    inputEl.placeholder = supportUi.emailPlaceholder;
     inputEl.style.width = "100%";
     inputEl.style.padding = "10px 12px";
     inputEl.style.borderRadius = "10px";
@@ -616,7 +603,7 @@
     actions.style.marginTop = "12px";
 
     const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = supportUi.cancel;
+    cancelBtn.textContent = supportUi.cancelButton;
     cancelBtn.style.flex = "1";
     cancelBtn.style.height = "36px";
     cancelBtn.style.borderRadius = "10px";
@@ -625,7 +612,7 @@
     cancelBtn.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
 
     const submitBtn = document.createElement("button");
-    submitBtn.textContent = supportUi.submit;
+    submitBtn.textContent = supportUi.submitButton;
     submitBtn.style.flex = "1";
     submitBtn.style.height = "36px";
     submitBtn.style.borderRadius = "10px";

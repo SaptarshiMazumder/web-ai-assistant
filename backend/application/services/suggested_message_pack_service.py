@@ -53,6 +53,7 @@ _GENERIC_PROMPT_SEEDS = {
     "質問する",
     "質問",
 }
+_HTTP_URL_RE = re.compile(r"https?://[^\s]+", re.IGNORECASE)
 
 
 def _utc_now() -> str:
@@ -150,6 +151,45 @@ def _dedupe_urls(urls: Iterable[Any]) -> List[str]:
         seen.add(normalized)
         output.append(normalized)
     return output
+
+
+def _extract_action_link_target(pack: SuggestedMessagePack) -> Tuple[str, str]:
+    for raw in pack.link_targets or []:
+        if not isinstance(raw, dict):
+            continue
+        url = _normalize_http_url(raw.get("url"))
+        if not url:
+            continue
+        label = str(raw.get("label") or raw.get("title") or "").strip()
+        return url, label
+    for raw in pack.citations or []:
+        if not isinstance(raw, dict):
+            continue
+        url = _normalize_http_url(raw.get("url"))
+        if not url:
+            continue
+        label = str(raw.get("label") or raw.get("title") or "").strip()
+        return url, label
+    for raw in pack.source_urls or []:
+        url = _normalize_http_url(raw)
+        if url:
+            return url, ""
+    return "", ""
+
+
+def _ensure_action_link_visible(answer: str, *, pack: SuggestedMessagePack) -> str:
+    text = str(answer or "").strip()
+    if str(pack.pack_mode or "").strip().lower() != "action_link":
+        return text
+    if _HTTP_URL_RE.search(text):
+        return text
+    url, label = _extract_action_link_target(pack)
+    if not url:
+        return text
+    link_text = f"{label}: {url}" if label and label != url else url
+    if not text:
+        return link_text
+    return f"{text}\n{link_text}"
 
 
 def _load_docs_from_gcs_prefix(gcs_prefix: str) -> List[Dict[str, Any]]:
@@ -715,7 +755,10 @@ class SuggestedMessageFastPathService:
         return SuggestedMessageFastPathResult(
             hit=True,
             reason="pack_hit",
-            answer=sanitize_answer_citations(answer),
+            answer=_ensure_action_link_visible(
+                sanitize_answer_citations(answer),
+                pack=pack,
+            ),
             citations=list(pack.citations or pack.evidence_snippets or []),
             pack=pack,
         )

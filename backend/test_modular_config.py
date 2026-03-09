@@ -5,12 +5,15 @@ from domain.platform_profiles import (
     get_dashboard_create_bot_flow,
     get_default_post_crawl_jobs,
     get_default_source_language,
+    get_instagram_support_messages,
     get_knowledge_tabs_for_widget,
+    get_line_cancel_keywords,
     get_line_support_messages,
     get_menu_category_aliases,
     get_menu_view_all_url_tokens,
     get_reservation_config_from_widget,
     get_reservation_url_for_platform,
+    get_web_support_messages,
     normalize_reservation_links,
 )
 
@@ -85,6 +88,27 @@ class ModularConfigTests(unittest.TestCase):
         ja = get_line_support_messages(lang="ja")
         en = get_line_support_messages(lang="en")
         self.assertIn("サポート", ja["prompt"])
+        self.assertIn("staff", en["prompt"].lower())
+        self.assertIn("キャンセル", ja["cancel_ack"])
+        self.assertIn("cancelled", en["cancel_ack"].lower())
+
+    def test_line_cancel_keywords_are_non_empty(self):
+        keywords = get_line_cancel_keywords()
+        self.assertIn("cancel", keywords)
+        self.assertIn("キャンセル", keywords)
+
+    def test_web_support_messages_are_localized(self):
+        ja = get_web_support_messages(lang="ja")
+        en = get_web_support_messages(lang="en")
+        self.assertEqual("サポートに相談", ja["modalTitle"])
+        self.assertEqual("Contact support", en["modalTitle"])
+        self.assertIn("メールアドレス", ja["modalSubtitle"])
+        self.assertIn("email", en["modalSubtitle"].lower())
+
+    def test_instagram_support_messages_are_localized(self):
+        ja = get_instagram_support_messages(lang="ja")
+        en = get_instagram_support_messages(lang="en")
+        self.assertIn("スタッフ", ja["prompt"])
         self.assertIn("staff", en["prompt"].lower())
         self.assertIn("キャンセル", ja["cancel_ack"])
         self.assertIn("cancelled", en["cancel_ack"].lower())

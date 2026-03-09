@@ -13,6 +13,7 @@ import os
 import re
 import time
 import asyncio
+import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -38,7 +39,6 @@ from application.services.platform_strategy import (
     build_menu_view_all_url_for_category,
     normalize_menu_category,
 )
-from application.services.suggested_message_pack_service import suggested_message_fast_path_service
 from common.language_utils import detect_user_language, normalize_lang
 from common.di.container import asset_repo, bot_service, conversation_service, line_rich_menu_service
 from infrastructure.clients.line_client import (
@@ -120,8 +120,8 @@ _LINE_ERROR_MESSAGES = {
     "ja": "申し訳ありません。問題が発生しました。少し待ってからもう一度お試しください。",
 }
 
-# Cancel escalation (config-driven)
-_CANCEL_KEYWORDS = {kw.lower() for kw in get_line_cancel_keywords()}
+def _normalize_cancel_text(value: str) -> str:
+    return unicodedata.normalize("NFKC", str(value or "")).strip().lower()
 
 
 def _is_escalate_quick_reply(text: str, suggested_messages: list) -> bool:
@@ -168,8 +168,26 @@ def _resolve_suggested_message_by_id(suggested_message_id: Optional[str], sugges
 
 def _wants_cancel_escalation(text: str) -> bool:
     """True if user wants to cancel escalation and stay with AI (matches Instagram)."""
-    lower = (text or "").strip().lower()
-    return any(lower == kw or lower.startswith(kw) for kw in _CANCEL_KEYWORDS)
+    normalized = _normalize_cancel_text(text)
+    keywords = {_normalize_cancel_text(kw) for kw in get_line_cancel_keywords() if str(kw or "").strip()}
+    return any(normalized == kw or normalized.startswith(kw) for kw in keywords)
+
+
+def _should_show_line_typing(
+    *,
+    event_type: str,
+    postback_action: Optional[str],
+    suggested_message_id: Optional[str],
+    suggested_function_id: Optional[str],
+    is_menu_request_event: bool,
+) -> bool:
+    if postback_action in {"support", "back_to_ai", "menu"}:
+        return False
+    if is_menu_request_event:
+        return False
+    if suggested_function_id in {"escalate", "show_menu"}:
+        return False
+    return event_type == "message" or bool(suggested_message_id)
 
 
 def _line_localized_message(messages: Dict[str, str], lang: str) -> str:
@@ -798,7 +816,13 @@ async def _handle_line_event(
         return
 
     # Show typing only when we will send a reply (avoids stuck typing when escalated)
-    if event.event_type == "message" and postback_action not in {"support", "back_to_ai", "menu"} and not is_menu_request_event:
+    if _should_show_line_typing(
+        event_type=event.event_type,
+        postback_action=postback_action,
+        suggested_message_id=suggested_message_id,
+        suggested_function_id=suggested_function_id,
+        is_menu_request_event=is_menu_request_event,
+    ):
         await line_show_typing(line_user_id, access_token)
 
     # ── De-escalation check (cancel only, matches Instagram) ───────────
@@ -1065,43 +1089,6 @@ async def _handle_line_event(
     )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
-
-    if suggested_message_id:
-        fast_path_result = suggested_message_fast_path_service().try_answer(
-            bot_id=bot.bot_id,
-            widget_config=widget_config,
-            lang=lang,
-            suggested_message_id=suggested_message_id,
-            message=suggested_prompt_text or effective_text or text,
-            model_name=model_name,
-            temperature=temperature,
-            conversation_context=conversation_context or None,
-        )
-        if fast_path_result.hit:
-            sources = list(fast_path_result.citations or [])
-            answer = normalize_answer_links(
-                fast_path_result.answer,
-                candidates=build_answer_link_candidates(
-                    reservation_config=get_reservation_config_from_widget(widget_config, lang=lang),
-                    sources=sources,
-                ),
-                render_target=RENDER_TARGET_PLAIN_TEXT_CHANNEL,
-            ).text
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="bot",
-                content=answer,
-                citations=sources,
-            )
-            await reply_message(reply_token, [answer], access_token, suggested_flex=suggested_flex)
-            _schedule_line_rich_menu_update(
-                bot_id=bot.bot_id,
-                line_user_id=line_user_id,
-                lang=lang,
-                assistant_state=assistant_state,
-            )
-            return
 
     # Run RAG
     asset_cards: list = []
