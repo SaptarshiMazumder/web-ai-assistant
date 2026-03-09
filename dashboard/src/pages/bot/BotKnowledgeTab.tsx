@@ -47,6 +47,7 @@ function formatRelativeTime(iso: string): string {
 }
 
 const SOURCES_JOB_TERMINAL_STAGES = new Set(['done', 'complete', 'error', 'failed', 'cancelled'])
+const SOURCES_JOB_POST_CRAWL_STAGES = new Set(['import_submitted', 'prompt_queued', 'prompt_generating'])
 
 const BOOKING_LINK_JOB_TERMINAL_STATUS = new Set(['done', 'failed', 'error'])
 
@@ -1368,6 +1369,7 @@ export default function BotKnowledgeTab() {
       (j) =>
         (j.hostname || '').toLowerCase() === 'batch' &&
         !SOURCES_JOB_TERMINAL_STAGES.has((j.stage || '').toLowerCase()) &&
+        !SOURCES_JOB_POST_CRAWL_STAGES.has((j.stage || '').toLowerCase()) &&
         !isJobStale(j)
     )
     if (hasInProgressBatchJob && (sourceType || 'url').toLowerCase() === 'url') {
@@ -1377,6 +1379,7 @@ export default function BotKnowledgeTab() {
       (j) =>
         j.source_id === sourceId &&
         !SOURCES_JOB_TERMINAL_STAGES.has((j.stage || '').toLowerCase()) &&
+        !SOURCES_JOB_POST_CRAWL_STAGES.has((j.stage || '').toLowerCase()) &&
         !isJobStale(j)
     )
   }

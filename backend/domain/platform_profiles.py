@@ -1468,6 +1468,11 @@ def _resolve_suggested_items(items: List[Dict[str, Any]], *, lang: str) -> List[
         message = str(raw.get("message") or "").strip()
         if message:
             item["message"] = message
+        for key in ("fastPathBinding", "binding"):
+            binding = str(raw.get(key) or "").strip()
+            if binding:
+                item["fastPathBinding"] = binding
+                break
         out.append(item)
     return out
 
@@ -1571,24 +1576,7 @@ def get_suggested_messages_for_platform(
     lang = "ja" if lang in ("ja", "jp") else "en"
 
     def resolve_items(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
-        for r in items:
-            if not isinstance(r, dict):
-                continue
-            label = _resolve_label_or_prompt(r.get("label"), lang)
-            if not label:
-                continue
-            prompt = _resolve_label_or_prompt(r.get("prompt"), lang) or label
-            raw_type = str(r.get("type") or "ai_response").strip() or "ai_response"
-            if raw_type not in ("ai_response", "show_menu", "escalate"):
-                raw_type = "ai_response"
-            out.append({
-                "id": str(r.get("id") or "").strip() or f"suggest_{len(out) + 1}",
-                "label": label,
-                "prompt": prompt,
-                "type": raw_type,
-            })
-        return out
+        return _resolve_suggested_items(items, lang=lang)
 
     resolved = resolve_items(raw)
     return resolved if resolved else None
@@ -1853,14 +1841,25 @@ def get_line_support_messages(*, lang: str = "en") -> Dict[str, str]:
     cfg = get_line_ux_config()
     messages = cfg.get("support_messages") if isinstance(cfg.get("support_messages"), dict) else {}
     normalized_lang = _normalize_lang(lang)
-    defaults = {
-        "prompt": "I'll connect you with our staff right away.",
-        "cancel_ack": "Cancelled. You're back with the AI assistant. How can I help?",
-        "escalation_ack": "You're now connected to our support team. They will reply here shortly.",
-        "takeover_ack": "Your conversation has been transferred to support. Our team will reply here.",
-        "resolved_ack": "Your support conversation is complete. You're back with our AI assistant.",
-        "email_details_no_message": "User requested human assistance via LINE.",
+    defaults_by_lang = {
+        "en": {
+            "prompt": "I'll connect you with our staff right away. If you'd like, send any extra details here.",
+            "cancel_ack": "Cancelled. You're back with the AI assistant. How can I help?",
+            "escalation_ack": "You're now connected to our support team. They will reply here shortly.",
+            "takeover_ack": "Your conversation has been transferred to support. Our team will reply here.",
+            "resolved_ack": "Your support conversation is complete. You're back with our AI assistant.",
+            "email_details_no_message": "User requested human assistance via LINE.",
+        },
+        "ja": {
+            "prompt": "サポート担当におつなぎします。必要であれば、このまま詳細をお送りください。",
+            "cancel_ack": "キャンセルしました。AIアシスタントに戻りました。ご用件をどうぞ。",
+            "escalation_ack": "サポート担当に引き継ぎました。このチャットで順番にご案内します。",
+            "takeover_ack": "サポート担当へ引き継ぎました。このチャットで返信します。",
+            "resolved_ack": "サポート対応が完了しました。AIアシスタントに戻りました。",
+            "email_details_no_message": "LINE経由でサポート対応の依頼がありました。",
+        },
     }
+    defaults = defaults_by_lang.get(normalized_lang) or defaults_by_lang["en"]
     resolved: Dict[str, str] = {}
     for key, fallback in defaults.items():
         resolved[key] = _resolve_i18n_text(messages.get(key), lang=normalized_lang, fallback=fallback)

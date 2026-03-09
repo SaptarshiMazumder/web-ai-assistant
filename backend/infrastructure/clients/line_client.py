@@ -115,18 +115,16 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
     """Build a LINE Flex Message with vertically stacked tappable rows.
 
     Uses box components with text inside (no char limit on display) and
-    a message action on the box (label is just for accessibility, not shown).
-    Tapping a row sends the label text (Menu, メニュー, etc.) — user sees normal text, not code.
+    a postback action on the box so taps can be resolved by suggestion id.
     """
     if not suggested_messages:
         return None
     rows = []
     for sm in suggested_messages[:10]:
         label = (sm.get("label") or "").strip()
+        suggested_id = str(sm.get("id") or "").strip()
         if not label:
             continue
-        msg_type = str(sm.get("type") or "ai_response").strip()
-        action_text = label  # Always send label so user sees "Menu"/"メニュー", not SHOW_FULL_MENU
         rows.append({
             "type": "box",
             "layout": "vertical",
@@ -141,9 +139,10 @@ def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
                 },
             ],
             "action": {
-                "type": "message",
+                "type": "postback",
                 "label": label[:20],
-                "text": action_text,
+                "displayText": label,
+                "data": f"lineux:suggest:{suggested_id or label[:20]}",
             },
             "paddingAll": "md",
             "cornerRadius": "md",

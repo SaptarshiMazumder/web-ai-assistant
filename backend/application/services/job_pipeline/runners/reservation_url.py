@@ -11,6 +11,7 @@ from domain.platform_profiles import (
     get_reservation_url_rule,
     normalize_reservation_links,
 )
+from application.services.suggested_message_pack_service import suggested_message_pack_builder_service
 from infrastructure.db.repositories import PostgresBotRepository
 
 
@@ -175,6 +176,7 @@ class ReservationUrlRunner:
             widget_key, _ = RESERVATION_PLATFORM_CONFIG[platform_id]
             widget_config[widget_key] = base_candidate
             bot_repo.update_widget_config(bot_id, json.dumps(widget_config, ensure_ascii=False))
+            suggested_message_pack_builder_service().rebuild_for_bot(bot_id, widget_config=widget_config)
             return JobResult(
                 status="done",
                 output={
@@ -199,6 +201,7 @@ class ReservationUrlRunner:
         widget_key, _ = RESERVATION_PLATFORM_CONFIG[platform_id]
         widget_config[widget_key] = candidate
         bot_repo.update_widget_config(bot_id, json.dumps(widget_config, ensure_ascii=False))
+        suggested_message_pack_builder_service().rebuild_for_bot(bot_id, widget_config=widget_config)
 
         return JobResult(
             status="done",

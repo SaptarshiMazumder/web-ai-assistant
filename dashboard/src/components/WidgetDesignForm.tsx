@@ -40,6 +40,7 @@ export type SuggestedMessageConfig = {
   message?: string
   prompt?: string
   urls?: string[]
+  fastPathBinding?: string
 }
 
 export const DEFAULT_WIDGET_DESIGN_STATE: WidgetDesignState = {

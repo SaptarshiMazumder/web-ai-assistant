@@ -143,3 +143,39 @@ class MenuExtractionCompletionChecker:
                 error=str(getattr(job, "error", "") or "").strip() or f"Menu extraction job failed: {raw_status}",
             )
         return CompletionCheckResult(status="running", details=details)
+
+
+class AssetExtractionCompletionChecker:
+    def check(self, context: Dict[str, Any]) -> CompletionCheckResult:
+        from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
+
+        job_id = str(context.get("linked_job_id") or "").strip()
+        if not job_id:
+            return CompletionCheckResult(status="error", error="Missing linked_job_id for asset_extraction completion")
+
+        repo = PostgresAssetExtractionJobRepository()
+        job = repo.get_job(job_id)
+        if not job:
+            return CompletionCheckResult(status="error", error=f"Asset extraction job not found: {job_id}")
+
+        raw_status = _normalize_status(getattr(job, "status", ""))
+        mapped = _map_child_status(raw_status, context)
+        discovered = int(getattr(job, "assets_discovered", 0) or 0)
+        downloaded = int(getattr(job, "assets_downloaded", 0) or 0)
+        created = int(getattr(job, "assets_created", 0) or 0)
+        details = {
+            "child_status": raw_status,
+            "assets_discovered": discovered,
+            "assets_downloaded": downloaded,
+            "assets_created": created,
+        }
+
+        if mapped == "done":
+            return CompletionCheckResult(status="done", details=details)
+        if mapped == "error":
+            return CompletionCheckResult(
+                status="error",
+                details=details,
+                error=str(getattr(job, "error", "") or "").strip() or f"Asset extraction job failed: {raw_status}",
+            )
+        return CompletionCheckResult(status="running", details=details)

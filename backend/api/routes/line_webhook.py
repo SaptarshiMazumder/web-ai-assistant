@@ -38,6 +38,7 @@ from application.services.platform_strategy import (
     build_menu_view_all_url_for_category,
     normalize_menu_category,
 )
+from application.services.suggested_message_pack_service import suggested_message_fast_path_service
 from common.language_utils import detect_user_language, normalize_lang
 from common.di.container import asset_repo, bot_service, conversation_service, line_rich_menu_service
 from infrastructure.clients.line_client import (
@@ -153,6 +154,18 @@ def _resolve_suggested_type(text: str, suggested_messages: list) -> Optional[str
     return None
 
 
+def _resolve_suggested_message_by_id(suggested_message_id: Optional[str], suggested_messages: list) -> Optional[Dict[str, Any]]:
+    sid = str(suggested_message_id or "").strip()
+    if not sid or not suggested_messages:
+        return None
+    for sm in suggested_messages:
+        if not isinstance(sm, dict):
+            continue
+        if str(sm.get("id") or "").strip() == sid:
+            return sm
+    return None
+
+
 def _wants_cancel_escalation(text: str) -> bool:
     """True if user wants to cancel escalation and stay with AI (matches Instagram)."""
     lower = (text or "").strip().lower()
@@ -175,6 +188,14 @@ def _parse_line_postback_action(postback_data: Optional[str]) -> Optional[str]:
     if raw == "lineux:menu":
         return "menu"
     return None
+
+
+def _parse_line_suggested_message_id(postback_data: Optional[str]) -> Optional[str]:
+    raw = str(postback_data or "").strip()
+    if not raw.lower().startswith("lineux:suggest:"):
+        return None
+    suggested_id = raw[len("lineux:suggest:"):].strip()
+    return suggested_id or None
 
 
 def _schedule_line_rich_menu_update(*, bot_id: str, line_user_id: str, lang: str, assistant_state: str) -> None:
@@ -624,6 +645,7 @@ async def _handle_line_event(
     text = event.text
     reply_token = event.reply_token
     postback_action = _parse_line_postback_action(getattr(event, "postback_data", None))
+    suggested_message_id = _parse_line_suggested_message_id(getattr(event, "postback_data", None))
     access_token = channel.line_channel_access_token
 
     # Load suggested messages and session BEFORE typing — we must not show typing when
@@ -654,8 +676,24 @@ async def _handle_line_event(
     suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
         suggested_flex = build_suggested_flex(suggested_messages)
-    suggested_type = _resolve_suggested_type(text, suggested_messages or []) if event.event_type == "message" else None
+    suggested_message = _resolve_suggested_message_by_id(suggested_message_id, suggested_messages or [])
+    suggested_type = (
+        str(suggested_message.get("type") or "").strip()
+        if suggested_message
+        else _resolve_suggested_type(text, suggested_messages or []) if event.event_type == "message" else None
+    )
     suggested_function_id = _function_registry.resolve_from_suggested_type(suggested_type or "")
+    suggested_prompt_text = (
+        str(
+            (suggested_message or {}).get("prompt")
+            or (suggested_message or {}).get("message")
+            or (suggested_message or {}).get("label")
+            or text
+            or ""
+        ).strip()
+        if suggested_message or text
+        else ""
+    )
 
     # Mapping rows only keep the current routed session and display name.
     mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
@@ -743,12 +781,12 @@ async def _handle_line_event(
 
     # ── Escalated: log message only, no bot reply — return BEFORE typing ───
     if assistant_state == "human_handoff" and not (_wants_cancel_escalation(text) or postback_action in {"back_to_ai", "menu"}):
-        if event.event_type == "message" and text:
+        if (event.event_type == "message" and text) or suggested_message_id:
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
                 role="user",
-                content=text,
+                content=suggested_prompt_text or text,
                 sender_name=line_display_name,
             )
         _schedule_line_rich_menu_update(
@@ -913,7 +951,7 @@ async def _handle_line_event(
     platform_features = get_platform_features_from_widget(widget_config)
     menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
     quick_payload = None  # LINE only has text; show_menu sends SHOW_FULL_MENU as text
-    effective_text = get_line_menu_quick_payload() if postback_action == "menu" else text
+    effective_text = get_line_menu_quick_payload() if postback_action == "menu" else (suggested_prompt_text or text)
     menu_fallback_skip_assets = False  # set True when menu flow fails and we fall back to RAG
 
     if page_req:
@@ -968,7 +1006,7 @@ async def _handle_line_event(
                 request=request,
                 widget_config=widget_config,
             )
-            if event.event_type == "message" and effective_text:
+            if (event.event_type == "message" and effective_text) or suggested_message_id:
                 conversation_service().add_message(
                     session_id=session.session_id,
                     bot_id=bot.bot_id,
@@ -997,12 +1035,12 @@ async def _handle_line_event(
 
     # ── Normal AI flow ───────────────────────────────────────────────
     # Save user message
-    if event.event_type == "message" and text:
+    if (event.event_type == "message" and text) or suggested_message_id:
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="user",
-            content=text,
+            content=suggested_prompt_text or text,
             sender_name=line_display_name,
         )
 
@@ -1027,6 +1065,43 @@ async def _handle_line_event(
     )
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
+
+    if suggested_message_id:
+        fast_path_result = suggested_message_fast_path_service().try_answer(
+            bot_id=bot.bot_id,
+            widget_config=widget_config,
+            lang=lang,
+            suggested_message_id=suggested_message_id,
+            message=suggested_prompt_text or effective_text or text,
+            model_name=model_name,
+            temperature=temperature,
+            conversation_context=conversation_context or None,
+        )
+        if fast_path_result.hit:
+            sources = list(fast_path_result.citations or [])
+            answer = normalize_answer_links(
+                fast_path_result.answer,
+                candidates=build_answer_link_candidates(
+                    reservation_config=get_reservation_config_from_widget(widget_config, lang=lang),
+                    sources=sources,
+                ),
+                render_target=RENDER_TARGET_PLAIN_TEXT_CHANNEL,
+            ).text
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=answer,
+                citations=sources,
+            )
+            await reply_message(reply_token, [answer], access_token, suggested_flex=suggested_flex)
+            _schedule_line_rich_menu_update(
+                bot_id=bot.bot_id,
+                line_user_id=line_user_id,
+                lang=lang,
+                assistant_state=assistant_state,
+            )
+            return
 
     # Run RAG
     asset_cards: list = []

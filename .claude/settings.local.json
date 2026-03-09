@@ -31,7 +31,8 @@
       "WebFetch(domain:owner-support.tabelog.com)",
       "Bash(/c/Users/googler/OneDrive/Desktop/Projects/web-ai/temp_part1.py:*)",
       "Bash(python3:*)",
-      "Bash(PYTHONIOENCODING=utf-8 python -c \":*)"
+      "Bash(PYTHONIOENCODING=utf-8 python -c \":*)",
+      "Bash(grep -E \"\\\\.\\(py\\)$\")"
     ]
   }
 }

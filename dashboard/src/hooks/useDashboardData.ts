@@ -2536,11 +2536,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
   async function fetchPlatformSuggestedMessages(
     platform: string,
     lang?: string
-  ): Promise<Array<{ id: string; label: string; type: string; prompt?: string }>> {
+  ): Promise<Array<{ id: string; label: string; type: string; prompt?: string; message?: string; urls?: string[]; fastPathBinding?: string }>> {
     try {
       const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : ''
       const path = withOrgParam(`/v1/org/platform-suggested-messages?platform=${encodeURIComponent(platform)}${langParam}`)
-      const result = await fetchAuthedJson<{ suggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string }> }>(path)
+      const result = await fetchAuthedJson<{ suggestedMessages?: Array<{ id: string; label: string; type: string; prompt?: string; message?: string; urls?: string[]; fastPathBinding?: string }> }>(path)
       return result.suggestedMessages ?? []
     } catch {
       return []

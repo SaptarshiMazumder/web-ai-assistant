@@ -144,6 +144,47 @@ class BookingLinkJob:
 
 
 @dataclass
+class SuggestedMessagePackSource:
+    url: str = ""
+    snippet: str = ""
+    title: str = ""
+    label: str = ""
+    source_kind: str = ""
+
+
+@dataclass
+class SuggestedMessagePack:
+    pack_id: str
+    bot_id: str
+    org_id: str
+    lang: str
+    suggested_message_id: str
+    label: str
+    prompt: str
+    pack_mode: str
+    status: str
+    version_hash: str
+    source_urls: List[str] = field(default_factory=list)
+    evidence_snippets: List[Dict[str, Any]] = field(default_factory=list)
+    link_targets: List[Dict[str, Any]] = field(default_factory=list)
+    instruction: str = ""
+    citations: List[Dict[str, Any]] = field(default_factory=list)
+    error: Optional[str] = None
+    created_at: str = ""
+    updated_at: str = ""
+
+
+@dataclass
+class SuggestedMessageFastPathResult:
+    hit: bool
+    reason: str
+    answer: str = ""
+    citations: List[Dict[str, Any]] = field(default_factory=list)
+    pack: Optional[SuggestedMessagePack] = None
+    error: Optional[str] = None
+
+
+@dataclass
 class TopicJob:
     job_id: str
     org_id: str

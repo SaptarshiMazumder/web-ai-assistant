@@ -157,6 +157,31 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE INDEX IF NOT EXISTS booking_link_jobs_bot_id ON booking_link_jobs (bot_id)",
     "CREATE INDEX IF NOT EXISTS booking_link_jobs_updated_at ON booking_link_jobs (updated_at DESC)",
     """
+    CREATE TABLE IF NOT EXISTS bot_suggested_message_packs (
+      pack_id TEXT PRIMARY KEY,
+      bot_id TEXT NOT NULL,
+      org_id TEXT NOT NULL,
+      lang TEXT NOT NULL,
+      suggested_message_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      pack_mode TEXT NOT NULL,
+      status TEXT NOT NULL,
+      version_hash TEXT NOT NULL,
+      source_urls TEXT NOT NULL DEFAULT '[]',
+      evidence_snippets TEXT NOT NULL DEFAULT '[]',
+      link_targets TEXT NOT NULL DEFAULT '[]',
+      instruction TEXT NOT NULL DEFAULT '',
+      citations TEXT NOT NULL DEFAULT '[]',
+      error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS bot_suggested_message_packs_bot_lang ON bot_suggested_message_packs (bot_id, lang)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS bot_suggested_message_packs_version ON bot_suggested_message_packs (bot_id, lang, suggested_message_id, version_hash)",
+    "CREATE INDEX IF NOT EXISTS bot_suggested_message_packs_updated_at ON bot_suggested_message_packs (bot_id, updated_at DESC)",
+    """
     CREATE TABLE IF NOT EXISTS topic_jobs (
       job_id TEXT PRIMARY KEY,
       org_id TEXT NOT NULL,

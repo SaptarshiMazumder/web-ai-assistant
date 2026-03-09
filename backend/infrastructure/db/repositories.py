@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from psycopg import errors as pg_errors
 
 from domain.entities import (
+    AvailabilityJob,
     BookingLinkJob,
     Bot,
     BotAsset,
@@ -31,8 +32,8 @@ from domain.entities import (
     LineUserSession,
     OrgMemberRecord,
     OrgRecord,
+    SuggestedMessagePack,
     TopicJob,
-    AvailabilityJob,
     UserRecord,
 )
 from domain.repositories import (
@@ -42,6 +43,7 @@ from domain.repositories import (
     DiscoveryJobRepository,
     IndexJobRepository,
     JobPipelineRepository,
+    SuggestedMessagePackRepository,
     TopicJobRepository,
 )
 from infrastructure.db.connection import get_connection
@@ -318,6 +320,7 @@ class PostgresBotRepository:
             con.execute("DELETE FROM line_channels WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM availability_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM booking_link_jobs WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM bot_suggested_message_packs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM topic_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM index_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM discovery_jobs WHERE bot_id = %s", (bid,))
@@ -1579,6 +1582,241 @@ class PostgresBookingLinkJobRepository(BookingLinkJobRepository):
                     job.job_id,
                 ),
             )
+            con.commit()
+        finally:
+            con.close()
+
+
+class PostgresSuggestedMessagePackRepository(SuggestedMessagePackRepository):
+    @staticmethod
+    def _parse_json_list(raw: Any) -> list:
+        try:
+            value = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        except (TypeError, ValueError):
+            value = []
+        return value if isinstance(value, list) else []
+
+    @classmethod
+    def _row_to_entity(cls, row) -> SuggestedMessagePack:
+        return SuggestedMessagePack(
+            pack_id=row[0],
+            bot_id=row[1],
+            org_id=row[2],
+            lang=row[3],
+            suggested_message_id=row[4],
+            label=row[5],
+            prompt=row[6],
+            pack_mode=row[7],
+            status=row[8],
+            version_hash=row[9],
+            source_urls=[str(item).strip() for item in cls._parse_json_list(row[10]) if str(item).strip()],
+            evidence_snippets=cls._parse_json_list(row[11]),
+            link_targets=cls._parse_json_list(row[12]),
+            instruction=row[13] or "",
+            citations=cls._parse_json_list(row[14]),
+            error=row[15],
+            created_at=row[16],
+            updated_at=row[17],
+        )
+
+    def upsert(self, pack: SuggestedMessagePack) -> None:
+        con = _connect()
+        try:
+            con.execute(
+                """
+                INSERT INTO bot_suggested_message_packs(
+                  pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                  pack_mode, status, version_hash, source_urls, evidence_snippets,
+                  link_targets, instruction, citations, error, created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (bot_id, lang, suggested_message_id, version_hash)
+                DO UPDATE SET
+                  label = EXCLUDED.label,
+                  prompt = EXCLUDED.prompt,
+                  pack_mode = EXCLUDED.pack_mode,
+                  status = EXCLUDED.status,
+                  source_urls = EXCLUDED.source_urls,
+                  evidence_snippets = EXCLUDED.evidence_snippets,
+                  link_targets = EXCLUDED.link_targets,
+                  instruction = EXCLUDED.instruction,
+                  citations = EXCLUDED.citations,
+                  error = EXCLUDED.error,
+                  updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    pack.pack_id,
+                    pack.bot_id,
+                    pack.org_id,
+                    pack.lang,
+                    pack.suggested_message_id,
+                    pack.label,
+                    pack.prompt,
+                    pack.pack_mode,
+                    pack.status,
+                    pack.version_hash,
+                    json.dumps(pack.source_urls or [], ensure_ascii=False),
+                    json.dumps(pack.evidence_snippets or [], ensure_ascii=False),
+                    json.dumps(pack.link_targets or [], ensure_ascii=False),
+                    pack.instruction or "",
+                    json.dumps(pack.citations or [], ensure_ascii=False),
+                    pack.error,
+                    pack.created_at,
+                    pack.updated_at,
+                ),
+            )
+            con.commit()
+        finally:
+            con.close()
+
+    def get_latest(
+        self,
+        *,
+        bot_id: str,
+        lang: str,
+        suggested_message_id: str,
+    ) -> Optional[SuggestedMessagePack]:
+        bid = (bot_id or "").strip()
+        normalized_lang = (lang or "").strip().lower()
+        sid = (suggested_message_id or "").strip()
+        if not bid or not normalized_lang or not sid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                       pack_mode, status, version_hash, source_urls, evidence_snippets,
+                       link_targets, instruction, citations, error, created_at, updated_at
+                FROM bot_suggested_message_packs
+                WHERE bot_id = %s AND lang = %s AND suggested_message_id = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (bid, normalized_lang, sid),
+            ).fetchone()
+            return self._row_to_entity(row) if row else None
+        finally:
+            con.close()
+
+    def get_by_version(
+        self,
+        *,
+        bot_id: str,
+        lang: str,
+        suggested_message_id: str,
+        version_hash: str,
+    ) -> Optional[SuggestedMessagePack]:
+        bid = (bot_id or "").strip()
+        normalized_lang = (lang or "").strip().lower()
+        sid = (suggested_message_id or "").strip()
+        version = (version_hash or "").strip()
+        if not bid or not normalized_lang or not sid or not version:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                       pack_mode, status, version_hash, source_urls, evidence_snippets,
+                       link_targets, instruction, citations, error, created_at, updated_at
+                FROM bot_suggested_message_packs
+                WHERE bot_id = %s AND lang = %s AND suggested_message_id = %s AND version_hash = %s
+                LIMIT 1
+                """,
+                (bid, normalized_lang, sid, version),
+            ).fetchone()
+            return self._row_to_entity(row) if row else None
+        finally:
+            con.close()
+
+    def list_by_bot(self, bot_id: str, *, lang: Optional[str] = None) -> List[SuggestedMessagePack]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return []
+        con = _connect()
+        try:
+            if lang:
+                rows = con.execute(
+                    """
+                    SELECT pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                           pack_mode, status, version_hash, source_urls, evidence_snippets,
+                           link_targets, instruction, citations, error, created_at, updated_at
+                    FROM bot_suggested_message_packs
+                    WHERE bot_id = %s AND lang = %s
+                    ORDER BY updated_at DESC
+                    """,
+                    (bid, (lang or "").strip().lower()),
+                ).fetchall()
+            else:
+                rows = con.execute(
+                    """
+                    SELECT pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                           pack_mode, status, version_hash, source_urls, evidence_snippets,
+                           link_targets, instruction, citations, error, created_at, updated_at
+                    FROM bot_suggested_message_packs
+                    WHERE bot_id = %s
+                    ORDER BY updated_at DESC
+                    """,
+                    (bid,),
+                ).fetchall()
+            return [self._row_to_entity(row) for row in rows or []]
+        finally:
+            con.close()
+
+    def replace_for_bot_lang(self, *, bot_id: str, lang: str, packs: List[SuggestedMessagePack]) -> None:
+        bid = (bot_id or "").strip()
+        normalized_lang = (lang or "").strip().lower()
+        if not bid or not normalized_lang:
+            raise ValueError("bot_id and lang are required")
+        con = _connect()
+        try:
+            con.execute(
+                "DELETE FROM bot_suggested_message_packs WHERE bot_id = %s AND lang = %s",
+                (bid, normalized_lang),
+            )
+            for pack in packs or []:
+                con.execute(
+                    """
+                    INSERT INTO bot_suggested_message_packs(
+                      pack_id, bot_id, org_id, lang, suggested_message_id, label, prompt,
+                      pack_mode, status, version_hash, source_urls, evidence_snippets,
+                      link_targets, instruction, citations, error, created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        pack.pack_id,
+                        pack.bot_id,
+                        pack.org_id,
+                        pack.lang,
+                        pack.suggested_message_id,
+                        pack.label,
+                        pack.prompt,
+                        pack.pack_mode,
+                        pack.status,
+                        pack.version_hash,
+                        json.dumps(pack.source_urls or [], ensure_ascii=False),
+                        json.dumps(pack.evidence_snippets or [], ensure_ascii=False),
+                        json.dumps(pack.link_targets or [], ensure_ascii=False),
+                        pack.instruction or "",
+                        json.dumps(pack.citations or [], ensure_ascii=False),
+                        pack.error,
+                        pack.created_at,
+                        pack.updated_at,
+                    ),
+                )
+            con.commit()
+        finally:
+            con.close()
+
+    def delete_for_bot(self, bot_id: str) -> None:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return
+        con = _connect()
+        try:
+            con.execute("DELETE FROM bot_suggested_message_packs WHERE bot_id = %s", (bid,))
             con.commit()
         finally:
             con.close()

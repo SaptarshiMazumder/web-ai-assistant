@@ -23,6 +23,7 @@ function normalizeSuggestedMessageItem(raw: unknown, index: number): SuggestedMe
   const urls = Array.isArray(item.urls)
     ? item.urls.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean)
     : undefined
+  const fastPathBinding = typeof item.fastPathBinding === 'string' ? item.fastPathBinding.trim() : undefined
   return {
     id: String(item.id || `suggest_${index}`),
     label,
@@ -30,6 +31,7 @@ function normalizeSuggestedMessageItem(raw: unknown, index: number): SuggestedMe
     prompt,
     message,
     urls,
+    fastPathBinding,
   }
 }
 
@@ -90,6 +92,7 @@ export function setSuggestedMessagesForLanguageInConfig(
   byLanguage[normalizedLang] = messages.map((item) => ({
     ...item,
     urls: Array.isArray(item.urls) ? [...item.urls] : undefined,
+    fastPathBinding: typeof item.fastPathBinding === 'string' ? item.fastPathBinding : undefined,
   }))
   return {
     ...base,

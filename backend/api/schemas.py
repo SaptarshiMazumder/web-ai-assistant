@@ -222,6 +222,7 @@ class WidgetChatRequest(BaseModel):
     site_url: Optional[str] = None
     site_title: Optional[str] = None
     session_id: Optional[str] = None
+    suggested_message_id: Optional[str] = None
 
 
 class Citation(BaseModel):

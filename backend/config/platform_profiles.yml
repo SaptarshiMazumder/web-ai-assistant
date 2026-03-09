@@ -26,6 +26,24 @@ welcome_messages:
 
 line_ux:
   support_messages:
+    prompt:
+      en: "I'll connect you with our staff right away. If you'd like, send any extra details here."
+      ja: "サポート担当におつなぎします。必要であれば、このまま詳細をお送りください。"
+    cancel_ack:
+      en: "Cancelled. You're back with the AI assistant. How can I help?"
+      ja: "キャンセルしました。AIアシスタントに戻りました。ご用件をどうぞ。"
+    escalation_ack:
+      en: "You're now connected to our support team. They will reply here shortly."
+      ja: "サポート担当に引き継ぎました。このチャットで順番にご案内します。"
+    takeover_ack:
+      en: "Your conversation has been transferred to support. Our team will reply here."
+      ja: "サポート担当へ引き継ぎました。このチャットで返信します。"
+    resolved_ack:
+      en: "Your support conversation is complete. You're back with our AI assistant."
+      ja: "サポート対応が完了しました。AIアシスタントに戻りました。"
+    email_details_no_message:
+      en: "User requested human assistance via LINE."
+      ja: "LINE経由でサポート対応の依頼がありました。"
     acknowledgement:
       en: "A team member will follow up soon."
       ja: "担当者が順次ご案内します。"
@@ -209,6 +227,41 @@ job_pipeline:
       dashboard_label:
         en: "Menu extraction"
         ja: "メニュー抽出"
+    asset_extraction:
+      runner_ref: application.services.job_pipeline.runners.asset_extraction:AssetExtractionRunner
+      retries: 0
+      timeout_sec: 120
+      on_failure: continue
+      completion:
+        enabled: true
+        checker_ref: application.services.job_pipeline.completion:AssetExtractionCompletionChecker
+        poll_interval_sec: 4
+        max_wait_sec: 2400
+        status_map:
+          running: [queued, running]
+          done: [done]
+          error: [failed, error, cancelled]
+      progress_weight: 45
+      running_progress_pct: 70
+      progress_messages:
+        queued:
+          en: "Asset extraction queued"
+          ja: "アセット抽出をキューに登録しました"
+        running:
+          en: "Extracting images and assets from crawled pages"
+          ja: "クロール結果から画像・アセットを抽出中です"
+        paused:
+          en: "Asset extraction paused"
+          ja: "アセット抽出は一時停止中です"
+        done:
+          en: "Asset extraction completed"
+          ja: "アセット抽出が完了しました"
+        error:
+          en: "Asset extraction failed"
+          ja: "アセット抽出に失敗しました"
+      dashboard_label:
+        en: "Asset extraction"
+        ja: "アセット抽出"
     reservation_url:
       runner_ref: application.services.job_pipeline.runners.reservation_url:ReservationUrlRunner
       retries: 0
@@ -239,6 +292,7 @@ job_pipeline:
     default:
       - prompt_generation
       - booking_link
+      - asset_extraction
     platform_overrides:
       tabelog:
         - prompt_generation
@@ -519,8 +573,8 @@ dashboard:
       route: design
       status_source: widget_config
     - id: suggested_messages
-      label: { en: "Suggested messages", ja: "候補メッセージ" }
-      route: suggested-messages
+      label: { en: "Messages", ja: "メッセージ" }
+      route: messages
       status_source: suggested_messages
     - id: installation
       label: { en: "Installation", ja: "インストール" }
@@ -854,6 +908,7 @@ platforms:
           type: ai_response
           label: { en: "Reservation", ja: "予約" }
           prompt: { en: "Reservation", ja: "予約" }
+          fastPathBinding: reservation
         - id: suggest_support
           type: escalate
           label: { en: "Human support", ja: "サポートに相談" }
@@ -1031,6 +1086,7 @@ platforms:
           type: ai_response
           label: { en: "Reservation", ja: "予約" }
           prompt: { en: "Reservation", ja: "予約" }
+          fastPathBinding: reservation
         - id: suggest_support
           type: escalate
           label: { en: "Human support", ja: "サポートに相談" }

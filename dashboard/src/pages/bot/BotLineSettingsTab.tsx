@@ -212,6 +212,7 @@ export default function BotLineSettingsTab() {
       setLineChannelSecret('')
       setLineAccessToken('')
       await fetchLineAccountInfo(false)
+      setCurrentStep(0)
       setSuccess(tr('Connected! Your bot is live on LINE.', '接続完了。ボットはLINEで稼働中です。'))
     } catch (err) {
       setError((err as Error).message)
@@ -464,7 +465,7 @@ export default function BotLineSettingsTab() {
     )
   }
 
-  if (existing) {
+  if (existing && currentStep === 0) {
     return (
       <AnimatedPage className="page-body">
         <SectionHeader

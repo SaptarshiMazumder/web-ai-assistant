@@ -25,8 +25,7 @@ import BotConversationsTab from './pages/bot/BotConversationsTab'
 import BotEscalationsTab from './pages/bot/BotEscalationsTab'
 import BotLineSettingsTab from './pages/bot/BotLineSettingsTab'
 
-import BotSuggestedMessagesTab from './pages/bot/BotSuggestedMessagesTab'
-import BotWelcomeMessagesTab from './pages/bot/BotWelcomeMessagesTab'
+import BotMessagesTab from './pages/bot/BotMessagesTab'
 import BotLeadsTab from './pages/bot/BotLeadsTab'
 import BotHumanSupportTab from './pages/bot/BotHumanSupportTab'
 import BotWebsiteSettingsTab from './pages/bot/BotWebsiteSettingsTab'
@@ -103,8 +102,9 @@ export default function App() {
                 <Route path="sources" element={<Navigate to="knowledge" replace />} />
                 <Route path="sources/new" element={<AddSourcePage />} />
                 <Route path="design" element={<BotDesignTab />} />
-                <Route path="welcome-messages" element={<BotWelcomeMessagesTab />} />
-                <Route path="suggested-messages" element={<BotSuggestedMessagesTab />} />
+                <Route path="messages" element={<BotMessagesTab />} />
+                <Route path="welcome-messages" element={<Navigate to="../messages?tab=welcome" replace />} />
+                <Route path="suggested-messages" element={<Navigate to="../messages?tab=suggested" replace />} />
                 <Route path="human-support" element={<BotHumanSupportTab />} />
 
                 <Route path="testing" element={<BotTestingTab />} />

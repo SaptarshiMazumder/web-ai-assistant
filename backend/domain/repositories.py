@@ -16,6 +16,7 @@ from .entities import (
     JobPipelineStepEvent,
     OrgMemberRecord,
     OrgRecord,
+    SuggestedMessagePack,
     TopicJob,
     UserRecord,
 )
@@ -194,6 +195,39 @@ class BookingLinkJobRepository(Protocol):
         ...
 
     def update(self, job: BookingLinkJob) -> None:
+        ...
+
+
+class SuggestedMessagePackRepository(Protocol):
+    def upsert(self, pack: SuggestedMessagePack) -> None:
+        ...
+
+    def get_latest(
+        self,
+        *,
+        bot_id: str,
+        lang: str,
+        suggested_message_id: str,
+    ) -> Optional[SuggestedMessagePack]:
+        ...
+
+    def get_by_version(
+        self,
+        *,
+        bot_id: str,
+        lang: str,
+        suggested_message_id: str,
+        version_hash: str,
+    ) -> Optional[SuggestedMessagePack]:
+        ...
+
+    def list_by_bot(self, bot_id: str, *, lang: Optional[str] = None) -> List[SuggestedMessagePack]:
+        ...
+
+    def replace_for_bot_lang(self, *, bot_id: str, lang: str, packs: List[SuggestedMessagePack]) -> None:
+        ...
+
+    def delete_for_bot(self, bot_id: str) -> None:
         ...
 
 

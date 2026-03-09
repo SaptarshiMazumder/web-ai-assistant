@@ -6,6 +6,7 @@ from domain.platform_profiles import (
     get_default_post_crawl_jobs,
     get_default_source_language,
     get_knowledge_tabs_for_widget,
+    get_line_support_messages,
     get_menu_category_aliases,
     get_menu_view_all_url_tokens,
     get_reservation_config_from_widget,
@@ -79,6 +80,14 @@ class ModularConfigTests(unittest.TestCase):
         self.assertIsNotNone(cfg)
         self.assertEqual("https://example.com/book-now", cfg["url"])
         self.assertEqual("https://tabelog.com/tokyo/A1304/A130401/13224546/", cfg["platform_url"])
+
+    def test_line_support_messages_are_localized(self):
+        ja = get_line_support_messages(lang="ja")
+        en = get_line_support_messages(lang="en")
+        self.assertIn("サポート", ja["prompt"])
+        self.assertIn("staff", en["prompt"].lower())
+        self.assertIn("キャンセル", ja["cancel_ack"])
+        self.assertIn("cancelled", en["cancel_ack"].lower())
 
 
 if __name__ == "__main__":

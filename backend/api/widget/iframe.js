@@ -12,6 +12,44 @@
   const headerIconUrl = params.get("headerIcon") || "";
   const welcomeMessage = params.get("welcomeMessage") || params.get("welcome_message") || "Welcome! How can I help you today?";
   const footerMessage = params.get("footer") || params.get("footerMessage") || "Powered by WebAI";
+  const widgetLang = (() => {
+    const raw = (params.get("language") || params.get("botLanguage") || "").trim().toLowerCase();
+    if (raw === "ja" || raw === "jp") return "ja";
+    if (raw === "en") return "en";
+    const browserLang = (navigator.language || "").trim().toLowerCase();
+    return browserLang.startsWith("ja") ? "ja" : "en";
+  })();
+  const supportUi = widgetLang === "ja"
+    ? {
+        requested: "サポート依頼済み",
+        requestedWithCheck: "\u2713 サポート依頼済み",
+        ariaRequested: "サポート依頼済み",
+        disabled: "現在サポート受付は利用できません。",
+        modalTitle: "サポートに相談",
+        modalSubtitle: "折り返しのためのメールアドレスをご入力ください。",
+        detailsLabel: "詳細（任意）",
+        detailsPlaceholder: "必要であれば、ご相談内容を入力してください。",
+        cancel: "キャンセル",
+        submit: "送信",
+        invalidEmail: "有効なメールアドレスを入力してください。",
+        submitFailed: "サポート依頼の送信に失敗しました。",
+        submitSuccess: "サポート依頼を受け付けました。担当者より順次ご案内します。",
+      }
+    : {
+        requested: "Support requested",
+        requestedWithCheck: "\u2713 Support requested",
+        ariaRequested: "Support requested",
+        disabled: "Escalations are currently disabled.",
+        modalTitle: "Escalate to support",
+        modalSubtitle: "Enter your email so support can reach you.",
+        detailsLabel: "Details (optional)",
+        detailsPlaceholder: "Tell us a bit more about your request (optional)",
+        cancel: "Cancel",
+        submit: "Submit",
+        invalidEmail: "Please enter a valid email.",
+        submitFailed: "Failed to submit escalation.",
+        submitSuccess: "Thanks! Support has been notified and will reach out soon.",
+      };
   const displaySources = parseBool(params.get("displaySources"), false);
   const sourcesLabel = params.get("sourcesLabel") || "Sources";
   const suggestedMessagesParam = params.get("suggestedMessages");
@@ -187,29 +225,19 @@
     const btn = document.createElement("button");
     btn.type = "button";
     const isSupportDone = item.type === "escalate" && supportRequestSubmitted;
-    btn.textContent = isSupportDone ? "\u2713 Support requested" : item.label;
+    btn.textContent = isSupportDone ? supportUi.requestedWithCheck : item.label;
     if (isSupportDone) {
       btn.disabled = true;
       btn.classList.add("suggestion-complete");
-      btn.setAttribute("aria-label", "Support requested");
-      btn.title = "Support requested";
+      btn.setAttribute("aria-label", supportUi.ariaRequested);
+      btn.title = supportUi.requested;
     }
     btn.addEventListener("click", () => {
       if (isSupportDone) return;
       if (item.type === "ai_response") {
         const promptBase = item.prompt || item.message || item.label;
-        const urls = Array.isArray(item.urls)
-          ? item.urls
-              .map((u) => (u || "").trim())
-              .filter(Boolean)
-              .map((u) => (u.toLowerCase().startsWith("http://") || u.toLowerCase().startsWith("https://") ? u : `https://${u}`))
-          : [];
-        const prompt =
-          urls.length > 0
-            ? `${promptBase}\n\nReference URLs:\n${urls.map((u) => `- ${u}`).join("\n")}\nUse these URLs when relevant in your answer.`
-            : promptBase;
-        const display = item.label || prompt;
-        sendMessageWithContent(prompt, display);
+        const display = item.label || promptBase;
+        sendMessageWithContent(promptBase, display, { suggestedMessageId: item.id });
         return;
       }
       if (item.type === "escalate") {
@@ -217,11 +245,11 @@
         return;
       }
       if (item.type === "show_menu") {
-        sendMessageWithContent(item.label || "Menu", item.label || "Menu");
+        sendMessageWithContent(item.label || "Menu", item.label || "Menu", { suggestedMessageId: item.id });
         return;
       }
       const content = item.message || item.label;
-      sendMessageWithContent(content, item.label || content);
+      sendMessageWithContent(content, item.label || content, { suggestedMessageId: item.id });
     });
     return btn;
   }
@@ -515,7 +543,7 @@
 
   function openEscalationModal() {
     if (!escalationsEnabled) {
-      appendBubble("Escalations are currently disabled.", "bot");
+      appendBubble(supportUi.disabled, "bot");
       return;
     }
     if (document.getElementById("escalation-modal")) return;
@@ -539,12 +567,12 @@
     card.style.boxShadow = "0 16px 40px rgba(0,0,0,0.25)";
 
     const title = document.createElement("div");
-    title.textContent = "Escalate to support";
+    title.textContent = supportUi.modalTitle;
     title.style.fontWeight = "600";
     title.style.marginBottom = "6px";
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = "Enter your email so support can reach you.";
+    subtitle.textContent = supportUi.modalSubtitle;
     subtitle.style.fontSize = "12px";
     subtitle.style.color = theme === "dark" ? "#94a3b8" : "#64748b";
     subtitle.style.marginBottom = "12px";
@@ -560,13 +588,13 @@
     inputEl.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
 
     const detailsLabel = document.createElement("div");
-    detailsLabel.textContent = "Details (optional)";
+    detailsLabel.textContent = supportUi.detailsLabel;
     detailsLabel.style.fontSize = "12px";
     detailsLabel.style.color = theme === "dark" ? "#94a3b8" : "#64748b";
     detailsLabel.style.marginTop = "10px";
 
     const detailsEl = document.createElement("textarea");
-    detailsEl.placeholder = "Tell us a bit more about your request (optional)";
+    detailsEl.placeholder = supportUi.detailsPlaceholder;
     detailsEl.rows = 3;
     detailsEl.style.width = "100%";
     detailsEl.style.padding = "10px 12px";
@@ -588,7 +616,7 @@
     actions.style.marginTop = "12px";
 
     const cancelBtn = document.createElement("button");
-    cancelBtn.textContent = "Cancel";
+    cancelBtn.textContent = supportUi.cancel;
     cancelBtn.style.flex = "1";
     cancelBtn.style.height = "36px";
     cancelBtn.style.borderRadius = "10px";
@@ -597,7 +625,7 @@
     cancelBtn.style.color = theme === "dark" ? "#e2e8f0" : "#0f172a";
 
     const submitBtn = document.createElement("button");
-    submitBtn.textContent = "Submit";
+    submitBtn.textContent = supportUi.submit;
     submitBtn.style.flex = "1";
     submitBtn.style.height = "36px";
     submitBtn.style.borderRadius = "10px";
@@ -609,7 +637,7 @@
     submitBtn.onclick = async () => {
       const email = (inputEl.value || "").trim();
       if (!email || email.indexOf("@") === -1) {
-        errorEl.textContent = "Please enter a valid email.";
+        errorEl.textContent = supportUi.invalidEmail;
         errorEl.style.display = "block";
         return;
       }
@@ -627,7 +655,7 @@
         );
         if (!resp.ok) {
           const data = await resp.json().catch(async () => ({ detail: await resp.text() }));
-          errorEl.textContent = data.detail || "Failed to submit escalation.";
+          errorEl.textContent = data.detail || supportUi.submitFailed;
           errorEl.style.display = "block";
           submitBtn.disabled = false;
           return;
@@ -637,9 +665,9 @@
         supportRequestSubmitted = true;
         renderQuickActions(true);
         overlay.remove();
-        appendBubble("Thanks! Support has been notified and will reach out soon.", "bot");
+        appendBubble(supportUi.submitSuccess, "bot");
       } catch (e) {
-        errorEl.textContent = "Failed to submit escalation.";
+        errorEl.textContent = supportUi.submitFailed;
         errorEl.style.display = "block";
         submitBtn.disabled = false;
       }
@@ -999,7 +1027,13 @@
     let pending = "";
     let ticking = false;
     let doneEvent = null;
-    const bubble = ensureStreamingBubble();
+    let bubble = null;
+    function ensureBubble() {
+      if (bubble) return bubble;
+      removeTypingBubble();
+      bubble = ensureStreamingBubble();
+      return bubble;
+    }
     const headerSession = resp.headers.get("x-conversation-id");
     if (headerSession) setSession(headerSession);
     function startTicker() {
@@ -1017,17 +1051,18 @@
             pending = pending.slice(STREAM_CHARS_PER_TICK);
           }
           text += slice;
-          setBubbleText(bubble, getVisibleStreamingText(text), "bot");
+          setBubbleText(ensureBubble(), getVisibleStreamingText(text), "bot");
           if (chat) chat.scrollTop = chat.scrollHeight;
           setTimeout(tick, STREAM_TICK_MS);
           return;
         }
         ticking = false;
         if (doneEvent) {
+          var finalBubble = ensureBubble();
           text = doneEvent.answer || text;
-          setBubbleText(bubble, text, "bot");
-          appendCitationsToBubble(bubble, doneEvent.citations || []);
-          appendAssetCardsToBubble(bubble, doneEvent.assets || []);
+          setBubbleText(finalBubble, text, "bot");
+          appendCitationsToBubble(finalBubble, doneEvent.citations || []);
+          appendAssetCardsToBubble(finalBubble, doneEvent.assets || []);
           if (chat) chat.scrollTop = chat.scrollHeight;
           doneEvent = null;
           botPending = false;
@@ -1063,7 +1098,7 @@
             if (evt.session_id) setSession(evt.session_id);
             startTicker();
           } else if (evt && evt.type === "error") {
-            setBubbleText(bubble, evt.message || "Request failed.", "bot");
+            setBubbleText(ensureBubble(), evt.message || "Request failed.", "bot");
           }
         }
         idx = buffer.indexOf("\n");
@@ -1074,10 +1109,11 @@
       return;
     }
     if (doneEvent) {
+      var doneBubble = ensureBubble();
       text = doneEvent.answer || text;
-      setBubbleText(bubble, text, "bot");
-      appendCitationsToBubble(bubble, doneEvent.citations || []);
-      appendAssetCardsToBubble(bubble, doneEvent.assets || []);
+      setBubbleText(doneBubble, text, "bot");
+      appendCitationsToBubble(doneBubble, doneEvent.citations || []);
+      appendAssetCardsToBubble(doneBubble, doneEvent.assets || []);
       if (chat) chat.scrollTop = chat.scrollHeight;
       botPending = false;
       hasBotReply = true;
@@ -1085,7 +1121,7 @@
     }
   }
 
-  async function sendMessageWithContent(messageText, displayText) {
+  async function sendMessageWithContent(messageText, displayText, options) {
     const msg = (messageText || "").trim();
     if (!msg) return;
     if (!pk) {
@@ -1102,15 +1138,21 @@
     appendTypingBubble();
     send.disabled = true;
 
-    try {
-      const resp = await fetch(`${apiBase}/v1/pk/${encodeURIComponent(pk)}/chat/stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg, site_url: siteUrl, site_title: siteTitle, session_id: sessionId || undefined }),
-      });
-      removeTypingBubble();
+      try {
+        const resp = await fetch(`${apiBase}/v1/pk/${encodeURIComponent(pk)}/chat/stream`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: msg,
+            site_url: siteUrl,
+            site_title: siteTitle,
+            session_id: sessionId || undefined,
+            suggested_message_id: options && options.suggestedMessageId ? options.suggestedMessageId : undefined,
+          }),
+        });
       const isStream = (resp.headers.get("content-type") || "").includes("application/x-ndjson");
       if (!resp.ok) {
+        removeTypingBubble();
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
         appendBubble(data.detail || data.answer || `Error (${resp.status})`, "bot");
         botPending = false;
@@ -1118,6 +1160,7 @@
       } else if (isStream) {
         await streamResponse(resp);
       } else {
+        removeTypingBubble();
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));
         if (data && data.session_id) setSession(data.session_id);
         updateSuggestedMessages(data && (data.suggested_messages || data.suggestedMessages));
