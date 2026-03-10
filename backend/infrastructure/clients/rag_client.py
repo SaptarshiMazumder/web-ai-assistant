@@ -44,6 +44,26 @@ MAX_SUBQUERIES    = 5
 MAX_STEPS         = 1          # keep 1 for simplicity; raise if you want re-plan loops
 ONESHOT_TOP_K     = 40         # broader recall for one-shot
 
+# Singleton genai client — avoids re-initializing vertexai + creating a new
+# HTTP client on every chat request.  Thread-safe: google.genai.Client reuses
+# an internal httpx connection pool.
+_genai_client: Optional[genai.Client] = None
+_vertexai_inited: bool = False
+
+
+def _get_genai_client() -> genai.Client:
+    """Return a reusable genai.Client, initialising vertexai once."""
+    global _genai_client, _vertexai_inited
+    if _genai_client is not None:
+        return _genai_client
+    if not PROJECT_ID:
+        raise RuntimeError("PROJECT_ID is not configured")
+    if not _vertexai_inited:
+        vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
+        _vertexai_inited = True
+    _genai_client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+    return _genai_client
+
 # =========================
 # Utilities
 # =========================
@@ -978,12 +998,9 @@ def run_vertex_rag(
             "genai_location": GENAI_LOCATION,
         }
     )
-    if not PROJECT_ID:
-        raise RuntimeError("PROJECT_ID is not configured")
     if not rag_corpus:
         raise RuntimeError("DEFAULT_RAG_CORPUS is not configured")
-    vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
-    client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+    client = _get_genai_client()
 
     sources: List[Dict[str, str]] = []
 
@@ -1124,12 +1141,9 @@ def run_vertex_rag_stream(
             "genai_location": GENAI_LOCATION,
         }
     )
-    if not PROJECT_ID:
-        raise RuntimeError("PROJECT_ID is not configured")
     if not rag_corpus:
         raise RuntimeError("DEFAULT_RAG_CORPUS is not configured")
-    vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
-    client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+    client = _get_genai_client()
 
     sources: List[Dict[str, str]] = []
 
@@ -1256,9 +1270,7 @@ def extract_topics_from_titles(titles: List[str]) -> Dict[str, int]:
         return {}
 
     try:
-        # We can reuse the same global client if we want, but creating a new one with correct vertexai init is safer
-        # to ensure context is clean if run outside the main app context (e.g. celery task).
-        client = genai.Client(vertexai=True, project=PROJECT_ID, location=GENAI_LOCATION)
+        client = _get_genai_client()
 
         # Cap to 500 items to be safe and efficient
         sample = titles[:500]

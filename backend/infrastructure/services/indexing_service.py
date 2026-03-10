@@ -1,8 +1,10 @@
 import asyncio
 import json
+import logging
 import os
 import sys
 import subprocess
+import time
 import uuid
 import re
 from dataclasses import dataclass, field
@@ -23,6 +25,11 @@ from infrastructure.db.repositories import (
 _bot_repo = PostgresBotRepository()
 _bot_domain_repo = PostgresBotDomainRepository()
 _bot_corpus_repo = PostgresBotCorpusRepository()
+
+# In-memory cache: bot_id -> (corpus_resource_name, timestamp)
+# Avoids a Vertex AI API call on every chat message just to verify the corpus exists.
+_corpus_cache: Dict[str, Tuple[str, float]] = {}
+_CORPUS_CACHE_TTL = 300  # 5 minutes
 
 
 @dataclass
@@ -165,8 +172,16 @@ def _is_not_found_error(exc: Exception) -> bool:
     return "404" in msg or "not_found" in msg or "not found" in msg
 
 
+def invalidate_corpus_cache(bot_id: str) -> None:
+    """Remove a bot's corpus from the in-memory cache (call after re-indexing)."""
+    _corpus_cache.pop(bot_id, None)
+
+
 def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
     """Ensure a RAG corpus exists for the bot, return corpus resource name.
+
+    Uses an in-memory cache (TTL 5 min) to skip the Vertex AI verification
+    call on repeated chat messages for the same bot.
 
     SAFETY: Only creates a new corpus if:
       - No corpus reference exists in the DB, OR
@@ -177,8 +192,15 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
     If retries are exhausted, the error is raised — we NEVER silently
     create a new empty corpus and lose the reference to indexed data.
     """
-    import logging
     _log = logging.getLogger("ensure_bot_corpus")
+
+    # Fast path: return cached corpus if still fresh and not forcing new.
+    if not force_new:
+        cached = _corpus_cache.get(bot_id)
+        if cached:
+            corpus_name, ts = cached
+            if time.time() - ts < _CORPUS_CACHE_TTL:
+                return corpus_name
 
     existing = _bot_corpus_repo.get_bot_corpus(bot_id)
 
@@ -192,6 +214,7 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
             try:
                 vertexai.init(project=config.PROJECT_ID, location=config.LOCATION)
                 vx_rag.get_corpus(existing)
+                _corpus_cache[bot_id] = (existing, time.time())
                 return existing  # ✅ Corpus exists and is accessible
             except Exception as exc:
                 last_err = exc
@@ -201,6 +224,7 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
                         "Corpus %s for bot %s was deleted (404). Will create a new one.",
                         existing, bot_id,
                     )
+                    invalidate_corpus_cache(bot_id)
                     break
                 # Transient error — retry
                 _log.warning(
@@ -209,7 +233,6 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
                     existing, bot_id, attempt, max_retries, exc,
                 )
                 if attempt < max_retries:
-                    import time
                     time.sleep(backoff)
                     backoff *= 2
         else:
@@ -238,6 +261,7 @@ def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:
         backend_config=vx_rag.RagVectorDbConfig(rag_embedding_model_config=emb_cfg),
     )
     _bot_corpus_repo.upsert_bot_corpus(bot_id, corpus.name)
+    _corpus_cache[bot_id] = (corpus.name, time.time())
     _log.info("Created new corpus %s for bot %s", corpus.name, bot_id)
     return corpus.name
 
