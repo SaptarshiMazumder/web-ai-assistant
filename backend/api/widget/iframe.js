@@ -1081,11 +1081,27 @@
     let ticking = false;
     let doneEvent = null;
     let bubble = null;
+    let finalized = false;
     function ensureBubble() {
       if (bubble) return bubble;
       removeTypingBubble();
       bubble = ensureStreamingBubble();
       return bubble;
+    }
+    function finalizeDoneEvent() {
+      if (finalized || !doneEvent) return;
+      finalized = true;
+      var evt = doneEvent;
+      doneEvent = null;
+      var finalBubble = ensureBubble();
+      text = evt.answer || text;
+      setBubbleText(finalBubble, text, "bot");
+      appendCitationsToBubble(finalBubble, evt.citations || []);
+      appendAssetCarouselRow(evt.assets || []);
+      if (chat) chat.scrollTop = chat.scrollHeight;
+      botPending = false;
+      hasBotReply = true;
+      renderQuickActions();
     }
     const headerSession = resp.headers.get("x-conversation-id");
     if (headerSession) setSession(headerSession);
@@ -1111,16 +1127,7 @@
         }
         ticking = false;
         if (doneEvent) {
-          var finalBubble = ensureBubble();
-          text = doneEvent.answer || text;
-          setBubbleText(finalBubble, text, "bot");
-          appendCitationsToBubble(finalBubble, doneEvent.citations || []);
-          appendAssetCarouselRow(doneEvent.assets || []);
-          if (chat) chat.scrollTop = chat.scrollHeight;
-          doneEvent = null;
-          botPending = false;
-          hasBotReply = true;
-          renderQuickActions();
+          finalizeDoneEvent();
         }
       };
       setTimeout(tick, STREAM_TICK_MS);
@@ -1161,16 +1168,8 @@
       startTicker();
       return;
     }
-    if (doneEvent) {
-      var doneBubble = ensureBubble();
-      text = doneEvent.answer || text;
-      setBubbleText(doneBubble, text, "bot");
-      appendCitationsToBubble(doneBubble, doneEvent.citations || []);
-      appendAssetCarouselRow(doneEvent.assets || []);
-      if (chat) chat.scrollTop = chat.scrollHeight;
-      botPending = false;
-      hasBotReply = true;
-      renderQuickActions();
+    if (doneEvent && !finalized) {
+      startTicker();
     }
   }
 

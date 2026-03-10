@@ -217,6 +217,10 @@ def _max_cards_for_query(
         msg = f"[AssetMenuTrace] _max_cards_for_query=0: explicit_visual={explicit_visual} intent_in_answer={intent_in_answer} card_match={card_match} answer_preview={(answer_norm or '')[:120]!r}"
         logger.info(msg)
         _trace_stdout(msg)
+        # If we already have matched cards, keep a small default set instead
+        # of dropping the carousel completely.
+        if cards:
+            return _MAX_ASSET_CARDS_PER_ANSWER
         return 0
 
     explicit_many = explicit_visual and (
@@ -731,6 +735,8 @@ def resolve_asset_markers(
             
     # Apply session-based deduplication
     final_cards = _filter_and_record_session_assets(unique_cards, bot_id, session_id)
+    if unique_cards and not final_cards:
+        final_cards = unique_cards
 
     return sanitize_answer_for_display(cleaned_answer), final_cards[:_GLOBAL_ASSET_CARD_LIMIT]
 
@@ -808,7 +814,9 @@ def process_answer_assets(
 
     sid = (session_id or "").strip()
     if sid and cards:
-        cards = _filter_and_record_session_assets(cards, bot_id, sid)
+        deduped_cards = _filter_and_record_session_assets(cards, bot_id, sid)
+        if deduped_cards:
+            cards = deduped_cards
 
     limit = min(max_cards_for_query, _ASSET_BANK_LIMIT, _GLOBAL_ASSET_CARD_LIMIT)
     cards = cards[:limit]
