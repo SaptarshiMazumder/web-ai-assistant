@@ -184,7 +184,7 @@ function normalize(value: unknown): string {
 
 function formatStepId(stepId: string): string {
   const raw = String(stepId || '').trim()
-  if (!raw) return 'Workflow step'
+  if (!raw) return 'Training in progress'
   return raw
     .split('_')
     .filter(Boolean)
@@ -196,8 +196,10 @@ function stepLabel(stepId: string): { key: string; fallback: string } {
   const key = normalize(stepId)
   const found = STEP_LABELS[key]
   if (found) return found
+  const safeDynamicKey = key.replace(/[^a-z0-9_]/g, '_') || 'unknown'
   return {
-    key: 'botKnowledge.progressStepGeneric',
+    // Use a non-existent dynamic key so i18n falls back to the readable step text.
+    key: `botKnowledge.progressStepDynamic.${safeDynamicKey}`,
     fallback: formatStepId(stepId),
   }
 }

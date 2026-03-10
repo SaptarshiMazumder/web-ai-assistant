@@ -35,10 +35,14 @@ def _trace_stdout(msg: str) -> None:
 
 
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
-_MAX_ASSET_CARDS_PER_ANSWER = max(1, min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "3")), 5))
+_GLOBAL_ASSET_CARD_LIMIT = 6
+_MAX_ASSET_CARDS_PER_ANSWER = max(
+    1,
+    min(int(os.environ.get("ASSET_MAX_CARDS_PER_ANSWER", "3")), _GLOBAL_ASSET_CARD_LIMIT),
+)
 _MAX_ASSET_CARDS_EXPLICIT_REQUEST = max(
     _MAX_ASSET_CARDS_PER_ANSWER,
-    min(int(os.environ.get("ASSET_MAX_CARDS_EXPLICIT_REQUEST", "6")), 8),
+    min(int(os.environ.get("ASSET_MAX_CARDS_EXPLICIT_REQUEST", "6")), _GLOBAL_ASSET_CARD_LIMIT),
 )
 _ASSET_MATCH_CANDIDATE_POOL = max(
     _MAX_ASSET_CARDS_EXPLICIT_REQUEST * 5,
@@ -728,7 +732,7 @@ def resolve_asset_markers(
     # Apply session-based deduplication
     final_cards = _filter_and_record_session_assets(unique_cards, bot_id, session_id)
 
-    return sanitize_answer_for_display(cleaned_answer), final_cards
+    return sanitize_answer_for_display(cleaned_answer), final_cards[:_GLOBAL_ASSET_CARD_LIMIT]
 
 
 def process_answer_assets(
@@ -805,8 +809,14 @@ def process_answer_assets(
     sid = (session_id or "").strip()
     if sid and cards:
         cards = _filter_and_record_session_assets(cards, bot_id, sid)
-    final_count = len(cards[:_ASSET_BANK_LIMIT])
-    msg = f"[AssetMenuTrace] process_answer_assets bot={bot_id} user_query={user_query!r}: final_cards={final_count} (marker={marker_count} name_matched={len(name_matched)})"
+
+    limit = min(max_cards_for_query, _ASSET_BANK_LIMIT, _GLOBAL_ASSET_CARD_LIMIT)
+    cards = cards[:limit]
+    final_count = len(cards)
+    msg = (
+        f"[AssetMenuTrace] process_answer_assets bot={bot_id} user_query={user_query!r}: "
+        f"final_cards={final_count} limit={limit} (marker={marker_count} name_matched={len(name_matched)})"
+    )
     logger.info(msg)
     _trace_stdout(msg)
-    return sanitize_answer_for_display(cleaned), cards[:_ASSET_BANK_LIMIT]
+    return sanitize_answer_for_display(cleaned), cards

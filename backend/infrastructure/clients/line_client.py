@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 LINE_API_BASE = "https://api.line.me/v2/bot"
 LINE_API_DATA = "https://api-data.line.me/v2/bot"
+MAX_ASSET_CAROUSEL_CARDS = 6
 
 # Menu flow (matches Instagram) — from config
 from domain.platform_profiles import get_line_menu_quick_payload, get_line_menu_page_payload_prefix
@@ -256,7 +257,7 @@ async def reply_message(
     # 2. Asset Carousel (skip cards with invalid/empty image URLs — LINE rejects them)
     if asset_cards:
         bubbles = []
-        valid_cards = [c for c in asset_cards[:12] if _is_valid_image_url(c.get("image_url"))]
+        valid_cards = [c for c in asset_cards[:MAX_ASSET_CAROUSEL_CARDS] if _is_valid_image_url(c.get("image_url"))]
         for card in valid_cards:
             bubbles.append(
                 _create_image_bubble(
@@ -330,7 +331,7 @@ async def push_message(
 
     if asset_cards:
         bubbles = []
-        valid_cards = [c for c in asset_cards[:12] if _is_valid_image_url(c.get("image_url"))]
+        valid_cards = [c for c in asset_cards[:MAX_ASSET_CAROUSEL_CARDS] if _is_valid_image_url(c.get("image_url"))]
         for card in valid_cards:
             bubbles.append(
                 _create_image_bubble(

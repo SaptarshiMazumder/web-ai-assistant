@@ -380,52 +380,134 @@
         background-color: rgba(100, 116, 139, 0.65);
       }
 
-      /* Asset cards */
-      .asset-cards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+      /* Asset carousel */
+      .message-row.asset-row {
+        margin-top: -6px;
+      }
+      .asset-carousel-wrap {
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - 38px);
+      }
+      .asset-carousel {
+        position: relative;
+        margin: 0;
+      }
+      .asset-cards {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 0 8px 0;
+      }
+      .asset-cards::-webkit-scrollbar { display: none; }
       .asset-card {
-        border-radius: 10px;
+        flex: 0 0 200px;
+        min-width: 200px;
+        max-width: 200px;
+        border-radius: 12px;
         overflow: hidden;
         border: 1px solid #e2e8f0;
         background: #ffffff;
         cursor: pointer;
-        transition: box-shadow 0.2s ease;
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+        scroll-snap-align: start;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       }
-      .asset-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      .asset-card:hover {
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+      }
       .asset-card img {
         width: 100%;
-        height: auto;
-        max-height: 180px;
+        height: 140px;
         object-fit: cover;
         display: block;
       }
       .asset-card-body {
-        padding: 8px 12px;
+        padding: 10px 12px;
         display: flex;
         flex-direction: column;
-        gap: 2px;
-      }
-      .asset-card-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        gap: 4px;
       }
       .asset-card-title {
         font-size: 13px;
         font-weight: 600;
         color: #334155;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
       .asset-card-desc {
-        font-size: 12px;
+        font-size: 11px;
         color: #64748b;
         line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
       .asset-card-link {
-        font-size: 12px;
+        font-size: 11px;
+        font-weight: 500;
         color: var(--widget-color);
         text-decoration: none;
         white-space: nowrap;
+        margin-top: 2px;
       }
       .asset-card-link:hover { text-decoration: underline; }
+      /* Carousel nav buttons */
+      .carousel-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255,255,255,0.92);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        padding: 0;
+      }
+      .asset-carousel:hover .carousel-btn { opacity: 1; }
+      .carousel-btn:hover { background: #fff; box-shadow: 0 3px 12px rgba(0,0,0,0.2); }
+      .carousel-btn.prev { left: 4px; }
+      .carousel-btn.next { right: 4px; }
+      .carousel-btn svg { width: 14px; height: 14px; stroke: #334155; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+      .carousel-btn:disabled { opacity: 0 !important; pointer-events: none; }
+      /* Dots */
+      .carousel-dots {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        padding: 4px 0 2px;
+      }
+      .carousel-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #cbd5e1;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+      .carousel-dot.active {
+        background: var(--widget-color, #6366f1);
+        transform: scale(1.25);
+      }
 
       [data-theme="dark"] .chat { background: #1e293b; }
       [data-theme="dark"] .wrap { background: #1e293b; }
@@ -439,9 +521,14 @@
       [data-theme="dark"] .chat { scrollbar-color: rgba(148, 163, 184, 0.5) transparent; }
       [data-theme="dark"] .chat::-webkit-scrollbar-thumb { background-color: rgba(148, 163, 184, 0.45); }
       [data-theme="dark"] .chat::-webkit-scrollbar-thumb:hover { background-color: rgba(148, 163, 184, 0.65); }
-      [data-theme="dark"] .asset-card { border-color: #475569; background: #1e293b; }
+      [data-theme="dark"] .asset-card { border-color: #475569; background: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+      [data-theme="dark"] .asset-card:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
       [data-theme="dark"] .asset-card-title { color: #e2e8f0; }
       [data-theme="dark"] .asset-card-desc { color: #94a3b8; }
+      [data-theme="dark"] .carousel-btn { background: rgba(30,41,59,0.92); }
+      [data-theme="dark"] .carousel-btn:hover { background: #334155; }
+      [data-theme="dark"] .carousel-btn svg { stroke: #e2e8f0; }
+      [data-theme="dark"] .carousel-dot { background: #475569; }
     </style>
   </head>
 
@@ -478,7 +565,7 @@
       </div>
       <div id="footer" class="footer-msg"></div>
     </div>
-    <script src="./iframe.js"></script>
+    <script src="./iframe.js?v=2026-03-10-carousel-row-v2"></script>
   </body>
 
 </html>

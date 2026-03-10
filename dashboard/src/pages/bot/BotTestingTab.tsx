@@ -8,6 +8,7 @@ import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 import { useDialog } from '../../contexts/DialogContext'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
+const TESTING_WIDGET_PREVIEW_VERSION = '2026-03-10-carousel-row-v2'
 const DEFAULT_PERSONA_ID = 'default-assistant'
 const LEGACY_DEFAULT_INSTRUCTIONS = `## Role
 You are a friendly and helpful AI chatbot who helps users with their inquiries, issues, and requests. Listen attentively, understand their needs, and assist them using the information provided. If a question is unclear, ask clarifying questions. End replies with a positive note.
@@ -116,16 +117,34 @@ function buildWidgetIframeSrc(
   params.set('apiBase', API_BASE)
   params.set('siteUrl', siteUrl)
   params.set('siteTitle', siteTitle)
-  const merged = widgetConfig && typeof widgetConfig === 'object' ? { ...widgetConfig } : {}
+  // Force fresh iframe/html/js in Testing tab after widget renderer updates.
+  params.set('_preview_v', TESTING_WIDGET_PREVIEW_VERSION)
+  const merged: Record<string, unknown> = widgetConfig && typeof widgetConfig === 'object' ? { ...widgetConfig } : {}
+  if (typeof merged.escalationsEnabled === 'undefined') {
+    merged.escalationsEnabled = true
+  }
+  const availabilityCheckEnabled = merged.businessType === 'hotel' && merged.allowRealtimeAvailability === true
+  params.set('availabilityCheckEnabled', availabilityCheckEnabled ? 'true' : 'false')
   for (const key of Object.keys(merged)) {
     const v = merged[key]
-    if (v !== undefined && v !== null && v !== '') {
-      if (key === 'suggestedMessages' && Array.isArray(v)) {
+    if (v === undefined || v === null || v === '') continue
+    if (key === 'suggestedMessages' && Array.isArray(v)) {
+      try {
         params.set('suggestedMessages', JSON.stringify(v))
-      } else {
-        params.set(key, String(v))
+      } catch {
+        // ignore invalid suggestion payloads and continue
       }
+      continue
     }
+    if (key === 'supportMessages' && typeof v === 'object') {
+      try {
+        params.set('supportMessages', JSON.stringify(v))
+      } catch {
+        // ignore invalid support payloads and continue
+      }
+      continue
+    }
+    params.set(key, String(v))
   }
   return `${API_BASE}/widget/iframe.html?${params.toString()}`
 }
@@ -189,6 +208,7 @@ export default function BotTestingTab() {
   const [configLoading, setConfigLoading] = useState(true)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [resolvedWidgetConfig, setResolvedWidgetConfig] = useState<Record<string, unknown> | null>(null)
   const [availabilityUrl, setAvailabilityUrl] = useState('')
   const [checkIn, setCheckIn] = useState('')
   const [checkOut, setCheckOut] = useState('')
@@ -256,15 +276,42 @@ export default function BotTestingTab() {
     if (url) setAvailabilityUrl((prev) => prev || url.trim())
   }, [availabilityUrl, siteUrl, selectedBotWidgetConfig])
 
+  // Use the same public widget config source as the live embed loader (widget.js).
+  useEffect(() => {
+    let cancelled = false
+    const publishableKey = selectedBot?.publishable_key
+    if (!publishableKey) {
+      setResolvedWidgetConfig(null)
+      return
+    }
+    void (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/v1/pk/${encodeURIComponent(publishableKey)}/widget-config`)
+        const data = res.ok ? await res.json() : {}
+        if (!cancelled) {
+          setResolvedWidgetConfig(data && typeof data === 'object' ? (data as Record<string, unknown>) : {})
+        }
+      } catch {
+        if (!cancelled) {
+          setResolvedWidgetConfig(selectedBotWidgetConfig ?? null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBot?.publishable_key, selectedBotWidgetConfig])
+
   const widgetIframeSrc = useMemo(() => {
     if (!selectedBot?.publishable_key) return ''
+    const configForPreview = resolvedWidgetConfig ?? selectedBotWidgetConfig ?? null
     return buildWidgetIframeSrc(
       selectedBot.publishable_key,
-      selectedBotWidgetConfig ?? null,
+      configForPreview,
       siteUrl,
       siteTitle
     )
-  }, [selectedBot?.publishable_key, selectedBotWidgetConfig, siteUrl, siteTitle])
+  }, [selectedBot?.publishable_key, resolvedWidgetConfig, selectedBotWidgetConfig, siteUrl, siteTitle])
 
   const widgetSize = (selectedBotWidgetConfig?.size as 'small' | 'medium' | 'large') || 'medium'
   const widgetDims = WIDGET_SIZE_DIMENSIONS[widgetSize] ?? WIDGET_SIZE_DIMENSIONS.medium

@@ -954,10 +954,23 @@
     bubble.appendChild(meta);
   }
 
-  function appendAssetCardsToBubble(bubble, assets) {
+  function appendAssetCarouselRow(assets) {
     if (!assets || !assets.length) return;
-    var wrap = document.createElement("div");
-    wrap.className = "asset-cards";
+    hideWelcome();
+
+    var rowDiv = document.createElement("div");
+    rowDiv.className = "message-row asset-row";
+    rowDiv.appendChild(botAvatarEl());
+
+    var container = document.createElement("div");
+    container.className = "asset-carousel-wrap";
+
+    var carousel = document.createElement("div");
+    carousel.className = "asset-carousel";
+
+    var track = document.createElement("div");
+    track.className = "asset-cards";
+
     assets.forEach(function (a) {
       var card = document.createElement("div");
       card.className = "asset-card";
@@ -968,15 +981,20 @@
       img.src = a.image_url || "";
       img.alt = a.name || "";
       img.loading = "lazy";
+      img.onerror = function () { img.style.display = "none"; };
       card.appendChild(img);
       var body = document.createElement("div");
       body.className = "asset-card-body";
-      var topRow = document.createElement("div");
-      topRow.className = "asset-card-top";
       var title = document.createElement("span");
       title.className = "asset-card-title";
       title.textContent = a.name || "";
-      topRow.appendChild(title);
+      body.appendChild(title);
+      if (a.description) {
+        var desc = document.createElement("span");
+        desc.className = "asset-card-desc";
+        desc.textContent = a.description;
+        body.appendChild(desc);
+      }
       if (a.link_url) {
         var link = document.createElement("a");
         link.className = "asset-card-link";
@@ -985,19 +1003,67 @@
         link.rel = "noopener noreferrer";
         link.textContent = "View \u2192";
         link.onclick = function (e) { e.stopPropagation(); };
-        topRow.appendChild(link);
-      }
-      body.appendChild(topRow);
-      if (a.description) {
-        var desc = document.createElement("span");
-        desc.className = "asset-card-desc";
-        desc.textContent = a.description;
-        body.appendChild(desc);
+        body.appendChild(link);
       }
       card.appendChild(body);
-      wrap.appendChild(card);
+      track.appendChild(card);
     });
-    bubble.appendChild(wrap);
+
+    carousel.appendChild(track);
+
+    // Nav buttons (only if more than 1 card)
+    if (assets.length > 1) {
+      var prevBtn = document.createElement("button");
+      prevBtn.className = "carousel-btn prev";
+      prevBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
+      prevBtn.onclick = function (e) { e.stopPropagation(); track.scrollBy({ left: -210, behavior: "smooth" }); };
+
+      var nextBtn = document.createElement("button");
+      nextBtn.className = "carousel-btn next";
+      nextBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>';
+      nextBtn.onclick = function (e) { e.stopPropagation(); track.scrollBy({ left: 210, behavior: "smooth" }); };
+
+      carousel.appendChild(prevBtn);
+      carousel.appendChild(nextBtn);
+
+      // Dots
+      var dots = document.createElement("div");
+      dots.className = "carousel-dots";
+      var dotEls = [];
+      assets.forEach(function (_a, i) {
+        var dot = document.createElement("button");
+        dot.className = "carousel-dot" + (i === 0 ? " active" : "");
+        dot.onclick = function (e) {
+          e.stopPropagation();
+          var cards = track.children;
+          if (cards[i]) cards[i].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+        };
+        dotEls.push(dot);
+        dots.appendChild(dot);
+      });
+      carousel.appendChild(dots);
+
+      // Update dots + button state on scroll
+      var updateControls = function () {
+        var sl = track.scrollLeft;
+        var maxScroll = track.scrollWidth - track.clientWidth;
+        prevBtn.disabled = sl <= 2;
+        nextBtn.disabled = sl >= maxScroll - 2;
+        var cardW = 210; // card width + gap
+        var activeIdx = Math.round(sl / cardW);
+        dotEls.forEach(function (d, i) {
+          d.classList.toggle("active", i === activeIdx);
+        });
+      };
+      track.addEventListener("scroll", updateControls, { passive: true });
+      // Initial state
+      setTimeout(updateControls, 50);
+    }
+
+    container.appendChild(carousel);
+    rowDiv.appendChild(container);
+    if (messagesEl) messagesEl.appendChild(rowDiv);
+    if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
   const STREAM_TICK_MS = 16;
@@ -1049,7 +1115,7 @@
           text = doneEvent.answer || text;
           setBubbleText(finalBubble, text, "bot");
           appendCitationsToBubble(finalBubble, doneEvent.citations || []);
-          appendAssetCardsToBubble(finalBubble, doneEvent.assets || []);
+          appendAssetCarouselRow(doneEvent.assets || []);
           if (chat) chat.scrollTop = chat.scrollHeight;
           doneEvent = null;
           botPending = false;
@@ -1100,7 +1166,7 @@
       text = doneEvent.answer || text;
       setBubbleText(doneBubble, text, "bot");
       appendCitationsToBubble(doneBubble, doneEvent.citations || []);
-      appendAssetCardsToBubble(doneBubble, doneEvent.assets || []);
+      appendAssetCarouselRow(doneEvent.assets || []);
       if (chat) chat.scrollTop = chat.scrollHeight;
       botPending = false;
       hasBotReply = true;
@@ -1152,6 +1218,7 @@
         if (data && data.session_id) setSession(data.session_id);
         updateSuggestedMessages(data && (data.suggested_messages || data.suggestedMessages));
         appendBubble(data.answer || "", "bot", data.citations || []);
+        appendAssetCarouselRow(data && (data.assets || data.asset_cards || []));
         botPending = false;
         renderQuickActions();
       }

@@ -619,15 +619,18 @@ _SCHEMA_SQL: Iterable[str] = (
       contact_id, bot_id, channel, external_user_id, display_name, current_session_id, created_at, updated_at
     )
     SELECT
-      'cc_' || md5(bot_id || ':line:' || line_user_id),
-      bot_id,
+      'cc_' || md5(
+        lus.bot_id || ':line:' || lus.line_user_id || ':' || lus.session_id || ':' ||
+        clock_timestamp()::text || ':' || random()::text
+      ),
+      lus.bot_id,
       'line',
-      line_user_id,
-      display_name,
-      session_id,
-      created_at,
-      updated_at
-    FROM line_user_sessions
+      lus.line_user_id,
+      lus.display_name,
+      lus.session_id,
+      lus.created_at,
+      lus.updated_at
+    FROM line_user_sessions lus
     ON CONFLICT (bot_id, channel, external_user_id)
     DO UPDATE SET
       display_name = COALESCE(EXCLUDED.display_name, conversation_channel_contacts.display_name),
@@ -639,15 +642,18 @@ _SCHEMA_SQL: Iterable[str] = (
       contact_id, bot_id, channel, external_user_id, display_name, current_session_id, created_at, updated_at
     )
     SELECT
-      'cc_' || md5(bot_id || ':instagram:' || ig_user_id),
-      bot_id,
+      'cc_' || md5(
+        ius.bot_id || ':instagram:' || ius.ig_user_id || ':' || ius.session_id || ':' ||
+        clock_timestamp()::text || ':' || random()::text
+      ),
+      ius.bot_id,
       'instagram',
-      ig_user_id,
+      ius.ig_user_id,
       NULL,
-      session_id,
-      created_at,
-      updated_at
-    FROM instagram_user_sessions
+      ius.session_id,
+      ius.created_at,
+      ius.updated_at
+    FROM instagram_user_sessions ius
     ON CONFLICT (bot_id, channel, external_user_id)
     DO UPDATE SET
       current_session_id = COALESCE(EXCLUDED.current_session_id, conversation_channel_contacts.current_session_id),
@@ -733,8 +739,17 @@ def _ensure_schema(con: "Connection") -> None:
     if _SCHEMA_INITIALIZED:
         return
     with con.cursor() as cur:
-        for stmt in _SCHEMA_SQL:
-            cur.execute(stmt)
+        for idx, stmt in enumerate(_SCHEMA_SQL, start=1):
+            try:
+                cur.execute(stmt)
+            except Exception as exc:
+                con.rollback()
+                snippet = " ".join(stmt.split())
+                if len(snippet) > 220:
+                    snippet = f"{snippet[:217]}..."
+                raise RuntimeError(
+                    f"Schema bootstrap failed at statement #{idx}: {snippet}"
+                ) from exc
     con.commit()
     _SCHEMA_INITIALIZED = True
 

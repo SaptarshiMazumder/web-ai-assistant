@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useDashboardData, type LineChannelTestResult } from '../../hooks/useDashboardData'
 import { useTranslation } from 'react-i18next'
 import {
   Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2,
-  Trash2, Zap, MessageCircle, ChevronLeft, ChevronRight, RefreshCw,
+  Trash2, Zap, MessageCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { AnimatedPage, SectionHeader, UiButton, GlassCard, GlassField } from '../../components/ui'
 import { useDialog } from '../../contexts/DialogContext'
@@ -30,7 +30,7 @@ const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_B
 const LINE_GREEN = '#06c755'
 const LINE_GRADIENT = 'linear-gradient(135deg, #06c755 0%, #00b140 100%)'
 
-/* ─── Progress Bar (for the 5 card steps only, excludes Get Started) ─── */
+/* â”€â”€â”€ Progress Bar (for the 5 card steps only, excludes Get Started) â”€â”€â”€ */
 function StepProgress({
   current,
   total,
@@ -84,14 +84,14 @@ export default function BotLineSettingsTab() {
   const isJa = lang.startsWith('ja') || lang.startsWith('jp')
   const tr = (en: string, ja: string) => (isJa ? ja : en)
   const cardStepLabels = [
-    tr('Enable API', 'APIを有効化'),
-    tr('Auto-reply', '自動返信'),
-    tr('Credentials', '認証情報'),
+    tr('Enable API', 'APIã‚’æœ‰åŠ¹åŒ–'),
+    tr('Auto-reply', 'è‡ªå‹•è¿”ä¿¡'),
+    tr('Credentials', 'èªè¨¼æƒ…å ±'),
     tr('Webhook', 'Webhook'),
-    tr('Connect', '接続'),
+    tr('Connect', 'æŽ¥ç¶š'),
   ]
   const getProgressText = (step: number, totalSteps: number, currentLabel: string) =>
-    isJa ? `ステップ ${step}/${totalSteps} - ${currentLabel}` : `Step ${step} of ${totalSteps} - ${currentLabel}`
+    isJa ? `ã‚¹ãƒ†ãƒƒãƒ— ${step}/${totalSteps} - ${currentLabel}` : `Step ${step} of ${totalSteps} - ${currentLabel}`
 
   const [lineChannelId, setLineChannelId] = useState('')
   const [lineChannelSecret, setLineChannelSecret] = useState('')
@@ -101,7 +101,6 @@ export default function BotLineSettingsTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [resyncing, setResyncing] = useState(false)
   const [testResult, setTestResult] = useState<LineChannelTestResult | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -195,9 +194,9 @@ export default function BotLineSettingsTab() {
         line_channel_access_token: lineAccessToken.trim(),
         is_active: isActive,
       }
-      if (!body.line_channel_id) throw new Error(tr('Channel ID is required', 'チャネルIDは必須です'))
+      if (!body.line_channel_id) throw new Error(tr('Channel ID is required', 'ãƒãƒ£ãƒãƒ«IDã¯å¿…é ˆã§ã™'))
       if (!existing && (!body.line_channel_secret || !body.line_channel_access_token)) {
-        throw new Error(tr('Channel Secret and Access Token are required for initial setup', '初期設定にはChannel SecretとAccess Tokenが必要です'))
+        throw new Error(tr('Channel Secret and Access Token are required for initial setup', 'åˆæœŸè¨­å®šã«ã¯Channel Secretã¨Access TokenãŒå¿…è¦ã§ã™'))
       }
       const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel`, {
         method: 'PUT',
@@ -213,7 +212,7 @@ export default function BotLineSettingsTab() {
       setLineAccessToken('')
       await fetchLineAccountInfo(false)
       setCurrentStep(0)
-      setSuccess(tr('Connected! Your bot is live on LINE.', '接続完了。ボットはLINEで稼働中です。'))
+      setSuccess(tr('Connected! Your bot is live on LINE.', 'æŽ¥ç¶šå®Œäº†ã€‚ãƒœãƒƒãƒˆã¯LINEã§ç¨¼åƒä¸­ã§ã™ã€‚'))
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -231,9 +230,9 @@ export default function BotLineSettingsTab() {
   async function handleDelete() {
     if (!botId) return
     const confirmed = await dialog.confirm({
-      title: tr('Disconnect LINE integration? Your bot will stop responding on LINE.', 'LINE連携を解除しますか？ボットはLINEで返信しなくなります。'),
-      confirmLabel: tr('Disconnect', '連携解除'),
-      cancelLabel: tr('Cancel', 'キャンセル'),
+      title: tr('Disconnect LINE integration? Your bot will stop responding on LINE.', 'LINEé€£æºã‚’è§£é™¤ã—ã¾ã™ã‹ï¼Ÿãƒœãƒƒãƒˆã¯LINEã§è¿”ä¿¡ã—ãªããªã‚Šã¾ã™ã€‚'),
+      confirmLabel: tr('Disconnect', 'é€£æºè§£é™¤'),
+      cancelLabel: tr('Cancel', 'ã‚­ãƒ£ãƒ³ã‚»ãƒ«'),
       tone: 'danger',
     })
     if (!confirmed) return
@@ -256,7 +255,7 @@ export default function BotLineSettingsTab() {
       setApiEnabled(false)
       setWebhookSet(false)
       setAutoReplyOff(false)
-      setSuccess(tr('LINE integration disconnected.', 'LINE連携を解除しました。'))
+      setSuccess(tr('LINE integration disconnected.', 'LINEé€£æºã‚’è§£é™¤ã—ã¾ã—ãŸã€‚'))
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -317,32 +316,7 @@ export default function BotLineSettingsTab() {
   }
 
   if (!selectedBot || !botId) {
-    return <div className="empty-panel">{tr('Select a bot to configure LINE integration.', 'LINE連携を設定するボットを選択してください。')}</div>
-  }
-
-  async function handleResyncMenu() {
-    if (!botId) return
-    setResyncing(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const resp = await authedFetch(`/v1/org/bots/${botId}/line-channel/rich-menu/resync`, { method: 'POST' })
-      if (!resp.ok) {
-        const data = await resp.json().catch(() => ({}))
-        throw new Error((data as { detail?: string }).detail || resp.statusText)
-      }
-      const data = (await resp.json()) as LineChannelConfig
-      setExisting(data)
-      if (data.rich_menu_sync_status === 'error') {
-        setError(data.rich_menu_last_error || tr('LINE menu sync failed.', 'LINEメニューの同期に失敗しました。'))
-      } else {
-        setSuccess(tr('Managed LINE menu resynced.', 'LINEリッチメニューを再同期しました。'))
-      }
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setResyncing(false)
-    }
+    return <div className="empty-panel">{tr('Select a bot to configure LINE integration.', 'LINEé€£æºã‚’è¨­å®šã™ã‚‹ãƒœãƒƒãƒˆã‚’é¸æŠžã—ã¦ãã ã•ã„ã€‚')}</div>
   }
 
   if (loading) {
@@ -350,40 +324,20 @@ export default function BotLineSettingsTab() {
       <AnimatedPage className="page-body">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '0.75rem', color: 'var(--text-secondary)' }}>
           <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-          {tr('Loading LINE settings...', 'LINE設定を読み込み中...')}
+          {tr('Loading LINE settings...', 'LINEè¨­å®šã‚’èª­ã¿è¾¼ã¿ä¸­...')}
         </div>
       </AnimatedPage>
     )
   }
 
-  /* ═══════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      Connected View
-     ═══════════════════════════════════════════════════════════════ */
-  const richMenuStatus = existing?.rich_menu_sync_status || 'pending'
-  const richMenuStatusLabel = (() => {
-    switch (richMenuStatus) {
-      case 'synced':
-        return tr('Synced', '同期済み')
-      case 'syncing':
-        return tr('Syncing', '同期中')
-      case 'inactive':
-        return tr('Inactive', '停止中')
-      case 'no_actions':
-        return tr('No actions', '項目なし')
-      case 'error':
-        return tr('Error', 'エラー')
-      default:
-        return tr('Pending', '保留中')
-    }
-  })()
-  const richMenuStatusColor = richMenuStatus === 'synced'
-    ? '#27ae60'
-    : richMenuStatus === 'error'
-      ? '#e74c3c'
-      : 'var(--text-secondary)'
-  const richMenuVariantCount = Object.keys(existing?.rich_menu_variants || {}).length
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   const lineAccountName = testResult?.display_name || testResult?.basic_id || existing?.line_channel_id || lineChannelId.trim()
   const lineAccountPictureUrl = testResult?.picture_url || null
+  const connectedDateLabel = existing?.created_at
+    ? new Date(existing.created_at).toLocaleDateString(isJa ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : tr('Not available', 'Not available')
 
   function renderLineAccountCard(
     title: string,
@@ -454,11 +408,11 @@ export default function BotLineSettingsTab() {
         <div style={{ display: 'grid', gap: '0.45rem', fontSize: compact ? '0.83rem' : '0.88rem', color: textColor }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
             <span style={{ color: mutedColor }}>{tr('Basic ID', 'Basic ID')}</span>
-            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{testResult?.basic_id || tr('Not available', '未取得')}</span>
+            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{testResult?.basic_id || tr('Not available', 'æœªå–å¾—')}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-            <span style={{ color: mutedColor }}>{tr('Channel ID', 'チャネルID')}</span>
-            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{existing?.line_channel_id || lineChannelId.trim() || tr('Not available', '未取得')}</span>
+            <span style={{ color: mutedColor }}>{tr('Channel ID', 'ãƒãƒ£ãƒãƒ«ID')}</span>
+            <span style={{ fontWeight: 600, wordBreak: 'break-all', textAlign: 'right' }}>{existing?.line_channel_id || lineChannelId.trim() || tr('Not available', 'æœªå–å¾—')}</span>
           </div>
         </div>
       </div>
@@ -469,9 +423,9 @@ export default function BotLineSettingsTab() {
     return (
       <AnimatedPage className="page-body">
         <SectionHeader
-          eyebrow={tr('Integrations', '連携')}
-          title={tr('LINE channel', 'LINEチャンネル')}
-          subtitle={tr('Your bot is live and responding to messages on LINE.', 'ボットはLINEメッセージに自動返信中です。')}
+          eyebrow={tr('Integrations', 'é€£æº')}
+          title={tr('LINE channel', 'LINEãƒãƒ£ãƒ³ãƒãƒ«')}
+          subtitle={tr('Your bot is live and responding to messages on LINE.', 'ãƒœãƒƒãƒˆã¯LINEãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã«è‡ªå‹•è¿”ä¿¡ä¸­ã§ã™ã€‚')}
         />
 
         {/* Status Hero */}
@@ -520,41 +474,17 @@ export default function BotLineSettingsTab() {
               )}
               <div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem' }}>
-                  {tr('Connected & Active', '接続済み・有効')}
+                  {existing.is_active ? tr('Connected & Active', 'Connected & Active') : tr('Connected & Paused', 'Connected & Paused')}
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', fontWeight: 500 }}>
+                <div style={{ color: 'rgba(255,255,255,0.92)', fontSize: '1rem', fontWeight: 700, lineHeight: 1.25, wordBreak: 'break-word' }}>
                   {lineAccountName}
-                  {testResult?.basic_id ? (
-                    <>
-                      {' '}·{' '}
-                      <span>{testResult.basic_id}</span>
-                    </>
-                  ) : null}
-                  {' '}&bull;{' '}{existing.is_active ? tr('Active', '有効') : tr('Paused', '一時停止')}
+                </div>
+                <div style={{ color: 'rgba(255,255,255,0.82)', fontSize: '0.84rem', fontWeight: 600, marginTop: '0.35rem', wordBreak: 'break-all' }}>
+                  {testResult?.basic_id ? `${testResult.basic_id} • ` : ''}{tr('Channel ID', 'Channel ID')}: {existing.line_channel_id}
                 </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
-                onClick={handleResyncMenu}
-                disabled={resyncing}
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(10px)',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderRadius: '12px',
-                  padding: '0.75rem 1.5rem',
-                  color: '#fff', fontWeight: 600, fontSize: '0.95rem',
-                  cursor: resyncing ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '0.6rem',
-                  transition: 'all 0.2s',
-                  opacity: resyncing ? 0.7 : 1,
-                }}
-                onMouseEnter={(e) => { if (!resyncing) { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)' } }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(0)' }}
-              >
-                {resyncing ? (<><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Resyncing...', '再同期中...')}</>) : (<><RefreshCw size={18} /> {tr('Resync LINE menu', 'LINEメニューを再同期')}</>)}
-              </button>
               <button
                 onClick={handleTestConnection}
                 disabled={testing}
@@ -573,7 +503,7 @@ export default function BotLineSettingsTab() {
                 onMouseEnter={(e) => { if (!testing) { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-2px)' } }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'translateY(0)' }}
               >
-                {testing ? (<><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Testing...', 'テスト中...')}</>) : (<><Zap size={18} /> {tr('Test Connection', '接続テスト')}</>)}
+                {testing ? (<><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Testing...', 'Testing...')}</>) : (<><Zap size={18} /> {tr('Test Connection', 'Test Connection')}</>)}
               </button>
             </div>
           </div>
@@ -591,75 +521,95 @@ export default function BotLineSettingsTab() {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           {/* Connection Details */}
           <GlassCard>
-            <div className="card-title" style={{ marginBottom: '1rem' }}>{tr('Connection Details', '接続情報')}</div>
-            {renderLineAccountCard(
-              tr('Connected LINE account', '接続中のLINEアカウント'),
-              tr('This is the Official Account currently connected to your bot.', '現在このボットに接続されているLINE公式アカウントです。'),
-              {
-                compact: true,
-                background: 'var(--ui-flow-surface)',
-                border: '1px solid var(--ui-flow-border)',
-                textColor: 'var(--text-primary)',
-                mutedColor: 'var(--text-secondary)',
-              }
-            )}
-            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Channel ID', 'チャネルID')}</span>
-                <code style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{existing.line_channel_id}</code>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.9rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div>
+                <div className="card-title" style={{ marginBottom: '0.35rem' }}>{tr('Connection details', 'Connection details')}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: 1.45 }}>
+                  {tr('This is the LINE account connected to your bot.', 'This is the LINE account connected to your bot.')}
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Account name', 'アカウント名')}</span>
-                <span style={{ fontWeight: 600 }}>{lineAccountName || tr('Not available', '未取得')}</span>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                borderRadius: '999px', padding: '0.35rem 0.72rem',
+                background: existing.is_active ? 'rgba(39,174,96,0.14)' : 'rgba(231,76,60,0.12)',
+                border: existing.is_active ? '1px solid rgba(39,174,96,0.28)' : '1px solid rgba(231,76,60,0.28)',
+                color: existing.is_active ? '#1f7a45' : '#b42318',
+                fontSize: '0.79rem', fontWeight: 700,
+              }}>
+                {existing.is_active ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                {existing.is_active ? tr('Active', 'Active') : tr('Paused', 'Paused')}
+              </span>
+            </div>
+
+            <div style={{
+              marginBottom: '1rem',
+              display: 'flex', alignItems: 'center', gap: '0.9rem', flexWrap: 'wrap',
+              padding: '0.95rem 1rem',
+              borderRadius: '14px',
+              border: '1px solid rgba(6, 199, 85, 0.24)',
+              background: 'linear-gradient(135deg, rgba(6, 199, 85, 0.12) 0%, rgba(6, 199, 85, 0.03) 100%)',
+            }}>
+              {lineAccountPictureUrl ? (
+                <img
+                  src={lineAccountPictureUrl}
+                  alt={lineAccountName}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid rgba(6,199,85,0.24)',
+                    background: '#fff',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(6,199,85,0.12)',
+                  border: '1px solid rgba(6,199,85,0.22)',
+                  flexShrink: 0,
+                }}>
+                  <MessageCircle size={24} color={LINE_GREEN} />
+                </div>
+              )}
+              <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+                <div style={{ fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  {tr('Connected LINE account', 'Connected LINE account')}
+                </div>
+                <div style={{ marginTop: '0.2rem', fontSize: '1.03rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.25, wordBreak: 'break-word' }}>
+                  {lineAccountName || tr('Not available', 'Not available')}
+                </div>
+                {testResult?.basic_id ? (
+                  <div style={{ marginTop: '0.25rem', fontSize: '0.84rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    {tr('Basic ID', 'Basic ID')}: {testResult.basic_id}
+                  </div>
+                ) : null}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Basic ID', 'Basic ID')}</span>
-                <span style={{ fontWeight: 500 }}>{testResult?.basic_id || tr('Not available', '未取得')}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Status', 'ステータス')}</span>
-                <span style={{ fontWeight: 600, color: existing.is_active ? '#27ae60' : '#e74c3c' }}>
-                  {existing.is_active ? tr('Active', '有効') : tr('Paused', '一時停止')}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Connected', '接続日')}</span>
-                <span style={{ fontWeight: 500 }}>
-                  {new Date(existing.created_at).toLocaleDateString(isJa ? 'ja-JP' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Managed menu', '管理メニュー')}</span>
-                <span style={{ fontWeight: 600, color: richMenuStatusColor }}>{richMenuStatusLabel}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Menu variants', 'メニュー数')}</span>
-                <span style={{ fontWeight: 500 }}>{richMenuVariantCount}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{tr('Last synced', '最終同期')}</span>
-                <span style={{ fontWeight: 500 }}>
-                  {existing.rich_menu_last_synced_at
-                    ? new Date(existing.rich_menu_last_synced_at).toLocaleString(isJa ? 'ja-JP' : 'en-US')
-                    : tr('Not yet', '未実行')}
-                </span>
+              <code style={{
+                padding: '0.45rem 0.65rem',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(6,199,85,0.25)',
+                fontSize: '0.78rem',
+                fontFamily: 'monospace',
+                wordBreak: 'break-all',
+              }}>
+                {existing.line_channel_id}
+              </code>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem' }}>
+              <div style={{ padding: '0.8rem 0.9rem', borderRadius: '12px', border: '1px solid var(--ui-flow-border)', background: 'var(--ui-flow-surface)' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', fontWeight: 700, marginBottom: '0.3rem' }}>{tr('Connected', 'Connected')}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>{connectedDateLabel}</div>
               </div>
             </div>
-            {existing.rich_menu_last_error ? (
-              <div style={{
-                marginTop: '1rem',
-                padding: '0.9rem 1rem',
-                borderRadius: '14px',
-                background: 'rgba(231, 76, 60, 0.08)',
-                border: '1px solid rgba(231, 76, 60, 0.18)',
-                color: '#b42318',
-                fontSize: '0.9rem',
-                lineHeight: 1.5,
-              }}>
-                <strong>{tr('Rich menu error', 'リッチメニューエラー')}</strong>
-                <div>{existing.rich_menu_last_error}</div>
-              </div>
-            ) : null}
           </GlassCard>
 
           {/* Webhook URL */}
@@ -682,25 +632,25 @@ export default function BotLineSettingsTab() {
 
           {/* Manage Connection */}
           <GlassCard>
-            <div className="card-title" style={{ marginBottom: '1rem' }}>{tr('Manage Connection', '接続管理')}</div>
+            <div className="card-title" style={{ marginBottom: '1rem' }}>{tr('Manage Connection', 'æŽ¥ç¶šç®¡ç†')}</div>
 
             {/* Update credentials (collapsed by default) */}
             <details style={{ marginBottom: '1rem' }}>
               <summary style={{ cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '1rem' }}>
-                {tr('Update credentials', '認証情報を更新')}
+                {tr('Update credentials', 'èªè¨¼æƒ…å ±ã‚’æ›´æ–°')}
               </summary>
               <div style={{ display: 'grid', gap: '1rem', paddingTop: '0.5rem' }}>
-                <GlassField label={tr('Channel ID', 'チャネルID')}>
+                <GlassField label={tr('Channel ID', 'ãƒãƒ£ãƒãƒ«ID')}>
                   <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} />
                 </GlassField>
-                <GlassField label={tr('Channel Secret', 'チャネルシークレット')}>
-                  <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder={tr('Leave blank to keep current', '空欄で現在の値を保持')} />
+                <GlassField label={tr('Channel Secret', 'ãƒãƒ£ãƒãƒ«ã‚·ãƒ¼ã‚¯ãƒ¬ãƒƒãƒˆ')}>
+                  <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder={tr('Leave blank to keep current', 'ç©ºæ¬„ã§ç¾åœ¨ã®å€¤ã‚’ä¿æŒ')} />
                 </GlassField>
-                <GlassField label={tr('Channel Access Token', 'チャネルアクセストークン')}>
-                  <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder={tr('Leave blank to keep current', '空欄で現在の値を保持')} />
+                <GlassField label={tr('Channel Access Token', 'ãƒãƒ£ãƒãƒ«ã‚¢ã‚¯ã‚»ã‚¹ãƒˆãƒ¼ã‚¯ãƒ³')}>
+                  <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder={tr('Leave blank to keep current', 'ç©ºæ¬„ã§ç¾åœ¨ã®å€¤ã‚’ä¿æŒ')} />
                 </GlassField>
                 <UiButton variant="primary" onClick={handleSave} disabled={saving}>
-                  {saving ? tr('Saving...', '保存中...') : tr('Save Changes', '変更を保存')}
+                  {saving ? tr('Saving...', 'ä¿å­˜ä¸­...') : tr('Save Changes', 'å¤‰æ›´ã‚’ä¿å­˜')}
                 </UiButton>
               </div>
             </details>
@@ -713,7 +663,7 @@ export default function BotLineSettingsTab() {
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#e74c3c', borderColor: '#e74c3c' }}
               >
                 <Trash2 size={16} />
-                {deleting ? tr('Removing...', '解除中...') : tr('Disconnect', '連携解除')}
+                {deleting ? tr('Removing...', 'è§£é™¤ä¸­...') : tr('Disconnect', 'é€£æºè§£é™¤')}
               </UiButton>
             </div>
           </GlassCard>
@@ -722,15 +672,15 @@ export default function BotLineSettingsTab() {
     )
   }
 
-  /* ═══════════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      Setup Wizard (not connected)
-     ═══════════════════════════════════════════════════════════════ */
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
     <AnimatedPage className="page-body">
       <SectionHeader
-        eyebrow={tr('Integrations', '連携')}
-        title={tr('Connect LINE', 'LINEに接続')}
-        subtitle={tr('Follow the guided steps below to connect your LINE account.', '以下のガイド手順でLINEアカウントを接続してください。')}
+        eyebrow={tr('Integrations', 'é€£æº')}
+        title={tr('Connect LINE', 'LINEã«æŽ¥ç¶š')}
+        subtitle={tr('Follow the guided steps below to connect your LINE account.', 'ä»¥ä¸‹ã®ã‚¬ã‚¤ãƒ‰æ‰‹é †ã§LINEã‚¢ã‚«ã‚¦ãƒ³ãƒˆã‚’æŽ¥ç¶šã—ã¦ãã ã•ã„ã€‚')}
       />
 
       {error && <div style={{ marginBottom: '1.5rem', color: '#e74c3c', fontWeight: 600 }}>{error}</div>}
@@ -739,7 +689,7 @@ export default function BotLineSettingsTab() {
       {currentStep > 0 && <StepProgress current={currentStep - 1} total={5} labels={cardStepLabels} getProgressText={getProgressText} />}
 
       <GlassCard>
-        {/* ── Step 0: Get Started ──────────────────────────────── */}
+        {/* â”€â”€ Step 0: Get Started â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 0 && (
           <div style={{ padding: '2rem 1rem' }}>
             {/* Hero */}
@@ -754,7 +704,7 @@ export default function BotLineSettingsTab() {
                 <MessageCircle size={40} color="#fff" />
               </div>
               <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
-                {tr('Connect your LINE account', 'LINEアカウントを接続')}
+                {tr('Connect your LINE account', 'LINEã‚¢ã‚«ã‚¦ãƒ³ãƒˆã‚’æŽ¥ç¶š')}
               </h3>
               <p style={{
                 margin: 0, color: 'var(--text-secondary)',
@@ -762,7 +712,7 @@ export default function BotLineSettingsTab() {
               }}>
                 {tr(
                   'We\'ll walk you through very simple steps to connect your LINE business account, so your AI Agent can reply to messages automatically.',
-                  'LINEビジネスアカウントを接続する手順をわかりやすく案内します。接続後はAIエージェントが自動で返信します。',
+                  'LINEãƒ“ã‚¸ãƒã‚¹ã‚¢ã‚«ã‚¦ãƒ³ãƒˆã‚’æŽ¥ç¶šã™ã‚‹æ‰‹é †ã‚’ã‚ã‹ã‚Šã‚„ã™ãæ¡ˆå†…ã—ã¾ã™ã€‚æŽ¥ç¶šå¾Œã¯AIã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆãŒè‡ªå‹•ã§è¿”ä¿¡ã—ã¾ã™ã€‚',
                 )}
               </p>
             </div>
@@ -778,11 +728,11 @@ export default function BotLineSettingsTab() {
               lineHeight: 1.7,
             }}>
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertCircle size={16} color={LINE_GREEN} /> {tr('What you need before starting', '開始前に必要なもの')}
+                <AlertCircle size={16} color={LINE_GREEN} /> {tr('What you need before starting', 'é–‹å§‹å‰ã«å¿…è¦ãªã‚‚ã®')}
               </div>
               <div style={{ color: 'var(--text-secondary)' }}>
                 {isJa ? (
-                  <>LINE Official Account（個人用LINEアプリとは別のビジネスアカウント）</>
+                  <>LINE Official Accountï¼ˆå€‹äººç”¨LINEã‚¢ãƒ—ãƒªã¨ã¯åˆ¥ã®ãƒ“ã‚¸ãƒã‚¹ã‚¢ã‚«ã‚¦ãƒ³ãƒˆï¼‰</>
                 ) : (
                   <>A <strong>LINE Official Account</strong> - this is a business account (different from your personal LINE app).</>
                 )}
@@ -799,14 +749,14 @@ export default function BotLineSettingsTab() {
               marginBottom: '2rem',
               fontSize: '0.9rem',
             }}>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>{tr('Here\'s what we\'ll do in 5 simple steps:', '5つの簡単な手順で進めます:')}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>{tr('Here\'s what we\'ll do in 5 simple steps:', '5ã¤ã®ç°¡å˜ãªæ‰‹é †ã§é€²ã‚ã¾ã™:')}</div>
               <div style={{ display: 'grid', gap: '0.5rem', color: 'var(--text-secondary)' }}>
                 {[
-                  ['1', tr('Enable Messaging API (manager.line.biz)', 'Messaging APIを有効化（manager.line.biz）')],
-                  ['2', tr('Turn off Auto-reply (manager.line.biz)', '自動返信をOFFにする（manager.line.biz）')],
-                  ['3', tr('Copy 3 codes (Developers Console)', '3つのコードをコピー（Developers Console）')],
-                  ['4', tr('Set your bot\'s address - webhook (LINE will verify)', 'ボットのWebhook URLを設定（LINE側で検証）')],
-                  ['5', tr('Click "Activate" and you\'re done!', '「有効化」を押して完了')],
+                  ['1', tr('Enable Messaging API (manager.line.biz)', 'Messaging APIã‚’æœ‰åŠ¹åŒ–ï¼ˆmanager.line.bizï¼‰')],
+                  ['2', tr('Turn off Auto-reply (manager.line.biz)', 'è‡ªå‹•è¿”ä¿¡ã‚’OFFã«ã™ã‚‹ï¼ˆmanager.line.bizï¼‰')],
+                  ['3', tr('Copy 3 codes (Developers Console)', '3ã¤ã®ã‚³ãƒ¼ãƒ‰ã‚’ã‚³ãƒ”ãƒ¼ï¼ˆDevelopers Consoleï¼‰')],
+                  ['4', tr('Set your bot\'s address - webhook (LINE will verify)', 'ãƒœãƒƒãƒˆã®Webhook URLã‚’è¨­å®šï¼ˆLINEå´ã§æ¤œè¨¼ï¼‰')],
+                  ['5', tr('Click "Activate" and you\'re done!', 'ã€Œæœ‰åŠ¹åŒ–ã€ã‚’æŠ¼ã—ã¦å®Œäº†')],
                 ].map(([num, desc]) => (
                   <div key={num} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
                     <div style={{
@@ -838,21 +788,21 @@ export default function BotLineSettingsTab() {
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 40px rgba(6, 199, 85, 0.5)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(6, 199, 85, 0.35)' }}
               >
-                {tr('I have a LINE Official Account - Let\'s start', 'LINE公式アカウントがあります。開始する')}
+                {tr('I have a LINE Official Account - Let\'s start', 'LINEå…¬å¼ã‚¢ã‚«ã‚¦ãƒ³ãƒˆãŒã‚ã‚Šã¾ã™ã€‚é–‹å§‹ã™ã‚‹')}
                 <ChevronRight size={20} />
               </button>
               <div style={{ marginTop: '0.75rem', fontSize: '0.83rem', color: 'var(--text-secondary)' }}>
-                {tr('Don\'t have one yet?', 'まだ持っていませんか？')}{' '}
+                {tr('Don\'t have one yet?', 'ã¾ã æŒã£ã¦ã„ã¾ã›ã‚“ã‹ï¼Ÿ')}{' '}
                 <a href="https://www.linebiz.com/jp/entry/" target="_blank" rel="noopener noreferrer"
                   style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none' }}>
-                  {tr('Create it for free first', '無料で作成')} <ExternalLink size={11} style={{ display: 'inline', verticalAlign: 'middle' }} />
+                  {tr('Create it for free first', 'ç„¡æ–™ã§ä½œæˆ')} <ExternalLink size={11} style={{ display: 'inline', verticalAlign: 'middle' }} />
                 </a>
               </div>
             </div>
           </div>
         )}
 
-        {/* ── Step 1: Enable Messaging API ─────────────────────── */}
+        {/* â”€â”€ Step 1: Enable Messaging API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 1 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -862,7 +812,7 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>1</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Enable Messaging API', 'Messaging APIを有効化')}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Enable Messaging API', 'Messaging APIã‚’æœ‰åŠ¹åŒ–')}</h3>
             </div>
 
             <div style={{
@@ -873,7 +823,7 @@ export default function BotLineSettingsTab() {
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: LINE_GREEN }} />
               <span>
-                <strong style={{ color: 'var(--text-primary)' }}>{tr('Important:', '重要:')}</strong> {tr('Use a computer browser - the Messaging API option is not available in the LINE mobile app.', 'PCブラウザを使用してください。LINEモバイルアプリではMessaging API設定が利用できません。')}
+                <strong style={{ color: 'var(--text-primary)' }}>{tr('Important:', 'é‡è¦:')}</strong> {tr('Use a computer browser - the Messaging API option is not available in the LINE mobile app.', 'PCãƒ–ãƒ©ã‚¦ã‚¶ã‚’ä½¿ç”¨ã—ã¦ãã ã•ã„ã€‚LINEãƒ¢ãƒã‚¤ãƒ«ã‚¢ãƒ—ãƒªã§ã¯Messaging APIè¨­å®šãŒåˆ©ç”¨ã§ãã¾ã›ã‚“ã€‚')}
               </span>
             </div>
 
@@ -885,13 +835,13 @@ export default function BotLineSettingsTab() {
                     style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                     manager.line.biz <ExternalLink size={13} />
                   </a>
-                  {' '}{tr('(the Official Account manager) and sign in', '（公式アカウントマネージャー）にログイン')}
+                  {' '}{tr('(the Official Account manager) and sign in', 'ï¼ˆå…¬å¼ã‚¢ã‚«ã‚¦ãƒ³ãƒˆãƒžãƒãƒ¼ã‚¸ãƒ£ãƒ¼ï¼‰ã«ãƒ­ã‚°ã‚¤ãƒ³')}
                 </li>
-                <li>{tr('Click your business account name', 'ビジネスアカウント名をクリック')}</li>
-                <li>{tr('Click Settings in the top-right corner', '右上の設定をクリック')}</li>
-                <li>{tr('In the left menu, click "Messaging API"', '左メニューで「Messaging API」をクリック')}</li>
-                <li>{tr('Click the green "Enable Messaging API" button', '緑色の「Enable Messaging API」をクリック')}</li>
-                <li>{tr('Enter a Provider name (company/brand) and click OK', 'Provider名（会社/ブランド名）を入力してOK')}</li>
+                <li>{tr('Click your business account name', 'ãƒ“ã‚¸ãƒã‚¹ã‚¢ã‚«ã‚¦ãƒ³ãƒˆåã‚’ã‚¯ãƒªãƒƒã‚¯')}</li>
+                <li>{tr('Click Settings in the top-right corner', 'å³ä¸Šã®è¨­å®šã‚’ã‚¯ãƒªãƒƒã‚¯')}</li>
+                <li>{tr('In the left menu, click "Messaging API"', 'å·¦ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã§ã€ŒMessaging APIã€ã‚’ã‚¯ãƒªãƒƒã‚¯')}</li>
+                <li>{tr('Click the green "Enable Messaging API" button', 'ç·‘è‰²ã®ã€ŒEnable Messaging APIã€ã‚’ã‚¯ãƒªãƒƒã‚¯')}</li>
+                <li>{tr('Enter a Provider name (company/brand) and click OK', 'Provideråï¼ˆä¼šç¤¾/ãƒ–ãƒ©ãƒ³ãƒ‰åï¼‰ã‚’å…¥åŠ›ã—ã¦OK')}</li>
               </ol>
 
               <div style={{
@@ -902,7 +852,7 @@ export default function BotLineSettingsTab() {
                 border: '1px solid var(--ui-flow-border)',
                 fontSize: '0.88rem',
               }}>
-                ✅ <strong>{tr('Done when:', '完了条件:')}</strong> {tr('You see a page with Channel ID and Channel Secret.', 'Channel IDとChannel Secretが表示されたら完了です。')}
+                <strong>{tr('Done when:', 'å®Œäº†æ¡ä»¶:')}</strong> {tr('You see a page with Channel ID and Channel Secret.', 'Channel IDã¨Channel SecretãŒè¡¨ç¤ºã•ã‚ŒãŸã‚‰å®Œäº†ã§ã™ã€‚')}
               </div>
             </div>
 
@@ -913,12 +863,12 @@ export default function BotLineSettingsTab() {
               cursor: 'pointer', fontSize: '0.95rem', fontWeight: 500,
             }}>
               <input type="checkbox" checked={apiEnabled} onChange={(e) => setApiEnabled(e.target.checked)} />
-              {tr('Messaging API enabled - I can see Channel ID and Channel Secret', 'Messaging APIを有効化し、Channel ID/Channel Secretを確認しました')}
+              {tr('Messaging API enabled - I can see Channel ID and Channel Secret', 'Messaging APIã‚’æœ‰åŠ¹åŒ–ã—ã€Channel ID/Channel Secretã‚’ç¢ºèªã—ã¾ã—ãŸ')}
             </label>
           </div>
         )}
 
-        {/* ── Step 2: Turn off Auto-reply ────────────────────────── */}
+        {/* â”€â”€ Step 2: Turn off Auto-reply â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 2 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -928,7 +878,7 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>2</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Turn off Auto-reply messages', '自動返信メッセージをOFFにする')}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Turn off Auto-reply messages', 'è‡ªå‹•è¿”ä¿¡ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã‚’OFFã«ã™ã‚‹')}</h3>
             </div>
 
             <div style={{
@@ -939,13 +889,13 @@ export default function BotLineSettingsTab() {
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: LINE_GREEN }} />
               <span>
-                <strong style={{ color: 'var(--text-primary)' }}>{tr('Why?', '理由:')}</strong>{' '}
-                {tr('LINE sends a default "Thanks for your message!" when someone messages you. Turn it off so only your bot replies - otherwise customers get two replies.', 'LINEの初期設定ではメッセージ受信時に自動返信されます。これをOFFにして、ボットのみが返信するようにしてください。')}
+                <strong style={{ color: 'var(--text-primary)' }}>{tr('Why?', 'ç†ç”±:')}</strong>{' '}
+                {tr('LINE sends a default "Thanks for your message!" when someone messages you. Turn it off so only your bot replies - otherwise customers get two replies.', 'LINEã®åˆæœŸè¨­å®šã§ã¯ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å—ä¿¡æ™‚ã«è‡ªå‹•è¿”ä¿¡ã•ã‚Œã¾ã™ã€‚ã“ã‚Œã‚’OFFã«ã—ã¦ã€ãƒœãƒƒãƒˆã®ã¿ãŒè¿”ä¿¡ã™ã‚‹ã‚ˆã†ã«ã—ã¦ãã ã•ã„ã€‚')}
               </span>
             </div>
 
             <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              {tr('Still in', '引き続き')}{' '}
+              {tr('Still in', 'å¼•ãç¶šã')}{' '}
               <a href="https://manager.line.biz/" target="_blank" rel="noopener noreferrer"
                 style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                 manager.line.biz <ExternalLink size={13} />
@@ -953,8 +903,8 @@ export default function BotLineSettingsTab() {
               :
             </p>
             <ol style={{ margin: 0, paddingLeft: '1.4rem', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 2 }}>
-              <li>{tr('Click Settings -> "Response settings" in the left menu', '左メニューの「Response settings」を開く')}</li>
-              <li>{tr('Find "Auto-response messages" and turn it OFF', '「Auto-response messages」をOFFにする')}</li>
+              <li>{tr('Click Settings -> "Response settings" in the left menu', 'å·¦ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã®ã€ŒResponse settingsã€ã‚’é–‹ã')}</li>
+              <li>{tr('Find "Auto-response messages" and turn it OFF', 'ã€ŒAuto-response messagesã€ã‚’OFFã«ã™ã‚‹')}</li>
             </ol>
 
             <label style={{
@@ -965,12 +915,12 @@ export default function BotLineSettingsTab() {
               marginTop: '1rem',
             }}>
               <input type="checkbox" checked={autoReplyOff} onChange={(e) => setAutoReplyOff(e.target.checked)} />
-              {tr('Auto-response messages is OFF', 'Auto-response messagesをOFFにしました')}
+              {tr('Auto-response messages is OFF', 'Auto-response messagesã‚’OFFã«ã—ã¾ã—ãŸ')}
             </label>
           </div>
         )}
 
-        {/* ── Step 3: Copy Credentials (must save before webhook verify) ─ */}
+        {/* â”€â”€ Step 3: Copy Credentials (must save before webhook verify) â”€ */}
         {currentStep === 3 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -980,16 +930,16 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>3</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Copy the 3 codes', '3つのコードをコピー')}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Copy the 3 codes', '3ã¤ã®ã‚³ãƒ¼ãƒ‰ã‚’ã‚³ãƒ”ãƒ¼')}</h3>
             </div>
 
             <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              {tr('Go to', '次へアクセス')}{' '}
+              {tr('Go to', 'æ¬¡ã¸ã‚¢ã‚¯ã‚»ã‚¹')}{' '}
               <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer"
                 style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                 developers.line.biz/console <ExternalLink size={13} />
               </a>
-              {' '}{tr('and do the following:', 'して、以下を実施してください:')}
+              {' '}{tr('and do the following:', 'ã—ã¦ã€ä»¥ä¸‹ã‚’å®Ÿæ–½ã—ã¦ãã ã•ã„:')}
             </p>
 
             <div style={{
@@ -1001,9 +951,9 @@ export default function BotLineSettingsTab() {
               fontSize: '0.92rem',
               lineHeight: 1.7,
             }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{tr('A. Select or create a Provider', 'A. Providerを選択または作成')}</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{tr('A. Select or create a Provider', 'A. Providerã‚’é¸æŠžã¾ãŸã¯ä½œæˆ')}</div>
               <div style={{ color: 'var(--text-secondary)' }}>
-                {tr('In the left panel, you will see a list of Providers. Select an existing one, or click "Create" to make a new one.', '左側の一覧からProviderを選択するか、「Create」で新規作成します。')}
+                {tr('In the left panel, you will see a list of Providers. Select an existing one, or click "Create" to make a new one.', 'å·¦å´ã®ä¸€è¦§ã‹ã‚‰Providerã‚’é¸æŠžã™ã‚‹ã‹ã€ã€ŒCreateã€ã§æ–°è¦ä½œæˆã—ã¾ã™ã€‚')}
               </div>
             </div>
 
@@ -1016,44 +966,44 @@ export default function BotLineSettingsTab() {
               fontSize: '0.92rem',
               lineHeight: 1.7,
             }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{tr('B. Select your Messaging API channel', 'B. Messaging APIチャネルを選択')}</div>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{tr('B. Select your Messaging API channel', 'B. Messaging APIãƒãƒ£ãƒãƒ«ã‚’é¸æŠž')}</div>
               <div style={{ color: 'var(--text-secondary)' }}>
-                {tr('Under your Provider, open the Messaging API channel you created in Step 1.', 'Step1で作成したMessaging APIチャネルを開いてください。')}
+                {tr('Under your Provider, open the Messaging API channel you created in Step 1.', 'Step1ã§ä½œæˆã—ãŸMessaging APIãƒãƒ£ãƒãƒ«ã‚’é–‹ã„ã¦ãã ã•ã„ã€‚')}
               </div>
             </div>
 
             <p style={{ margin: '0 0 1rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
-              {tr('C. Copy these 3 values from the channel page and paste them below:', 'C. チャネル画面の3項目をコピーして以下に貼り付けます:')}
+              {tr('C. Copy these 3 values from the channel page and paste them below:', 'C. ãƒãƒ£ãƒãƒ«ç”»é¢ã®3é …ç›®ã‚’ã‚³ãƒ”ãƒ¼ã—ã¦ä»¥ä¸‹ã«è²¼ã‚Šä»˜ã‘ã¾ã™:')}
             </p>
 
             <div style={{ display: 'grid', gap: '1.25rem', marginBottom: '0.5rem' }}>
               <GlassField
                 label={tr('1. Channel ID', '1. Channel ID')}
-                helper={tr('Open "Basic settings", find "Channel ID", and copy it.', '「Basic settings」で「Channel ID」を見つけてコピーします。')}
+                helper={tr('Open "Basic settings", find "Channel ID", and copy it.', 'ã€ŒBasic settingsã€ã§ã€ŒChannel IDã€ã‚’è¦‹ã¤ã‘ã¦ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚')}
               >
-                <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} placeholder={tr('Paste Channel ID', 'Channel IDを貼り付け')} />
+                <input type="text" value={lineChannelId} onChange={(e) => setLineChannelId(e.target.value)} placeholder={tr('Paste Channel ID', 'Channel IDã‚’è²¼ã‚Šä»˜ã‘')} />
               </GlassField>
               <GlassField
                 label={tr('2. Channel Secret', '2. Channel Secret')}
-                helper={tr('In "Basic settings", scroll to "Channel secret" and copy it.', '「Basic settings」の「Channel secret」をコピーします。')}
+                helper={tr('In "Basic settings", scroll to "Channel secret" and copy it.', 'ã€ŒBasic settingsã€ã®ã€ŒChannel secretã€ã‚’ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚')}
               >
-                <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder={tr('Paste Channel Secret', 'Channel Secretを貼り付け')} />
+                <input type="password" value={lineChannelSecret} onChange={(e) => setLineChannelSecret(e.target.value)} placeholder={tr('Paste Channel Secret', 'Channel Secretã‚’è²¼ã‚Šä»˜ã‘')} />
               </GlassField>
               <GlassField
                 label={tr('3. Access Token', '3. Access Token')}
-                helper={tr('In "Messaging API", find "Channel access token (long-lived)". Issue it if needed, then copy.', '「Messaging API」の「Channel access token (long-lived)」をコピーします。空なら先にIssueしてください。')}
+                helper={tr('In "Messaging API", find "Channel access token (long-lived)". Issue it if needed, then copy.', 'ã€ŒMessaging APIã€ã®ã€ŒChannel access token (long-lived)ã€ã‚’ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚ç©ºãªã‚‰å…ˆã«Issueã—ã¦ãã ã•ã„ã€‚')}
               >
-                <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder={tr('Paste Access Token', 'Access Tokenを貼り付け')} />
+                <input type="password" value={lineAccessToken} onChange={(e) => setLineAccessToken(e.target.value)} placeholder={tr('Paste Access Token', 'Access Tokenã‚’è²¼ã‚Šä»˜ã‘')} />
               </GlassField>
             </div>
 
             <p style={{ margin: '1rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {tr('These values are saved when you click Next so webhook verification works in the next step.', '「次へ」を押した時点で保存され、次のWebhook検証に使用されます。')}
+              {tr('These values are saved when you click Next so webhook verification works in the next step.', 'ã€Œæ¬¡ã¸ã€ã‚’æŠ¼ã—ãŸæ™‚ç‚¹ã§ä¿å­˜ã•ã‚Œã€æ¬¡ã®Webhookæ¤œè¨¼ã«ä½¿ç”¨ã•ã‚Œã¾ã™ã€‚')}
             </p>
           </div>
         )}
 
-        {/* ── Step 4: Set Webhook URL (channel must exist for LINE verify) ─ */}
+        {/* â”€â”€ Step 4: Set Webhook URL (channel must exist for LINE verify) â”€ */}
         {currentStep === 4 && (
           <div style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -1063,21 +1013,21 @@ export default function BotLineSettingsTab() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '1.1rem', fontWeight: 700, color: '#fff', flexShrink: 0,
               }}>4</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Set your bot\'s address (Webhook URL)', 'ボットのWebhook URLを設定')}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{tr('Set your bot\'s address (Webhook URL)', 'ãƒœãƒƒãƒˆã®Webhook URLã‚’è¨­å®š')}</h3>
             </div>
 
             <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6 }}>
-              {tr('In', '次の場所で')}{' '}
+              {tr('In', 'æ¬¡ã®å ´æ‰€ã§')}{' '}
               <a href="https://developers.line.biz/console/" target="_blank" rel="noopener noreferrer"
                 style={{ color: LINE_GREEN, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                 developers.line.biz/console <ExternalLink size={13} />
               </a>
-              {' '}{tr('-> your channel -> "Messaging API" tab:', '-> 対象チャネル -> 「Messaging API」タブ:')}
+              {' '}{tr('-> your channel -> "Messaging API" tab:', '-> å¯¾è±¡ãƒãƒ£ãƒãƒ« -> ã€ŒMessaging APIã€ã‚¿ãƒ–:')}
             </p>
 
             {renderLineAccountCard(
-              tr('Connected LINE account', '接続中のLINEアカウント'),
-              tr('Confirm this is the Official Account you want to finish setup for.', '設定を完了する対象のLINE公式アカウントか確認してください。'),
+              tr('Connected LINE account', 'æŽ¥ç¶šä¸­ã®LINEã‚¢ã‚«ã‚¦ãƒ³ãƒˆ'),
+              tr('Confirm this is the Official Account you want to finish setup for.', 'è¨­å®šã‚’å®Œäº†ã™ã‚‹å¯¾è±¡ã®LINEå…¬å¼ã‚¢ã‚«ã‚¦ãƒ³ãƒˆã‹ç¢ºèªã—ã¦ãã ã•ã„ã€‚'),
               {
                 compact: true,
                 background: 'rgba(6,199,85,0.08)',
@@ -1088,7 +1038,7 @@ export default function BotLineSettingsTab() {
             )}
 
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
-              {tr('1. Copy this address:', '1. このURLをコピー:')}
+              {tr('1. Copy this address:', '1. ã“ã®URLã‚’ã‚³ãƒ”ãƒ¼:')}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <code style={{
@@ -1100,12 +1050,12 @@ export default function BotLineSettingsTab() {
                 {webhookUrl}
               </code>
               <UiButton variant={copied ? 'primary' : 'secondary'} onClick={copyWebhookUrl} style={{ padding: '0.85rem 1.1rem', flexShrink: 0 }}>
-                {copied ? <><Check size={16} /> {tr('Copied!', 'コピー済み')}</> : <><Copy size={16} /> {tr('Copy', 'コピー')}</>}
+                {copied ? <><Check size={16} /> {tr('Copied!', 'ã‚³ãƒ”ãƒ¼æ¸ˆã¿')}</> : <><Copy size={16} /> {tr('Copy', 'ã‚³ãƒ”ãƒ¼')}</>}
               </UiButton>
             </div>
 
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
-              {tr('2. Paste into Webhook URL, click Update, turn Use webhook ON, then Verify.', '2. Webhook URLに貼り付けてUpdateし、Use webhookをONにしてVerifyします。')}
+              {tr('2. Paste into Webhook URL, click Update, turn Use webhook ON, then Verify.', '2. Webhook URLã«è²¼ã‚Šä»˜ã‘ã¦Updateã—ã€Use webhookã‚’ONã«ã—ã¦Verifyã—ã¾ã™ã€‚')}
             </p>
 
             <label style={{
@@ -1116,12 +1066,12 @@ export default function BotLineSettingsTab() {
               marginTop: '1rem',
             }}>
               <input type="checkbox" checked={webhookSet} onChange={(e) => setWebhookSet(e.target.checked)} />
-              {tr('Webhook set and Verify passed', 'Webhook設定とVerify完了')}
+              {tr('Webhook set and Verify passed', 'Webhookè¨­å®šã¨Verifyå®Œäº†')}
             </label>
           </div>
         )}
 
-        {/* ── Step 5: Connect ──────────────────────────────────── */}
+        {/* â”€â”€ Step 5: Connect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 5 && (
           <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <div style={{
@@ -1134,14 +1084,14 @@ export default function BotLineSettingsTab() {
               <Check size={32} color="#fff" />
             </div>
             <h3 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>
-              {tr('Almost done! One last click...', 'もう少しで完了。最後に1クリックです。')}
+              {tr('Almost done! One last click...', 'ã‚‚ã†å°‘ã—ã§å®Œäº†ã€‚æœ€å¾Œã«1ã‚¯ãƒªãƒƒã‚¯ã§ã™ã€‚')}
             </h3>
             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-              {tr('Your LINE account:', 'LINEアカウント:')} <code style={{ fontFamily: 'monospace', fontWeight: 600 }}>{lineChannelId}</code>
+              {tr('Your LINE account:', 'LINEã‚¢ã‚«ã‚¦ãƒ³ãƒˆ:')} <code style={{ fontFamily: 'monospace', fontWeight: 600 }}>{lineChannelId}</code>
             </p>
             {renderLineAccountCard(
-              tr('Connected LINE account', '接続中のLINEアカウント'),
-              tr('This is the Official Account that will start receiving messages after activation.', '有効化後、このLINE公式アカウントでメッセージ受信が始まります。'),
+              tr('Connected LINE account', 'æŽ¥ç¶šä¸­ã®LINEã‚¢ã‚«ã‚¦ãƒ³ãƒˆ'),
+              tr('This is the Official Account that will start receiving messages after activation.', 'æœ‰åŠ¹åŒ–å¾Œã€ã“ã®LINEå…¬å¼ã‚¢ã‚«ã‚¦ãƒ³ãƒˆã§ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å—ä¿¡ãŒå§‹ã¾ã‚Šã¾ã™ã€‚'),
               {
                 compact: true,
                 background: 'rgba(6,199,85,0.08)',
@@ -1151,7 +1101,7 @@ export default function BotLineSettingsTab() {
               }
             )}
             <p style={{ margin: '0 0 2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              {tr('Click the button below to activate your AI bot. After this, your bot will start replying to LINE messages automatically!', '下のボタンを押すとAIボットが有効化され、LINEメッセージへ自動返信を開始します。')}
+              {tr('Click the button below to activate your AI bot. After this, your bot will start replying to LINE messages automatically!', 'ä¸‹ã®ãƒœã‚¿ãƒ³ã‚’æŠ¼ã™ã¨AIãƒœãƒƒãƒˆãŒæœ‰åŠ¹åŒ–ã•ã‚Œã€LINEãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ã¸è‡ªå‹•è¿”ä¿¡ã‚’é–‹å§‹ã—ã¾ã™ã€‚')}
             </p>
 
             <button
@@ -1172,15 +1122,15 @@ export default function BotLineSettingsTab() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(6, 199, 85, 0.35)' }}
             >
               {saving ? (
-                <><Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Connecting...', '接続中...')}</>
+                <><Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Connecting...', 'æŽ¥ç¶šä¸­...')}</>
               ) : (
-                <><MessageCircle size={22} /> {tr('Activate Agent', 'エージェントを有効化')}</>
+                <><MessageCircle size={22} /> {tr('Activate Agent', 'ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆã‚’æœ‰åŠ¹åŒ–')}</>
               )}
             </button>
           </div>
         )}
 
-        {/* ── Navigation Buttons ───────────────────────────────── */}
+        {/* â”€â”€ Navigation Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep > 0 && currentStep < 5 && (
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1199,7 +1149,7 @@ export default function BotLineSettingsTab() {
               onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
             >
-              <ChevronLeft size={18} /> {tr('Back', '戻る')}
+              <ChevronLeft size={18} /> {tr('Back', 'æˆ»ã‚‹')}
             </button>
 
             <button
@@ -1217,9 +1167,9 @@ export default function BotLineSettingsTab() {
               }}
             >
               {currentStep === 3 && saving ? (
-                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Saving...', '保存中...')}</>
+                <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {tr('Saving...', 'ä¿å­˜ä¸­...')}</>
               ) : (
-                <>{tr('Next', '次へ')} <ChevronRight size={18} /></>
+                <>{tr('Next', 'æ¬¡ã¸')} <ChevronRight size={18} /></>
               )}
             </button>
           </div>
@@ -1241,7 +1191,7 @@ export default function BotLineSettingsTab() {
                 padding: '0.5rem 0.75rem', borderRadius: '8px',
               }}
             >
-              <ChevronLeft size={18} /> {tr('Back', '戻る')}
+              <ChevronLeft size={18} /> {tr('Back', 'æˆ»ã‚‹')}
             </button>
           </div>
         )}
@@ -1249,3 +1199,4 @@ export default function BotLineSettingsTab() {
     </AnimatedPage>
   )
 }
+

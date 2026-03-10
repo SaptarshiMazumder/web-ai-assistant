@@ -109,6 +109,7 @@ _DEFAULT_MENU_PLACEHOLDER_IMAGE_URL = os.environ.get(
     "IG_MENU_PLACEHOLDER_IMAGE_URL",
     "https://placehold.co/600x400/png?text=Menu",
 ).strip()
+_MAX_ASSET_CAROUSEL_CARDS = 6
 def _get_menu_request_exact_ig() -> set:
     return {k.strip().lower() for k in get_menu_keywords() if k.strip()}
 
@@ -1597,7 +1598,7 @@ async def _handle_text_message(
         logger.info("Instagram asset cards bot_id=%s count=%s", bot.bot_id, len(asset_cards))
         elements = []
         placeholder_image = _menu_placeholder_image_url(request)
-        for card in asset_cards[:10]:  # Instagram limit: max 10 elements
+        for card in asset_cards[:_MAX_ASSET_CAROUSEL_CARDS]:
             img_url = card.get("image_url", "")
             abs_url = _absolute_public_url(img_url, request) if img_url else ""
             if not abs_url:
