@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
-import { useDashboardData, type LineChannelTestResult } from '../../hooks/useDashboardData'
+import { type LineChannelTestResult } from '../../hooks/useDashboardData'
 import { useTranslation } from 'react-i18next'
 import {
   Check, CheckCircle, Copy, ExternalLink, AlertCircle, Loader2,
@@ -74,9 +74,14 @@ function StepProgress({
   )
 }
 
-export default function BotLineSettingsTab() {
-  const { botId } = useParams()
-  const { selectedBot } = useDashboardData()
+type BotLineSettingsTabProps = {
+  botIdOverride?: string | null
+  onConnected?: () => void
+}
+
+export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLineSettingsTabProps = {}) {
+  const { botId: routeBotId } = useParams()
+  const botId = String(botIdOverride || routeBotId || '').trim()
   const dialog = useDialog()
   const { getAccessTokenSilently } = useAuth0()
   const { i18n } = useTranslation()
@@ -213,6 +218,9 @@ export default function BotLineSettingsTab() {
       await fetchLineAccountInfo(false)
       setCurrentStep(0)
       setSuccess(tr('Connected! Your bot is live on LINE.', 'æŽ¥ç¶šå®Œäº†ã€‚ãƒœãƒƒãƒˆã¯LINEã§ç¨¼åƒä¸­ã§ã™ã€‚'))
+      if (currentStep === 5 || !existing) {
+        onConnected?.()
+      }
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -315,7 +323,7 @@ export default function BotLineSettingsTab() {
     }
   }
 
-  if (!selectedBot || !botId) {
+  if (!botId) {
     return <div className="empty-panel">{tr('Select a bot to configure LINE integration.', 'LINEé€£æºã‚’è¨­å®šã™ã‚‹ãƒœãƒƒãƒˆã‚’é¸æŠžã—ã¦ãã ã•ã„ã€‚')}</div>
   }
 
