@@ -100,8 +100,8 @@ def format_evidence_block(evidence: List[Dict[str, str]], limit: int = 60) -> st
         # Keep link labels, drop the URL: [Omakase Course](https://...) → Omakase Course
         snip = re.sub(r"\[([^\]]*)\]\(https?://[^)]*\)", r"\1", snip)
         snip = re.sub(r"  +", " ", snip).strip()
-        if len(snip) > 1500:
-            snip = snip[:1500] + " ..."
+        if len(snip) > 1000:
+            snip = snip[:1000] + " ..."
         url = e.get("url") or ""
         title = (e.get("title") or "").strip()
         header = f"--- snippet from {url}"
@@ -678,7 +678,7 @@ def one_shot_answer(client: genai.Client, question: str, *, rag_corpus: str):
 # Verification + Re-synthesis
 # =========================
 def verify_answer_supported(client: genai.Client, question: str, evidence: List[Dict[str, str]], answer: str) -> dict:
-    ev_block = format_evidence_block(evidence, limit=80)
+    ev_block = format_evidence_block(evidence, limit=10)
     prompt = (
         "Verify that EVERY factual sentence in the assistant's answer is supported by the evidence.\n"
         'Return ONLY JSON: {"supported": true|false, "unsupported_sentences": ["..."], "confidence": 0..1}\n\n'
@@ -828,7 +828,7 @@ def _build_grounded_prompt(
     )
     user_block = (
         question_section
-        + f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=80)}\n\n"
+        + f"EVIDENCE SNIPPETS (with URLs):\n{format_evidence_block(evidence, limit=10)}\n\n"
         + task_line
     )
     return {"system": system, "user_block": user_block}
@@ -1072,9 +1072,9 @@ def run_vertex_rag(
     corpus_evidence = [e for e in evidence if not e.get("_skip_rerank")]
     if len(corpus_evidence) > 4:
         if ENABLE_LLM_RERANK:
-            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=15)
+            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=10)
         else:
-            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=15)
+            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=10)
         _dbg({"type": "reranking_done", "evidence_count": len(corpus_evidence), "llm_enabled": ENABLE_LLM_RERANK})
     evidence = asset_evidence + corpus_evidence
 
@@ -1209,9 +1209,9 @@ def run_vertex_rag_stream(
     corpus_evidence = [e for e in evidence if not e.get("_skip_rerank")]
     if len(corpus_evidence) > 4:
         if ENABLE_LLM_RERANK:
-            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=15)
+            corpus_evidence = rerank_evidence(client, question, corpus_evidence, top_n=10)
         else:
-            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=15)
+            corpus_evidence = heuristic_rerank(question, corpus_evidence, top_n=10)
         _dbg({"type": "reranking_done", "evidence_count": len(corpus_evidence), "llm_enabled": ENABLE_LLM_RERANK})
     evidence = asset_evidence + corpus_evidence
 
