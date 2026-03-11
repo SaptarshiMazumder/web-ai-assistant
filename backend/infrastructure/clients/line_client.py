@@ -7,7 +7,8 @@ import hashlib
 import hmac
 import base64
 import logging
-from typing import List, Optional
+import re
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -24,6 +25,51 @@ from domain.platform_profiles import get_line_menu_quick_payload, get_line_menu_
 
 LINE_MENU_QUICK_PAYLOAD = get_line_menu_quick_payload()
 LINE_MENU_PAGE_PAYLOAD_PREFIX = get_line_menu_page_payload_prefix()
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+_SUGGESTED_LAYOUTS = {"column", "row"}
+_CAROUSEL_BUBBLE_SIZES = {"nano", "micro", "deca", "hecto", "kilo", "mega", "giga"}
+_CAROUSEL_IMAGE_RATIOS = {"1:1", "4:3", "16:9", "20:13", "3:4"}
+
+
+def _normalize_hex_color(value: Any, fallback: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    if not raw.startswith("#") and len(raw) == 6:
+        raw = f"#{raw}"
+    return raw if _HEX_COLOR_RE.fullmatch(raw) else fallback
+
+
+def _resolve_suggested_style(style_cfg: Optional[Dict[str, Any]]) -> Dict[str, str]:
+    cfg = style_cfg if isinstance(style_cfg, dict) else {}
+    layout = str(cfg.get("layout") or "column").strip().lower()
+    if layout not in _SUGGESTED_LAYOUTS:
+        layout = "column"
+    return {
+        "layout": layout,
+        "card_background_color": _normalize_hex_color(cfg.get("card_background_color"), "#ffffff"),
+        "card_text_color": _normalize_hex_color(cfg.get("card_text_color"), "#1f2937"),
+        "button_background_color": _normalize_hex_color(cfg.get("button_background_color"), "#f3f4f6"),
+        "button_text_color": _normalize_hex_color(cfg.get("button_text_color"), "#374151"),
+        "button_border_color": _normalize_hex_color(cfg.get("button_border_color"), "#e5e7eb"),
+    }
+
+
+def _resolve_carousel_style(style_cfg: Optional[Dict[str, Any]]) -> Dict[str, str]:
+    cfg = style_cfg if isinstance(style_cfg, dict) else {}
+    bubble_size = str(cfg.get("bubble_size") or "micro").strip().lower()
+    if bubble_size not in _CAROUSEL_BUBBLE_SIZES:
+        bubble_size = "micro"
+    image_aspect_ratio = str(cfg.get("image_aspect_ratio") or "4:3").strip()
+    if image_aspect_ratio not in _CAROUSEL_IMAGE_RATIOS:
+        image_aspect_ratio = "4:3"
+    return {
+        "bubble_size": bubble_size,
+        "image_aspect_ratio": image_aspect_ratio,
+        "body_background_color": _normalize_hex_color(cfg.get("body_background_color"), "#111827"),
+        "body_text_color": _normalize_hex_color(cfg.get("body_text_color"), "#ffffff"),
+        "overlay_background_color": _normalize_hex_color(cfg.get("overlay_background_color"), "#111827"),
+    }
 
 # ── Signature verification ────────────────────────────────────────────
 
@@ -112,57 +158,86 @@ def build_buttons_template(alt_text: str, text: str, buttons: List[dict]) -> dic
     }
 
 
-def build_suggested_flex(suggested_messages: list) -> Optional[dict]:
-    """Build a LINE Flex Message with vertically stacked tappable rows.
-
-    Uses box components with text inside (no char limit on display) and
-    a postback action on the box so taps can be resolved by suggestion id.
-    """
+def build_suggested_flex(
+    suggested_messages: list,
+    *,
+    style_cfg: Optional[Dict[str, Any]] = None,
+) -> Optional[dict]:
+    """Build a LINE Flex suggested-actions card with profile-driven style."""
     if not suggested_messages:
         return None
-    rows = []
+    style = _resolve_suggested_style(style_cfg)
+    items: List[dict] = []
     for sm in suggested_messages[:10]:
         label = (sm.get("label") or "").strip()
         suggested_id = str(sm.get("id") or "").strip()
         if not label:
             continue
-        rows.append({
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": label,
-                    "size": "sm",
-                    "color": "#555555",
-                    "align": "center",
-                    "wrap": True,
+        items.append(
+            {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": label,
+                        "size": "sm",
+                        "color": style["button_text_color"],
+                        "align": "center",
+                        "wrap": True,
+                        "maxLines": 2,
+                    },
+                ],
+                "action": {
+                    "type": "postback",
+                    "label": label[:20],
+                    "displayText": label,
+                    "data": f"lineux:suggest:{suggested_id or label[:20]}",
                 },
-            ],
-            "action": {
-                "type": "postback",
-                "label": label[:20],
-                "displayText": label,
-                "data": f"lineux:suggest:{suggested_id or label[:20]}",
-            },
-            "paddingAll": "md",
-            "cornerRadius": "md",
-            "backgroundColor": "#F0F0F0",
-            "margin": "sm",
-        })
-    if not rows:
+                "paddingAll": "md",
+                "cornerRadius": "md",
+                "borderWidth": "1px",
+                "borderColor": style["button_border_color"],
+                "backgroundColor": style["button_background_color"],
+                "flex": 1,
+            }
+        )
+    if not items:
         return None
+
+    row_boxes: List[dict] = []
+    if style["layout"] == "row":
+        for idx in range(0, len(items), 2):
+            chunk = items[idx: idx + 2]
+            row_boxes.append(
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": chunk,
+                    "spacing": "sm",
+                }
+            )
+    else:
+        row_boxes = items
+
     return {
         "type": "flex",
-        "altText": "Suggested messages",
+        "altText": "Suggested actions",
         "contents": {
             "type": "bubble",
             "size": "mega",
             "body": {
                 "type": "box",
                 "layout": "vertical",
-                "contents": rows,
+                "contents": row_boxes,
+                "spacing": "sm",
                 "paddingAll": "lg",
+                "backgroundColor": style["card_background_color"],
+            },
+            "styles": {
+                "body": {
+                    "backgroundColor": style["card_background_color"],
+                }
             },
         },
     }
@@ -180,21 +255,23 @@ def _is_valid_image_url(url: Optional[str]) -> bool:
     return False
 
 
-def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = None) -> dict:
+def _create_image_bubble(
+    name: str,
+    image_url: str,
+    link_url: Optional[str] = None,
+    *,
+    style_cfg: Optional[Dict[str, Any]] = None,
+) -> dict:
     """Build a LINE Flex Message bubble with a hero image."""
-    # User requested:
-    # 1. "nano is too small, revert to older sze" -> size="micro"
-    # 2. "img should fill the carousel card completely" -> use 'hero' block (full bleed)
-    # 3. "truncate the text size so that its not more than 2 lines max" -> maxLines=2, text size small
-    
+    style = _resolve_carousel_style(style_cfg)
     hero: dict = {
         "type": "image",
         "url": image_url,
         "size": "full",
-        "aspectRatio": "4:3",
+        "aspectRatio": style["image_aspect_ratio"],
         "aspectMode": "cover",
     }
-    
+
     # Action on the bubble container so the whole card is clickable
     bubble_action = None
     if link_url:
@@ -205,22 +282,22 @@ def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = No
     if name:
         body_contents.append(
             {
-                "type": "text", 
-                "text": name, 
-                "weight": "bold", 
-                "size": "xs", # Keep text small
+                "type": "text",
+                "text": name,
+                "weight": "bold",
+                "size": "xs",
                 "wrap": True,
-                "maxLines": 2, # Truncate to 2 lines max
-                "color": "#ffffff", # White text
+                "maxLines": 2,
+                "color": style["body_text_color"],
             }
         )
-    
+
     bubble: dict = {
         "type": "bubble",
-        "size": "micro", # Reverted to micro (larger than nano)
+        "size": style["bubble_size"],
         "hero": hero,
     }
-    
+
     if bubble_action:
         bubble["action"] = bubble_action
 
@@ -229,9 +306,17 @@ def _create_image_bubble(name: str, image_url: str, link_url: Optional[str] = No
             "type": "box",
             "layout": "vertical",
             "contents": body_contents,
-            "paddingAll": "sm", # Standard padding for text area
+            "paddingAll": "sm",
             "justifyContent": "center",
-            "backgroundColor": "#333333", # Dark background
+            "backgroundColor": style["body_background_color"],
+        }
+    else:
+        bubble["body"] = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [],
+            "paddingAll": "none",
+            "backgroundColor": style["overlay_background_color"],
         }
 
     return bubble
@@ -244,6 +329,7 @@ async def reply_message(
     *,
     asset_cards: Optional[List[dict]] = None,
     suggested_flex: Optional[dict] = None,
+    carousel_style_cfg: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Reply to a webhook event using the reply token (free, no quota cost)."""
 
@@ -264,6 +350,7 @@ async def reply_message(
                     card.get("name", ""),
                     (card.get("image_url") or "").strip(),
                     card.get("link_url") or None,
+                    style_cfg=carousel_style_cfg,
                 )
             )
 
@@ -320,6 +407,7 @@ async def push_message(
     *,
     asset_cards: Optional[List[dict]] = None,
     suggested_flex: Optional[dict] = None,
+    carousel_style_cfg: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Push a message to a user proactively (costs message quota)."""
 
@@ -338,6 +426,7 @@ async def push_message(
                     card.get("name", ""),
                     (card.get("image_url") or "").strip(),
                     card.get("link_url") or None,
+                    style_cfg=carousel_style_cfg,
                 )
             )
 

@@ -1,18 +1,24 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check } from 'lucide-react'
-import { UiButton, SectionHeader } from '../../components/ui'
+import { Check, Globe, MessageCircle } from 'lucide-react'
+import { SectionHeader, SegmentedTabs, UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '../../components/WidgetDesignForm'
+import { LineDesignForm } from '../../components/LineDesignForm'
+
+type DesignTab = 'web' | 'line'
 
 export default function CreateBotWidgetPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { saveWidgetConfig } = useDashboardData()
+  const { saveWidgetConfig, fetchPlatformConfig, getLineDesign, saveLineDesign } = useDashboardData()
   const { step1, step2, step3, step4, flow } = useCreateBotFlow()
+  const [activeTab, setActiveTab] = useState<DesignTab>('web')
   const [saving, setSaving] = useState(false)
+  const [lineDesignOverrides, setLineDesignOverrides] = useState<Record<string, unknown> | null>(null)
+  const [lineDesignProfile, setLineDesignProfile] = useState<Record<string, unknown> | null>(null)
   const { botName } = step1
   const { botId, trainingStage, localError: trainingError } = step3
   const { contentHosting } = step2
@@ -28,6 +34,35 @@ export default function CreateBotWidgetPage() {
       step4.setWidgetTitle(botName.trim())
     }
   }, [botName, step4.widgetTitle, step4.setWidgetTitle])
+
+  useEffect(() => {
+    if (!botId) return
+    let mounted = true
+    void getLineDesign(botId).then((result) => {
+      if (!mounted) return
+      setLineDesignOverrides(result?.overrides || {})
+    })
+    return () => {
+      mounted = false
+    }
+  }, [botId, getLineDesign])
+
+  useEffect(() => {
+    let mounted = true
+    void fetchPlatformConfig(step4.botLanguage).then((result) => {
+      if (!mounted) return
+      const profile =
+        result.lineDesignProfile &&
+        typeof result.lineDesignProfile === 'object' &&
+        !Array.isArray(result.lineDesignProfile)
+          ? result.lineDesignProfile
+          : {}
+      setLineDesignProfile(profile)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [fetchPlatformConfig, step4.botLanguage])
 
   const value: WidgetDesignState = {
     botLanguage: step4.botLanguage,
@@ -69,6 +104,7 @@ export default function CreateBotWidgetPage() {
         businessType: step1.businessType || undefined,
         contentHosting: contentHosting || undefined,
       })
+      await saveLineDesign(botId, lineDesignOverrides || {})
       navigate(flow.nextPath)
     } catch {
       setSaving(false)
@@ -104,6 +140,18 @@ export default function CreateBotWidgetPage() {
     </>
   )
 
+  const tabs = useMemo(
+    () => [
+      { id: 'web' as const, label: t('botDesign.webTab', 'Website'), icon: <Globe size={15} /> },
+      { id: 'line' as const, label: t('botDesign.lineTab', 'LINE'), icon: <MessageCircle size={15} /> },
+    ],
+    [t]
+  )
+  const suggestedPreviewMessages = useMemo(
+    () => step4.suggestedMessages,
+    [step4.suggestedMessages]
+  )
+
   const actions = (
     <>
       <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
@@ -121,13 +169,27 @@ export default function CreateBotWidgetPage() {
         title={t('botDesign.title', 'Design the chat widget')}
         subtitle={t('botDesign.subtitle', 'Customize how the widget appears. Changes update the preview on the right.')}
       />
-      <WidgetDesignForm
-        value={value}
-        onChange={onChange}
-        banner={banner}
-        actions={actions}
-        welcomeDefaultsByLanguage={step4.welcomeDefaultsByLanguage}
-      />
+      <div style={{ marginBottom: '1rem' }}>{banner}</div>
+      <div style={{ marginBottom: '1rem' }}>
+        <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabs} ariaLabel="Design tabs" />
+      </div>
+      {activeTab === 'line' ? (
+        <LineDesignForm
+          profile={lineDesignProfile}
+          value={lineDesignOverrides}
+          onChange={setLineDesignOverrides}
+          suggestedPreviewMessages={suggestedPreviewMessages}
+          actions={actions}
+          botName={botName || step4.widgetTitle || 'Bot'}
+        />
+      ) : (
+        <WidgetDesignForm
+          value={value}
+          onChange={onChange}
+          actions={actions}
+          welcomeDefaultsByLanguage={step4.welcomeDefaultsByLanguage}
+        />
+      )}
     </>
   )
 }

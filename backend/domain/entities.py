@@ -370,6 +370,16 @@ class LineChannel:
 
 
 @dataclass
+class LineDesignConfig:
+    config_id: str
+    bot_id: str
+    org_id: str
+    config_json: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass
 class LineRichMenuState:
     state_id: str
     channel_id: str

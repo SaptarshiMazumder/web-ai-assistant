@@ -32,7 +32,8 @@
       "Bash(/c/Users/googler/OneDrive/Desktop/Projects/web-ai/temp_part1.py:*)",
       "Bash(python3:*)",
       "Bash(PYTHONIOENCODING=utf-8 python -c \":*)",
-      "Bash(grep -E \"\\\\.\\(py\\)$\")"
+      "Bash(grep -E \"\\\\.\\(py\\)$\")",
+      "Bash(npx vite:*)"
     ]
   }
 }

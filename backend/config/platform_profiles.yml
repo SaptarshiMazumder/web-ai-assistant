@@ -107,10 +107,100 @@ line_ux:
     ja: "担当者が順次ご案内します。"
   rich_menu:
     chat_bar_text:
-      en: "Tap to chat"
-      ja: "タップして相談"
-    actions: {}
-    layouts: {}
+      normal:
+        en: "Tap to chat"
+        ja: "タップして相談"
+      support:
+        en: "Support options"
+        ja: "サポートメニュー"
+    actions:
+      reserve:
+        label:
+          en: "Reserve"
+          ja: "予約する"
+        capability: reserve
+        icon: reserve
+        uri_fallback_order: [reservation_url]
+      menu:
+        label:
+          en: "Menu"
+          ja: "メニュー"
+        capability: menu
+        icon: menu
+        fallback_order: [menu_page_url, menu_postback]
+      support:
+        label:
+          en: "Support"
+          ja: "スタッフ呼び出し"
+        capability: support
+        icon: support
+      back_to_ai:
+        label:
+          en: "Back to AI"
+          ja: "AIに戻る"
+        capability: back_to_ai
+        icon: back_to_ai
+    layouts:
+      normal: [reserve, menu, support]
+      support: [back_to_ai, menu, reserve]
+    styles:
+      background: "#f5f7fb"
+      text: "#0f172a"
+      muted_text: "#475569"
+      button_background: "#ffffff"
+      button_text: "#0f172a"
+      button_border: "#d7dde7"
+      accent: "#06c755"
+      support_background: "#0f172a"
+      support_text: "#f8fafc"
+      support_muted_text: "#cbd5e1"
+      support_button_background: "#fef3c7"
+      support_button_text: "#92400e"
+      support_accent: "#f59e0b"
+  design_profile:
+    suggested_actions:
+      defaults:
+        theme_mode: light
+        layout: column
+        card_background_color: "#ffffff"
+        card_text_color: "#1f2937"
+        button_background_color: "#f3f4f6"
+        button_text_color: "#374151"
+        button_border_color: "#e5e7eb"
+      options:
+        theme_modes: [light, dark]
+        layouts: [column, row]
+    asset_carousel:
+      defaults:
+        bubble_size: micro
+        image_aspect_ratio: "4:3"
+        body_background_color: "#111827"
+        body_text_color: "#ffffff"
+        overlay_background_color: "#111827"
+      options:
+        bubble_sizes: [micro, kilo, mega]
+        image_aspect_ratios: ["1:1", "4:3", "16:9", "20:13", "3:4"]
+    rich_menu:
+      defaults:
+        styles:
+          normal:
+            background: "#f5f7fb"
+            text: "#0f172a"
+            muted_text: "#475569"
+            button_background: "#ffffff"
+            button_text: "#0f172a"
+            border: "#d7dde7"
+            accent: "#06c755"
+          support:
+            background: "#0f172a"
+            text: "#f8fafc"
+            muted_text: "#cbd5e1"
+            button_background: "#fef3c7"
+            button_text: "#92400e"
+            border: "#d7dde7"
+            accent: "#f59e0b"
+      allowed_icon_ids: [reserve, menu, support, back_to_ai, chat, help, link]
+      editable_action_ids: [reserve, menu, support, back_to_ai]
   cancel_keywords:
     - cancel
     - キャンセル

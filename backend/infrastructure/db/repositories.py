@@ -28,6 +28,7 @@ from domain.entities import (
     InstagramChannel,
     InstagramUserSession,
     LineChannel,
+    LineDesignConfig,
     LineRichMenuState,
     LineUserSession,
     OrgMemberRecord,
@@ -318,6 +319,7 @@ class PostgresBotRepository:
             con.execute("DELETE FROM line_user_sessions WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM instagram_channels WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM line_channels WHERE bot_id = %s", (bid,))
+            con.execute("DELETE FROM line_design_configs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM availability_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM booking_link_jobs WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bot_suggested_message_packs WHERE bot_id = %s", (bid,))
@@ -4310,6 +4312,10 @@ def _new_line_channel_id() -> str:
     return "lch_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
 
+def _new_line_design_config_id() -> str:
+    return "ldc_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
+
+
 def _new_line_rich_menu_state_id() -> str:
     return "lrm_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
@@ -4421,6 +4427,106 @@ class PostgresLineChannelRepository:
         try:
             result = con.execute(
                 "DELETE FROM line_channels WHERE bot_id = %s",
+                (bid,),
+            )
+            con.commit()
+            return result.rowcount > 0
+        finally:
+            con.close()
+
+
+class PostgresLineDesignConfigRepository:
+    """CRUD for per-bot LINE design overrides."""
+
+    def upsert(
+        self,
+        *,
+        bot_id: str,
+        org_id: str,
+        config_json: str,
+    ) -> LineDesignConfig:
+        bid = (bot_id or "").strip()
+        oid = (org_id or "").strip()
+        payload = str(config_json or "").strip() or "{}"
+        if not bid or not oid:
+            raise ValueError("bot_id and org_id are required")
+        now = _utc_now()
+        cfg_id = _new_line_design_config_id()
+        con = _connect()
+        try:
+            row = con.execute(
+                "SELECT config_id FROM line_design_configs WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            if row:
+                cfg_id = row[0]
+                con.execute(
+                    """
+                    UPDATE line_design_configs
+                    SET org_id = %s,
+                        config_json = %s,
+                        updated_at = %s
+                    WHERE bot_id = %s
+                    """,
+                    (oid, payload, now, bid),
+                )
+            else:
+                con.execute(
+                    """
+                    INSERT INTO line_design_configs(
+                      config_id, bot_id, org_id, config_json, created_at, updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """,
+                    (cfg_id, bid, oid, payload, now, now),
+                )
+            con.commit()
+            return LineDesignConfig(
+                config_id=cfg_id,
+                bot_id=bid,
+                org_id=oid,
+                config_json=payload,
+                created_at=now,
+                updated_at=now,
+            )
+        finally:
+            con.close()
+
+    def get_by_bot_id(self, bot_id: str) -> Optional[LineDesignConfig]:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return None
+        con = _connect()
+        try:
+            row = con.execute(
+                """
+                SELECT config_id, bot_id, org_id, config_json, created_at, updated_at
+                FROM line_design_configs
+                WHERE bot_id = %s
+                """,
+                (bid,),
+            ).fetchone()
+            if not row:
+                return None
+            return LineDesignConfig(
+                config_id=row[0],
+                bot_id=row[1],
+                org_id=row[2],
+                config_json=row[3] if len(row) > 3 else "{}",
+                created_at=row[4],
+                updated_at=row[5],
+            )
+        finally:
+            con.close()
+
+    def delete_by_bot_id(self, bot_id: str) -> bool:
+        bid = (bot_id or "").strip()
+        if not bid:
+            return False
+        con = _connect()
+        try:
+            result = con.execute(
+                "DELETE FROM line_design_configs WHERE bot_id = %s",
                 (bid,),
             )
             con.commit()

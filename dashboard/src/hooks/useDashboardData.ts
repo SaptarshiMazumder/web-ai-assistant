@@ -275,6 +275,7 @@ export type PlatformConfigPayload = {
     web: { en: string; ja: string }
     line: { en: string; ja: string }
   }
+  lineDesignProfile: Record<string, unknown>
   createBotFlow: CreateBotFlowConfig
   jobPipelineWorkflow: PlatformConfigJobPipelineWorkflow
 }
@@ -359,6 +360,13 @@ export type LineChannelTestResult = {
   basic_id?: string | null
   picture_url?: string | null
   user_id?: string | null
+}
+
+export type LineDesignRecord = {
+  bot_id: string
+  effective_config: Record<string, unknown>
+  overrides: Record<string, unknown>
+  updated_at?: string | null
 }
 
 export type EscalationRecord = {
@@ -648,10 +656,16 @@ type DashboardData = {
     ) => Promise<ConversationDetailRecord | null>
     endConversation: (botId: string, sessionId: string) => Promise<void>
     takeOverConversation: (botId: string, sessionId: string) => Promise<ConversationSupportState | null>
-  getBotOverviewSetup: (botId: string, lang?: string, orgIdOverride?: string | null) => Promise<BotOverviewSetupSection[]>
-  getLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelRecord | null>
-  testLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelTestResult | null>
-  getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
+    getBotOverviewSetup: (botId: string, lang?: string, orgIdOverride?: string | null) => Promise<BotOverviewSetupSection[]>
+    getLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelRecord | null>
+    testLineChannel: (botId: string, orgIdOverride?: string | null) => Promise<LineChannelTestResult | null>
+    getLineDesign: (botId: string, orgIdOverride?: string | null) => Promise<LineDesignRecord | null>
+    saveLineDesign: (
+      botId: string,
+      overrides: Record<string, unknown>,
+      orgIdOverride?: string | null
+    ) => Promise<LineDesignRecord | null>
+    getEscalationConfig: (botId: string) => Promise<EscalationConfig | null>
   saveEscalationConfig: (botId: string, config: EscalationConfig) => Promise<EscalationConfig | null>
   getEscalationCounts: (botId: string) => Promise<{ total: number; open: number; unread: number } | null>
   refreshSelectedBotUnreadNotifications: (botIdOverride?: string | null) => Promise<void>
@@ -1897,6 +1911,37 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function getLineDesign(botId: string, orgIdOverride?: string | null): Promise<LineDesignRecord | null> {
+    if (isSuperAdmin && !activeOrgId && !orgIdOverride) return null
+    try {
+      const effectiveOrgId = orgIdOverride ?? (selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId)
+      const path = withOrgParam(`/v1/org/bots/${botId}/line-design`, effectiveOrgId)
+      return await fetchAuthedJson<LineDesignRecord>(path)
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function saveLineDesign(
+    botId: string,
+    overrides: Record<string, unknown>,
+    orgIdOverride?: string | null
+  ): Promise<LineDesignRecord | null> {
+    if (isSuperAdmin && !activeOrgId && !orgIdOverride) return null
+    try {
+      const effectiveOrgId = orgIdOverride ?? (selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId)
+      const path = withOrgParam(`/v1/org/bots/${botId}/line-design`, effectiveOrgId)
+      return await fetchAuthedJson<LineDesignRecord>(path, {
+        method: 'PUT',
+        body: JSON.stringify(overrides || {}),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
   async function getEscalationConfig(botId: string): Promise<EscalationConfig | null> {
     if (isSuperAdmin && !activeOrgId) return null
     try {
@@ -2454,6 +2499,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
           web?: { en?: string; ja?: string }
           line?: { en?: string; ja?: string }
         }
+        lineDesignProfile?: Record<string, unknown>
         createBotFlow?: {
           step_groups?: Array<{ id?: string; label?: string; description?: string }>
           screen_definitions?: Record<string, {
@@ -2501,6 +2547,10 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         platforms: result.platforms ?? [],
         defaultSuggestedMessages: result.defaultSuggestedMessages ?? [],
         defaultAvailableSuggestedMessageTypes: result.defaultAvailableSuggestedMessageTypes ?? ['ai_response'],
+          lineDesignProfile:
+            result.lineDesignProfile && typeof result.lineDesignProfile === 'object' && !Array.isArray(result.lineDesignProfile)
+              ? result.lineDesignProfile
+              : {},
           defaultWelcomeMessages: {
             web: {
               en: String(result.defaultWelcomeMessages?.web?.en || ''),
@@ -2523,6 +2573,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
         platforms: [],
         defaultSuggestedMessages: [],
         defaultAvailableSuggestedMessageTypes: ['ai_response'],
+          lineDesignProfile: {},
           defaultWelcomeMessages: {
             web: { en: '', ja: '' },
             line: { en: '', ja: '' },
@@ -2802,10 +2853,12 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     getConversation,
     endConversation,
     takeOverConversation,
-    getBotOverviewSetup,
-    getLineChannel,
-    testLineChannel,
-    recomputeAnalytics,
+      getBotOverviewSetup,
+      getLineChannel,
+      testLineChannel,
+      getLineDesign,
+      saveLineDesign,
+      recomputeAnalytics,
     getAnalyticsSummary,
     getAnalyticsTimeseries,
     getAnalyticsTopSources,

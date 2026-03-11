@@ -142,13 +142,17 @@ export function widgetConfigToState(config: Record<string, unknown> | null): Wid
             : 'ai_response'
         const message = typeof item?.message === 'string' ? item.message : undefined
         const prompt = typeof item?.prompt === 'string' ? item.prompt : undefined
-        const urls = Array.isArray(item?.urls)
-          ? item.urls.filter((u): u is string => typeof u === 'string').map((u) => u.trim()).filter(Boolean)
-          : undefined
-        return { id: String(item?.id || `suggest_${idx}`), label, type, message, prompt, urls }
-      })
-      .filter((item): item is SuggestedMessageConfig => Boolean(item))
-  }
+          const urls = Array.isArray(item?.urls)
+            ? item.urls.filter((u): u is string => typeof u === 'string').map((u) => u.trim()).filter(Boolean)
+            : undefined
+          const fastPathBinding =
+            typeof item?.fastPathBinding === 'string' && item.fastPathBinding.trim()
+              ? item.fastPathBinding.trim()
+              : undefined
+          return { id: String(item?.id || `suggest_${idx}`), label, type, message, prompt, urls, fastPathBinding }
+        })
+        .filter((item): item is SuggestedMessageConfig => Boolean(item))
+    }
   return d
 }
 
@@ -601,6 +605,31 @@ export function WidgetDesignForm({
               </div>
             )}
           </section>
+
+          {/* Reset button */}
+          <div style={{ marginTop: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(t('widgetDesign.resetConfirm', 'Reset all colors to defaults?'))) {
+                  onChange('widgetPrimaryColor', DEFAULT_WIDGET_DESIGN_STATE.widgetPrimaryColor)
+                  onChange('textColor', DEFAULT_WIDGET_DESIGN_STATE.textColor)
+                }
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#f5f5f5',
+                border: '1px solid #ddd',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#666',
+              }}
+            >
+              {t('widgetDesign.resetColors', 'Reset colors')}
+            </button>
+          </div>
         </div>
 
         <WidgetPreview

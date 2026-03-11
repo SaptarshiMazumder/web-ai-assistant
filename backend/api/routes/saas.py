@@ -117,6 +117,7 @@ from domain.platform_profiles import (
     get_prompt_fallback_config,
     get_prompt_generation_config,
     get_line_support_messages,
+    get_line_design_profile,
     get_reservation_url_for_platform,
     get_reservation_config_from_widget,
     get_reservation_platforms_list,
@@ -1912,6 +1913,7 @@ async def v1_org_platform_config(
         "defaultSuggestedMessages": default_suggested,
         "defaultAvailableSuggestedMessageTypes": default_available_types,
         "defaultWelcomeMessages": get_default_welcome_messages(),
+        "lineDesignProfile": get_line_design_profile(),
         "createBotFlow": get_dashboard_create_bot_flow(lang=lang or "en"),
         "jobPipelineWorkflow": {
             "workflowId": "default",

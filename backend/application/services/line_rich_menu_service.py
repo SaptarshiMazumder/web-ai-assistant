@@ -11,7 +11,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from common.language_utils import normalize_lang
 from domain.platform_profiles import (
+    build_line_design_effective,
     get_line_rich_menu_definition,
+    get_line_rich_menu_labels_from_suggested_messages,
+    normalize_line_design_overrides,
     get_reservation_config_from_widget,
     has_support_suggested_message_for_widget,
 )
@@ -29,6 +32,7 @@ from infrastructure.db.repositories import (
     PostgresBotRepository,
     PostgresConversationRepository,
     PostgresLineChannelRepository,
+    PostgresLineDesignConfigRepository,
     PostgresLineRichMenuStateRepository,
 )
 
@@ -42,7 +46,7 @@ _PUBLIC_BASE_URL = (
 ).strip()
 
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
-_RICH_MENU_RENDER_VERSION = 2
+_RICH_MENU_RENDER_VERSION = 4
 
 
 def _utc_now() -> str:
@@ -130,12 +134,14 @@ class LineRichMenuService:
         *,
         bot_repo: Optional[PostgresBotRepository] = None,
         line_channel_repo: Optional[PostgresLineChannelRepository] = None,
+        line_design_repo: Optional[PostgresLineDesignConfigRepository] = None,
         state_repo: Optional[PostgresLineRichMenuStateRepository] = None,
         conversation_repo: Optional[PostgresConversationRepository] = None,
         asset_repo: Optional[PostgresBotAssetRepository] = None,
     ):
         self._bot_repo = bot_repo or PostgresBotRepository()
         self._line_channel_repo = line_channel_repo or PostgresLineChannelRepository()
+        self._line_design_repo = line_design_repo or PostgresLineDesignConfigRepository()
         self._state_repo = state_repo or PostgresLineRichMenuStateRepository()
         self._conversation_repo = conversation_repo or PostgresConversationRepository()
         self._asset_repo = asset_repo or PostgresBotAssetRepository()
@@ -154,6 +160,14 @@ class LineRichMenuService:
 
     def _get_widget_config(self, bot) -> Dict[str, Any]:
         return _parse_json_dict(getattr(bot, "widget_config", None))
+
+    def _get_line_design_overrides(self, bot_id: str) -> Dict[str, Any]:
+        row = self._line_design_repo.get_by_bot_id(bot_id)
+        payload = _parse_json_dict(getattr(row, "config_json", None) if row else None)
+        return normalize_line_design_overrides(payload)
+
+    def _get_line_design_effective(self, bot_id: str) -> Dict[str, Any]:
+        return build_line_design_effective(self._get_line_design_overrides(bot_id))
 
     def _get_bot_lang(self, widget_config: Dict[str, Any]) -> str:
         return normalize_lang(widget_config.get("language") or widget_config.get("botLanguage") or "en")
@@ -251,31 +265,154 @@ class LineRichMenuService:
 
     def _build_variant_specs(self, bot) -> Dict[str, Any]:
         capabilities = self._resolve_capabilities(bot)
+        widget_config = capabilities.get("widget_config") if isinstance(capabilities.get("widget_config"), dict) else {}
+        line_design_effective = self._get_line_design_effective(bot.bot_id)
+        rich_design = (
+            line_design_effective.get("rich_menu")
+            if isinstance(line_design_effective.get("rich_menu"), dict)
+            else {}
+        )
+        design_styles = rich_design.get("styles") if isinstance(rich_design.get("styles"), dict) else {}
+        design_actions_list = rich_design.get("actions") if isinstance(rich_design.get("actions"), list) else []
+        design_layouts = rich_design.get("layouts") if isinstance(rich_design.get("layouts"), dict) else {}
+        design_action_map: Dict[str, Dict[str, Any]] = {}
+        for item in design_actions_list:
+            if not isinstance(item, dict):
+                continue
+            aid = str(item.get("id") or "").strip()
+            if aid:
+                design_action_map[aid] = item
+        suggested_label_map_by_lang = {
+            lang_key: get_line_rich_menu_labels_from_suggested_messages(widget_config, lang=lang_key)
+            for lang_key in ("en", "ja")
+        }
+
         variants: Dict[str, Any] = {}
         for state_name in ("normal", "support"):
             for lang in ("en", "ja"):
                 definition = get_line_rich_menu_definition(state=state_name, lang=lang)
+                definition_actions = [item for item in (definition.get("actions") or []) if isinstance(item, dict)]
+                if not definition_actions:
+                    continue
+                definition_action_map = {
+                    str(item.get("id") or "").strip(): item
+                    for item in definition_actions
+                    if str(item.get("id") or "").strip()
+                }
+                definition_order = [aid for aid in definition_action_map.keys()]
+                override_order = [
+                    str(aid).strip()
+                    for aid in (
+                        design_layouts.get(state_name)
+                        if isinstance(design_layouts.get(state_name), list)
+                        else []
+                    )
+                    if str(aid).strip() in definition_action_map
+                ]
+                ordered_ids: List[str] = []
+                for aid in override_order + definition_order:
+                    if aid and aid not in ordered_ids:
+                        ordered_ids.append(aid)
+
                 resolved_actions = []
-                for action_def in definition.get("actions") or []:
+                for action_id in ordered_ids:
+                    action_def = definition_action_map.get(action_id)
+                    if not action_def:
+                        continue
                     target = self._resolve_action_target(action_def, capabilities)
                     if not target:
                         continue
+                    design_override = design_action_map.get(action_id, {})
+                    if design_override.get("enabled") is False:
+                        continue
+                    labels = design_override.get("labels") if isinstance(design_override.get("labels"), dict) else {}
+                    capability = str(action_def.get("capability") or action_id).strip().lower()
+                    suggested_label = suggested_label_map_by_lang.get(lang, {}).get(action_id) or (
+                        suggested_label_map_by_lang.get(lang, {}).get(capability)
+                    )
+                    label = str(labels.get(lang) or suggested_label or action_def.get("label") or "").strip()
+                    if not label:
+                        continue
+                    icon = str(design_override.get("icon") or action_def.get("icon") or action_id).strip() or action_id
                     resolved_actions.append(
                         {
-                            "id": action_def["id"],
-                            "label": action_def["label"],
-                            "icon": action_def.get("icon") or action_def["id"],
+                            "id": action_id,
+                            "label": label,
+                            "icon": icon,
                             "target": target,
                         }
                     )
                 if not resolved_actions:
                     continue
+
+                base_styles = definition.get("styles") if isinstance(definition.get("styles"), dict) else {}
+                state_style_override = (
+                    design_styles.get(state_name)
+                    if isinstance(design_styles.get(state_name), dict)
+                    else {}
+                )
+                merged_styles = dict(base_styles)
+                if state_style_override:
+                    merged_styles["button_border"] = state_style_override.get(
+                        "border",
+                        merged_styles.get("button_border"),
+                    )
+                    if state_name == "support":
+                        merged_styles["support_background"] = state_style_override.get(
+                            "background",
+                            merged_styles.get("support_background"),
+                        )
+                        merged_styles["support_text"] = state_style_override.get(
+                            "text",
+                            merged_styles.get("support_text"),
+                        )
+                        merged_styles["support_muted_text"] = state_style_override.get(
+                            "muted_text",
+                            merged_styles.get("support_muted_text"),
+                        )
+                        merged_styles["support_button_background"] = state_style_override.get(
+                            "button_background",
+                            merged_styles.get("support_button_background"),
+                        )
+                        merged_styles["support_button_text"] = state_style_override.get(
+                            "button_text",
+                            merged_styles.get("support_button_text"),
+                        )
+                        merged_styles["support_accent"] = state_style_override.get(
+                            "accent",
+                            merged_styles.get("support_accent"),
+                        )
+                    else:
+                        merged_styles["background"] = state_style_override.get(
+                            "background",
+                            merged_styles.get("background"),
+                        )
+                        merged_styles["text"] = state_style_override.get(
+                            "text",
+                            merged_styles.get("text"),
+                        )
+                        merged_styles["muted_text"] = state_style_override.get(
+                            "muted_text",
+                            merged_styles.get("muted_text"),
+                        )
+                        merged_styles["button_background"] = state_style_override.get(
+                            "button_background",
+                            merged_styles.get("button_background"),
+                        )
+                        merged_styles["button_text"] = state_style_override.get(
+                            "button_text",
+                            merged_styles.get("button_text"),
+                        )
+                        merged_styles["accent"] = state_style_override.get(
+                            "accent",
+                            merged_styles.get("accent"),
+                        )
                 variant_key = f"{state_name}_{lang}"
                 variants[variant_key] = {
                     "state": state_name,
                     "lang": lang,
                     "chat_bar_text": str(definition.get("chat_bar_text") or "").strip() or "Quick actions",
-                    "styles": definition.get("styles") if isinstance(definition.get("styles"), dict) else {},
+                    "styles": merged_styles,
                     "size": definition.get("size") if isinstance(definition.get("size"), dict) else {},
                     "actions": resolved_actions,
                 }

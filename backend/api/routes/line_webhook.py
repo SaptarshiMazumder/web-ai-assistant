@@ -24,6 +24,8 @@ from api.schemas import (
     LineChannelResponse,
     LineChannelDeleteResponse,
     LineChannelTestResponse,
+    LineDesignResponse,
+    LineDesignUpdateRequest,
 )
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from application.services.answer_normalization_service import (
@@ -66,6 +68,9 @@ from domain.platform_profiles import (
     get_platform_json_response_instruction,
     get_line_cancel_keywords,
     get_line_support_messages,
+    get_line_design_profile,
+    build_line_design_effective,
+    normalize_line_design_overrides,
     get_reservation_config_from_widget,
     get_suggested_messages_for_widget,
 )
@@ -74,6 +79,7 @@ from infrastructure.assets.asset_resolver import (
 )
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
+    PostgresLineDesignConfigRepository,
     PostgresLineUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
@@ -83,6 +89,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _line_channel_repo = PostgresLineChannelRepository()
+_line_design_repo = PostgresLineDesignConfigRepository()
 _line_user_session_repo = PostgresLineUserSessionRepository()
 _line_adapter = LineChannelAdapter()
 _prompt_provider = ConfigPromptProvider()
@@ -247,6 +254,29 @@ def _build_line_channel_response(channel, *, rich_menu_state=None) -> LineChanne
         rich_menu_last_error=getattr(state, "last_error", None),
         rich_menu_variants=dict(getattr(state, "rich_menu_variants", None) or {}),
     )
+
+
+def _parse_line_design_overrides(raw_config_json: Optional[str]) -> Dict[str, Any]:
+    text = str(raw_config_json or "").strip()
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return parsed
+
+
+def _get_line_design_payload(bot_id: str) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[str]]:
+    row = _line_design_repo.get_by_bot_id(bot_id)
+    overrides = _parse_line_design_overrides(getattr(row, "config_json", None))
+    profile = get_line_design_profile()
+    normalized_overrides = normalize_line_design_overrides(overrides, profile=profile)
+    effective_config = build_line_design_effective(normalized_overrides, profile=profile)
+    updated_at = getattr(row, "updated_at", None) if row else None
+    return normalized_overrides, effective_config, updated_at
 
 
 def _is_truthy(value: Any) -> bool:
@@ -669,6 +699,17 @@ async def _handle_line_event(
     # Load suggested messages and session BEFORE typing — we must not show typing when
     # user is escalated and we won't reply (avoids typing bubble stuck until timeout)
     suggested_flex = None
+    _, line_design_effective, _ = _get_line_design_payload(bot.bot_id)
+    suggested_style_cfg = (
+        line_design_effective.get("suggested_actions")
+        if isinstance(line_design_effective.get("suggested_actions"), dict)
+        else {}
+    )
+    carousel_style_cfg = (
+        line_design_effective.get("asset_carousel")
+        if isinstance(line_design_effective.get("asset_carousel"), dict)
+        else {}
+    )
     widget_config: Dict[str, Any] = {}
     if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
         try:
@@ -693,7 +734,7 @@ async def _handle_line_event(
         lang = stored_lang
     suggested_messages = get_suggested_messages_for_widget(widget_config, lang=lang)
     if suggested_messages:
-        suggested_flex = build_suggested_flex(suggested_messages)
+        suggested_flex = build_suggested_flex(suggested_messages, style_cfg=suggested_style_cfg)
     suggested_message = _resolve_suggested_message_by_id(suggested_message_id, suggested_messages or [])
     suggested_type = (
         str(suggested_message.get("type") or "").strip()
@@ -1196,9 +1237,23 @@ async def _handle_line_event(
     reply_asset_cards = None if menu_fallback_skip_assets else asset_cards
     if len(answer) > 5000:
         chunks = [answer[i:i + 5000] for i in range(0, len(answer), 5000)]
-        await reply_message(reply_token, chunks[:5], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
+        await reply_message(
+            reply_token,
+            chunks[:5],
+            access_token,
+            asset_cards=reply_asset_cards,
+            suggested_flex=suggested_flex,
+            carousel_style_cfg=carousel_style_cfg,
+        )
     else:
-        await reply_message(reply_token, [answer], access_token, asset_cards=reply_asset_cards, suggested_flex=suggested_flex)
+        await reply_message(
+            reply_token,
+            [answer],
+            access_token,
+            asset_cards=reply_asset_cards,
+            suggested_flex=suggested_flex,
+            carousel_style_cfg=carousel_style_cfg,
+        )
     _schedule_line_rich_menu_update(
         bot_id=bot.bot_id,
         line_user_id=line_user_id,
@@ -1224,6 +1279,55 @@ async def v1_org_get_line_channel(
     if not channel:
         raise HTTPException(status_code=404, detail="No LINE channel configured for this bot")
     return _build_line_channel_response(channel)
+
+
+@router.get("/v1/org/bots/{bot_id}/line-design", response_model=LineDesignResponse)
+async def v1_org_get_line_design(
+    bot_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    overrides, effective_config, updated_at = _get_line_design_payload(bot_id)
+    return LineDesignResponse(
+        bot_id=bot_id,
+        effective_config=effective_config,
+        overrides=overrides,
+        updated_at=updated_at,
+    )
+
+
+@router.put("/v1/org/bots/{bot_id}/line-design", response_model=LineDesignResponse)
+async def v1_org_upsert_line_design(
+    bot_id: str,
+    payload: LineDesignUpdateRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    profile = get_line_design_profile()
+    incoming = payload.model_dump(exclude_none=True)
+    normalized = normalize_line_design_overrides(incoming, profile=profile)
+    saved = _line_design_repo.upsert(
+        bot_id=bot_id,
+        org_id=resolved_org,
+        config_json=json.dumps(normalized, ensure_ascii=False),
+    )
+    effective_config = build_line_design_effective(normalized, profile=profile)
+    channel = _line_channel_repo.get_by_bot_id(bot_id)
+    if channel and channel.is_active:
+        try:
+            await line_rich_menu_service().sync_for_bot(bot_id, force=True)
+        except Exception:
+            logger.exception("Managed LINE rich-menu sync failed during line design save bot_id=%s", bot_id)
+    return LineDesignResponse(
+        bot_id=bot_id,
+        effective_config=effective_config,
+        overrides=normalized,
+        updated_at=saved.updated_at,
+    )
 
 
 @router.put("/v1/org/bots/{bot_id}/line-channel", response_model=LineChannelResponse)

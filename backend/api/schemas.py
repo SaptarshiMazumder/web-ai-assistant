@@ -858,6 +858,19 @@ class LineChannelTestResponse(BaseModel):
     user_id: Optional[str] = None
 
 
+class LineDesignUpdateRequest(BaseModel):
+    suggested_actions: Optional[Dict[str, Any]] = None
+    asset_carousel: Optional[Dict[str, Any]] = None
+    rich_menu: Optional[Dict[str, Any]] = None
+
+
+class LineDesignResponse(BaseModel):
+    bot_id: str
+    effective_config: Dict[str, Any] = Field(default_factory=dict)
+    overrides: Dict[str, Any] = Field(default_factory=dict)
+    updated_at: Optional[str] = None
+
+
 # ========== Instagram Integration ==========
 
 class InstagramChannelUpsertRequest(BaseModel):

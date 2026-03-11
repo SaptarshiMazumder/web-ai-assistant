@@ -10,8 +10,10 @@ read from the active profile. Web, Line, and Instagram all use these; each chann
 renders the result in its own UI (quick replies, flex buttons, etc.).
 """
 
+import copy
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -198,6 +200,9 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
     _require_dict(rich_menu, "chat_bar_text")
     _require_dict(rich_menu, "actions")
     _require_dict(rich_menu, "layouts")
+    design_profile = line_ux.get("design_profile")
+    if design_profile is not None and not isinstance(design_profile, dict):
+        raise ConfigValidationError(f"Invalid 'line_ux.design_profile' in {_CONFIG_PATH}")
     if not isinstance(line_ux.get("cancel_keywords"), list):
         raise ConfigValidationError(f"Missing or invalid 'line_ux.cancel_keywords' in {_CONFIG_PATH}")
     dashboard = _require_dict(cfg, "dashboard")
@@ -1484,6 +1489,14 @@ def _resolve_label_or_prompt(raw: Any, lang: str) -> str:
 _VALID_SUGGESTED_TYPES = ("ai_response", "show_menu", "escalate")
 _SUPPORTED_SUGGESTED_LANGS = ("en", "ja")
 _SUPPORTED_WELCOME_CHANNELS = ("web", "line")
+_SUGGESTED_BINDING_TO_LINE_RICH_MENU_ACTION_ID = {
+    "reservation": "reserve",
+    "reserve": "reserve",
+    "menu": "menu",
+    "show_menu": "menu",
+    "support": "support",
+    "escalate": "support",
+}
 
 
 def _normalize_suggested_lang(lang: Optional[str]) -> str:
@@ -1646,6 +1659,40 @@ def get_suggested_messages_for_widget(
     by_lang = get_suggested_messages_by_language_for_widget(widget_config)
     resolved = by_lang.get(normalized_lang) or []
     return resolved if resolved else _get_default_suggested_messages_for_widget(widget_config, lang=normalized_lang)
+
+
+def get_line_rich_menu_labels_from_suggested_messages(
+    widget_config: Dict[str, Any],
+    *,
+    lang: str = "en",
+) -> Dict[str, str]:
+    """
+    Build rich-menu action label defaults from suggested messages.
+
+    This keeps LINE rich-menu labels consistent with suggested messages for
+    supported capabilities:
+    - reservation -> reserve
+    - show_menu/menu -> menu
+    - escalate/support -> support
+    """
+    labels_by_action_id: Dict[str, str] = {}
+    for item in get_suggested_messages_for_widget(widget_config, lang=lang):
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get("label") or "").strip()
+        if not label:
+            continue
+        binding = str(item.get("fastPathBinding") or item.get("binding") or "").strip().lower()
+        if not binding:
+            suggested_type = str(item.get("type") or "").strip().lower()
+            if suggested_type == "show_menu":
+                binding = "show_menu"
+            elif suggested_type == "escalate":
+                binding = "escalate"
+        action_id = _SUGGESTED_BINDING_TO_LINE_RICH_MENU_ACTION_ID.get(binding)
+        if action_id and action_id not in labels_by_action_id:
+            labels_by_action_id[action_id] = label
+    return labels_by_action_id
 
 
 def has_support_suggested_message_for_widget(widget_config: Dict[str, Any]) -> bool:
@@ -1932,6 +1979,498 @@ def get_instagram_menu_page_payload_prefix() -> str:
 
 def get_line_ux_config() -> Dict[str, Any]:
     return dict(LINE_UX_CONFIG or {})
+
+
+_HEX_COLOR_6_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+_LINE_DESIGN_STYLE_KEYS = (
+    "background",
+    "text",
+    "muted_text",
+    "button_background",
+    "button_text",
+    "border",
+    "accent",
+)
+_LINE_DESIGN_FALLBACK_PROFILE: Dict[str, Any] = {
+    "suggested_actions": {
+        "defaults": {
+            "theme_mode": "light",
+            "layout": "column",
+            "card_background_color": "#ffffff",
+            "card_text_color": "#1f2937",
+            "button_background_color": "#f3f4f6",
+            "button_text_color": "#374151",
+            "button_border_color": "#e5e7eb",
+        },
+        "options": {
+            "theme_modes": ["light", "dark"],
+            "layouts": ["column", "row"],
+        },
+    },
+    "asset_carousel": {
+        "defaults": {
+            "bubble_size": "micro",
+            "image_aspect_ratio": "4:3",
+            "body_background_color": "#111827",
+            "body_text_color": "#ffffff",
+            "overlay_background_color": "#111827",
+        },
+        "options": {
+            "bubble_sizes": ["micro", "kilo", "mega"],
+            "image_aspect_ratios": ["1:1", "4:3", "16:9", "20:13", "3:4"],
+        },
+    },
+    "rich_menu": {
+        "defaults": {
+            "styles": {
+                "normal": {
+                    "background": "#f5f7fb",
+                    "text": "#0f172a",
+                    "muted_text": "#475569",
+                    "button_background": "#ffffff",
+                    "button_text": "#0f172a",
+                    "border": "#d7dde7",
+                    "accent": "#06c755",
+                },
+                "support": {
+                    "background": "#0f172a",
+                    "text": "#f8fafc",
+                    "muted_text": "#cbd5e1",
+                    "button_background": "#fef3c7",
+                    "button_text": "#92400e",
+                    "border": "#d7dde7",
+                    "accent": "#f59e0b",
+                },
+            },
+            "actions": [],
+            "layouts": {"normal": [], "support": []},
+        },
+        "allowed_icon_ids": ["reserve", "menu", "support", "back_to_ai", "chat", "help", "link"],
+        "editable_action_ids": [],
+    },
+}
+
+
+def _deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    merged: Dict[str, Any] = copy.deepcopy(base)
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dict(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _normalize_hex_color(value: Any, fallback: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return fallback
+    if not raw.startswith("#") and len(raw) == 6:
+        raw = f"#{raw}"
+    return raw if _HEX_COLOR_6_RE.fullmatch(raw) else fallback
+
+
+def _as_str_list(value: Any) -> List[str]:
+    if not isinstance(value, list):
+        return []
+    out: List[str] = []
+    seen = set()
+    for item in value:
+        text = str(item or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return out
+
+
+def _build_line_design_default_actions_from_line_ux(*, lang: str = "en") -> List[Dict[str, Any]]:
+    cfg = get_line_ux_config()
+    rich_menu = cfg.get("rich_menu") if isinstance(cfg.get("rich_menu"), dict) else {}
+    actions_cfg = rich_menu.get("actions") if isinstance(rich_menu.get("actions"), dict) else {}
+    defaults: List[Dict[str, Any]] = []
+    for action_id, raw_action in actions_cfg.items():
+        if not isinstance(raw_action, dict):
+            continue
+        aid = str(action_id or "").strip()
+        if not aid:
+            continue
+        label_en = _resolve_i18n_text(raw_action.get("label"), lang="en", fallback=aid.replace("_", " ").title())
+        label_ja = _resolve_i18n_text(raw_action.get("label"), lang="ja", fallback=label_en)
+        defaults.append(
+            {
+                "id": aid,
+                "enabled": True,
+                "icon": str(raw_action.get("icon") or aid).strip() or aid,
+                "labels": {"en": label_en, "ja": label_ja},
+            }
+        )
+    return defaults
+
+
+def _build_line_design_default_layouts_from_line_ux() -> Dict[str, List[str]]:
+    cfg = get_line_ux_config()
+    rich_menu = cfg.get("rich_menu") if isinstance(cfg.get("rich_menu"), dict) else {}
+    layouts_cfg = rich_menu.get("layouts") if isinstance(rich_menu.get("layouts"), dict) else {}
+    return {
+        "normal": _as_str_list(layouts_cfg.get("normal")),
+        "support": _as_str_list(layouts_cfg.get("support")),
+    }
+
+
+def get_line_design_profile() -> Dict[str, Any]:
+    cfg = get_line_ux_config()
+    raw_profile = cfg.get("design_profile") if isinstance(cfg.get("design_profile"), dict) else {}
+    profile = _deep_merge_dict(_LINE_DESIGN_FALLBACK_PROFILE, raw_profile if isinstance(raw_profile, dict) else {})
+
+    # Suggested actions
+    sa = profile.get("suggested_actions") if isinstance(profile.get("suggested_actions"), dict) else {}
+    sa_defaults = sa.get("defaults") if isinstance(sa.get("defaults"), dict) else {}
+    sa_options = sa.get("options") if isinstance(sa.get("options"), dict) else {}
+    theme_modes = _as_str_list(sa_options.get("theme_modes")) or ["light", "dark"]
+    layouts = _as_str_list(sa_options.get("layouts")) or ["column", "row"]
+    theme_mode = str(sa_defaults.get("theme_mode") or "light").strip().lower()
+    if theme_mode not in theme_modes:
+        theme_mode = theme_modes[0]
+    layout = str(sa_defaults.get("layout") or "column").strip().lower()
+    if layout not in layouts:
+        layout = layouts[0]
+    profile["suggested_actions"] = {
+        "defaults": {
+            "theme_mode": theme_mode,
+            "layout": layout,
+            "card_background_color": _normalize_hex_color(sa_defaults.get("card_background_color"), "#ffffff"),
+            "card_text_color": _normalize_hex_color(sa_defaults.get("card_text_color"), "#1f2937"),
+            "button_background_color": _normalize_hex_color(sa_defaults.get("button_background_color"), "#f3f4f6"),
+            "button_text_color": _normalize_hex_color(sa_defaults.get("button_text_color"), "#374151"),
+            "button_border_color": _normalize_hex_color(sa_defaults.get("button_border_color"), "#e5e7eb"),
+        },
+        "options": {
+            "theme_modes": theme_modes,
+            "layouts": layouts,
+        },
+    }
+
+    # Asset carousel
+    ac = profile.get("asset_carousel") if isinstance(profile.get("asset_carousel"), dict) else {}
+    ac_defaults = ac.get("defaults") if isinstance(ac.get("defaults"), dict) else {}
+    ac_options = ac.get("options") if isinstance(ac.get("options"), dict) else {}
+    bubble_sizes = _as_str_list(ac_options.get("bubble_sizes")) or ["micro", "kilo", "mega"]
+    image_ratios = _as_str_list(ac_options.get("image_aspect_ratios")) or ["1:1", "4:3", "16:9", "20:13", "3:4"]
+    bubble_size = str(ac_defaults.get("bubble_size") or "micro").strip().lower()
+    if bubble_size not in bubble_sizes:
+        bubble_size = bubble_sizes[0]
+    image_aspect_ratio = str(ac_defaults.get("image_aspect_ratio") or "4:3").strip()
+    if image_aspect_ratio not in image_ratios:
+        image_aspect_ratio = image_ratios[0]
+    profile["asset_carousel"] = {
+        "defaults": {
+            "bubble_size": bubble_size,
+            "image_aspect_ratio": image_aspect_ratio,
+            "body_background_color": _normalize_hex_color(ac_defaults.get("body_background_color"), "#111827"),
+            "body_text_color": _normalize_hex_color(ac_defaults.get("body_text_color"), "#ffffff"),
+            "overlay_background_color": _normalize_hex_color(ac_defaults.get("overlay_background_color"), "#111827"),
+        },
+        "options": {
+            "bubble_sizes": bubble_sizes,
+            "image_aspect_ratios": image_ratios,
+        },
+    }
+
+    # Rich menu profile
+    rm = profile.get("rich_menu") if isinstance(profile.get("rich_menu"), dict) else {}
+    rm_defaults = rm.get("defaults") if isinstance(rm.get("defaults"), dict) else {}
+    rm_styles = rm_defaults.get("styles") if isinstance(rm_defaults.get("styles"), dict) else {}
+    rm_actions = rm_defaults.get("actions") if isinstance(rm_defaults.get("actions"), list) else []
+    rm_layouts = rm_defaults.get("layouts") if isinstance(rm_defaults.get("layouts"), dict) else {}
+    allowed_icon_ids = _as_str_list(rm.get("allowed_icon_ids"))
+    editable_action_ids = _as_str_list(rm.get("editable_action_ids"))
+
+    if not rm_actions:
+        rm_actions = _build_line_design_default_actions_from_line_ux()
+    if not rm_layouts or (not _as_str_list(rm_layouts.get("normal")) and not _as_str_list(rm_layouts.get("support"))):
+        rm_layouts = _build_line_design_default_layouts_from_line_ux()
+    if not editable_action_ids:
+        editable_action_ids = [str(item.get("id") or "").strip() for item in rm_actions if isinstance(item, dict)]
+        editable_action_ids = [item for item in editable_action_ids if item]
+    if not allowed_icon_ids:
+        allowed_icon_ids = ["reserve", "menu", "support", "back_to_ai", "chat", "help", "link"]
+    for aid in editable_action_ids:
+        if aid not in allowed_icon_ids:
+            allowed_icon_ids.append(aid)
+
+    normalized_actions: List[Dict[str, Any]] = []
+    for raw_action in rm_actions:
+        if not isinstance(raw_action, dict):
+            continue
+        action_id = str(raw_action.get("id") or "").strip()
+        if not action_id or action_id not in editable_action_ids:
+            continue
+        labels = raw_action.get("labels") if isinstance(raw_action.get("labels"), dict) else {}
+        label_en = str(labels.get("en") or "").strip() or action_id.replace("_", " ").title()
+        label_ja = str(labels.get("ja") or "").strip() or label_en
+        icon_id = str(raw_action.get("icon") or action_id).strip()
+        if icon_id not in allowed_icon_ids:
+            icon_id = action_id if action_id in allowed_icon_ids else allowed_icon_ids[0]
+        normalized_actions.append(
+            {
+                "id": action_id,
+                "enabled": bool(raw_action.get("enabled", True)),
+                "icon": icon_id,
+                "labels": {"en": label_en, "ja": label_ja},
+            }
+        )
+
+    normalized_styles: Dict[str, Dict[str, str]] = {}
+    for state_name in ("normal", "support"):
+        raw_state = rm_styles.get(state_name) if isinstance(rm_styles.get(state_name), dict) else {}
+        fallback_state = _LINE_DESIGN_FALLBACK_PROFILE["rich_menu"]["defaults"]["styles"][state_name]
+        normalized_styles[state_name] = {
+            key: _normalize_hex_color(raw_state.get(key), fallback_state[key])
+            for key in _LINE_DESIGN_STYLE_KEYS
+        }
+
+    normalized_layouts: Dict[str, List[str]] = {}
+    for state_name in ("normal", "support"):
+        raw_layout = _as_str_list(rm_layouts.get(state_name))
+        filtered = [aid for aid in raw_layout if aid in editable_action_ids]
+        if not filtered:
+            filtered = [action["id"] for action in normalized_actions if action["id"] in editable_action_ids]
+        normalized_layouts[state_name] = filtered
+
+    profile["rich_menu"] = {
+        "defaults": {
+            "styles": normalized_styles,
+            "actions": normalized_actions,
+            "layouts": normalized_layouts,
+        },
+        "allowed_icon_ids": allowed_icon_ids,
+        "editable_action_ids": editable_action_ids,
+    }
+    return profile
+
+
+def normalize_line_design_overrides(
+    overrides: Optional[Dict[str, Any]],
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    if not isinstance(overrides, dict):
+        return {}
+    cfg = profile if isinstance(profile, dict) else get_line_design_profile()
+    out: Dict[str, Any] = {}
+
+    # Suggested actions
+    raw_sa = overrides.get("suggested_actions")
+    if isinstance(raw_sa, dict):
+        sa_cfg = cfg.get("suggested_actions") if isinstance(cfg.get("suggested_actions"), dict) else {}
+        sa_defaults = sa_cfg.get("defaults") if isinstance(sa_cfg.get("defaults"), dict) else {}
+        sa_options = sa_cfg.get("options") if isinstance(sa_cfg.get("options"), dict) else {}
+        theme_modes = _as_str_list(sa_options.get("theme_modes")) or ["light", "dark"]
+        layouts = _as_str_list(sa_options.get("layouts")) or ["column", "row"]
+        sa_out: Dict[str, Any] = {}
+        theme_mode = str(raw_sa.get("theme_mode") or "").strip().lower()
+        if theme_mode in theme_modes:
+            sa_out["theme_mode"] = theme_mode
+        layout = str(raw_sa.get("layout") or "").strip().lower()
+        if layout in layouts:
+            sa_out["layout"] = layout
+        for key, fallback in (
+            ("card_background_color", sa_defaults.get("card_background_color") or "#ffffff"),
+            ("card_text_color", sa_defaults.get("card_text_color") or "#1f2937"),
+            ("button_background_color", sa_defaults.get("button_background_color") or "#f3f4f6"),
+            ("button_text_color", sa_defaults.get("button_text_color") or "#374151"),
+            ("button_border_color", sa_defaults.get("button_border_color") or "#e5e7eb"),
+        ):
+            if key in raw_sa:
+                sa_out[key] = _normalize_hex_color(raw_sa.get(key), fallback)
+        if sa_out:
+            out["suggested_actions"] = sa_out
+
+    # Asset carousel
+    raw_ac = overrides.get("asset_carousel")
+    if isinstance(raw_ac, dict):
+        ac_cfg = cfg.get("asset_carousel") if isinstance(cfg.get("asset_carousel"), dict) else {}
+        ac_defaults = ac_cfg.get("defaults") if isinstance(ac_cfg.get("defaults"), dict) else {}
+        ac_options = ac_cfg.get("options") if isinstance(ac_cfg.get("options"), dict) else {}
+        bubble_sizes = _as_str_list(ac_options.get("bubble_sizes")) or ["micro", "kilo", "mega"]
+        image_ratios = _as_str_list(ac_options.get("image_aspect_ratios")) or ["1:1", "4:3", "16:9", "20:13", "3:4"]
+        ac_out: Dict[str, Any] = {}
+        bubble_size = str(raw_ac.get("bubble_size") or "").strip().lower()
+        if bubble_size in bubble_sizes:
+            ac_out["bubble_size"] = bubble_size
+        image_aspect_ratio = str(raw_ac.get("image_aspect_ratio") or "").strip()
+        if image_aspect_ratio in image_ratios:
+            ac_out["image_aspect_ratio"] = image_aspect_ratio
+        for key, fallback in (
+            ("body_background_color", ac_defaults.get("body_background_color") or "#111827"),
+            ("body_text_color", ac_defaults.get("body_text_color") or "#ffffff"),
+            ("overlay_background_color", ac_defaults.get("overlay_background_color") or "#111827"),
+        ):
+            if key in raw_ac:
+                ac_out[key] = _normalize_hex_color(raw_ac.get(key), fallback)
+        if ac_out:
+            out["asset_carousel"] = ac_out
+
+    # Rich menu
+    raw_rm = overrides.get("rich_menu")
+    if isinstance(raw_rm, dict):
+        rm_cfg = cfg.get("rich_menu") if isinstance(cfg.get("rich_menu"), dict) else {}
+        rm_defaults = rm_cfg.get("defaults") if isinstance(rm_cfg.get("defaults"), dict) else {}
+        default_styles = rm_defaults.get("styles") if isinstance(rm_defaults.get("styles"), dict) else {}
+        editable_action_ids = _as_str_list(rm_cfg.get("editable_action_ids"))
+        allowed_icon_ids = _as_str_list(rm_cfg.get("allowed_icon_ids"))
+        rm_out: Dict[str, Any] = {}
+
+        raw_styles = raw_rm.get("styles")
+        if isinstance(raw_styles, dict):
+            styles_out: Dict[str, Any] = {}
+            for state_name in ("normal", "support"):
+                state_raw = raw_styles.get(state_name)
+                if not isinstance(state_raw, dict):
+                    continue
+                fallback_state = (
+                    default_styles.get(state_name)
+                    if isinstance(default_styles.get(state_name), dict)
+                    else _LINE_DESIGN_FALLBACK_PROFILE["rich_menu"]["defaults"]["styles"][state_name]
+                )
+                state_out: Dict[str, str] = {}
+                for key in _LINE_DESIGN_STYLE_KEYS:
+                    if key in state_raw:
+                        state_out[key] = _normalize_hex_color(state_raw.get(key), fallback_state.get(key) or "#000000")
+                if state_out:
+                    styles_out[state_name] = state_out
+            if styles_out:
+                rm_out["styles"] = styles_out
+
+        raw_layouts = raw_rm.get("layouts")
+        if isinstance(raw_layouts, dict):
+            layouts_out: Dict[str, List[str]] = {}
+            for state_name in ("normal", "support"):
+                raw_order = _as_str_list(raw_layouts.get(state_name))
+                filtered = [aid for aid in raw_order if aid in editable_action_ids]
+                if filtered:
+                    layouts_out[state_name] = filtered
+            if layouts_out:
+                rm_out["layouts"] = layouts_out
+
+        raw_actions = raw_rm.get("actions")
+        if isinstance(raw_actions, list):
+            actions_out: List[Dict[str, Any]] = []
+            for raw_action in raw_actions:
+                if not isinstance(raw_action, dict):
+                    continue
+                aid = str(raw_action.get("id") or "").strip()
+                if not aid or aid not in editable_action_ids:
+                    continue
+                action_out: Dict[str, Any] = {"id": aid}
+                if "enabled" in raw_action:
+                    action_out["enabled"] = bool(raw_action.get("enabled"))
+                icon_id = str(raw_action.get("icon") or "").strip()
+                if icon_id and icon_id in allowed_icon_ids:
+                    action_out["icon"] = icon_id
+                labels_raw = raw_action.get("labels")
+                if isinstance(labels_raw, dict):
+                    labels_out: Dict[str, str] = {}
+                    for lang_key in ("en", "ja"):
+                        label = str(labels_raw.get(lang_key) or "").strip()
+                        if label:
+                            labels_out[lang_key] = label
+                    if labels_out:
+                        action_out["labels"] = labels_out
+                actions_out.append(action_out)
+            if actions_out:
+                rm_out["actions"] = actions_out
+
+        if rm_out:
+            out["rich_menu"] = rm_out
+
+    return out
+
+
+def build_line_design_effective(
+    overrides: Optional[Dict[str, Any]],
+    *,
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    cfg = profile if isinstance(profile, dict) else get_line_design_profile()
+    normalized = normalize_line_design_overrides(overrides or {}, profile=cfg)
+    effective: Dict[str, Any] = {
+        "suggested_actions": copy.deepcopy((cfg.get("suggested_actions") or {}).get("defaults") or {}),
+        "asset_carousel": copy.deepcopy((cfg.get("asset_carousel") or {}).get("defaults") or {}),
+        "rich_menu": copy.deepcopy((cfg.get("rich_menu") or {}).get("defaults") or {}),
+    }
+
+    sa_override = normalized.get("suggested_actions")
+    if isinstance(sa_override, dict):
+        effective["suggested_actions"] = {
+            **(effective.get("suggested_actions") or {}),
+            **sa_override,
+        }
+
+    ac_override = normalized.get("asset_carousel")
+    if isinstance(ac_override, dict):
+        effective["asset_carousel"] = {
+            **(effective.get("asset_carousel") or {}),
+            **ac_override,
+        }
+
+    rich_override = normalized.get("rich_menu")
+    rich_effective = effective.get("rich_menu") if isinstance(effective.get("rich_menu"), dict) else {}
+    if isinstance(rich_override, dict):
+        # styles
+        rich_styles = rich_effective.get("styles") if isinstance(rich_effective.get("styles"), dict) else {}
+        override_styles = rich_override.get("styles") if isinstance(rich_override.get("styles"), dict) else {}
+        for state_name in ("normal", "support"):
+            state_current = rich_styles.get(state_name) if isinstance(rich_styles.get(state_name), dict) else {}
+            state_override = override_styles.get(state_name) if isinstance(override_styles.get(state_name), dict) else {}
+            if state_override:
+                rich_styles[state_name] = {**state_current, **state_override}
+        rich_effective["styles"] = rich_styles
+
+        # actions
+        default_actions = rich_effective.get("actions") if isinstance(rich_effective.get("actions"), list) else []
+        action_map: Dict[str, Dict[str, Any]] = {}
+        for item in default_actions:
+            if not isinstance(item, dict):
+                continue
+            aid = str(item.get("id") or "").strip()
+            if aid:
+                action_map[aid] = copy.deepcopy(item)
+        override_actions = rich_override.get("actions") if isinstance(rich_override.get("actions"), list) else []
+        for item in override_actions:
+            if not isinstance(item, dict):
+                continue
+            aid = str(item.get("id") or "").strip()
+            if not aid or aid not in action_map:
+                continue
+            current = action_map[aid]
+            if "enabled" in item:
+                current["enabled"] = bool(item.get("enabled"))
+            icon = str(item.get("icon") or "").strip()
+            if icon:
+                current["icon"] = icon
+            labels = item.get("labels") if isinstance(item.get("labels"), dict) else {}
+            current_labels = current.get("labels") if isinstance(current.get("labels"), dict) else {}
+            for lang_key in ("en", "ja"):
+                text = str(labels.get(lang_key) or "").strip()
+                if text:
+                    current_labels[lang_key] = text
+            current["labels"] = current_labels
+            action_map[aid] = current
+        rich_effective["actions"] = list(action_map.values())
+
+        # layouts
+        current_layouts = rich_effective.get("layouts") if isinstance(rich_effective.get("layouts"), dict) else {}
+        override_layouts = rich_override.get("layouts") if isinstance(rich_override.get("layouts"), dict) else {}
+        for state_name in ("normal", "support"):
+            raw = _as_str_list(override_layouts.get(state_name))
+            if raw:
+                current_layouts[state_name] = raw
+        rich_effective["layouts"] = current_layouts
+
+    effective["rich_menu"] = rich_effective
+    return effective
 
 
 def get_line_cancel_keywords() -> Tuple[str, ...]:
