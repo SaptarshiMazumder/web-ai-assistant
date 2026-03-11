@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, Globe, MessageCircle } from 'lucide-react'
-import { SectionHeader, SegmentedTabs, UiButton } from '../../components/ui'
+import { Check, CheckCircle2, ChevronLeft, Globe, MessageCircle } from 'lucide-react'
+import { SectionHeader, UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
 import { WidgetDesignForm, stateToWidgetConfig, type WidgetDesignState } from '../../components/WidgetDesignForm'
 import { LineDesignForm } from '../../components/LineDesignForm'
+import { LineIcon } from '../../assets/icons/LineIcon'
 
-type DesignTab = 'web' | 'line'
+type DesignView = 'hub' | 'website' | 'line'
+type SavingScope = 'website' | 'line' | 'all' | null
 
 export default function CreateBotWidgetPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { saveWidgetConfig, fetchPlatformConfig, getLineDesign, saveLineDesign } = useDashboardData()
   const { step1, step2, step3, step4, flow } = useCreateBotFlow()
-  const [activeTab, setActiveTab] = useState<DesignTab>('web')
-  const [saving, setSaving] = useState(false)
+  const [designView, setDesignView] = useState<DesignView>('hub')
+  const [savingScope, setSavingScope] = useState<SavingScope>(null)
+  const [websiteConfigured, setWebsiteConfigured] = useState(false)
+  const [lineConfigured, setLineConfigured] = useState(false)
   const [lineDesignOverrides, setLineDesignOverrides] = useState<Record<string, unknown> | null>(null)
   const [lineDesignProfile, setLineDesignProfile] = useState<Record<string, unknown> | null>(null)
   const { botName } = step1
@@ -40,7 +44,12 @@ export default function CreateBotWidgetPage() {
     let mounted = true
     void getLineDesign(botId).then((result) => {
       if (!mounted) return
-      setLineDesignOverrides(result?.overrides || {})
+      const overrides =
+        result?.overrides && typeof result.overrides === 'object' && !Array.isArray(result.overrides)
+          ? result.overrides
+          : {}
+      setLineDesignOverrides(overrides)
+      setLineConfigured(Object.keys(overrides).length > 0)
     })
     return () => {
       mounted = false
@@ -95,19 +104,56 @@ export default function CreateBotWidgetPage() {
     if (typeof setter === 'function') (setter as (v: WidgetDesignState[K]) => void)(val)
   }, [step4])
 
-  const handleContinue = async () => {
-    if (!botId || !flow.nextPath || saving) return
-    setSaving(true)
+  const persistWebsiteDesign = useCallback(async () => {
+    if (!botId) return
+    await saveWidgetConfig(botId, {
+      ...stateToWidgetConfig(value),
+      businessType: step1.businessType || undefined,
+      contentHosting: contentHosting || undefined,
+    })
+  }, [botId, contentHosting, saveWidgetConfig, step1.businessType, value])
+
+  const persistLineDesign = useCallback(async () => {
+    if (!botId) return
+    await saveLineDesign(botId, lineDesignOverrides || {})
+  }, [botId, lineDesignOverrides, saveLineDesign])
+
+  const handleWebsiteDone = async () => {
+    if (!botId || savingScope) return
+    setSavingScope('website')
     try {
-      await saveWidgetConfig(botId, {
-        ...stateToWidgetConfig(value),
-        businessType: step1.businessType || undefined,
-        contentHosting: contentHosting || undefined,
-      })
-      await saveLineDesign(botId, lineDesignOverrides || {})
+      await persistWebsiteDesign()
+      setWebsiteConfigured(true)
+      setDesignView('hub')
+    } catch {
+      // Keep user on the current flow so they can retry.
+    } finally {
+      setSavingScope(null)
+    }
+  }
+
+  const handleLineDone = async () => {
+    if (!botId || savingScope) return
+    setSavingScope('line')
+    try {
+      await persistLineDesign()
+      setLineConfigured(true)
+      setDesignView('hub')
+    } catch {
+      // Keep user on the current flow so they can retry.
+    } finally {
+      setSavingScope(null)
+    }
+  }
+
+  const handleContinue = async () => {
+    if (!botId || !flow.nextPath || savingScope) return
+    setSavingScope('all')
+    try {
+      await Promise.all([persistWebsiteDesign(), persistLineDesign()])
       navigate(flow.nextPath)
     } catch {
-      setSaving(false)
+      setSavingScope(null)
     }
   }
 
@@ -120,7 +166,7 @@ export default function CreateBotWidgetPage() {
             <span />
             <span />
           </span>
-          <span>{t('createBot.agentGettingReadyDesignWhileWait', 'Your agent is getting ready. Design the chat while you wait.')}</span>
+          <span>{t('createBot.agentGettingReadyDesignWhileWait', 'Your agent is getting ready. Design Website and LINE appearance while you wait.')}</span>
         </div>
       )}
       {trainingStage === 'complete' && !trainingError && (
@@ -140,56 +186,183 @@ export default function CreateBotWidgetPage() {
     </>
   )
 
-  const tabs = useMemo(
-    () => [
-      { id: 'web' as const, label: t('botDesign.webTab', 'Website'), icon: <Globe size={15} /> },
-      { id: 'line' as const, label: t('botDesign.lineTab', 'LINE'), icon: <MessageCircle size={15} /> },
-    ],
-    [t]
-  )
   const suggestedPreviewMessages = useMemo(
     () => step4.suggestedMessages,
     [step4.suggestedMessages]
   )
 
-  const actions = (
+  const continueActions = (
     <>
       <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
         {t('common.back', 'Back')}
       </UiButton>
-      <UiButton variant="primary" onClick={() => void handleContinue()} disabled={saving}>
-        {saving ? t('botDesign.saving', 'Saving...') : t('common.continue', 'Continue')}
+      <UiButton variant="primary" onClick={() => void handleContinue()} disabled={Boolean(savingScope)}>
+        {savingScope === 'all' ? t('botDesign.saving', 'Saving...') : t('common.continue', 'Continue')}
       </UiButton>
     </>
   )
 
-  return (
+  const renderBackButton = (targetView: DesignView, label: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+      <button
+        type="button"
+        onClick={() => setDesignView(targetView)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--flow-muted)',
+          cursor: 'pointer',
+          padding: 0,
+        }}
+      >
+        <ChevronLeft size={16} />
+        {label}
+      </button>
+    </div>
+  )
+
+  const websiteActions = (
     <>
-      <SectionHeader
-        title={t('botDesign.title', 'Design the chat widget')}
-        subtitle={t('botDesign.subtitle', 'Customize how the widget appears. Changes update the preview on the right.')}
-      />
-      <div style={{ marginBottom: '1rem' }}>{banner}</div>
-      <div style={{ marginBottom: '1rem' }}>
-        <SegmentedTabs value={activeTab} onChange={setActiveTab} options={tabs} ariaLabel="Design tabs" />
-      </div>
-      {activeTab === 'line' ? (
+      <UiButton variant="secondary" onClick={() => setDesignView('hub')} disabled={Boolean(savingScope)}>
+        {t('common.back', 'Back')}
+      </UiButton>
+      <UiButton variant="primary" onClick={() => void handleWebsiteDone()} disabled={Boolean(savingScope)}>
+        {savingScope === 'website' ? t('botDesign.saving', 'Saving...') : t('createBot.doneForWebsiteAppearance', 'Done for Website')}
+      </UiButton>
+    </>
+  )
+
+  const lineActions = (
+    <>
+      <UiButton variant="secondary" onClick={() => setDesignView('hub')} disabled={Boolean(savingScope)}>
+        {t('common.back', 'Back')}
+      </UiButton>
+      <UiButton variant="primary" onClick={() => void handleLineDone()} disabled={Boolean(savingScope)}>
+        {savingScope === 'line' ? t('botDesign.saving', 'Saving...') : t('createBot.doneForLineAppearance', 'Done for LINE')}
+      </UiButton>
+    </>
+  )
+
+  if (designView === 'website') {
+    return (
+      <>
+        <SectionHeader
+          title={t('botDesign.title', 'Design your agent appearance')}
+          subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
+        />
+        <div style={{ marginBottom: '1rem' }}>{banner}</div>
+        {renderBackButton('hub', t('createBot.backToAppearanceHub', 'Back to appearance'))}
+        <WidgetDesignForm
+          value={value}
+          onChange={onChange}
+          actions={websiteActions}
+          welcomeDefaultsByLanguage={step4.welcomeDefaultsByLanguage}
+          leftAligned
+        />
+      </>
+    )
+  }
+
+  if (designView === 'line') {
+    return (
+      <>
+        <SectionHeader
+          title={t('botDesign.title', 'Design your agent appearance')}
+          subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
+        />
+        <div style={{ marginBottom: '1rem' }}>{banner}</div>
+        {renderBackButton('hub', t('createBot.backToAppearanceHub', 'Back to appearance'))}
         <LineDesignForm
           profile={lineDesignProfile}
           value={lineDesignOverrides}
           onChange={setLineDesignOverrides}
           suggestedPreviewMessages={suggestedPreviewMessages}
-          actions={actions}
+          actions={lineActions}
           botName={botName || step4.widgetTitle || 'Bot'}
+          leftAligned
         />
-      ) : (
-        <WidgetDesignForm
-          value={value}
-          onChange={onChange}
-          actions={actions}
-          welcomeDefaultsByLanguage={step4.welcomeDefaultsByLanguage}
-        />
-      )}
-    </>
+      </>
+    )
+  }
+
+  return (
+    <div className="flow-panel-body">
+      <SectionHeader
+        title={t('botDesign.title', 'Design your agent appearance')}
+        subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
+      />
+      <div style={{ marginBottom: '1rem' }}>{banner}</div>
+
+      <div>
+        <div className="card-title">{t('createBot.appearanceChannelsTitle', 'Design your AI agent appearance')}</div>
+        <div className="card-subtitle">
+          {t('createBot.appearanceChannelsSubtitle', 'Choose a platform card to open appearance setup.')}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+        <button
+          type="button"
+          onClick={() => setDesignView('website')}
+          style={{
+            textAlign: 'left',
+            border: websiteConfigured ? '2px solid #22c55e' : '1px solid var(--flow-border, #f2d8d2)',
+            borderRadius: 16,
+            background: websiteConfigured ? 'rgba(34,197,94,0.08)' : 'var(--flow-surface, #fff)',
+            padding: '1rem',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.7rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--flow-text)' }}>
+              <Globe size={18} />
+              {t('createBot.websiteCardTitle', 'Website')}
+            </div>
+            {websiteConfigured ? <CheckCircle2 size={18} color="#22c55e" /> : null}
+          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--flow-muted)', lineHeight: 1.5 }}>
+            {websiteConfigured
+              ? t('createBot.websiteAppearanceConfigured', 'Appearance configured')
+              : t('createBot.websiteAppearanceNotConfigured', 'Not configured')}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDesignView('line')}
+          style={{
+            textAlign: 'left',
+            border: lineConfigured ? '2px solid #22c55e' : '1px solid var(--flow-border, #f2d8d2)',
+            borderRadius: 16,
+            background: lineConfigured ? 'rgba(34,197,94,0.08)' : 'var(--flow-surface, #fff)',
+            padding: '1rem',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.7rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--flow-text)' }}>
+              <LineIcon size={18} />
+              {t('createBot.lineCardTitle', 'LINE')}
+            </div>
+            {lineConfigured ? <CheckCircle2 size={18} color="#22c55e" /> : null}
+          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--flow-muted)', lineHeight: 1.5 }}>
+            {lineConfigured
+              ? t('createBot.lineAppearanceConfigured', 'Appearance configured')
+              : t('createBot.lineAppearanceNotConfigured', 'Not configured')}
+          </div>
+        </button>
+      </div>
+
+      <div style={{ border: '1px dashed var(--flow-border, #f2d8d2)', borderRadius: 12, padding: '0.9rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--flow-muted)', fontSize: '0.9rem' }}>
+        <MessageCircle size={16} />
+        {t('createBot.appearanceOptionalHint', 'You can set this up now and keep refining later.')}
+      </div>
+
+      <div className="flow-actions">{continueActions}</div>
+    </div>
   )
 }

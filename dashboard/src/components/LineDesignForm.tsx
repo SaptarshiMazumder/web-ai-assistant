@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FlowSelect } from './FlowSelect'
 import { LinePhonePreview } from './LinePhonePreview'
+import { UiButton } from './ui'
 
 type SuggestedActionsState = {
   theme_mode: string
@@ -267,6 +268,7 @@ type LineDesignFormProps = {
   suggestedPreviewMessages?: SuggestedPreviewMessage[]
   actions?: ReactNode
   botName?: string
+  leftAligned?: boolean
 }
 
 function ColorField({
@@ -299,7 +301,15 @@ function ColorField({
   )
 }
 
-export function LineDesignForm({ profile, value, onChange, suggestedPreviewMessages, actions, botName }: LineDesignFormProps) {
+export function LineDesignForm({
+  profile,
+  value,
+  onChange,
+  suggestedPreviewMessages,
+  actions,
+  botName,
+  leftAligned = false,
+}: LineDesignFormProps) {
   const { t } = useTranslation()
   const [state, setState] = useState<LineDesignState>(() => mergeState(profile, value, suggestedPreviewMessages))
 
@@ -365,17 +375,40 @@ export function LineDesignForm({ profile, value, onChange, suggestedPreviewMessa
     return suggestedButtons.map((item) => [item])
   }, [state.suggested_actions.layout, suggestedButtons])
 
+  const handleResetAppearance = useCallback(() => {
+    if (!confirm(t('lineDesign.resetConfirm', 'Reset appearance settings to default values?'))) return
+    updateState(mergeState(profile, null, suggestedPreviewMessages))
+  }, [profile, suggestedPreviewMessages, t, updateState])
+
   return (
-    <div className="flow-panel-body flow-panel-body--wide">
+    <div className={`flow-panel-body flow-panel-body--wide${leftAligned ? ' flow-panel-body--left-aligned' : ''}`}>
       <div className="widget-design-grid">
         <div className="design-form">
           {/* ── Single Color Palette Section ───────────────────────────── */}
           <section className="ui-glass-card">
-            <div className="card-title">{t('lineDesign.colorPalette', 'Colors')}</div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                marginBottom: '0.75rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div className="card-title" style={{ marginBottom: 0 }}>{t('lineDesign.colorPalette', 'Appearance settings')}</div>
+              <UiButton
+                variant="danger"
+                onClick={handleResetAppearance}
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+              >
+                {t('lineDesign.resetAppearance', 'Reset to defaults')}
+              </UiButton>
+            </div>
             <div className="design-form-section">
               <div className="design-form-row">
                 <div className="design-form-field">
-                  <label className="design-form-label">{t('lineDesign.darkMode', 'Dark mode')}</label>
+                  <label className="design-form-label">{t('lineDesign.darkMode', 'Theme mode')}</label>
                   <FlowSelect
                     value={state.suggested_actions.theme_mode}
                     onChange={(next) => updateSuggested('theme_mode', String(next))}
@@ -389,17 +422,17 @@ export function LineDesignForm({ profile, value, onChange, suggestedPreviewMessa
 
               <div className="design-form-row">
                 <ColorField
-                  label={t('lineDesign.cardBg', 'Card & Carousel bg')}
+                  label={t('lineDesign.cardBg', 'Card and carousel background')}
                   value={state.suggested_actions.card_background_color}
                   onChange={(val) => updateBoth('card_background_color', 'body_background_color', val)}
                 />
                 <ColorField
-                  label={t('lineDesign.cardText', 'Card & Carousel text')}
+                  label={t('lineDesign.cardText', 'Card and carousel text')}
                   value={state.suggested_actions.card_text_color}
                   onChange={(val) => updateBoth('card_text_color', 'body_text_color', val)}
                 />
                 <ColorField
-                  label={t('lineDesign.buttonBg', 'Button bg')}
+                  label={t('lineDesign.buttonBg', 'Button background')}
                   value={state.suggested_actions.button_background_color}
                   onChange={(val) => updateSuggested('button_background_color', val)}
                 />
@@ -415,31 +448,7 @@ export function LineDesignForm({ profile, value, onChange, suggestedPreviewMessa
             </div>
           </section>
 
-          {/* Reset button */}
-          <div style={{ marginTop: '1rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(t('lineDesign.resetConfirm', 'Reset all colors to defaults?'))) {
-                  setState(mergeState(profile, null, suggestedPreviewMessages))
-                }
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}
-            >
-              {t('lineDesign.resetColors', 'Reset colors')}
-            </button>
-          </div>
-
-          {actions ? <div className="design-form-actions">{actions}</div> : null}
+          {actions ? <div className="flow-actions">{actions}</div> : null}
         </div>
 
         {/* LINE phone preview – right column */}

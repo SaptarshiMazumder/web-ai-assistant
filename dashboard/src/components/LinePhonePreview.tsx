@@ -150,7 +150,9 @@ export function LinePhonePreview({
   const isDarkMode = suggestedActions.theme_mode === 'dark'
   const LINE_GREEN = '#06c755'
 
-  const headerBg = LINE_GREEN
+  const headerBg = isDarkMode ? '#171717' : '#ffffff'
+  const headerFg = isDarkMode ? '#ffffff' : '#0f172a'
+  const statusStrokeMuted = isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.35)'
   const chatBg = isDarkMode ? '#121212' : '#7494a5'
   const botBubbleBg = isDarkMode ? '#1f1f1f' : '#ffffff'
   const botBubbleText = isDarkMode ? '#e5e5e5' : '#1a1a1a'
@@ -198,20 +200,20 @@ export function LinePhonePreview({
 
           {/* Status bar */}
           <div className="line-phone-statusbar" style={{ background: headerBg }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.2 }}>9:41</span>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.2, color: headerFg }}>9:41</span>
             <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-              <svg width="15" height="11" viewBox="0 0 15 11" fill="white">
+              <svg width="15" height="11" viewBox="0 0 15 11" fill={headerFg}>
                 <rect x="0" y="7" width="2.8" height="4" rx="0.6"/><rect x="4" y="5" width="2.8" height="6" rx="0.6"/>
                 <rect x="8" y="2.5" width="2.8" height="8.5" rx="0.6"/><rect x="12" y="0" width="2.8" height="11" rx="0.6"/>
               </svg>
-              <svg width="14" height="11" viewBox="0 0 16 12" fill="white">
-                <path d="M8 10.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zM4.5 8.2a5 5 0 017 0" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M2 5.5a9 9 0 0112 0" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              <svg width="14" height="11" viewBox="0 0 16 12" fill={headerFg}>
+                <path d="M8 10.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zM4.5 8.2a5 5 0 017 0" fill="none" stroke={headerFg} strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M2 5.5a9 9 0 0112 0" fill="none" stroke={headerFg} strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <svg width="24" height="11" viewBox="0 0 25 12" fill="none">
-                <rect x="0.5" y="0.5" width="20" height="11" rx="2" stroke="white" strokeOpacity="0.4"/>
-                <rect x="2" y="2" width="15" height="8" rx="1" fill="white"/>
-                <rect x="22" y="3.5" width="2.5" height="5" rx="0.8" fill="white" fillOpacity="0.4"/>
+                <rect x="0.5" y="0.5" width="20" height="11" rx="2" stroke={statusStrokeMuted}/>
+                <rect x="2" y="2" width="15" height="8" rx="1" fill={headerFg}/>
+                <rect x="22" y="3.5" width="2.5" height="5" rx="0.8" fill={statusStrokeMuted}/>
               </svg>
             </div>
           </div>
@@ -219,12 +221,12 @@ export function LinePhonePreview({
           {/* LINE header */}
           <div className="line-phone-header" style={{ background: headerBg }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              <span style={{ fontWeight: 600, fontSize: 16, color: '#fff' }}>{botName}</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={headerFg} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              <span style={{ fontWeight: 600, fontSize: 16, color: headerFg }}>{botName}</span>
             </div>
             <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={headerFg} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={headerFg} strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
             </div>
           </div>
 

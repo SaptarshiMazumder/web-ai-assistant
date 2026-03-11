@@ -3,6 +3,7 @@ import { WidgetPreview } from '../pages/createBot/WidgetPreview'
 import { WIDGET_SIZE_DIMENSIONS } from '../constants/widgetSizes'
 import { FlowIcon } from './FlowIcon'
 import { FlowSelect } from './FlowSelect'
+import { UiButton } from './ui'
 import { useTranslation } from 'react-i18next'
 
 
@@ -194,6 +195,7 @@ export type WidgetDesignFormProps = {
   actions?: React.ReactNode
   showWelcomeMessage?: boolean
   welcomeDefaultsByLanguage?: Partial<Record<'en' | 'ja', string>>
+  leftAligned?: boolean
 }
 
 export function WidgetDesignForm({
@@ -203,6 +205,7 @@ export function WidgetDesignForm({
   actions,
   showWelcomeMessage = true,
   welcomeDefaultsByLanguage,
+  leftAligned = false,
 }: WidgetDesignFormProps) {
   const { t } = useTranslation()
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -262,8 +265,16 @@ export function WidgetDesignForm({
     }
   }, [maxHeight, maxHeightLimit, update])
 
+  const handleResetAppearance = useCallback(() => {
+    if (!confirm(t('widgetDesign.resetConfirm', 'Reset appearance settings to default values?'))) return
+    const defaults = getDefaultsForLanguage(value.botLanguage)
+    update('theme', defaults.theme)
+    update('widgetPrimaryColor', defaults.widgetPrimaryColor)
+    update('textColor', defaults.textColor)
+  }, [t, update, value.botLanguage])
+
   return (
-    <div className="flow-panel-body flow-panel-body--wide">
+    <div className={`flow-panel-body flow-panel-body--wide${leftAligned ? ' flow-panel-body--left-aligned' : ''}`}>
 
 
       {banner}
@@ -271,7 +282,25 @@ export function WidgetDesignForm({
       <div className="widget-design-grid">
         <div className="design-form">
           <section className="ui-glass-card">
-            <div className="card-title">{t('widgetDesign.basics', 'Basics')}</div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                marginBottom: '0.75rem',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div className="card-title" style={{ marginBottom: 0 }}>{t('widgetDesign.basics', 'Basics')}</div>
+              <UiButton
+                variant="danger"
+                onClick={handleResetAppearance}
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+              >
+                {t('widgetDesign.resetAppearance', 'Reset to defaults')}
+              </UiButton>
+            </div>
             <div className="design-form-section">
               <div className="design-form-field design-form-field-full">
                 <label className="design-form-label">{t('widgetDesign.botLanguage', 'Bot language')}</label>
@@ -606,30 +635,6 @@ export function WidgetDesignForm({
             )}
           </section>
 
-          {/* Reset button */}
-          <div style={{ marginTop: '1rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(t('widgetDesign.resetConfirm', 'Reset all colors to defaults?'))) {
-                  onChange('widgetPrimaryColor', DEFAULT_WIDGET_DESIGN_STATE.widgetPrimaryColor)
-                  onChange('textColor', DEFAULT_WIDGET_DESIGN_STATE.textColor)
-                }
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#f5f5f5',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#666',
-              }}
-            >
-              {t('widgetDesign.resetColors', 'Reset colors')}
-            </button>
-          </div>
         </div>
 
         <WidgetPreview

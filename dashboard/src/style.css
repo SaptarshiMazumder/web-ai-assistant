@@ -3137,20 +3137,58 @@ button.delete-btn:disabled svg {
 }
 
 .app-dialog__body {
-  padding: 0.15rem 1.4rem 1rem;
-}
-
-.app-dialog__label {
-  display: block;
-  margin-bottom: 0.55rem;
-  font-size: 0.84rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ui-flow-muted);
+  padding: 0.55rem 1.4rem 1rem;
 }
 
 .app-dialog__input {
   width: 100%;
+}
+
+/* Reusable overlaid-label field style for modal forms. */
+.modal .ui-glass-field,
+.app-dialog .ui-glass-field,
+.persona-modal .ui-glass-field {
+  max-width: 100%;
+}
+
+.modal .ui-glass-field-label,
+.app-dialog .ui-glass-field-label,
+.persona-modal .ui-glass-field-label {
+  background: #ffffff;
+  color: var(--ui-flow-muted);
+}
+
+.modal .ui-glass-field-input-wrap input,
+.modal .ui-glass-field-input-wrap select,
+.modal .ui-glass-field-input-wrap textarea,
+.app-dialog .ui-glass-field-input-wrap input,
+.app-dialog .ui-glass-field-input-wrap select,
+.app-dialog .ui-glass-field-input-wrap textarea,
+.persona-modal .ui-glass-field-input-wrap input,
+.persona-modal .ui-glass-field-input-wrap select,
+.persona-modal .ui-glass-field-input-wrap textarea {
+  font-family: inherit;
+  padding: 0.92rem 0.95rem;
+  border: 1.5px solid var(--ui-flow-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ui-flow-text);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.modal .ui-glass-field-input-wrap input:focus,
+.modal .ui-glass-field-input-wrap select:focus,
+.modal .ui-glass-field-input-wrap textarea:focus,
+.app-dialog .ui-glass-field-input-wrap input:focus,
+.app-dialog .ui-glass-field-input-wrap select:focus,
+.app-dialog .ui-glass-field-input-wrap textarea:focus,
+.persona-modal .ui-glass-field-input-wrap input:focus,
+.persona-modal .ui-glass-field-input-wrap select:focus,
+.persona-modal .ui-glass-field-input-wrap textarea:focus {
+  border-color: var(--ui-flow-accent);
+  box-shadow: var(--ui-flow-focus-ring, 0 0 0 3px rgba(219, 95, 84, 0.16));
 }
 
 .app-dialog__actions {
@@ -3933,6 +3971,15 @@ select.design-form-input:focus {
   margin-top: 0.5rem;
 }
 
+/* Keep parity for legacy/local action bars used inside flow pages. */
+.design-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
 .flow-toolbar {
   display: flex;
   align-items: center;
@@ -4159,6 +4206,21 @@ select.design-form-input:focus {
 
   /* On mobile, flatten nested button wrappers inside flow-actions */
   .flow-actions>div {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .design-form-actions {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.6rem !important;
+    width: 100% !important;
+  }
+
+  .design-form-actions>div {
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 0.6rem !important;
@@ -5407,12 +5469,16 @@ select.design-form-input:focus {
 .modal-overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh;
   background: rgba(58, 34, 54, 0.45);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 2000;
-  padding: 1.5rem;
+  padding: clamp(0.75rem, 2.5vh, 1.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 /* Full-screen loading overlay (e.g. analytics tab) */
@@ -5449,7 +5515,8 @@ select.design-form-input:focus {
   border: 1px solid var(--ui-flow-border);
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  margin: auto;
+  max-height: calc(100dvh - clamp(1.5rem, 5vh, 3rem));
 }
 
 .modal-header {
@@ -5508,9 +5575,9 @@ select.design-form-input:focus {
 }
 
 .modal-body {
-  padding: 0.5rem 1.5rem 1rem;
+  padding: 0.85rem 1.5rem 1rem;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.9rem;
 }
 
 .modal-actions {
@@ -8362,6 +8429,12 @@ select:hover {
 
 .flow-panel-body--wide {
   max-width: 100%;
+}
+
+/* Create-bot appearance: anchor design content to left like other flow pages. */
+.flow-shell .flow-panel-body--left-aligned .widget-design-grid {
+  margin: 0 !important;
+  justify-content: start;
 }
 
 /* Design Form overrides for consistency */

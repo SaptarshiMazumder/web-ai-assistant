@@ -750,8 +750,8 @@ dashboard:
         label: { en: "Agent Training", ja: "エージェント学習" }
         description: { en: "We'll start learning from what you added.", ja: "追加した内容をもとに学習を始めます。" }
       - id: widget
-        label: { en: "Design widget", ja: "ウィジェット設定" }
-        description: { en: "Customize your agent's appearance.", ja: "エージェントの見た目を調整します。" }
+        label: { en: "Design appearance", ja: "見た目設定" }
+        description: { en: "Customize your agent's Website and LINE appearance.", ja: "エージェントのWebとLINEの見た目を調整します。" }
       - id: embed
         label: { en: "Install Agent", ja: "設置" }
         description: { en: "Make your agent available to customers.", ja: "お客様が使えるように設置します。" }

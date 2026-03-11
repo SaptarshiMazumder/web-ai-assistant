@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { Plus, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { FlowIcon } from './FlowIcon'
+import { GlassField } from './ui'
 import type { SuggestedMessageConfig } from './WidgetDesignForm'
 
 type SuggestedMessagesEditorProps = {
@@ -121,6 +123,123 @@ export function SuggestedMessagesEditor({
     [suggestedMessages, onChange]
   )
 
+  const suggestionModal = isSuggestionModalOpen && suggestionDraft ? (
+    <div className="modal-overlay">
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <div className="modal-title">
+              {editingSuggestion
+                ? t('suggestedMessagesEditor.modalEditTitle', 'Edit Suggested Message')
+                : t('suggestedMessagesEditor.modalAddTitle', 'Add Suggested Message')}
+            </div>
+            <div className="modal-subtitle">{t('suggestedMessagesEditor.modalSubtitle', 'Update the suggested message details.')}</div>
+          </div>
+          <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label={t('suggestedMessagesEditor.close', 'Close')}>
+            <FlowIcon name="close" />
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <GlassField label={t('suggestedMessagesEditor.typeLabel', 'Type')} className="modal-field" style={{ maxWidth: '100%' }}>
+            <select
+              className="design-form-input"
+              value={availableTypes.includes(suggestionDraft.type) ? suggestionDraft.type : availableTypes[0]}
+              onChange={(e) =>
+                setSuggestionDraft((prev) =>
+                  prev ? { ...prev, type: e.target.value as SuggestedMessageConfig['type'] } : prev
+                )
+              }
+            >
+              {availableTypes.includes('ai_response') && (
+                <option value="ai_response">{t('suggestedMessagesEditor.aiResponse', 'AI response')}</option>
+              )}
+              {availableTypes.includes('show_menu') && (
+                <option value="show_menu">{t('suggestedMessagesEditor.showMenu', 'Show menu')}</option>
+              )}
+              {availableTypes.includes('escalate') && (
+                <option value="escalate">{t('suggestedMessagesEditor.humanSupport', 'Human support')}</option>
+              )}
+            </select>
+          </GlassField>
+
+          <GlassField label={t('suggestedMessagesEditor.nameLabel', 'Name')} className="modal-field" style={{ maxWidth: '100%' }}>
+            <input
+              type="text"
+              className="design-form-input"
+              value={suggestionDraft.label}
+              onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
+              placeholder={
+                suggestionDraft.type === 'show_menu'
+                  ? t('suggestedMessagesEditor.namePlaceholderMenu', 'Menu')
+                  : suggestionDraft.type === 'escalate'
+                    ? t('suggestedMessagesEditor.namePlaceholderSupport', 'Request human support')
+                    : t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')
+              }
+            />
+          </GlassField>
+
+          {suggestionDraft.type === 'escalate' && botId && (
+            <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: 8, background: 'rgba(255,241,239,0.5)', border: '1px solid var(--ui-flow-border)' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ui-flow-text)' }}>
+                {t('suggestedMessagesEditor.configureSupportHint', 'Configure email notifications and button label in Human Support settings.')}
+              </p>
+              <Link
+                to={`/bots/${botId}/human-support`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--ui-flow-accent)' }}
+              >
+                <Settings size={14} />
+                {t('suggestedMessagesEditor.openSupportSettings', 'Open Human Support settings')}
+              </Link>
+            </div>
+          )}
+
+          {suggestionDraft.type === 'ai_response' && (
+            <>
+              <GlassField label={t('suggestedMessagesEditor.promptLabel', 'Prompt')} className="modal-field" style={{ maxWidth: '100%' }}>
+                <textarea
+                  className="design-form-input"
+                  rows={3}
+                  value={suggestionDraft.prompt || ''}
+                  onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))}
+                  placeholder={t('suggestedMessagesEditor.promptPlaceholder', 'Can you show me some user success stories?')}
+                />
+              </GlassField>
+
+              <GlassField
+                label={t('suggestedMessagesEditor.urlsLabel', 'URLs (optional)')}
+                helper={t('suggestedMessagesEditor.urlsHelper', 'One URL per line.')}
+                className="modal-field"
+                style={{ maxWidth: '100%' }}
+              >
+                <textarea
+                  className="design-form-input"
+                  rows={3}
+                  value={Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls.join('\n') : ''}
+                  onChange={(e) =>
+                    setSuggestionDraft((prev) =>
+                      prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
+                    )
+                  }
+                  placeholder={t('suggestedMessagesEditor.urlsPlaceholder', 'https://example.com/pricing\nhttps://example.com/faq')}
+                />
+              </GlassField>
+            </>
+          )}
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" className="secondary" onClick={closeSuggestionModal}>
+            {t('suggestedMessagesEditor.cancel', 'Cancel')}
+          </button>
+          <button type="button" className="primary" onClick={saveSuggestion}>
+            {editingSuggestion ? t('suggestedMessagesEditor.update', 'Update') : t('suggestedMessagesEditor.add', 'Add')}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   return (
     <>
       <div className="design-form-field design-form-field-full">
@@ -218,120 +337,9 @@ export function SuggestedMessagesEditor({
         )}
       </div>
 
-      {isSuggestionModalOpen && suggestionDraft && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <div>
-                <div className="modal-title">
-                  {editingSuggestion
-                    ? t('suggestedMessagesEditor.modalEditTitle', 'Edit Suggested Message')
-                    : t('suggestedMessagesEditor.modalAddTitle', 'Add Suggested Message')}
-                </div>
-                <div className="modal-subtitle">{t('suggestedMessagesEditor.modalSubtitle', 'Update the suggested message details.')}</div>
-              </div>
-              <button type="button" className="modal-close modal-close--circle" onClick={closeSuggestionModal} aria-label={t('suggestedMessagesEditor.close', 'Close')}>
-                <FlowIcon name="close" />
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <label className="design-form-label">{t('suggestedMessagesEditor.typeLabel', 'Type')}</label>
-              <select
-                className="design-form-input"
-                value={availableTypes.includes(suggestionDraft.type) ? suggestionDraft.type : availableTypes[0]}
-                onChange={(e) =>
-                  setSuggestionDraft((prev) =>
-                    prev ? { ...prev, type: e.target.value as SuggestedMessageConfig['type'] } : prev
-                  )
-                }
-              >
-                {availableTypes.includes('ai_response') && (
-                  <option value="ai_response">{t('suggestedMessagesEditor.aiResponse', 'AI response')}</option>
-                )}
-                {availableTypes.includes('show_menu') && (
-                  <option value="show_menu">{t('suggestedMessagesEditor.showMenu', 'Show menu')}</option>
-                )}
-                {availableTypes.includes('escalate') && (
-                  <option value="escalate">{t('suggestedMessagesEditor.humanSupport', 'Human support')}</option>
-                )}
-              </select>
-
-              <label className="design-form-label" style={{ marginTop: '1rem' }}>{t('suggestedMessagesEditor.nameLabel', 'Name')}</label>
-              <input
-                type="text"
-                className="design-form-input"
-                value={suggestionDraft.label}
-                onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
-                placeholder={
-                  suggestionDraft.type === 'show_menu'
-                    ? t('suggestedMessagesEditor.namePlaceholderMenu', 'Menu')
-                    : suggestionDraft.type === 'escalate'
-                      ? t('suggestedMessagesEditor.namePlaceholderSupport', 'Request human support')
-                      : t('suggestedMessagesEditor.namePlaceholder', 'Where are success stories?')
-                }
-              />
-
-              {suggestionDraft.type === 'escalate' && botId && (
-                <div style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: 8, background: 'rgba(255,241,239,0.5)', border: '1px solid var(--ui-flow-border)' }}>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ui-flow-text)' }}>
-                    {t('suggestedMessagesEditor.configureSupportHint', 'Configure email notifications and button label in Human Support settings.')}
-                  </p>
-                  <Link
-                    to={`/bots/${botId}/human-support`}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--ui-flow-accent)' }}
-                  >
-                    <Settings size={14} />
-                    {t('suggestedMessagesEditor.openSupportSettings', 'Open Human Support settings')}
-                  </Link>
-                </div>
-              )}
-
-              {suggestionDraft.type === 'ai_response' && (
-                <>
-              <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                {t('suggestedMessagesEditor.promptLabel', 'Prompt')}
-              </label>
-              <textarea
-                className="design-form-input"
-                rows={3}
-                value={suggestionDraft.prompt || ''}
-                onChange={(e) => setSuggestionDraft((prev) => (prev ? { ...prev, prompt: e.target.value } : prev))}
-                placeholder={t('suggestedMessagesEditor.promptPlaceholder', 'Can you show me some user success stories?')}
-              />
-
-              <label className="design-form-label" style={{ marginTop: '1rem' }}>
-                {t('suggestedMessagesEditor.urlsLabel', 'URLs (optional)')}
-              </label>
-              <textarea
-                className="design-form-input"
-                rows={3}
-                value={Array.isArray(suggestionDraft.urls) ? suggestionDraft.urls.join('\n') : ''}
-                onChange={(e) =>
-                  setSuggestionDraft((prev) =>
-                    prev ? { ...prev, urls: e.target.value.split('\n').map((line) => line.trim()).filter(Boolean) } : prev
-                  )
-                }
-                placeholder={t('suggestedMessagesEditor.urlsPlaceholder', 'https://example.com/pricing\nhttps://example.com/faq')}
-              />
-              <div className="muted" style={{ marginTop: '0.45rem', fontSize: '0.8rem' }}>
-                {t('suggestedMessagesEditor.urlsHelper', 'One URL per line.')}
-              </div>
-                </>
-              )}
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={closeSuggestionModal}>
-                {t('suggestedMessagesEditor.cancel', 'Cancel')}
-              </button>
-              <button type="button" className="primary" onClick={saveSuggestion}>
-                {editingSuggestion ? t('suggestedMessagesEditor.update', 'Update') : t('suggestedMessagesEditor.add', 'Add')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {suggestionModal && typeof document !== 'undefined'
+        ? createPortal(suggestionModal, document.body)
+        : null}
     </>
   )
 }

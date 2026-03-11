@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { UiButton, UiInput } from '../components/ui'
+import { GlassField, UiButton, UiInput } from '../components/ui'
 
 type DialogTone = 'default' | 'danger'
 
@@ -232,25 +232,26 @@ function DialogHost({
         </div>
         {request.kind === 'prompt' && (
           <div className="app-dialog__body">
-            {request.options.label && (
-              <label className="app-dialog__label" htmlFor={inputId}>
-                {request.options.label}
-              </label>
-            )}
-            <UiInput
-              ref={inputRef}
-              id={inputId}
-              className="app-dialog__input"
-              value={promptValue}
-              placeholder={request.options.placeholder}
-              onChange={(event) => setPromptValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && canSubmitPrompt) {
-                  event.preventDefault()
-                  handleConfirm()
-                }
-              }}
-            />
+            <GlassField
+              label={request.options.label || t('common.value', 'Value')}
+              className="app-dialog__field"
+              style={{ maxWidth: '100%' }}
+            >
+              <UiInput
+                ref={inputRef}
+                id={inputId}
+                className="app-dialog__input"
+                value={promptValue}
+                placeholder={request.options.placeholder}
+                onChange={(event) => setPromptValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && canSubmitPrompt) {
+                    event.preventDefault()
+                    handleConfirm()
+                  }
+                }}
+              />
+            </GlassField>
           </div>
         )}
         <div className="app-dialog__actions">

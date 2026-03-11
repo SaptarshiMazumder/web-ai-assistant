@@ -155,8 +155,8 @@ export default function BotDesignTab() {
   return (
     <AnimatedPage>
       <SectionHeader
-        title={t('botDesign.title', 'Design the chat widget')}
-        subtitle={t('botDesign.subtitle', 'Customize how the widget appears. Changes update the preview on the right.')}
+        title={t('botDesign.title', 'Design your agent appearance')}
+        subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
       />
 
       <div style={{ marginBottom: '1rem' }}>

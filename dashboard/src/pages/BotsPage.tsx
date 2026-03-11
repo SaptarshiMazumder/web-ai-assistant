@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../contexts/DialogContext'
 
 export default function BotsPage() {
-  const { bots, loading, isSuperAdmin, activeOrgId, deleteBot, renameBot } = useDashboardData()
+  const { bots, loading, botsLoadedOnce, isSuperAdmin, activeOrgId, deleteBot, renameBot } = useDashboardData()
   const { t } = useTranslation()
   const dialog = useDialog()
   const navigate = useNavigate()
@@ -19,7 +19,7 @@ export default function BotsPage() {
     return <div className="empty-panel">{t('botsPage.selectOrgPrompt', 'Select an organization to view bots.')}</div>
   }
 
-  if (!loading && bots.length === 0) {
+  if (botsLoadedOnce && !loading && bots.length === 0) {
     return <Navigate to="/create-bot" replace />
   }
 

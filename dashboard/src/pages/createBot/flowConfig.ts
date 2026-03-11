@@ -1,4 +1,5 @@
 import autographIcon from '../../assets/icons8/autograph.png'
+import chainIcon from '../../assets/icons8/chain.png'
 import googleDocsIcon from '../../assets/icons8/google-docs.png'
 import learningIcon from '../../assets/icons8/learning.png'
 import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
@@ -9,6 +10,7 @@ export type CreateBotStepGroupId =
   | 'sources'
   | 'additional_sources'
   | 'training'
+  | 'suggested_messages'
   | 'widget'
   | 'embed'
 
@@ -19,6 +21,7 @@ export type CreateBotScreenComponent =
   | 'source_urls'
   | 'additional_sources'
   | 'training_progress'
+  | 'suggested_messages'
   | 'widget_design'
   | 'embed_install'
   | 'action_destination_url'
@@ -93,6 +96,7 @@ const STEP_GROUP_DECORATIONS: Record<CreateBotStepGroupId, { icon: string; iconU
   sources: { icon: 'source', iconUrl: googleDocsIcon },
   additional_sources: { icon: 'library_add', iconUrl: googleDocsIcon },
   training: { icon: 'model_training', iconUrl: learningIcon },
+  suggested_messages: { icon: 'quickreply', iconUrl: chainIcon },
   widget: { icon: 'palette', iconUrl: paintPaletteIcon },
   embed: { icon: 'code', iconUrl: googleCodeIcon },
 }
@@ -119,9 +123,14 @@ const DEFAULT_STEP_GROUPS: ReadonlyArray<Omit<CreateBotStepGroup, 'icon' | 'icon
     description: "We'll start learning from what you added.",
   },
   {
+    id: 'suggested_messages',
+    label: 'Suggested messages',
+    description: 'Set quick actions users can tap first.',
+  },
+  {
     id: 'widget',
-    label: 'Design widget',
-    description: "Customize your agent's appearance.",
+    label: 'Design appearance',
+    description: "Customize your agent's Website and LINE appearance.",
   },
   {
     id: 'embed',
@@ -172,6 +181,12 @@ const DEFAULT_SCREEN_DEFINITIONS: Record<string, CreateBotScreen> = {
     stepGroupId: 'training',
     component: 'training_progress',
   },
+  suggested_messages: {
+    id: 'suggested_messages',
+    path: 'suggested-messages',
+    stepGroupId: 'suggested_messages',
+    component: 'suggested_messages',
+  },
   widget: {
     id: 'widget',
     path: 'widget',
@@ -192,6 +207,7 @@ const DEFAULT_SCREEN_ORDER: readonly string[] = [
   'additional_sources',
   'reservation_destination',
   'training',
+  'suggested_messages',
   'widget',
   'embed',
 ]
@@ -222,6 +238,7 @@ function normalizeComponent(value: string): CreateBotScreenComponent | null {
     normalized === 'source_urls' ||
     normalized === 'additional_sources' ||
     normalized === 'training_progress' ||
+    normalized === 'suggested_messages' ||
     normalized === 'widget_design' ||
     normalized === 'embed_install' ||
     normalized === 'action_destination_url'
@@ -322,10 +339,56 @@ export function normalizeCreateBotFlowConfig(raw: RawCreateBotFlowConfig | null 
     .filter(Boolean) as string[]
 
   return {
-    stepGroups: resolvedStepGroups,
+    stepGroups: ensureSuggestedMessagesStepGroup(resolvedStepGroups, fallback.stepGroups),
     screenDefinitions,
-    screenOrder: screenOrder.length > 0 ? screenOrder : [...fallback.screenOrder],
+    screenOrder: ensureSuggestedMessagesScreenOrder(
+      screenOrder.length > 0 ? screenOrder : [...fallback.screenOrder],
+      screenDefinitions
+    ),
   }
+}
+
+function ensureSuggestedMessagesStepGroup(
+  stepGroups: CreateBotStepGroup[],
+  fallbackStepGroups: ReadonlyArray<CreateBotStepGroup>
+): CreateBotStepGroup[] {
+  if (stepGroups.some((stepGroup) => stepGroup.id === 'suggested_messages')) return stepGroups
+  const fallbackGroup = fallbackStepGroups.find((stepGroup) => stepGroup.id === 'suggested_messages')
+  if (!fallbackGroup) return stepGroups
+  const next = [...stepGroups]
+  const widgetIndex = next.findIndex((stepGroup) => stepGroup.id === 'widget')
+  if (widgetIndex >= 0) {
+    next.splice(widgetIndex, 0, fallbackGroup)
+    return next
+  }
+  const embedIndex = next.findIndex((stepGroup) => stepGroup.id === 'embed')
+  if (embedIndex >= 0) {
+    next.splice(embedIndex, 0, fallbackGroup)
+    return next
+  }
+  next.push(fallbackGroup)
+  return next
+}
+
+function ensureSuggestedMessagesScreenOrder(
+  order: string[],
+  screenDefinitions: Record<string, CreateBotScreen>
+): string[] {
+  if (!screenDefinitions.suggested_messages) return order
+  if (order.includes('suggested_messages')) return order
+  const next = [...order]
+  const widgetIndex = next.findIndex((screenId) => screenId === 'widget')
+  if (widgetIndex >= 0) {
+    next.splice(widgetIndex, 0, 'suggested_messages')
+    return next
+  }
+  const embedIndex = next.findIndex((screenId) => screenId === 'embed')
+  if (embedIndex >= 0) {
+    next.splice(embedIndex, 0, 'suggested_messages')
+    return next
+  }
+  next.push('suggested_messages')
+  return next
 }
 
 export function isCreateBotScreenVisible(screen: CreateBotScreen, state: CreateBotFlowState): boolean {
