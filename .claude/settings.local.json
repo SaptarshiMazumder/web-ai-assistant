@@ -33,7 +33,9 @@
       "Bash(python3:*)",
       "Bash(PYTHONIOENCODING=utf-8 python -c \":*)",
       "Bash(grep -E \"\\\\.\\(py\\)$\")",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(node -c backend/api/widget/iframe.js)",
+      "Bash(node -c backend/api/widget/widget.js)"
     ]
   }
 }

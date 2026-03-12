@@ -895,15 +895,145 @@
 
   function getVisibleStreamingText(text) {
     if (!text) return text;
+    // Hide incomplete URL at end
     var lower = text.toLowerCase();
     var lastHttp = Math.max(lower.lastIndexOf("https://"), lower.lastIndexOf("http://"));
-    if (lastHttp < 0) return text;
-    var consumed = consumeUrlToken(text, lastHttp, "");
-    if (!consumed) return text;
-    if (consumed.end === text.length && !consumed.trailing) {
-      return text.slice(0, lastHttp);
+    if (lastHttp >= 0) {
+      var consumed = consumeUrlToken(text, lastHttp, "");
+      if (consumed && consumed.end === text.length && !consumed.trailing) {
+        text = text.slice(0, lastHttp);
+      }
+    }
+    // Hide incomplete bold/italic markers at end
+    // Match trailing *<text without closing *> at end of string
+    var trailingStars = text.match(/(\*{1,2})([^*]{0,80})$/);
+    if (trailingStars) {
+      var stars = trailingStars[1];
+      var rest = trailingStars[2];
+      // Check if the marker is unclosed
+      if (rest.indexOf(stars) === -1) {
+        text = text.slice(0, text.length - trailingStars[0].length);
+      }
+    }
+    // Hide incomplete code fence at end
+    var fenceCount = (text.match(/```/g) || []).length;
+    if (fenceCount % 2 !== 0) {
+      text = text.slice(0, text.lastIndexOf("```"));
+    }
+    // Hide incomplete inline code at end
+    var backtickCount = (text.match(/`/g) || []).length;
+    // Subtract backticks that are part of code fences (already handled)
+    var fenceTicks = (text.match(/```/g) || []).length * 3;
+    var singleTicks = backtickCount - fenceTicks;
+    if (singleTicks % 2 !== 0) {
+      // Find the last lone backtick
+      var lastBt = text.lastIndexOf("`");
+      if (lastBt >= 0 && text.slice(Math.max(0, lastBt - 2), lastBt + 3).indexOf("```") === -1) {
+        text = text.slice(0, lastBt);
+      }
     }
     return text;
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderMarkdownToHTML(text) {
+    if (!text) return "";
+    var escaped = escapeHtml(text);
+
+    // Code blocks: ```...```
+    var codeBlocks = [];
+    escaped = escaped.replace(/```[\s\S]*?```/g, function (match) {
+      var code = match.slice(3, -3).replace(/^\s*\n/, "").replace(/\n\s*$/, "");
+      codeBlocks.push("<pre><code>" + code + "</code></pre>");
+      return "\x00CB" + (codeBlocks.length - 1) + "\x00";
+    });
+
+    // Inline code: `...`
+    var inlineCodes = [];
+    escaped = escaped.replace(/`([^`\n]+)`/g, function (_, code) {
+      inlineCodes.push("<code>" + code + "</code>");
+      return "\x00IC" + (inlineCodes.length - 1) + "\x00";
+    });
+
+    // Bold: **text**
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    // Italic: *text* (not inside bold)
+    escaped = escaped.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+
+    // Headers: ## heading → bold line
+    escaped = escaped.replace(/^(#{1,6})\s+(.+)$/gm, function (_, hashes, content) {
+      return "<strong>" + content + "</strong>";
+    });
+
+    // Process lines for lists and paragraphs
+    var lines = escaped.split("\n");
+    var html = "";
+    var inUl = false;
+    var inOl = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      // Check for placeholder (code block) - render as-is
+      var cbMatch = line.match(/^\x00CB(\d+)\x00$/);
+      if (cbMatch) {
+        if (inUl) { html += "</ul>"; inUl = false; }
+        if (inOl) { html += "</ol>"; inOl = false; }
+        html += codeBlocks[parseInt(cbMatch[1])];
+        continue;
+      }
+
+      // Bullet list item: - item or * item (but not bold **)
+      var ulMatch = line.match(/^\s*[-*]\s+(.+)/);
+      if (ulMatch && !/^\s*\*\*/.test(line)) {
+        if (inOl) { html += "</ol>"; inOl = false; }
+        if (!inUl) { html += "<ul>"; inUl = true; }
+        html += "<li>" + ulMatch[1] + "</li>";
+        continue;
+      }
+
+      // Numbered list item: 1. item
+      var olMatch = line.match(/^\s*\d+\.\s+(.+)/);
+      if (olMatch) {
+        if (inUl) { html += "</ul>"; inUl = false; }
+        if (!inOl) { html += "<ol>"; inOl = true; }
+        html += "<li>" + olMatch[1] + "</li>";
+        continue;
+      }
+
+      // Non-list line: close any open lists
+      if (inUl) { html += "</ul>"; inUl = false; }
+      if (inOl) { html += "</ol>"; inOl = false; }
+
+      // Empty line → paragraph break
+      if (line.trim() === "") {
+        html += "<br>";
+      } else {
+        html += (html && !html.endsWith("<br>") && !html.endsWith("</ul>") && !html.endsWith("</ol>") && !html.endsWith("</pre>") ? "<br>" : "") + line;
+      }
+    }
+    if (inUl) html += "</ul>";
+    if (inOl) html += "</ol>";
+
+    // Restore inline code placeholders
+    html = html.replace(/\x00IC(\d+)\x00/g, function (_, idx) {
+      return inlineCodes[parseInt(idx)];
+    });
+
+    // Restore code block placeholders (for inline occurrences)
+    html = html.replace(/\x00CB(\d+)\x00/g, function (_, idx) {
+      return codeBlocks[parseInt(idx)];
+    });
+
+    return html;
   }
 
   function setBubbleText(bubble, text, who) {
@@ -911,21 +1041,28 @@
     bubble.innerHTML = "";
     if (existingLabel) bubble.appendChild(existingLabel);
     var cleaned = who === "bot" && typeof text === "string" ? stripBracketCitations(text) : text;
-    var parsed = who === "bot" && typeof cleaned === "string" ? parseMarkdownLinks(cleaned) : null;
+
+    // User messages: plain text
+    if (who !== "bot") {
+      appendSoftWrappedText(bubble, cleaned || "");
+      return;
+    }
+
+    // Bot messages: markdown rendering
+    var parsed = typeof cleaned === "string" ? parseMarkdownLinks(cleaned) : null;
     if (parsed && parsed.length > 0) {
+      var htmlParts = [];
       parsed.forEach(function (p) {
-        if (p.type === "text") appendSoftWrappedText(bubble, p.content);
-        else if (p.type === "link") {
-          var a = document.createElement("a");
-          a.href = p.url.replace(/"/g, "&quot;");
-          a.target = "_blank";
-          a.rel = "noopener noreferrer";
-          a.textContent = p.text;
-          bubble.appendChild(a);
+        if (p.type === "text") {
+          htmlParts.push(renderMarkdownToHTML(p.content));
+        } else if (p.type === "link") {
+          htmlParts.push('<a href="' + escapeHtml(p.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(p.text) + '</a>');
         }
       });
+      var labelHtml = existingLabel ? existingLabel.outerHTML : "";
+      bubble.innerHTML = labelHtml + htmlParts.join("");
     } else {
-      appendSoftWrappedText(bubble, cleaned || "");
+      bubble.innerHTML = (existingLabel ? existingLabel.outerHTML : "") + renderMarkdownToHTML(cleaned || "");
     }
   }
 
@@ -1270,6 +1407,15 @@
   });
   if (endChat) {
     endChat.addEventListener("click", endChatSession);
+  }
+
+  var closeWidgetBtn = document.getElementById("closeWidget");
+  if (closeWidgetBtn) {
+    closeWidgetBtn.addEventListener("click", function () {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "webai-widget-close" }, "*");
+      }
+    });
   }
 
   // Do not auto-end on reload; session ends via inactivity or explicit end.

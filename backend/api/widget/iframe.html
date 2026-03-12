@@ -273,14 +273,19 @@
         height: 34px;
         padding: 0;
         border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        background: none;
         color: var(--widget-text-color);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        opacity: 0.75;
+      }
+
+      .clear-btn:hover {
+        opacity: 1;
       }
 
       .clear-btn svg {
@@ -304,6 +309,38 @@
         box-sizing: border-box;
         overflow-wrap: anywhere;
         word-break: break-word;
+      }
+
+      .bubble.bot { white-space: normal; }
+
+      .bubble.bot strong { font-weight: 700; }
+      .bubble.bot em { font-style: italic; }
+      .bubble.bot ul, .bubble.bot ol {
+        margin: 4px 0;
+        padding-left: 20px;
+      }
+      .bubble.bot li { margin: 2px 0; }
+      .bubble.bot pre {
+        background: rgba(0,0,0,0.05);
+        border-radius: 6px;
+        padding: 8px 10px;
+        overflow-x: auto;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        margin: 4px 0;
+      }
+      .bubble.bot code {
+        background: rgba(0,0,0,0.06);
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 0.9em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .bubble.bot pre code {
+        background: none;
+        padding: 0;
+        font-size: inherit;
       }
 
       .message-row:not(.user-row) .bubble {
@@ -529,6 +566,9 @@
       [data-theme="dark"] .carousel-btn:hover { background: #334155; }
       [data-theme="dark"] .carousel-btn svg { stroke: #e2e8f0; }
       [data-theme="dark"] .carousel-dot { background: #475569; }
+      [data-theme="dark"] .bubble.bot pre { background: rgba(255,255,255,0.08); }
+      [data-theme="dark"] .bubble.bot code { background: rgba(255,255,255,0.1); }
+      [data-theme="dark"] .bubble.bot pre code { background: none; }
     </style>
   </head>
 
@@ -540,13 +580,20 @@
           <span id="headerTitle">Chat</span>
           <span class="header-status-dot" id="headerStatusDot" title="Live"></span>
         </div>
-        <button id="endChat" class="clear-btn" type="button" aria-label="Clear chat">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 6h18" />
-            <path d="M8 6V4h8v2" />
-            <path d="M6 6l1 14h10l1-14" />
-          </svg>
-        </button>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button id="endChat" class="clear-btn" type="button" aria-label="Clear chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M6 6l1 14h10l1-14" />
+            </svg>
+          </button>
+          <button id="closeWidget" class="clear-btn" type="button" aria-label="Minimize">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+        </div>
       </div>
       <div id="chat" class="chat">
         <div id="welcome" class="welcome-block"></div>
@@ -565,7 +612,7 @@
       </div>
       <div id="footer" class="footer-msg"></div>
     </div>
-    <script src="./iframe.js?v=2026-03-10-stream-finalize-v3"></script>
+    <script src="./iframe.js?v=2026-03-12-markdown-minimize-v1"></script>
   </body>
 
 </html>

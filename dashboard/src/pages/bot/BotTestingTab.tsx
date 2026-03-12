@@ -8,7 +8,7 @@ import { AnimatedPage, SectionHeader, UiButton } from '../../components/ui'
 import { useDialog } from '../../contexts/DialogContext'
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env.VITE_API_BASE || window.location.origin
-const TESTING_WIDGET_PREVIEW_VERSION = '2026-03-10-carousel-row-v2'
+const TESTING_WIDGET_PREVIEW_VERSION = '2026-03-12-markdown-minimize-v1'
 const DEFAULT_PERSONA_ID = 'default-assistant'
 const LEGACY_DEFAULT_INSTRUCTIONS = `## Role
 You are a friendly and helpful AI chatbot who helps users with their inquiries, issues, and requests. Listen attentively, understand their needs, and assist them using the information provided. If a question is unclear, ask clarifying questions. End replies with a positive note.
@@ -226,6 +226,7 @@ export default function BotTestingTab() {
   const [rawAvailabilityLoading, setRawAvailabilityLoading] = useState(false)
 
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isWidgetOpen, setIsWidgetOpen] = useState(true)
 
   const languageFallbackPrompt = useMemo(
     () => getVanillaPromptForLanguage(botLanguage),
@@ -315,6 +316,16 @@ export default function BotTestingTab() {
 
   const widgetSize = (selectedBotWidgetConfig?.size as 'small' | 'medium' | 'large') || 'medium'
   const widgetDims = WIDGET_SIZE_DIMENSIONS[widgetSize] ?? WIDGET_SIZE_DIMENSIONS.medium
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === 'webai-widget-close') {
+        setIsWidgetOpen(false)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
   useEffect(() => {
     function endSession() {
@@ -863,22 +874,47 @@ export default function BotTestingTab() {
         </div>
 
         <div className="testing-right">
-          <div className="testing-widget-wrap">
-            {widgetIframeSrc ? (
-              <iframe
-                key={widgetIframeSrc}
-                src={widgetIframeSrc}
-                title="Chat widget"
-                className="testing-widget-iframe"
-                style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
-              />
+          <div className="testing-widget-wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minHeight: widgetDims.height }}>
+            {isWidgetOpen ? (
+              widgetIframeSrc ? (
+                <iframe
+                  key={widgetIframeSrc}
+                  src={widgetIframeSrc}
+                  title="Chat widget"
+                  className="testing-widget-iframe"
+                  style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
+                />
+              ) : (
+                <div
+                  className="testing-widget-placeholder"
+                  style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
+                >
+                  {t('botTesting.noPublishableKey', 'No publishable key for this bot.')}
+                </div>
+              )
             ) : (
-              <div
-                className="testing-widget-placeholder"
-                style={{ width: '100%', maxWidth: widgetDims.width, height: widgetDims.height }}
+              <button
+                onClick={() => setIsWidgetOpen(true)}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: '50%',
+                  background: (resolvedWidgetConfig?.color as string) || (selectedBotWidgetConfig?.color as string) || '#1976d2',
+                  color: (resolvedWidgetConfig?.textColor as string) || (selectedBotWidgetConfig?.textColor as string) || '#ffffff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  marginTop: 'auto',
+                }}
+                title={t('botTesting.openWidget', 'Open chat')}
               >
-                {t('botTesting.noPublishableKey', 'No publishable key for this bot.')}
-              </div>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+              </button>
             )}
           </div>
           {saveError && <div className="testing-chat-error">{saveError}</div>}
