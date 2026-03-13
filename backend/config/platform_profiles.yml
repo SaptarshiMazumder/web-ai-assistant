@@ -454,7 +454,8 @@ job_pipeline:
         - reservation_url
       tablecheck:
         - prompt_generation
-        - booking_link
+        - menu_extraction
+        - reservation_url
   gates:
     discovery_manual_selection:
       step_id: discovery
@@ -468,6 +469,7 @@ reservation_url_rules:
     base_path_pattern: "^/[^/]+/[^/]+/[^/]+/\\d+/?"
     allowed_domains:
       - tabelog.com
+    allow_crawled_fallback: false
     include_path_patterns:
       - "^/[a-z0-9\\-_/]+/?$"
     exclude_path_patterns:
@@ -484,6 +486,7 @@ reservation_url_rules:
     base_path_pattern: "^/(?:[a-z]{2}/)?strJ\\d+/?"
     allowed_domains:
       - hotpepper.jp
+    allow_crawled_fallback: false
     include_path_patterns:
       - "^/(?:[a-z]{2}/)?strJ\\d+/?$"
     exclude_path_patterns:
@@ -494,6 +497,13 @@ reservation_url_rules:
       strj: 8
       reserve: 6
       yoyaku: 6
+  tablecheck:
+    assignment_mode: base_url
+    base_url_source_key: root_url
+    base_path_pattern: "^/(?:[a-z]{2}(?:-[A-Za-z]{2})?/)?(?:shops/)?[A-Za-z0-9._-]+/reserve(?:/|$)"
+    allowed_domains:
+      - tablecheck.com
+    allow_crawled_fallback: false
 
 defaults:
   jobs:
@@ -699,8 +709,8 @@ reservation_platform_config:
     widget_key: tableCheckUrl
     domain_key: tablecheck.com
     url_placeholder: "https://www.tablecheck.com/en/shops/your-restaurant/reserve"
-    knowledge_tabs: [image]  # Image tab only; no Menu tab
-    post_crawl_jobs: [booking_link]  # No menu extraction (Image tab only)
+    knowledge_tabs: [menu]  # Menu tab only
+    post_crawl_jobs: [menu_extraction]  # Use menu extraction + reservation URL automation
 
 dashboard:
   overview_setup_sections:
@@ -778,7 +788,7 @@ dashboard:
         visibility:
           business_types: [restaurant]
           requires_selected_reservation_platform: true
-          reservation_platform_ids: [tabelog, hotpepper]
+          reservation_platform_ids: [tabelog, hotpepper, tablecheck]
         title:
           en: "Choose where reservation taps should go"
           ja: "予約タップ時の移動先を設定"
@@ -1399,6 +1409,13 @@ platforms:
     include_paths: []
     exclude_paths: []
     priority: 10
+    strip_query_params: true
+    menu_extraction_rules:
+      enabled: true
+      mode: deterministic
+      extractor: tablecheck_v1
+      allowed_path_patterns:
+        - "^/(?:[a-z]{2}(?:-[A-Za-z]{2})?/)?(?:shops/)?[A-Za-z0-9._-]+/reserve(?:/|$)"
     metadata:
       asset_rules:
         asset_term_config:

@@ -42,6 +42,28 @@ def _host_in_allowed_domains(host: str, allowed_domains: Iterable[str]) -> bool:
     return False
 
 
+def _url_matches_rule(raw_url: str, rule: Dict[str, Any]) -> bool:
+    url = _normalize_http_url(raw_url)
+    if not url or not isinstance(rule, dict):
+        return False
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    path = parsed.path or "/"
+
+    allowed_domains = rule.get("allowed_domains") if isinstance(rule.get("allowed_domains"), list) else []
+    include_patterns = rule.get("include_path_patterns") if isinstance(rule.get("include_path_patterns"), list) else []
+    exclude_patterns = rule.get("exclude_path_patterns") if isinstance(rule.get("exclude_path_patterns"), list) else []
+
+    if allowed_domains and not _host_in_allowed_domains(host, allowed_domains):
+        return False
+    if include_patterns and not any(re.search(str(pat), path, re.IGNORECASE) for pat in include_patterns):
+        return False
+    if exclude_patterns and any(re.search(str(pat), path, re.IGNORECASE) for pat in exclude_patterns):
+        return False
+    return True
+
+
 def pick_reservation_url_candidate(urls: List[str], rule: Dict[str, Any]) -> Optional[str]:
     """
     Pick best reservation URL from discovered/crawled URLs using config-only rule.
@@ -103,11 +125,47 @@ def build_base_reservation_url(raw_url: str, rule: Dict[str, Any]) -> Optional[s
     base_path_pattern = str(rule.get("base_path_pattern") or "").strip() if isinstance(rule, dict) else ""
     if base_path_pattern:
         match = re.search(base_path_pattern, path, re.IGNORECASE)
-        if match:
-            if match.lastindex:
-                base_path = str(match.group(1) or match.group(0) or path)
-            else:
-                base_path = str(match.group(0) or path)
+        if not match and "reserve" in base_path_pattern.lower():
+            trimmed = (path or "/").rstrip("/")
+            candidate_paths: List[str] = []
+
+            if trimmed and not trimmed.lower().endswith("/reserve"):
+                candidate_paths.append(f"{trimmed}/reserve")
+
+            segments = [seg for seg in trimmed.split("/") if seg]
+            locale_re = re.compile(r"^[a-z]{2}(?:-[a-z]{2})?$", re.IGNORECASE)
+            locale = ""
+            slug = ""
+            if segments:
+                if locale_re.match(segments[0]) and len(segments) >= 2:
+                    locale = segments[0]
+                    slug = segments[1]
+                elif len(segments) >= 1:
+                    slug = segments[0]
+            if slug:
+                if locale:
+                    candidate_paths.append(f"/{locale}/shops/{slug}/reserve")
+                else:
+                    candidate_paths.append(f"/shops/{slug}/reserve")
+
+            seen: set[str] = set()
+            for candidate_path in candidate_paths:
+                normalized_candidate = candidate_path if candidate_path.startswith("/") else f"/{candidate_path}"
+                if normalized_candidate in seen:
+                    continue
+                seen.add(normalized_candidate)
+                match = re.search(base_path_pattern, normalized_candidate, re.IGNORECASE)
+                if match:
+                    path = normalized_candidate
+                    break
+
+        if not match:
+            return None
+
+        if match.lastindex:
+            base_path = str(match.group(1) or match.group(0) or path)
+        else:
+            base_path = str(match.group(0) or path)
 
     base_path = base_path or "/"
     if not base_path.startswith("/"):
@@ -160,13 +218,25 @@ class ReservationUrlRunner:
         assignment_mode = assignment_mode if assignment_mode in ("candidate", "base_url") else "candidate"
 
         if assignment_mode == "base_url":
+            allow_crawled_fallback_raw = rule.get("allow_crawled_fallback")
+            allow_crawled_fallback = (
+                allow_crawled_fallback_raw if isinstance(allow_crawled_fallback_raw, bool) else True
+            )
             source_key = str(rule.get("base_url_source_key") or "root_url").strip() or "root_url"
             source_url = str(context.get(source_key) or "").strip()
-            if not source_url:
+
+            if source_url and not _url_matches_rule(source_url, rule):
+                source_url = ""
+
+            if not source_url and allow_crawled_fallback:
                 raw_urls = [str(u or "").strip() for u in list(context.get("crawled_urls") or []) if str(u or "").strip()]
-                source_url = raw_urls[0] if raw_urls else ""
+                for raw_url in raw_urls:
+                    if _url_matches_rule(raw_url, rule):
+                        source_url = raw_url
+                        break
+
             base_candidate = build_base_reservation_url(source_url, rule)
-            if not base_candidate:
+            if not base_candidate or not _url_matches_rule(base_candidate, rule):
                 return JobResult(status="done", output={"status": "skipped", "reason": "no_base_url_found"})
 
             current_links[platform_id] = base_candidate

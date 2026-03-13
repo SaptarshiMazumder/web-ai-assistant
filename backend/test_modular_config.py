@@ -14,6 +14,7 @@ from domain.platform_profiles import (
     get_menu_view_all_url_tokens,
     get_reservation_config_from_widget,
     get_reservation_url_for_platform,
+    get_reservation_url_rule,
     get_web_support_messages,
     normalize_reservation_links,
 )
@@ -61,6 +62,16 @@ class ModularConfigTests(unittest.TestCase):
         widget_config = {"reservationPlatform": "hotpepper"}
         tabs = get_knowledge_tabs_for_widget(widget_config)
         self.assertEqual(["menu"], tabs)
+
+    def test_tablecheck_knowledge_tabs_resolve_to_menu(self):
+        widget_config = {"reservationPlatform": "tablecheck"}
+        tabs = get_knowledge_tabs_for_widget(widget_config)
+        self.assertEqual(["menu"], tabs)
+
+    def test_known_reservation_platforms_disable_crawled_fallback(self):
+        self.assertFalse(get_reservation_url_rule("tabelog").get("allow_crawled_fallback", True))
+        self.assertFalse(get_reservation_url_rule("hotpepper").get("allow_crawled_fallback", True))
+        self.assertFalse(get_reservation_url_rule("tablecheck").get("allow_crawled_fallback", True))
 
     def test_create_bot_flow_is_loaded_from_config(self):
         flow = get_dashboard_create_bot_flow(lang="en")
@@ -140,12 +151,12 @@ class ModularConfigTests(unittest.TestCase):
         )
         self.assertEqual(["prompt_generation", "menu_extraction", "reservation_url"], steps)
 
-    def test_job_pipeline_workflow_tablecheck_override_keeps_booking_link(self):
+    def test_job_pipeline_workflow_tablecheck_override_uses_menu_and_reservation_url(self):
         steps = get_job_pipeline_workflow(
             {"reservationPlatform": "tablecheck", "allowAutoImageExtraction": False},
             workflow_id="default",
         )
-        self.assertEqual(["prompt_generation", "booking_link"], steps)
+        self.assertEqual(["prompt_generation", "menu_extraction", "reservation_url"], steps)
 
 
 if __name__ == "__main__":

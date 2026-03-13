@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime, timezone
 from threading import Event, Thread
 from typing import Any, Callable, Dict, List, Optional, Tuple
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import html as html_lib
 import httpx
@@ -578,6 +578,58 @@ def _path_matches_patterns(path: str, patterns: List[str]) -> bool:
     return False
 
 
+def _canonicalize_tablecheck_reserve_url(raw_url: str) -> str:
+    url = str(raw_url or "").strip()
+    if not url:
+        return ""
+    if url.startswith("//"):
+        url = f"https:{url}"
+    elif "://" not in url:
+        url = f"https://{url}"
+    if not url:
+        return ""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in ("http", "https"):
+        return ""
+    host = (parsed.hostname or "").lower()
+    if not host or not (host == "tablecheck.com" or host.endswith(".tablecheck.com")):
+        return ""
+
+    segments = [seg for seg in (parsed.path or "").split("/") if seg]
+    if not segments:
+        return ""
+
+    if segments[-1].lower() == "reserve":
+        normalized_path = "/" + "/".join(segments) + "/"
+        return urlunparse((parsed.scheme, parsed.netloc, normalized_path, "", "", ""))
+
+    locale_re = re.compile(r"^[a-z]{2}(?:-[a-z]{2})?$", re.IGNORECASE)
+    locale = ""
+    start_idx = 0
+    if segments and locale_re.match(segments[0]):
+        locale = segments[0]
+        start_idx = 1
+
+    remaining = segments[start_idx:]
+    if not remaining:
+        return ""
+
+    has_shops_prefix = remaining[0].lower() == "shops"
+    if has_shops_prefix:
+        if len(remaining) < 2:
+            return ""
+        slug = remaining[1]
+        normalized_segments = ([locale] if locale else []) + ["shops", slug, "reserve"]
+    else:
+        if not locale:
+            return ""
+        slug = remaining[0]
+        normalized_segments = [locale, slug, "reserve"]
+
+    normalized_path = "/" + "/".join(normalized_segments) + "/"
+    return urlunparse((parsed.scheme, parsed.netloc, normalized_path, "", "", ""))
+
+
 def _is_profile_menu_candidate_url(url: str, profile: Any) -> bool:
     if not _is_menu_extraction_enabled(profile):
         return False
@@ -585,7 +637,15 @@ def _is_profile_menu_candidate_url(url: str, profile: Any) -> bool:
     raw_patterns = rules.get("allowed_path_patterns")
     patterns = [str(p) for p in raw_patterns] if isinstance(raw_patterns, list) else []
     if patterns:
-        return _path_matches_patterns(urlparse(url).path or "", patterns)
+        path = urlparse(url).path or ""
+        if _path_matches_patterns(path, patterns):
+            return True
+        extractor_key = str(rules.get("extractor") or "").strip().lower()
+        if extractor_key == "tablecheck_v1":
+            canonical = _canonicalize_tablecheck_reserve_url(url)
+            if canonical:
+                return _path_matches_patterns(urlparse(canonical).path or "", patterns)
+        return False
     if profile and profile.menu_url_patterns:
         return _path_matches_patterns(url, profile.menu_url_patterns)
     return True
@@ -742,6 +802,113 @@ def _extract_tabelog_menu_items(page_url: str) -> List[Dict[str, Any]]:
     course_items = _extract_tabelog_course_items(page_url, html_text)
     menu_items = _extract_tabelog_dtlmenu_items(page_url, html_text)
     return _dedupe_menu_items(course_items + menu_items)
+
+
+def _clean_tablecheck_name(text: str) -> str:
+    cleaned = _strip_html(text)
+    if not cleaned:
+        return ""
+    cleaned = re.sub(r"^[\s\u25bc\u25b6\u25c6\u25a0]+", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
+
+
+def _clean_tablecheck_details(text: str) -> str:
+    cleaned = _strip_html(text)
+    if not cleaned:
+        return ""
+    cleaned = re.sub(r"\bRead more\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"--\s*Qty\s*--.*$", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bFine Print\b.*$", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bValid Dates\b.*$", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -|")
+    return cleaned
+
+
+def _extract_tablecheck_menu_items(page_url: str) -> List[Dict[str, Any]]:
+    resolved_page_url = _canonicalize_tablecheck_reserve_url(page_url) or page_url
+    html_text = _fetch_html(resolved_page_url)
+    if not html_text:
+        return []
+
+    try:
+        from bs4 import BeautifulSoup  # type: ignore
+    except Exception as e:
+        logger.warning("[TableCheck Extractor] BeautifulSoup import failed: %s", e)
+        return []
+
+    soup = BeautifulSoup(html_text, "html.parser")
+    if not soup:
+        return []
+
+    items: List[Dict[str, Any]] = []
+    for block in soup.select("div.menu-item.show-more-expander"):
+        data_el = block.select_one(".menu-item-data")
+        name = _clean_tablecheck_name(str(data_el.get("data-name") or "")) if data_el is not None else ""
+        if not name:
+            for name_el in block.select(".menu-item-name"):
+                candidate = _clean_tablecheck_name(name_el.get_text(" ", strip=True))
+                if candidate:
+                    name = candidate
+                    break
+        if not name:
+            continue
+
+        price = ""
+        for price_el in block.select(".menu-item-small, .menu-item-price, [class*='price']"):
+            price_text = _strip_html(price_el.get_text(" ", strip=True))
+            if not price_text:
+                continue
+            match = _PRICE_TEXT_RE.search(price_text)
+            if match:
+                price = (match.group(0) or "").strip()
+                break
+        if not price:
+            block_text = _strip_html(block.get_text(" ", strip=True))
+            match = _PRICE_TEXT_RE.search(block_text)
+            if match:
+                price = (match.group(0) or "").strip()
+
+        detail_parts: List[str] = []
+        for detail_el in block.select(".menu-item-tagline, .menu-item-text"):
+            detail_text = _clean_tablecheck_details(detail_el.get_text(" ", strip=True))
+            if detail_text and detail_text not in detail_parts:
+                detail_parts.append(detail_text)
+        details = " ".join(detail_parts).strip()
+        description = _format_menu_description(price, details)
+
+        image_src = ""
+        img_el = block.select_one("img[src], img[data-src], img[data-original]")
+        if img_el is not None:
+            for attr in ("src", "data-src", "data-original"):
+                candidate = str(img_el.get(attr) or "").strip()
+                if candidate:
+                    image_src = candidate
+                    break
+        if not image_src:
+            link_el = block.select_one("a[data-lightbox][href], a[href*='menu_items'][href]")
+            if link_el is not None:
+                image_src = str(link_el.get("href") or "").strip()
+        resolved_image = urljoin(resolved_page_url, image_src) if image_src else None
+
+        # Skip placeholder rows that have no menu signal.
+        if not price and not details and not resolved_image:
+            continue
+
+        items.append(
+            {
+                "name": name,
+                "price_text": price,
+                "details": details,
+                "description": description,
+                "link_url": resolved_page_url,
+                "image_url": resolved_image,
+                "category": "",
+                "keywords": _keywords_for_menu_item(name, description),
+            }
+        )
+
+    return _dedupe_menu_items(items)
 
 
 import logging
@@ -946,6 +1113,7 @@ def _extract_hotpepper_menu_items(page_url: str) -> List[Dict[str, Any]]:
 _DETERMINISTIC_MENU_EXTRACTORS: Dict[str, Callable[[str], List[Dict[str, Any]]]] = {
     "tabelog_v1": _extract_tabelog_menu_items,
     "hotpepper_v1": _extract_hotpepper_menu_items,
+    "tablecheck_v1": _extract_tablecheck_menu_items,
 }
 
 
@@ -1419,4 +1587,3 @@ def menu_extraction_service() -> MenuExtractionService:
     if _instance is None:
         _instance = MenuExtractionService()
     return _instance
-

@@ -615,10 +615,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         }
       }, controller.signal, { max_duration_sec: 90 })
         .then((final) => {
-          // If we got ≤1 URL, treat as failure
+          // If we got no URL, treat as failure
           const urlCount = final?.urls?.length ?? 0
           localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
-          if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
+          if (localDiscoveredCount === 0 || final?.failureReason === 'no_results') {
             hasShownError = true
               setLocalError(
                 t(
@@ -654,9 +654,9 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           setIsDiscovering(false)
           discoveryAbortRef.current = null
 
-          // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show error.
+          // CRITICAL SAFETY: If no URL is discovered and no error shown, force show error.
           // Use local count to avoid stale React state in closure.
-          if (localDiscoveredCount <= 1 && !hasShownError) {
+          if (localDiscoveredCount === 0 && !hasShownError) {
               setLocalError(
                 t(
                   'createBot.discoveryNoUsablePagesUsePdfShort',

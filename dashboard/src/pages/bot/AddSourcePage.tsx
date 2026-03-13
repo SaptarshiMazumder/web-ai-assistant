@@ -182,7 +182,7 @@ export default function AddSourcePage() {
           setIsDiscovering(false)
           const reason = (evt as { failure_reason?: string }).failure_reason
           const urls = (evt as { urls?: unknown[] }).urls || []
-          if (reason === 'no_results' || (Array.isArray(urls) && urls.length <= 1)) {
+          if (reason === 'no_results' || (Array.isArray(urls) && urls.length === 0)) {
             hasShownError = true
             setDiscoveryError('Could not discover pages. Add sources manually or upload files below.')
             setDiscoveryErrorType('warning')
@@ -208,7 +208,7 @@ export default function AddSourcePage() {
       }
       setIsDiscovering(false)
       abortRef.current = null
-      if (localCount <= 1 && !hasShownError) {
+      if (localCount === 0 && !hasShownError) {
         setDiscoveryError('Discovery completed but found no usable pages. Add sources manually or upload files below.')
         setDiscoveryErrorType('warning')
         setShowPdfFallback(true)

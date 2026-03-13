@@ -280,7 +280,7 @@ export default function CreateBotUrlsPage() {
       }
 
       // Final check
-      if (localDiscoveredCount <= 1 && !hasShownError) {
+      if (localDiscoveredCount === 0 && !hasShownError) {
         hasShownError = true
         setSharedDiscoveryError(
           t(
