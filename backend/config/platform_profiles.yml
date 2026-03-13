@@ -749,6 +749,9 @@ dashboard:
       - id: training
         label: { en: "Agent Training", ja: "エージェント学習" }
         description: { en: "We'll start learning from what you added.", ja: "追加した内容をもとに学習を始めます。" }
+      - id: suggested_messages
+        label: { en: "Suggested messages", ja: "推奨メッセージ" }
+        description: { en: "Set quick actions users can tap first.", ja: "ユーザーが最初にタップするクイックアクションを設定します。" }
       - id: widget
         label: { en: "Design appearance", ja: "見た目設定" }
         description: { en: "Customize your agent's Website and LINE appearance.", ja: "エージェントのWebとLINEの見た目を調整します。" }
@@ -776,6 +779,7 @@ dashboard:
         visibility:
           business_types: [restaurant]
           requires_selected_reservation_platform: true
+          reservation_platform_ids: [tabelog, hotpepper]
         title:
           en: "Choose where reservation taps should go"
           ja: "予約タップ時の移動先を設定"
@@ -798,6 +802,10 @@ dashboard:
         path: "progress"
         step_group: training
         component: training_progress
+      suggested_messages:
+        path: "suggested-messages"
+        step_group: suggested_messages
+        component: suggested_messages
       widget:
         path: "widget"
         step_group: widget
@@ -812,6 +820,7 @@ dashboard:
       - additional_sources
       - reservation_destination
       - training
+      - suggested_messages
       - widget
       - embed
 

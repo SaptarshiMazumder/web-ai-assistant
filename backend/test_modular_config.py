@@ -67,7 +67,11 @@ class ModularConfigTests(unittest.TestCase):
         self.assertTrue(flow.get("screen_order"))
         defs = flow.get("screen_definitions") or {}
         self.assertIn("reservation_destination", defs)
+        self.assertIn("suggested_messages", defs)
         self.assertEqual("action_destination_url", defs["reservation_destination"].get("component"))
+        self.assertEqual("suggested_messages", defs["suggested_messages"].get("component"))
+        order = flow.get("screen_order") or []
+        self.assertLess(order.index("suggested_messages"), order.index("widget"))
 
     def test_reservation_customer_destination_overrides_platform_url(self):
         widget_config = {

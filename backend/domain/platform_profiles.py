@@ -81,19 +81,12 @@ def _normalize_lang(lang: str) -> str:
     return "ja" if lang_key in ("ja", "jp") else "en"
 
 
-_ALLOWED_CREATE_BOT_STEP_GROUP_IDS = {
-    "details",
-    "sources",
-    "additional_sources",
-    "training",
-    "widget",
-    "embed",
-}
 _ALLOWED_CREATE_BOT_COMPONENTS = {
     "details",
     "source_urls",
     "additional_sources",
     "training_progress",
+    "suggested_messages",
     "widget_design",
     "embed_install",
     "action_destination_url",
@@ -124,7 +117,7 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
         raise ConfigValidationError(f"Config file is empty: {_CONFIG_PATH}")
 
     _require_dict(cfg, "platforms")
-    _require_dict(cfg, "reservation_platform_config")
+    reservation_platform_config = _require_dict(cfg, "reservation_platform_config")
     _require_dict(cfg, "default_asset_rules")
     datc = _require_dict(cfg, "default_asset_term_config")
     for key in (
@@ -236,6 +229,11 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
             )
     create_bot_flow = _require_dict(dashboard, "create_bot_flow")
     step_groups = _require_list(create_bot_flow, "step_groups")
+    known_reservation_platform_ids = {
+        str(platform_id or "").strip().lower()
+        for platform_id in reservation_platform_config.keys()
+        if str(platform_id or "").strip()
+    }
     seen_step_group_ids = set()
     for idx, group in enumerate(step_groups):
         if not isinstance(group, dict):
@@ -244,10 +242,6 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
         if not group_id:
             raise ConfigValidationError(
                 f"Missing dashboard.create_bot_flow.step_groups[{idx}].id in {_CONFIG_PATH}"
-            )
-        if group_id not in _ALLOWED_CREATE_BOT_STEP_GROUP_IDS:
-            raise ConfigValidationError(
-                f"Unknown dashboard.create_bot_flow.step_groups id '{group_id}' in {_CONFIG_PATH}"
             )
         if group_id in seen_step_group_ids:
             raise ConfigValidationError(
@@ -312,6 +306,22 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
                 raise ConfigValidationError(
                     f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.requires_selected_reservation_platform in {_CONFIG_PATH}"
                 )
+            reservation_platform_ids = visibility.get("reservation_platform_ids")
+            if reservation_platform_ids is not None:
+                if not isinstance(reservation_platform_ids, list):
+                    raise ConfigValidationError(
+                        f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.reservation_platform_ids in {_CONFIG_PATH}"
+                    )
+                for raw_platform_id in reservation_platform_ids:
+                    normalized_platform_id = str(raw_platform_id or "").strip().lower()
+                    if not normalized_platform_id:
+                        raise ConfigValidationError(
+                            f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.reservation_platform_ids in {_CONFIG_PATH}"
+                        )
+                    if normalized_platform_id not in known_reservation_platform_ids:
+                        raise ConfigValidationError(
+                            f"Unknown dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.reservation_platform_ids platform '{normalized_platform_id}' in {_CONFIG_PATH}"
+                        )
         if component == "action_destination_url":
             action_key = str(screen.get("action_key") or "").strip().lower()
             if not action_key:
@@ -919,6 +929,11 @@ def get_dashboard_create_bot_flow(*, lang: str = "en") -> Dict[str, Any]:
                 "requires_selected_reservation_platform": bool(
                     visibility.get("requires_selected_reservation_platform")
                 ),
+                "reservation_platform_ids": [
+                    str(item).strip().lower()
+                    for item in visibility.get("reservation_platform_ids", [])
+                    if str(item).strip()
+                ],
             }
         for field_name in _CREATE_BOT_SCREEN_I18N_FIELDS:
             field_value = raw_screen.get(field_name)

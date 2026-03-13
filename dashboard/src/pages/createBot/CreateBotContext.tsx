@@ -11,6 +11,7 @@ import {
   getCreateBotStepIndex,
   getDefaultCreateBotFlowConfig,
   getVisibleCreateBotScreens,
+  getVisibleCreateBotStepGroups,
   type CreateBotFlowConfig,
   type CreateBotScreen,
   type CreateBotStepGroup,
@@ -1125,6 +1126,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       }),
     [businessType, createBotFlowConfig, reservationPlatform]
   )
+  const visibleStepGroups = useMemo(
+    () => getVisibleCreateBotStepGroups(createBotFlowConfig, visibleScreens),
+    [createBotFlowConfig, visibleScreens]
+  )
   const currentScreen = useMemo(
     () => getCreateBotCurrentScreen(location.pathname, visibleScreens),
     [location.pathname, visibleScreens]
@@ -1139,8 +1144,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   )
   const firstPath = useMemo(() => getCreateBotFirstPath(visibleScreens), [visibleScreens])
   const activeStepIndex = useMemo(
-    () => getCreateBotStepIndex(location.pathname, visibleScreens, createBotFlowConfig.stepGroups),
-    [createBotFlowConfig.stepGroups, location.pathname, visibleScreens]
+    () => getCreateBotStepIndex(location.pathname, visibleScreens, visibleStepGroups),
+    [location.pathname, visibleScreens, visibleStepGroups]
   )
 
   const value = useMemo(
@@ -1276,7 +1281,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         firstPath,
         currentScreen,
         visibleScreens,
-        stepGroups: createBotFlowConfig.stepGroups,
+        stepGroups: visibleStepGroups,
         activeStepIndex,
       },
       resetFlow,
@@ -1382,7 +1387,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       businessType,
       setBusinessType,
       activeStepIndex,
-      createBotFlowConfig.stepGroups,
+      visibleStepGroups,
       currentScreen,
       firstPath,
       nextPath,

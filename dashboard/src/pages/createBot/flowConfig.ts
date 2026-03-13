@@ -5,14 +5,7 @@ import learningIcon from '../../assets/icons8/learning.png'
 import paintPaletteIcon from '../../assets/icons8/paint-palette.png'
 import googleCodeIcon from '../../assets/icons8/google-code.png'
 
-export type CreateBotStepGroupId =
-  | 'details'
-  | 'sources'
-  | 'additional_sources'
-  | 'training'
-  | 'suggested_messages'
-  | 'widget'
-  | 'embed'
+export type CreateBotStepGroupId = string
 
 export type CreateBotScreenId = string
 
@@ -29,6 +22,7 @@ export type CreateBotScreenComponent =
 export type CreateBotScreenVisibility = {
   businessTypes?: string[]
   requiresSelectedReservationPlatform?: boolean
+  reservationPlatformIds?: string[]
 }
 
 export type CreateBotStepGroup = {
@@ -86,12 +80,13 @@ type RawCreateBotFlowConfig = {
     visibility?: {
       business_types?: string[]
       requires_selected_reservation_platform?: boolean
+      reservation_platform_ids?: string[]
     }
   }>
   screen_order?: string[]
 }
 
-const STEP_GROUP_DECORATIONS: Record<CreateBotStepGroupId, { icon: string; iconUrl: string }> = {
+const STEP_GROUP_DECORATIONS: Record<string, { icon: string; iconUrl: string }> = {
   details: { icon: 'badge', iconUrl: autographIcon },
   sources: { icon: 'source', iconUrl: googleDocsIcon },
   additional_sources: { icon: 'library_add', iconUrl: googleDocsIcon },
@@ -100,6 +95,8 @@ const STEP_GROUP_DECORATIONS: Record<CreateBotStepGroupId, { icon: string; iconU
   widget: { icon: 'palette', iconUrl: paintPaletteIcon },
   embed: { icon: 'code', iconUrl: googleCodeIcon },
 }
+
+const DEFAULT_STEP_GROUP_DECORATION = STEP_GROUP_DECORATIONS.details
 
 const DEFAULT_STEP_GROUPS: ReadonlyArray<Omit<CreateBotStepGroup, 'icon' | 'iconUrl'>> = [
   {
@@ -213,7 +210,7 @@ const DEFAULT_SCREEN_ORDER: readonly string[] = [
 ]
 
 function buildDecoratedStepGroup(base: Omit<CreateBotStepGroup, 'icon' | 'iconUrl'>): CreateBotStepGroup {
-  const decoration = STEP_GROUP_DECORATIONS[base.id]
+  const decoration = STEP_GROUP_DECORATIONS[base.id] || DEFAULT_STEP_GROUP_DECORATION
   return {
     ...base,
     icon: decoration.icon,
@@ -222,8 +219,8 @@ function buildDecoratedStepGroup(base: Omit<CreateBotStepGroup, 'icon' | 'iconUr
 }
 
 function normalizeStepGroupId(value: string): CreateBotStepGroupId | null {
-  if (value in STEP_GROUP_DECORATIONS) return value as CreateBotStepGroupId
-  return null
+  const normalized = value.trim()
+  return normalized || null
 }
 
 function normalizeScreenId(value: string): CreateBotScreenId | null {
@@ -292,17 +289,27 @@ export function normalizeCreateBotFlowConfig(raw: RawCreateBotFlowConfig | null 
     .filter(Boolean) as CreateBotStepGroup[]
 
   const resolvedStepGroups = stepGroups.length > 0 ? stepGroups : fallback.stepGroups
+  const resolvedStepGroupIds = new Set(resolvedStepGroups.map((group) => group.id))
 
   const rawDefinitions = raw.screen_definitions && typeof raw.screen_definitions === 'object' ? raw.screen_definitions : {}
-  const screenDefinitions: Record<string, CreateBotScreen> = { ...fallback.screenDefinitions }
+  const hasRawDefinitions = Object.keys(rawDefinitions).length > 0
+  const screenDefinitions: Record<string, CreateBotScreen> = hasRawDefinitions ? {} : { ...fallback.screenDefinitions }
   for (const [rawScreenId, rawScreen] of Object.entries(rawDefinitions)) {
     const screenId = normalizeScreenId(String(rawScreenId || '').trim())
     if (!screenId || !rawScreen || typeof rawScreen !== 'object') continue
     const fallbackScreen = fallback.screenDefinitions[screenId]
     const stepGroupId =
-      normalizeStepGroupId(String(rawScreen.step_group || '').trim()) || fallbackScreen?.stepGroupId || 'details'
+      normalizeStepGroupId(String(rawScreen.step_group || '').trim()) || fallbackScreen?.stepGroupId || null
+    if (!stepGroupId || !resolvedStepGroupIds.has(stepGroupId)) continue
     const component =
-      normalizeComponent(String(rawScreen.component || '').trim()) || fallbackScreen?.component || 'details'
+      normalizeComponent(String(rawScreen.component || '').trim()) || fallbackScreen?.component || null
+    if (!component) continue
+    const businessTypes = Array.isArray(rawScreen.visibility?.business_types)
+      ? rawScreen.visibility.business_types.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+      : fallbackScreen?.visibility?.businessTypes
+    const reservationPlatformIds = Array.isArray(rawScreen.visibility?.reservation_platform_ids)
+      ? rawScreen.visibility.reservation_platform_ids.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+      : fallbackScreen?.visibility?.reservationPlatformIds
     screenDefinitions[screenId] = {
       ...(fallbackScreen || {
         id: screenId,
@@ -322,73 +329,32 @@ export function normalizeCreateBotFlowConfig(raw: RawCreateBotFlowConfig | null 
       fieldHelper: String(rawScreen.field_helper || fallbackScreen?.fieldHelper || '').trim() || undefined,
       fallbackNotice: String(rawScreen.fallback_notice || fallbackScreen?.fallbackNotice || '').trim() || undefined,
       visibility: {
-        businessTypes: Array.isArray(rawScreen.visibility?.business_types)
-          ? rawScreen.visibility?.business_types.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
-          : fallbackScreen?.visibility?.businessTypes,
+        businessTypes,
         requiresSelectedReservationPlatform:
           typeof rawScreen.visibility?.requires_selected_reservation_platform === 'boolean'
             ? rawScreen.visibility.requires_selected_reservation_platform
             : fallbackScreen?.visibility?.requiresSelectedReservationPlatform,
+        reservationPlatformIds,
       },
     }
   }
 
   const rawOrder = Array.isArray(raw.screen_order) ? raw.screen_order : []
-  const screenOrder = rawOrder
+  const normalizedRawOrder = rawOrder
     .map((item) => normalizeScreenId(String(item || '').trim()))
-    .filter(Boolean) as string[]
+    .filter(Boolean)
+    .filter((screenId, index, allIds) => allIds.indexOf(screenId) === index)
+    .filter((screenId): screenId is string => Boolean(screenId && screenDefinitions[screenId]))
+
+  const derivedOrder = hasRawDefinitions
+    ? Object.keys(screenDefinitions)
+    : [...fallback.screenOrder]
 
   return {
-    stepGroups: ensureSuggestedMessagesStepGroup(resolvedStepGroups, fallback.stepGroups),
+    stepGroups: resolvedStepGroups,
     screenDefinitions,
-    screenOrder: ensureSuggestedMessagesScreenOrder(
-      screenOrder.length > 0 ? screenOrder : [...fallback.screenOrder],
-      screenDefinitions
-    ),
+    screenOrder: normalizedRawOrder.length > 0 ? normalizedRawOrder : derivedOrder,
   }
-}
-
-function ensureSuggestedMessagesStepGroup(
-  stepGroups: CreateBotStepGroup[],
-  fallbackStepGroups: ReadonlyArray<CreateBotStepGroup>
-): CreateBotStepGroup[] {
-  if (stepGroups.some((stepGroup) => stepGroup.id === 'suggested_messages')) return stepGroups
-  const fallbackGroup = fallbackStepGroups.find((stepGroup) => stepGroup.id === 'suggested_messages')
-  if (!fallbackGroup) return stepGroups
-  const next = [...stepGroups]
-  const widgetIndex = next.findIndex((stepGroup) => stepGroup.id === 'widget')
-  if (widgetIndex >= 0) {
-    next.splice(widgetIndex, 0, fallbackGroup)
-    return next
-  }
-  const embedIndex = next.findIndex((stepGroup) => stepGroup.id === 'embed')
-  if (embedIndex >= 0) {
-    next.splice(embedIndex, 0, fallbackGroup)
-    return next
-  }
-  next.push(fallbackGroup)
-  return next
-}
-
-function ensureSuggestedMessagesScreenOrder(
-  order: string[],
-  screenDefinitions: Record<string, CreateBotScreen>
-): string[] {
-  if (!screenDefinitions.suggested_messages) return order
-  if (order.includes('suggested_messages')) return order
-  const next = [...order]
-  const widgetIndex = next.findIndex((screenId) => screenId === 'widget')
-  if (widgetIndex >= 0) {
-    next.splice(widgetIndex, 0, 'suggested_messages')
-    return next
-  }
-  const embedIndex = next.findIndex((screenId) => screenId === 'embed')
-  if (embedIndex >= 0) {
-    next.splice(embedIndex, 0, 'suggested_messages')
-    return next
-  }
-  next.push('suggested_messages')
-  return next
 }
 
 export function isCreateBotScreenVisible(screen: CreateBotScreen, state: CreateBotFlowState): boolean {
@@ -402,6 +368,11 @@ export function isCreateBotScreenVisible(screen: CreateBotScreen, state: CreateB
   if (visibility.requiresSelectedReservationPlatform && !String(state.reservationPlatform || '').trim()) {
     return false
   }
+  const reservationPlatformIds = visibility.reservationPlatformIds || []
+  if (reservationPlatformIds.length > 0) {
+    const currentPlatform = String(state.reservationPlatform || '').trim().toLowerCase()
+    if (!currentPlatform || !reservationPlatformIds.includes(currentPlatform)) return false
+  }
   return true
 }
 
@@ -413,6 +384,14 @@ export function getVisibleCreateBotScreens(
     .map((screenId) => config.screenDefinitions[screenId])
     .filter((screen): screen is CreateBotScreen => Boolean(screen))
     .filter((screen) => isCreateBotScreenVisible(screen, state))
+}
+
+export function getVisibleCreateBotStepGroups(
+  config: CreateBotFlowConfig,
+  screens: ReadonlyArray<CreateBotScreen>
+): CreateBotStepGroup[] {
+  const visibleStepGroupIds = new Set(screens.map((screen) => screen.stepGroupId))
+  return config.stepGroups.filter((stepGroup) => visibleStepGroupIds.has(stepGroup.id))
 }
 
 export function getCreateBotCurrentScreen(

@@ -20,6 +20,18 @@ Edit this file to add or change platform behavior. No code change should be requ
 | `default_suggested_messages` | Fallback suggested messages |
 | `platforms` | Per-domain config keyed by domain (e.g., `tabelog.com`) |
 
+### dashboard.create_bot_flow shape
+
+- `step_groups`: ordered sidebar groups (`id`, localized `label`, localized `description`)
+- `screen_definitions`: screen map keyed by screen id
+  - required: `path`, `step_group`, `component`
+  - optional (for `action_destination_url`): `action_key`, localized `title/subtitle/field_*`
+  - optional `visibility`:
+    - `business_types`: only show for matching business types
+    - `requires_selected_reservation_platform`: only show after a reservation platform is selected
+    - `reservation_platform_ids`: only show when selected reservation platform id is in this list
+- `screen_order`: ordered list of screen ids to render in the flow
+
 ### reservation_platform_config fields
 
 | Field | Description |

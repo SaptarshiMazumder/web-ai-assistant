@@ -2516,6 +2516,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
             visibility?: {
               business_types?: string[]
               requires_selected_reservation_platform?: boolean
+              reservation_platform_ids?: string[]
             }
           }>
           screen_order?: string[]
