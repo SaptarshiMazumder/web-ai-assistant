@@ -531,7 +531,7 @@ export default function BotKnowledgeTab() {
 
     const isTerminalStatus = (run: JobPipelineRunRecord | null): boolean => {
       const status = normalizeStatus(run)
-      return status === 'done' || status === 'error' || status === 'paused'
+      return status === 'done' || status === 'error' || status === 'paused' || status === 'cancelled'
     }
 
     const runMatchesActiveCrawl = (run: JobPipelineRunRecord | null): boolean => {
@@ -824,7 +824,7 @@ export default function BotKnowledgeTab() {
       }, undefined, { max_duration_sec: 90 })
       setDiscoveredUrls(result.urls || [])
       if (result.failureReason === 'no_results') {
-        setDiscoveryError('⚠️ We could not discover real pages from this site. Try PDF upload for key pages.')
+        setDiscoveryError('⚠️ We could not discover real pages from this site. Add sources manually or upload files.')
         setDiscoveryErrorType('warning')
       } else if (result.urls?.length === 0) {
         const reason = result.failureReason

@@ -6,6 +6,7 @@ import CreateBotActionDestinationPage from './CreateBotActionDestinationPage'
 import CreateBotAdditionalSourcesPage from './CreateBotAdditionalSourcesPage'
 import CreateBotDetailsPage from './CreateBotDetailsPage'
 import CreateBotEmbedPage from './CreateBotEmbedPage'
+import CreateBotImageExtractionPermissionPage from './CreateBotImageExtractionPermissionPage'
 import CreateBotProgressPage from './CreateBotProgressPage'
 import CreateBotSuggestedMessagesPage from './CreateBotSuggestedMessagesPage'
 import CreateBotUrlsPage from './CreateBotUrlsPage'
@@ -41,6 +42,8 @@ export default function CreateBotScreenHost() {
       return <CreateBotAdditionalSourcesPage />
     case 'training_progress':
       return <CreateBotProgressPage />
+    case 'image_extraction_permission':
+      return <CreateBotImageExtractionPermissionPage />
     case 'suggested_messages':
       return <CreateBotSuggestedMessagesPage />
     case 'widget_design':

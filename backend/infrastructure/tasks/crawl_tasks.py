@@ -53,6 +53,11 @@ try:
 except ValueError:
     _MENU_EXTRACTION_SOFT_LIMIT_SEC = 600
 _MENU_EXTRACTION_HARD_LIMIT_SEC = _MENU_EXTRACTION_SOFT_LIMIT_SEC + 20
+try:
+    _ASSET_EXTRACTION_SOFT_LIMIT_SEC = max(60, int((os.environ.get("ASSET_EXTRACTION_SOFT_LIMIT_SEC") or "300").strip()))
+except ValueError:
+    _ASSET_EXTRACTION_SOFT_LIMIT_SEC = 300
+_ASSET_EXTRACTION_HARD_LIMIT_SEC = _ASSET_EXTRACTION_SOFT_LIMIT_SEC + 20
 
 
 def _asset_limit() -> int:
@@ -564,7 +569,12 @@ def topic_extraction_job(
         return {"status": "error", "error": job.last_error}
 
 
-@celery_app.task(name="infrastructure.tasks.crawl_tasks.asset_extraction_task", bind=True)
+@celery_app.task(
+    name="infrastructure.tasks.crawl_tasks.asset_extraction_task",
+    bind=True,
+    time_limit=_ASSET_EXTRACTION_HARD_LIMIT_SEC,
+    soft_time_limit=_ASSET_EXTRACTION_SOFT_LIMIT_SEC,
+)
 def asset_extraction_task(
     self: Task,
     bot_id: str,
@@ -622,6 +632,7 @@ def asset_extraction_task(
             max_assets=remaining,
             page_urls=(current_job.page_urls if current_job else None),
             job_id=job_id,
+            max_duration_sec=_ASSET_EXTRACTION_SOFT_LIMIT_SEC,
         )
         total_count = len(repo.list_assets_for_bot(bot_id, active_only=False))
 
@@ -634,8 +645,10 @@ def asset_extraction_task(
                     "assets_total": total_count,
                     "assets_limit": limit,
                 }
-            current_job.status = "done"
-            job_repo.update_job(current_job)
+            if latest:
+                latest.status = "done"
+                latest.error = None
+                job_repo.update_job(latest)
 
         logger.info(f"Asset extraction completed for bot {bot_id}: {count} assets created")
         return {
@@ -643,6 +656,46 @@ def asset_extraction_task(
             "assets_count": count,
             "assets_total": total_count,
             "assets_limit": limit,
+        }
+    except SoftTimeLimitExceeded:
+        total_count = len(PostgresBotAssetRepository().list_assets_for_bot(bot_id, active_only=False))
+        limit = _asset_limit()
+        if job_repo and current_job:
+            latest = job_repo.get_job(current_job.job_id)
+            if latest and latest.status == "cancelled":
+                return {"status": "cancelled"}
+            if latest:
+                latest.status = "done"
+                latest.error = None
+                try:
+                    job_repo.update_job(latest)
+                except Exception:
+                    pass
+                logger.warning(
+                    "Asset extraction reached %ss time limit for bot %s; returning partial results (created=%s, total=%s)",
+                    _ASSET_EXTRACTION_SOFT_LIMIT_SEC,
+                    bot_id,
+                    int(getattr(latest, "assets_created", 0) or 0),
+                    total_count,
+                )
+                return {
+                    "status": "done",
+                    "assets_count": int(getattr(latest, "assets_created", 0) or 0),
+                    "assets_total": total_count,
+                    "assets_limit": limit,
+                    "time_limit_reached": True,
+                }
+        logger.warning(
+            "Asset extraction reached %ss time limit for bot %s; returning partial results",
+            _ASSET_EXTRACTION_SOFT_LIMIT_SEC,
+            bot_id,
+        )
+        return {
+            "status": "done",
+            "assets_count": 0,
+            "assets_total": total_count,
+            "assets_limit": limit,
+            "time_limit_reached": True,
         }
     except Exception as e:
         if job_repo and current_job:

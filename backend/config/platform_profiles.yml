@@ -355,8 +355,8 @@ job_pipeline:
         max_wait_sec: 2400
         status_map:
           running: [queued, running]
-          done: [done]
-          error: [failed, error, cancelled]
+          done: [done, cancelled]
+          error: [failed, error]
       progress_weight: 45
       running_progress_pct: 70
       progress_messages:
@@ -387,32 +387,32 @@ job_pipeline:
         enabled: true
         checker_ref: application.services.job_pipeline.completion:AssetExtractionCompletionChecker
         poll_interval_sec: 4
-        max_wait_sec: 2400
+        max_wait_sec: 300
         status_map:
           running: [queued, running]
-          done: [done]
-          error: [failed, error, cancelled]
+          done: [done, cancelled]
+          error: [failed, error]
       progress_weight: 45
       running_progress_pct: 70
       progress_messages:
         queued:
-          en: "Asset extraction queued"
-          ja: "アセット抽出をキューに登録しました"
+          en: "Image extraction queued"
+          ja: "画像抽出をキューに登録しました"
         running:
-          en: "Extracting images and assets from crawled pages"
-          ja: "クロール結果から画像・アセットを抽出中です"
+          en: "Extracting images from crawled pages"
+          ja: "クロール結果から画像を抽出中です"
         paused:
-          en: "Asset extraction paused"
-          ja: "アセット抽出は一時停止中です"
+          en: "Image extraction paused"
+          ja: "画像抽出は一時停止中です"
         done:
-          en: "Asset extraction completed"
-          ja: "アセット抽出が完了しました"
+          en: "Image extraction completed"
+          ja: "画像抽出が完了しました"
         error:
-          en: "Asset extraction failed"
-          ja: "アセット抽出に失敗しました"
+          en: "Image extraction failed"
+          ja: "画像抽出に失敗しました"
       dashboard_label:
-        en: "Asset extraction"
-        ja: "アセット抽出"
+        en: "Image extraction"
+        ja: "画像抽出"
     reservation_url:
       runner_ref: application.services.job_pipeline.runners.reservation_url:ReservationUrlRunner
       retries: 0
@@ -442,7 +442,6 @@ job_pipeline:
   workflows:
     default:
       - prompt_generation
-      - booking_link
       - asset_extraction
     platform_overrides:
       tabelog:
@@ -802,6 +801,12 @@ dashboard:
         path: "progress"
         step_group: training
         component: training_progress
+      image_extraction_permission:
+        path: "image-extraction-permission"
+        step_group: training
+        component: image_extraction_permission
+        visibility:
+          requires_workflow_steps: [asset_extraction]
       suggested_messages:
         path: "suggested-messages"
         step_group: suggested_messages
@@ -819,6 +824,7 @@ dashboard:
       - sources
       - additional_sources
       - reservation_destination
+      - image_extraction_permission
       - training
       - suggested_messages
       - widget

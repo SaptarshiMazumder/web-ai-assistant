@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ScanSearch, CheckCircle2 } from 'lucide-react'
+import { ScanSearch } from 'lucide-react'
 import { UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { StopIcon } from './DiscoveryIcons'
@@ -63,7 +63,6 @@ export default function CreateBotUrlsPage() {
   const [sharedDiscoveryErrorType, setSharedDiscoveryErrorType] = useState<'error' | 'warning' | null>(null)
   const [sharedDiscoveryDurationMs, setSharedDiscoveryDurationMs] = useState<number | null>(null)
   const [sharedDiscoveryTimedOutMessage, setSharedDiscoveryTimedOutMessage] = useState<string | null>(null)
-  const [showPdfFallback, setShowPdfFallback] = useState(false)
   const sharedDiscoveryAbortRef = useRef<AbortController | null>(null)
   const sharedDiscoveryStartTimeRef = useRef<number | null>(null)
   const sharedDiscovery60sTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -148,7 +147,6 @@ export default function CreateBotUrlsPage() {
   const handleSharedDiscoverUrls = useCallback(async () => {
     setSharedDiscoveryError(null)
     setSharedDiscoveryErrorType(null)
-    setShowPdfFallback(false)
 
     // Build list of all URLs to discover (for restaurants: main + platform URLs)
     const isRestaurant = businessType === 'restaurant'
@@ -232,15 +230,18 @@ export default function CreateBotUrlsPage() {
               }
               setSharedDiscoveryError(null)
               setSharedDiscoveryErrorType(null)
-              setShowPdfFallback(false)
             }
             if (evt.type === 'error' && typeof evt.message === 'string') {
               hasShownError = true
               const reason = (evt as { failure_reason?: string }).failure_reason
               if (reason === 'robots_blocked') {
-                setSharedDiscoveryError(t('createBot.websiteBlocksAutomaticScanning', 'This website blocks automatic scanning.'))
+                setSharedDiscoveryError(
+                  t(
+                    'createBot.websiteBlocksAutomaticScanning',
+                    'No pages found. The website may be blocking the crawler. Check the URL and try again.'
+                  )
+                )
                 setSharedDiscoveryErrorType('error')
-                setShowPdfFallback(true)
               } else if (reason === 'sitemap_empty') {
                 setSharedDiscoveryError(
                   t(
@@ -284,11 +285,10 @@ export default function CreateBotUrlsPage() {
         setSharedDiscoveryError(
           t(
             'createBot.discoveryNoUsablePagesUsePdf',
-            'Discovery completed but found no usable pages. Please use the PDF upload method below.'
+            'No pages found. The URL may be wrong or the website may be blocking the crawler.'
           )
         )
-        setSharedDiscoveryErrorType('warning')
-        setShowPdfFallback(true)
+        setSharedDiscoveryErrorType('error')
       }
     } catch (err) {
       const e = err as Error & { name?: string }
@@ -296,7 +296,6 @@ export default function CreateBotUrlsPage() {
         hasShownError = true
         setSharedDiscoveryError(e.message || t('createBot.discoveryFailed', 'Discovery failed'))
         setSharedDiscoveryErrorType('error')
-        setShowPdfFallback(true)
       }
     } finally {
       if (sharedDiscovery60sTimerRef.current) {
@@ -676,53 +675,6 @@ export default function CreateBotUrlsPage() {
           {sharedDiscoveryError && (
             <div className={`alert ${sharedDiscoveryErrorType || 'error'}`} style={{ marginBottom: '0.75rem' }}>
               {sharedDiscoveryError}
-            </div>
-          )}
-
-          {showPdfFallback && !isSharedDiscovering && (
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                border: '2px solid #0ea5e9',
-                borderRadius: '16px',
-                padding: '1.25rem',
-                marginBottom: '1rem',
-              }}
-            >
-              <div style={{ marginBottom: '0.75rem', color: '#0f172a', fontWeight: 600 }}>
-                {t(
-                  'createBot.automaticScanningBlockedUploadPdf',
-                  'Automatic scanning is blocked for this website. Upload PDF pages instead.'
-                )}
-              </div>
-              {pdfFiles.length > 0 && (
-                <div style={{
-                  background: 'white',
-                  borderRadius: '12px',
-                  padding: '1rem 1.25rem',
-                  marginBottom: '1rem',
-                  border: '1px solid rgba(14, 165, 233, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem'
-                }}>
-                  <CheckCircle2 size={24} color="#0ea5e9" strokeWidth={2.5} />
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '1rem' }}>
-                      {t('createBot.pdfReadyCount', '{{count}} PDFs ready', { count: pdfFiles.length })}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <FileDropzone
-                label={t('createBot.dropYourPdfsHere', 'Drop your PDFs here')}
-                helperText={t('createBot.uploadUpToPdfFiles', 'Upload up to {{count}} PDF files.', { count: 20 })}
-                files={pdfFiles}
-                setFiles={setPdfFiles}
-                accept="application/pdf"
-                multiple
-                maxFiles={20}
-              />
             </div>
           )}
 

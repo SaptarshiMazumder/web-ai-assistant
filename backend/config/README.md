@@ -30,6 +30,7 @@ Edit this file to add or change platform behavior. No code change should be requ
     - `business_types`: only show for matching business types
     - `requires_selected_reservation_platform`: only show after a reservation platform is selected
     - `reservation_platform_ids`: only show when selected reservation platform id is in this list
+    - `requires_workflow_steps`: only show when resolved workflow contains these job ids
 - `screen_order`: ordered list of screen ids to render in the flow
 
 ### reservation_platform_config fields

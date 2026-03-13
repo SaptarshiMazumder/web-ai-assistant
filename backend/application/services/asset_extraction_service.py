@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -880,6 +881,7 @@ class AssetExtractionService:
         max_assets: int = 50,
         page_urls: Optional[List[str]] = None,
         job_id: Optional[str] = None,
+        max_duration_sec: Optional[int] = None,
     ) -> List[BotAsset]:
         """Core logic: parse docs -> extract candidates -> download images -> save."""
         # Setup job repo if needed
@@ -902,6 +904,27 @@ class AssetExtractionService:
             except Exception:
                 return False
 
+        duration_limit = None
+        if isinstance(max_duration_sec, (int, float)) and max_duration_sec and max_duration_sec > 0:
+            duration_limit = float(max_duration_sec)
+        deadline = time.monotonic() + duration_limit if duration_limit else None
+        timeout_logged = False
+
+        def _deadline_exceeded() -> bool:
+            nonlocal timeout_logged
+            if deadline is None:
+                return False
+            if time.monotonic() < deadline:
+                return False
+            if not timeout_logged:
+                logger.info(
+                    "[AssetExtraction] Job %s reached runtime limit (%ss); keeping partial results",
+                    job_id or "unknown",
+                    int(duration_limit or 0),
+                )
+                timeout_logged = True
+            return True
+
         # Get existing assets to avoid duplicates
         existing = self._repo.list_assets_for_bot(bot_id, active_only=False)
         existing_names = {a.name.strip().lower() for a in existing}
@@ -914,6 +937,8 @@ class AssetExtractionService:
         all_extracted: List[Dict[str, Any]] = []
 
         for doc in documents:
+            if _deadline_exceeded():
+                break
             if _is_cancelled():
                 logger.info("[AssetExtraction] Job %s cancelled while extracting candidates", job_id)
                 break
@@ -961,6 +986,8 @@ class AssetExtractionService:
             if extraction_mode in ("llm", "hybrid") and len(all_extracted) < max_assets:
                 # Limit to first 2 chunks per page to avoid excessive LLM calls
                 for chunk in chunks[:2]:
+                    if _deadline_exceeded():
+                        break
                     if _is_cancelled():
                         logger.info("[AssetExtraction] Job %s cancelled during LLM extraction", job_id)
                         break
@@ -970,6 +997,8 @@ class AssetExtractionService:
                     _append_page_assets(page_assets)
 
             if extraction_mode in ("deterministic", "hybrid") and len(all_extracted) < max_assets:
+                if _deadline_exceeded():
+                    break
                 if _is_cancelled():
                     logger.info("[AssetExtraction] Job %s cancelled before deterministic extraction", job_id)
                     break
@@ -998,6 +1027,8 @@ class AssetExtractionService:
         limit = int((os.environ.get("ASSET_MAX_PER_BOT") or "15").strip() or 15)
 
         for item in all_extracted:
+            if _deadline_exceeded():
+                break
             if _is_cancelled():
                 logger.info("[AssetExtraction] Job %s cancelled while saving assets", job_id)
                 break
@@ -1100,6 +1131,7 @@ class AssetExtractionService:
         max_assets: int = 50,
         page_urls: Optional[List[str]] = None,
         job_id: Optional[str] = None,
+        max_duration_sec: Optional[int] = None,
     ) -> int:
         """Load documents from GCS and extract assets. Returns count of created assets."""
         documents = _load_docs_from_gcs(gcs_prefix)
@@ -1112,6 +1144,7 @@ class AssetExtractionService:
             max_assets=max_assets,
             page_urls=page_urls,
             job_id=job_id,
+            max_duration_sec=max_duration_sec,
         )
         return len(assets)
 

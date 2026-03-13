@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useDashboardData } from '../../hooks/useDashboardData'
+import { useDashboardData, type PlatformConfigJobPipelineWorkflow } from '../../hooks/useDashboardData'
 import { getDefaultsForLanguage, type SuggestedMessageConfig } from '../../components/WidgetDesignForm'
 import {
   getCreateBotCurrentScreen,
@@ -87,6 +87,8 @@ export type CreateBotStep2Slice = {
   setPlatformUrl: (platformId: string, url: string) => void
   actionDestinationLinks: Record<string, string>
   setActionDestinationLink: (actionKey: string, url: string) => void
+  allowAutoImageExtraction: boolean
+  setAllowAutoImageExtraction: (value: boolean) => void
   platforms: Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>
 }
 
@@ -255,9 +257,15 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [platformUrls, setPlatformUrlsState] = useState<Record<string, string>>({})
   const [actionDestinationLinks, setActionDestinationLinksState] = useState<Record<string, string>>({})
   const [platforms, setPlatforms] = useState<Array<{ id: string; widget_key: string; domain_key: string; label: string; url_placeholder?: string }>>([])
+  const [allowAutoImageExtraction, setAllowAutoImageExtraction] = useState(true)
   const [defaultSuggestedMessages, setDefaultSuggestedMessages] = useState<SuggestedMessageConfig[]>([])
   const [welcomeDefaultsByLanguage, setWelcomeDefaultsByLanguage] = useState<{ en: string; ja: string }>(fallbackWelcomeDefaults)
   const [createBotFlowConfig, setCreateBotFlowConfig] = useState<CreateBotFlowConfig>(getDefaultCreateBotFlowConfig())
+  const [jobPipelineWorkflowConfig, setJobPipelineWorkflowConfig] = useState<PlatformConfigJobPipelineWorkflow>({
+    workflowId: 'default',
+    default: [],
+    platformOverrides: {},
+  })
   const previousWelcomeDefaultsRef = useRef<{ en: string; ja: string }>(fallbackWelcomeDefaults)
 
   const setPlatformUrl = useCallback((platformId: string, url: string) => {
@@ -296,9 +304,10 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
   const [botLanguage, setBotLanguage] = useState<'en' | 'ja'>(appLang)
 
   useEffect(() => {
-    fetchPlatformConfig(botLanguage).then(({ platforms: p, defaultSuggestedMessages: d, defaultWelcomeMessages, createBotFlow }) => {
+    fetchPlatformConfig(botLanguage).then(({ platforms: p, defaultSuggestedMessages: d, defaultWelcomeMessages, createBotFlow, jobPipelineWorkflow }) => {
       setPlatforms(p)
       setCreateBotFlowConfig(createBotFlow)
+      setJobPipelineWorkflowConfig(jobPipelineWorkflow)
       setDefaultSuggestedMessages(
         d.map((m) => ({
           id: m.id,
@@ -385,10 +394,11 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setDiscoveredUrls([])
     setSelectedUrls([])
     setSharedUrlRows([{ url: '', label: '' }])
-    setReservationPlatform('')
-    setPlatformUrlsState({})
-    setActionDestinationLinksState({})
-    setTrainingUrls([])
+      setReservationPlatform('')
+      setPlatformUrlsState({})
+      setActionDestinationLinksState({})
+      setAllowAutoImageExtraction(true)
+      setTrainingUrls([])
     setPdfFiles([])
     setTextDocFiles([])
     setPlainTextContent('')
@@ -565,12 +575,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           const reason = (evt as { failure_reason?: string }).failure_reason
           if (reason === 'no_results') {
             hasShownError = true
-            setLocalError(
-              t(
-                'createBot.couldNotDiscoverRealPagesUsePdf',
-                'We could not discover real pages from this site. Please use the PDF upload steps below.'
+              setLocalError(
+                t(
+                  'createBot.couldNotDiscoverRealPagesUsePdf',
+                  'We could not discover real pages from this site. Add sources manually or upload files below.'
+                )
               )
-            )
             setLocalErrorType('warning')
           } else if (Array.isArray(urls) && urls.length === 0) {
             hasShownError = true
@@ -610,12 +620,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           localDiscoveredCount = Math.max(localDiscoveredCount, urlCount)
           if (localDiscoveredCount <= 1 || final?.failureReason === 'no_results') {
             hasShownError = true
-            setLocalError(
-              t(
-                'createBot.couldNotDiscoverRealPagesUsePdf',
-                'We could not discover real pages from this site. Please use the PDF upload steps below.'
+              setLocalError(
+                t(
+                  'createBot.couldNotDiscoverRealPagesUsePdf',
+                  'We could not discover real pages from this site. Add sources manually or upload files below.'
+                )
               )
-            )
             setLocalErrorType('warning')
           } else if (final && !final.urls?.length && final.error) {
             hasShownError = true
@@ -647,12 +657,12 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
           // CRITICAL SAFETY: If ≤1 URL discovered and no error shown, FORCE show error.
           // Use local count to avoid stale React state in closure.
           if (localDiscoveredCount <= 1 && !hasShownError) {
-            setLocalError(
-              t(
-                'createBot.discoveryNoUsablePagesUsePdfShort',
-                'Discovery completed but found no usable pages. Please use PDF upload instead.'
+              setLocalError(
+                t(
+                  'createBot.discoveryNoUsablePagesUsePdfShort',
+                  'Discovery completed but found no usable pages. Add sources manually or upload files.'
+                )
               )
-            )
             setLocalErrorType('warning')
           }
         })
@@ -721,6 +731,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         contentHosting: 'shared',
         businessType: businessType || undefined,
         language: botLanguage,
+        allowAutoImageExtraction,
         urlBank: urlBankForSave,
       }
       if (Object.keys(actionDestinationLinksForSave).length > 0) {
@@ -746,7 +757,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     setJobId(null)
     setIsStartingTraining(false)
     return created.bot_id
-  }, [actionDestinationLinks, activeOrgId, botLanguage, botName, businessType, createBot, defaultUrlBankLabel, isFallbackUrlBankLabel, isSuperAdmin, normalizeOneUrl, orgs, platforms, platformUrls, reservationPlatform, saveWidgetConfig, setSelectedBotId, sharedUrlRows, t])
+  }, [actionDestinationLinks, activeOrgId, allowAutoImageExtraction, botLanguage, botName, businessType, createBot, defaultUrlBankLabel, isFallbackUrlBankLabel, isSuperAdmin, normalizeOneUrl, orgs, platforms, platformUrls, reservationPlatform, saveWidgetConfig, setSelectedBotId, sharedUrlRows, t])
 
   const sharedUrls = useMemo(() => {
     const out: string[] = []
@@ -863,6 +874,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         contentHosting: 'shared',
         businessType: businessType || undefined,
         language: botLanguage,
+        allowAutoImageExtraction,
         urlBank,
       }
       if (Object.keys(actionDestinationLinksForSave).length > 0) {
@@ -980,7 +992,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
 
     Promise.allSettled(starters).finally(() => setIsStartingTraining(false))
     return created.bot_id
-  }, [actionDestinationLinks, activeOrgId, botLanguage, botName, businessType, contentHosting, createBot, customTextEntries, discoveryMethod, normalizeOneUrl, normalizedWebsiteUrl, orgs, pdfFiles, plainTextContent, platformUrls, platforms, queueCrawlUrls, reservationPlatform, saveWidgetConfig, selectedUrls, setSelectedBotId, t, textDocFiles, trainingUrls, uploadDocsSources, uploadPdfSources, uploadTextSources, urlBank, websiteUrl, isSuperAdmin])
+  }, [actionDestinationLinks, activeOrgId, allowAutoImageExtraction, botLanguage, botName, businessType, contentHosting, createBot, customTextEntries, discoveryMethod, normalizeOneUrl, normalizedWebsiteUrl, orgs, pdfFiles, plainTextContent, platformUrls, platforms, queueCrawlUrls, reservationPlatform, saveWidgetConfig, selectedUrls, setSelectedBotId, t, textDocFiles, trainingUrls, uploadDocsSources, uploadPdfSources, uploadTextSources, urlBank, websiteUrl, isSuperAdmin])
 
   useEffect(() => {
     if (trainingStage !== 'training' || !botId) return
@@ -1118,13 +1130,27 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(timer)
   }, [trainingStage, botId, jobId, pdfJobIds, extraJobIds, getJobStatus, getLatestJobPipeline, contentHosting, selectedUrls.length, trainingUrls.length, t])
 
+  const activeWorkflowSteps = useMemo(() => {
+    const normalizedPlatform = String(reservationPlatform || '').trim().toLowerCase()
+    const overrideSteps = normalizedPlatform
+      ? jobPipelineWorkflowConfig.platformOverrides[normalizedPlatform]
+      : null
+    const rawSteps = Array.isArray(overrideSteps) && overrideSteps.length > 0
+      ? overrideSteps
+      : jobPipelineWorkflowConfig.default
+    return Array.from(
+      new Set(rawSteps.map((stepId) => String(stepId || '').trim().toLowerCase()).filter(Boolean))
+    )
+  }, [jobPipelineWorkflowConfig.default, jobPipelineWorkflowConfig.platformOverrides, reservationPlatform])
+
   const visibleScreens = useMemo(
     () =>
       getVisibleCreateBotScreens(createBotFlowConfig, {
         businessType,
         reservationPlatform,
+        workflowSteps: activeWorkflowSteps,
       }),
-    [businessType, createBotFlowConfig, reservationPlatform]
+    [activeWorkflowSteps, businessType, createBotFlowConfig, reservationPlatform]
   )
   const visibleStepGroups = useMemo(
     () => getVisibleCreateBotStepGroups(createBotFlowConfig, visibleScreens),
@@ -1209,6 +1235,8 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
         setPlatformUrl,
         actionDestinationLinks,
         setActionDestinationLink,
+        allowAutoImageExtraction,
+        setAllowAutoImageExtraction,
         platforms,
       },
       step3: {
@@ -1381,6 +1409,7 @@ export function CreateBotProvider({ children }: { children: React.ReactNode }) {
       reservationPlatform,
       actionDestinationLinks,
       setActionDestinationLink,
+      allowAutoImageExtraction,
       platformUrls,
       platforms,
       resetFlow,

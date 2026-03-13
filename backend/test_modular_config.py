@@ -6,6 +6,7 @@ from domain.platform_profiles import (
     get_default_post_crawl_jobs,
     get_default_source_language,
     get_instagram_support_messages,
+    get_job_pipeline_workflow,
     get_knowledge_tabs_for_widget,
     get_line_cancel_keywords,
     get_line_support_messages,
@@ -67,10 +68,13 @@ class ModularConfigTests(unittest.TestCase):
         self.assertTrue(flow.get("screen_order"))
         defs = flow.get("screen_definitions") or {}
         self.assertIn("reservation_destination", defs)
+        self.assertIn("image_extraction_permission", defs)
         self.assertIn("suggested_messages", defs)
         self.assertEqual("action_destination_url", defs["reservation_destination"].get("component"))
+        self.assertEqual("image_extraction_permission", defs["image_extraction_permission"].get("component"))
         self.assertEqual("suggested_messages", defs["suggested_messages"].get("component"))
         order = flow.get("screen_order") or []
+        self.assertLess(order.index("image_extraction_permission"), order.index("training"))
         self.assertLess(order.index("suggested_messages"), order.index("widget"))
 
     def test_reservation_customer_destination_overrides_platform_url(self):
@@ -116,6 +120,32 @@ class ModularConfigTests(unittest.TestCase):
         self.assertIn("staff", en["prompt"].lower())
         self.assertIn("キャンセル", ja["cancel_ack"])
         self.assertIn("cancelled", en["cancel_ack"].lower())
+
+
+    def test_job_pipeline_workflow_keeps_asset_extraction_by_default(self):
+        steps = get_job_pipeline_workflow({}, workflow_id="default")
+        self.assertIn("prompt_generation", steps)
+        self.assertIn("asset_extraction", steps)
+        self.assertNotIn("booking_link", steps)
+
+    def test_job_pipeline_workflow_disables_asset_extraction_when_opted_out(self):
+        steps = get_job_pipeline_workflow({"allowAutoImageExtraction": False}, workflow_id="default")
+        self.assertNotIn("asset_extraction", steps)
+        self.assertIn("prompt_generation", steps)
+
+    def test_job_pipeline_workflow_platform_override_remains_for_menu_platforms(self):
+        steps = get_job_pipeline_workflow(
+            {"reservationPlatform": "tabelog", "allowAutoImageExtraction": False},
+            workflow_id="default",
+        )
+        self.assertEqual(["prompt_generation", "menu_extraction", "reservation_url"], steps)
+
+    def test_job_pipeline_workflow_tablecheck_override_keeps_booking_link(self):
+        steps = get_job_pipeline_workflow(
+            {"reservationPlatform": "tablecheck", "allowAutoImageExtraction": False},
+            workflow_id="default",
+        )
+        self.assertEqual(["prompt_generation", "booking_link"], steps)
 
 
 if __name__ == "__main__":

@@ -113,6 +113,144 @@ def _assert_bot_org(bot_id: str, org_id: str) -> None:
         raise HTTPException(status_code=403, detail="Bot does not belong to this org")
 
 
+def _pick_image_extraction_job(repo, bot_id: str, *, prefer_active: bool = False):
+    """Return image extraction job across manual + pipeline prefixes.
+
+    If prefer_active is True, queued/running jobs are prioritized first.
+    """
+    jobs = []
+    for prefix in ("extract_", "assetext_"):
+        job = repo.get_latest_job_for_bot(bot_id, prefix=prefix)
+        if job:
+            jobs.append(job)
+    if not jobs:
+        return None
+
+    def sort_key(job):
+        return (
+            str(getattr(job, "updated_at", "") or ""),
+            str(getattr(job, "created_at", "") or ""),
+            str(getattr(job, "job_id", "") or ""),
+        )
+
+    if prefer_active:
+        active_jobs = [job for job in jobs if str(getattr(job, "status", "") or "").strip().lower() in ("queued", "running")]
+        if active_jobs:
+            return max(active_jobs, key=sort_key)
+
+    return max(jobs, key=sort_key)
+
+
+def _active_pipeline_asset_extraction_job_id(bot_id: str) -> Optional[str]:
+    """Return linked asset extraction job id for the active pipeline step, if any."""
+    from infrastructure.db.repositories import PostgresJobPipelineRepository
+
+    pipeline_repo = PostgresJobPipelineRepository()
+    run = pipeline_repo.get_latest_run_for_bot(bot_id)
+    if not run:
+        return None
+    run_status = str(getattr(run, "status", "") or "").strip().lower()
+    if run_status in ("done", "error"):
+        return None
+
+    steps = pipeline_repo.list_steps(run.run_id)
+    active_statuses = {"queued", "running", "paused"}
+    current_step_index = int(getattr(run, "current_step_index", 0) or 0)
+
+    # Prefer the active step at run.current_step_index.
+    for step in steps:
+        if int(getattr(step, "step_index", -1) or -1) != current_step_index:
+            continue
+        if str(getattr(step, "job_id", "") or "").strip().lower() != "asset_extraction":
+            continue
+        if str(getattr(step, "status", "") or "").strip().lower() not in active_statuses:
+            continue
+        linked_job_id = str(getattr(step, "linked_job_id", "") or "").strip()
+        if linked_job_id:
+            return linked_job_id
+
+    # Fallback: any active asset_extraction step in this run.
+    candidates = []
+    for step in steps:
+        if str(getattr(step, "job_id", "") or "").strip().lower() != "asset_extraction":
+            continue
+        if str(getattr(step, "status", "") or "").strip().lower() not in active_statuses:
+            continue
+        linked_job_id = str(getattr(step, "linked_job_id", "") or "").strip()
+        if linked_job_id:
+            candidates.append((int(getattr(step, "step_index", 0) or 0), linked_job_id))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: item[0])
+    return candidates[-1][1]
+
+
+def _mark_pipeline_asset_extraction_cancelled(bot_id: str, linked_job_id: str) -> None:
+    """Best effort: immediately reflect extraction cancellation in pipeline run/steps."""
+    if not bot_id or not linked_job_id:
+        return
+    from infrastructure.db.repositories import PostgresJobPipelineRepository
+
+    pipeline_repo = PostgresJobPipelineRepository()
+    run = pipeline_repo.get_latest_run_for_bot(bot_id)
+    if not run:
+        return
+    run_status = str(getattr(run, "status", "") or "").strip().lower()
+    if run_status in ("done", "error", "cancelled"):
+        return
+
+    steps = pipeline_repo.list_steps(run.run_id)
+    target_step = None
+    for step in steps:
+        if str(getattr(step, "job_id", "") or "").strip().lower() != "asset_extraction":
+            continue
+        if str(getattr(step, "linked_job_id", "") or "").strip() != linked_job_id:
+            continue
+        if str(getattr(step, "status", "") or "").strip().lower() not in ("queued", "running", "paused"):
+            continue
+        if target_step is None or int(getattr(step, "step_index", -1) or -1) > int(getattr(target_step, "step_index", -1) or -1):
+            target_step = step
+    if target_step is None:
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    cancel_message = "Image extraction cancelled by user."
+
+    target_step.status = "cancelled"
+    target_step.progress_pct = 100
+    target_step.current_stage_key = "cancelled"
+    target_step.current_message = cancel_message
+    target_step.last_error = None
+    target_step.completed_at = now
+    target_step.updated_at = now
+    pipeline_repo.update_step(target_step)
+
+    # Mark remaining queued steps as cancelled so UI treats run as terminal immediately.
+    for step in steps:
+        if int(getattr(step, "step_index", -1) or -1) <= int(getattr(target_step, "step_index", -1) or -1):
+            continue
+        if str(getattr(step, "status", "") or "").strip().lower() != "queued":
+            continue
+        step.status = "cancelled"
+        step.progress_pct = 100
+        step.current_stage_key = "cancelled"
+        step.current_message = "Skipped after cancellation."
+        step.last_error = None
+        step.completed_at = now
+        step.updated_at = now
+        pipeline_repo.update_step(step)
+
+    run.status = "cancelled"
+    run.current_step_index = int(getattr(target_step, "step_index", 0) or 0)
+    run.current_step_id = target_step.job_id
+    run.current_stage_key = "cancelled"
+    run.current_message = cancel_message
+    run.last_error = None
+    run.progress_pct = max(int(getattr(run, "progress_pct", 0) or 0), 100)
+    run.updated_at = now
+    pipeline_repo.update_run(run)
+
+
 def _asset_to_response(a: BotAsset) -> BotAssetResponse:
     return BotAssetResponse(
         asset_id=a.asset_id,
@@ -446,7 +584,10 @@ async def get_asset_extraction_status(
 
     from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
     repo = PostgresAssetExtractionJobRepository()
-    job = repo.get_latest_job_for_bot(bot_id, prefix="extract_")
+    preferred_job_id = _active_pipeline_asset_extraction_job_id(bot_id)
+    job = repo.get_job(preferred_job_id) if preferred_job_id else None
+    if not job:
+        job = _pick_image_extraction_job(repo, bot_id, prefer_active=True)
 
     current_assets = asset_repo().list_assets_for_bot(bot_id, active_only=False, asset_type="image")
     limit = _asset_limit()
@@ -483,7 +624,10 @@ async def cancel_asset_extraction(
 
     from infrastructure.db.repositories import PostgresAssetExtractionJobRepository
     repo = PostgresAssetExtractionJobRepository()
-    job = repo.get_latest_job_for_bot(bot_id)
+    preferred_job_id = _active_pipeline_asset_extraction_job_id(bot_id)
+    job = repo.get_job(preferred_job_id) if preferred_job_id else None
+    if not job:
+        job = _pick_image_extraction_job(repo, bot_id, prefer_active=True)
     if not job:
         return {"status": "none", "job_id": ""}
     if job.status not in ("queued", "running"):
@@ -498,6 +642,10 @@ async def cancel_asset_extraction(
     job.status = "cancelled"
     job.error = "Cancelled by user."
     repo.update_job(job)
+    try:
+        _mark_pipeline_asset_extraction_cancelled(bot_id, job.job_id)
+    except Exception as e:
+        logger.warning("Failed to mark pipeline run cancelled for asset extraction job %s: %s", job.job_id, e)
     return {"status": "cancelled", "job_id": job.job_id}
 
 

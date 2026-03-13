@@ -14,6 +14,7 @@ export type CreateBotScreenComponent =
   | 'source_urls'
   | 'additional_sources'
   | 'training_progress'
+  | 'image_extraction_permission'
   | 'suggested_messages'
   | 'widget_design'
   | 'embed_install'
@@ -23,6 +24,7 @@ export type CreateBotScreenVisibility = {
   businessTypes?: string[]
   requiresSelectedReservationPlatform?: boolean
   reservationPlatformIds?: string[]
+  requiresWorkflowSteps?: string[]
 }
 
 export type CreateBotStepGroup = {
@@ -57,6 +59,7 @@ export type CreateBotFlowConfig = {
 export type CreateBotFlowState = {
   businessType: string
   reservationPlatform: string
+  workflowSteps: string[]
 }
 
 type RawCreateBotFlowConfig = {
@@ -81,6 +84,7 @@ type RawCreateBotFlowConfig = {
       business_types?: string[]
       requires_selected_reservation_platform?: boolean
       reservation_platform_ids?: string[]
+      requires_workflow_steps?: string[]
     }
   }>
   screen_order?: string[]
@@ -178,6 +182,15 @@ const DEFAULT_SCREEN_DEFINITIONS: Record<string, CreateBotScreen> = {
     stepGroupId: 'training',
     component: 'training_progress',
   },
+  image_extraction_permission: {
+    id: 'image_extraction_permission',
+    path: 'image-extraction-permission',
+    stepGroupId: 'training',
+    component: 'image_extraction_permission',
+    visibility: {
+      requiresWorkflowSteps: ['asset_extraction'],
+    },
+  },
   suggested_messages: {
     id: 'suggested_messages',
     path: 'suggested-messages',
@@ -203,6 +216,7 @@ const DEFAULT_SCREEN_ORDER: readonly string[] = [
   'sources',
   'additional_sources',
   'reservation_destination',
+  'image_extraction_permission',
   'training',
   'suggested_messages',
   'widget',
@@ -235,6 +249,7 @@ function normalizeComponent(value: string): CreateBotScreenComponent | null {
     normalized === 'source_urls' ||
     normalized === 'additional_sources' ||
     normalized === 'training_progress' ||
+    normalized === 'image_extraction_permission' ||
     normalized === 'suggested_messages' ||
     normalized === 'widget_design' ||
     normalized === 'embed_install' ||
@@ -310,6 +325,9 @@ export function normalizeCreateBotFlowConfig(raw: RawCreateBotFlowConfig | null 
     const reservationPlatformIds = Array.isArray(rawScreen.visibility?.reservation_platform_ids)
       ? rawScreen.visibility.reservation_platform_ids.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
       : fallbackScreen?.visibility?.reservationPlatformIds
+    const requiresWorkflowSteps = Array.isArray(rawScreen.visibility?.requires_workflow_steps)
+      ? rawScreen.visibility.requires_workflow_steps.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+      : fallbackScreen?.visibility?.requiresWorkflowSteps
     screenDefinitions[screenId] = {
       ...(fallbackScreen || {
         id: screenId,
@@ -335,6 +353,7 @@ export function normalizeCreateBotFlowConfig(raw: RawCreateBotFlowConfig | null 
             ? rawScreen.visibility.requires_selected_reservation_platform
             : fallbackScreen?.visibility?.requiresSelectedReservationPlatform,
         reservationPlatformIds,
+        requiresWorkflowSteps,
       },
     }
   }
@@ -372,6 +391,11 @@ export function isCreateBotScreenVisible(screen: CreateBotScreen, state: CreateB
   if (reservationPlatformIds.length > 0) {
     const currentPlatform = String(state.reservationPlatform || '').trim().toLowerCase()
     if (!currentPlatform || !reservationPlatformIds.includes(currentPlatform)) return false
+  }
+  const requiresWorkflowSteps = visibility.requiresWorkflowSteps || []
+  if (requiresWorkflowSteps.length > 0) {
+    const workflowSet = new Set((state.workflowSteps || []).map((step) => String(step || '').trim().toLowerCase()).filter(Boolean))
+    if (!requiresWorkflowSteps.every((step) => workflowSet.has(String(step || '').trim().toLowerCase()))) return false
   }
   return true
 }

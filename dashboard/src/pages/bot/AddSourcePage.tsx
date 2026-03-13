@@ -184,7 +184,7 @@ export default function AddSourcePage() {
           const urls = (evt as { urls?: unknown[] }).urls || []
           if (reason === 'no_results' || (Array.isArray(urls) && urls.length <= 1)) {
             hasShownError = true
-            setDiscoveryError('Could not discover pages. Use the PDF upload below.')
+            setDiscoveryError('Could not discover pages. Add sources manually or upload files below.')
             setDiscoveryErrorType('warning')
             setShowPdfFallback(true)
           }
@@ -209,7 +209,7 @@ export default function AddSourcePage() {
       setIsDiscovering(false)
       abortRef.current = null
       if (localCount <= 1 && !hasShownError) {
-        setDiscoveryError('Discovery completed but found no usable pages. Please use the PDF upload below.')
+        setDiscoveryError('Discovery completed but found no usable pages. Add sources manually or upload files below.')
         setDiscoveryErrorType('warning')
         setShowPdfFallback(true)
       }
@@ -592,7 +592,7 @@ export default function AddSourcePage() {
 
                 {showPdfFallback && !isDiscovering && (
                   <div className="alert warning" style={{ marginBottom: '0.75rem' }}>
-                    {t('addSource.pdfFallbackShort', 'This website blocks automatic scanning. Use the PDF tab to upload pages.')}
+                    {t('addSource.pdfFallbackShort', 'This website blocks automatic scanning. Add sources manually or upload files instead.')}
                   </div>
                 )}
 

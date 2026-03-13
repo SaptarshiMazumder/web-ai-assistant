@@ -57,6 +57,7 @@ const STEP_LABELS: Record<string, { key: string; fallback: string }> = {
   crawl_import: { key: 'botKnowledge.progressStepCrawlImport', fallback: 'Learning from website pages' },
   prompt_generation: { key: 'botKnowledge.progressStepPromptGeneration', fallback: 'Personalizing your assistant' },
   booking_link: { key: 'botKnowledge.progressStepBookingLink', fallback: 'Adding booking details' },
+  asset_extraction: { key: 'botKnowledge.progressStepImageExtraction', fallback: 'Preparing your images' },
   menu_extraction: { key: 'botKnowledge.progressStepMenuExtraction', fallback: 'Preparing your menu and services' },
   reservation_url: { key: 'botKnowledge.progressStepReservationUrl', fallback: 'Setting up reservation links' },
   discovery: { key: 'botKnowledge.progressStepDiscovery', fallback: 'Finding pages to learn from' },
@@ -78,7 +79,7 @@ const PIPELINE_STATUS_MAP: Record<string, UnifiedSourcesProgressStepStatus> = {
   complete: 'done',
   error: 'error',
   failed: 'error',
-  cancelled: 'error',
+  cancelled: 'done',
 }
 
 const CRAWL_STAGE_META: Record<
@@ -163,11 +164,20 @@ const CRAWL_STAGE_META: Record<
     messageFallback: 'Crawl or import failed',
   },
   cancelled: {
-    status: 'error',
+    status: 'done',
     progress: 100,
     messageKey: 'botKnowledge.progressCrawlCancelled',
     messageFallback: 'Training stopped',
   },
+}
+
+function isUserCancelledMessage(...values: Array<unknown>): boolean {
+  for (const value of values) {
+    const text = String(value || '').trim().toLowerCase()
+    if (!text) continue
+    if (text.includes('cancelled by user') || text.includes('canceled by user')) return true
+  }
+  return false
 }
 
 function clampPct(value: unknown): number {
@@ -274,7 +284,8 @@ function resolveCrawlStep(
 
 function resolvePipelineStep(step: JobPipelineStepRecord): UnifiedSourcesProgressStep {
   const normalizedStatus = normalize(step.status)
-  const status = PIPELINE_STATUS_MAP[normalizedStatus] || 'running'
+  const cancelledByUser = isUserCancelledMessage(step.current_message, step.last_error)
+  const status = cancelledByUser ? 'done' : (PIPELINE_STATUS_MAP[normalizedStatus] || 'running')
   const label = stepLabel(step.job_id)
   const message = String(step.current_message || '').trim() || undefined
   const rawOutput = step.output && typeof step.output === 'object' ? step.output : {}
@@ -295,8 +306,8 @@ function resolvePipelineStep(step: JobPipelineStepRecord): UnifiedSourcesProgres
   const error = status === 'error' ? String(step.last_error || '').trim() || undefined : undefined
   return {
     id: String(step.job_id || `step_${step.step_index}`),
-    source: 'pipeline',
-    status,
+      source: 'pipeline',
+      status,
     progressPct: status === 'done' ? 100 : clampPct(step.progress_pct),
     labelKey: label.key,
     labelFallback: label.fallback,
@@ -364,7 +375,13 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
         steps.push(resolvePipelineStep(step))
       }
     } else {
-      const syntheticStatus = PIPELINE_STATUS_MAP[normalize(pipelineRun.status)] || 'running'
+      const syntheticCancelledByUser = isUserCancelledMessage(
+        pipelineRun.current_message,
+        pipelineRun.last_error,
+      )
+      const syntheticStatus = syntheticCancelledByUser
+        ? 'done'
+        : (PIPELINE_STATUS_MAP[normalize(pipelineRun.status)] || 'running')
       const syntheticLabel = stepLabel('pipeline')
       const syntheticStatusMsg = statusMessage(syntheticStatus)
       const message = String(pipelineRun.current_message || '').trim() || undefined

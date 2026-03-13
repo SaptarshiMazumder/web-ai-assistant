@@ -86,6 +86,7 @@ _ALLOWED_CREATE_BOT_COMPONENTS = {
     "source_urls",
     "additional_sources",
     "training_progress",
+    "image_extraction_permission",
     "suggested_messages",
     "widget_design",
     "embed_install",
@@ -234,6 +235,13 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
         for platform_id in reservation_platform_config.keys()
         if str(platform_id or "").strip()
     }
+    job_pipeline_for_visibility = _require_dict(cfg, "job_pipeline")
+    job_pipeline_jobs_for_visibility = _require_dict(job_pipeline_for_visibility, "jobs")
+    known_workflow_job_ids = {
+        str(job_id or "").strip()
+        for job_id in job_pipeline_jobs_for_visibility.keys()
+        if str(job_id or "").strip()
+    }
     seen_step_group_ids = set()
     for idx, group in enumerate(step_groups):
         if not isinstance(group, dict):
@@ -321,6 +329,22 @@ def _validate_platform_config(cfg: Dict[str, Any]) -> None:
                     if normalized_platform_id not in known_reservation_platform_ids:
                         raise ConfigValidationError(
                             f"Unknown dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.reservation_platform_ids platform '{normalized_platform_id}' in {_CONFIG_PATH}"
+                        )
+            requires_workflow_steps = visibility.get("requires_workflow_steps")
+            if requires_workflow_steps is not None:
+                if not isinstance(requires_workflow_steps, list):
+                    raise ConfigValidationError(
+                        f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.requires_workflow_steps in {_CONFIG_PATH}"
+                    )
+                for raw_job_id in requires_workflow_steps:
+                    normalized_job_id = str(raw_job_id or "").strip()
+                    if not normalized_job_id:
+                        raise ConfigValidationError(
+                            f"Invalid dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.requires_workflow_steps in {_CONFIG_PATH}"
+                        )
+                    if normalized_job_id not in known_workflow_job_ids:
+                        raise ConfigValidationError(
+                            f"Unknown dashboard.create_bot_flow.screen_definitions.{normalized_screen_id}.visibility.requires_workflow_steps job '{normalized_job_id}' in {_CONFIG_PATH}"
                         )
         if component == "action_destination_url":
             action_key = str(screen.get("action_key") or "").strip().lower()
@@ -934,6 +958,11 @@ def get_dashboard_create_bot_flow(*, lang: str = "en") -> Dict[str, Any]:
                     for item in visibility.get("reservation_platform_ids", [])
                     if str(item).strip()
                 ],
+                "requires_workflow_steps": [
+                    str(item).strip()
+                    for item in visibility.get("requires_workflow_steps", [])
+                    if str(item).strip()
+                ],
             }
         for field_name in _CREATE_BOT_SCREEN_I18N_FIELDS:
             field_value = raw_screen.get(field_name)
@@ -1018,19 +1047,23 @@ def get_job_pipeline_workflow(
     if not isinstance(widget_config, dict):
         return default_steps
 
+    resolved_steps = list(default_steps)
     platform_id = str(widget_config.get("reservationPlatform") or "").strip().lower()
     if not platform_id:
         cfg = get_reservation_config_from_widget(widget_config)
         platform_id = str((cfg or {}).get("platform_id") or "").strip().lower()
-    if not platform_id:
-        return default_steps
+    if platform_id:
+        platform_overrides = workflows.get("platform_overrides") if isinstance(workflows.get("platform_overrides"), dict) else {}
+        steps_raw = platform_overrides.get(platform_id)
+        if isinstance(steps_raw, list):
+            override_steps = [str(v).strip() for v in steps_raw if str(v).strip()]
+            if override_steps:
+                resolved_steps = override_steps
 
-    platform_overrides = workflows.get("platform_overrides") if isinstance(workflows.get("platform_overrides"), dict) else {}
-    steps_raw = platform_overrides.get(platform_id)
-    if not isinstance(steps_raw, list):
-        return default_steps
-    resolved = [str(v).strip() for v in steps_raw if str(v).strip()]
-    return resolved if resolved else default_steps
+    allow_auto_image_extraction = widget_config.get("allowAutoImageExtraction")
+    if isinstance(allow_auto_image_extraction, bool) and not allow_auto_image_extraction:
+        resolved_steps = [step_id for step_id in resolved_steps if step_id != "asset_extraction"]
+    return resolved_steps
 
 
 def get_job_pipeline_gates() -> Dict[str, Dict[str, Any]]:

@@ -497,6 +497,7 @@ class WidgetConfigUpdate(BaseModel):
     # Where the business content lives. Used to drive UX (own website vs website service).
     contentHosting: Optional[str] = None
     allowRealtimeAvailability: Optional[bool] = None
+    allowAutoImageExtraction: Optional[bool] = None
     bookingTestUrl: Optional[str] = None
     bookingUrlPattern: Optional[Dict[str, Any]] = None  # written by availability job
     # Restaurant reservation: one profile per agent (tabelog | hotpepper | tablecheck)
