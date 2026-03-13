@@ -48,10 +48,12 @@ export default function CreateBotAdditionalSourcesPage() {
   }, [flow.nextPath, navigate])
 
   const handleSkip = useCallback(() => {
+    setTextDocFiles([])
+    setCustomTextEntries([{ id: '1', title: '', content: '' }])
     if (flow.nextPath) {
       navigate(flow.nextPath)
     }
-  }, [flow.nextPath, navigate])
+  }, [flow.nextPath, navigate, setTextDocFiles, setCustomTextEntries])
 
   const tabs: SegmentedTabOption<TabId>[] = [
     { id: 'pdfs', label: t('createBot.pdfSources', 'PDF Sources'), icon: <FileText size={16} /> },

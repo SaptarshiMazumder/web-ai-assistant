@@ -17,10 +17,6 @@ function normalizeOptionalUrl(value: string): string {
   }
 }
 
-function interpolateNotice(template: string, replacements: Record<string, string>): string {
-  return template.replace(/\{([a-z_]+)\}/gi, (_, key: string) => replacements[key] || '')
-}
-
 export default function CreateBotActionDestinationPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -38,14 +34,6 @@ export default function CreateBotActionDestinationPage() {
   const fallbackUrl = actionKey === 'reservation'
     ? String(step2.platformUrls[step2.reservationPlatform] || '').trim()
     : ''
-  const fallbackNotice =
-    currentScreen.fallbackNotice && fallbackUrl && selectedPlatform
-      ? interpolateNotice(currentScreen.fallbackNotice, {
-          platform_label: selectedPlatform.label,
-          platform_url: fallbackUrl,
-        }).trim()
-      : ''
-
   const handleContinue = () => {
     setLocalError(null)
     if (!currentValue.trim()) {
@@ -61,24 +49,40 @@ export default function CreateBotActionDestinationPage() {
     if (flow.nextPath) navigate(flow.nextPath)
   }
 
-  const handleSkip = () => {
-    setLocalError(null)
-    step2.setActionDestinationLink(actionKey, '')
-    if (flow.nextPath) navigate(flow.nextPath)
-  }
+  const platformLabel = selectedPlatform?.label || ''
 
   return (
     <div className="flow-panel-body">
       <div>
-        <div className="card-title">{currentScreen.title || t('createBot.reservationDestinationTitle', 'Choose where reservation taps should go')}</div>
+        <div className="card-title">
+          {t('createBot.reservationDestinationTitle', 'Where should customers make reservations?')}
+        </div>
         <div className="card-subtitle">
-          {currentScreen.subtitle || t('createBot.reservationDestinationSubtitle', 'You can keep the selected platform URL, or set a customer-facing destination URL of your own.')}
+          {t('createBot.reservationDestinationSubtitle', 'When a customer asks your agent about making a reservation, where should they be sent?')}
         </div>
       </div>
 
+      {fallbackUrl && selectedPlatform && (
+        <div
+          style={{
+            border: '1px solid var(--flow-border)',
+            borderRadius: 'var(--flow-radius)',
+            padding: '1rem',
+            background: 'var(--flow-surface)',
+          }}
+        >
+          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--flow-heading)', marginBottom: '0.35rem' }}>
+            {t('createBot.currentReservationLink', 'Current reservation link')}
+          </div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--flow-muted)', wordBreak: 'break-all' }}>
+            {platformLabel}: {fallbackUrl}
+          </div>
+        </div>
+      )}
+
       <GlassField
-        label={currentScreen.fieldLabel || t('createBot.reservationDestinationLabel', 'Customer-facing reservation URL')}
-        helper={currentScreen.fieldHelper || t('createBot.reservationDestinationHelper', 'Optional. If set, this is the reservation link customers receive in chat and action buttons.')}
+        label={t('createBot.reservationDestinationLabel', 'Use a different link instead (optional)')}
+        helper={t('createBot.reservationDestinationHelper', 'Only fill this in if you want customers to go somewhere other than the link above.')}
       >
         <input
           type="url"
@@ -93,21 +97,15 @@ export default function CreateBotActionDestinationPage() {
         />
       </GlassField>
 
-      {fallbackNotice && <div className="alert info">{fallbackNotice}</div>}
       {localError && <div className="alert error">{localError}</div>}
 
       <div className="flow-actions">
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           {t('common.back', 'Back')}
         </UiButton>
-        <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
-          <UiButton variant="ghost" onClick={handleSkip}>
-            {t('createBot.skip', 'Skip for now')}
-          </UiButton>
-          <UiButton variant="primary" onClick={handleContinue}>
-            {t('common.continue', 'Continue')}
-          </UiButton>
-        </div>
+        <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
+          {t('common.continue', 'Continue')}
+        </UiButton>
       </div>
     </div>
   )

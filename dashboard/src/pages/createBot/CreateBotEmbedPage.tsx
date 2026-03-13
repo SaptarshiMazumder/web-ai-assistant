@@ -239,8 +239,8 @@ export default function CreateBotEmbedPage() {
       </div>
 
       <div className="flow-actions">
-        <UiButton variant="secondary" onClick={goToOverview}>
-          {t('createBot.skipForNow', 'Skip for now')}
+        <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
+          {t('common.back', 'Back')}
         </UiButton>
         <UiButton
           variant="primary"

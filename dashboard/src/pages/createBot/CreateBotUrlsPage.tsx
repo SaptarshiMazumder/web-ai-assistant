@@ -140,7 +140,10 @@ export default function CreateBotUrlsPage() {
   }
 
   const handleSkip = () => {
-    persistSharedSelectionToRows()
+    if (contentHosting === 'own') {
+      deselectAll()
+    }
+    setTrainingUrls([])
     if (flow.nextPath) navigate(flow.nextPath)
   }
 
@@ -797,7 +800,7 @@ export default function CreateBotUrlsPage() {
             <UiButton
               variant="primary"
               onClick={() => void handleContinue()}
-              disabled={isSharedDiscovering && sharedDiscoveredUrls.length === 0}
+              disabled={sharedSelectedDiscoveredUrls.size === 0 && pdfFiles.length === 0}
             >
               {t('common.continue', 'Continue')}
             </UiButton>
@@ -1107,7 +1110,7 @@ export default function CreateBotUrlsPage() {
             <UiButton variant="ghost" onClick={() => void handleSkip()}>
               {t('createBot.skip', 'Skip for now')}
             </UiButton>
-            <UiButton variant="primary" onClick={handleContinue}>
+            <UiButton variant="primary" onClick={handleContinue} disabled={selectedUrls.length === 0 && pdfFiles.length === 0}>
               {t('common.continue', 'Continue')}
             </UiButton>
           </div>
