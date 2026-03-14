@@ -46,7 +46,9 @@ _PUBLIC_BASE_URL = (
 ).strip()
 
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
-_RICH_MENU_RENDER_VERSION = 4
+# Bump to force re-sync of existing rich menus so `selected: false` is re-applied
+# for already-linked LINE channels/users.
+_RICH_MENU_RENDER_VERSION = 5
 
 
 def _utc_now() -> str:

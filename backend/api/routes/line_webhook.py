@@ -1169,7 +1169,7 @@ async def _handle_line_event(
         ai_query = "Menu"
 
     try:
-        corpus = ensure_bot_corpus(bot.bot_id)
+        corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
         result = await asyncio.to_thread(
             run_vertex_rag,
             ai_query,

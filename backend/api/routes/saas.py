@@ -1282,8 +1282,9 @@ async def v1_widget_chat(
     if json_response_instruction:
         system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
 
-    corpus = ensure_bot_corpus(bot.bot_id)
-    result = run_vertex_rag(
+    corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
+    result = await asyncio.to_thread(
+        run_vertex_rag,
         query,
         rag_corpus=corpus,
         allowed_host=None,
@@ -1595,7 +1596,7 @@ async def v1_widget_chat_stream(
     if json_response_instruction_stream:
         system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
 
-    corpus = ensure_bot_corpus(bot.bot_id)
+    corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
@@ -2272,7 +2273,7 @@ async def v1_generate_default_prompt(
         bot_lang = _get_bot_language(bot)
 
     try:
-        corpus = ensure_bot_corpus(bot.bot_id)
+        corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
         import vertexai
         from infrastructure.clients.rag_client import retrieve_for_subquery, PROJECT_ID, RAG_LOCATION
 
@@ -2340,7 +2341,7 @@ async def v1_generate_suggested_messages(
     # Gather context from RAG corpus
     snippets: list[str] = []
     try:
-        corpus = ensure_bot_corpus(bot.bot_id)
+        corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
         import vertexai
         from infrastructure.clients.rag_client import retrieve_for_subquery, PROJECT_ID, RAG_LOCATION
 
@@ -2573,7 +2574,7 @@ async def v1_org_test_chat(
     bot = bot_service().get_bot_record(bot_id)
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
-    corpus = ensure_bot_corpus(bot.bot_id)
+    corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
     msg = (payload.message or "").strip()
     if not msg:
         raise HTTPException(status_code=400, detail="message is required")
@@ -2679,7 +2680,8 @@ async def v1_org_test_chat(
             f"{system_instruction}\n\n{json_response_instruction_test}" if system_instruction else json_response_instruction_test
         )
 
-    result = run_vertex_rag(
+    result = await asyncio.to_thread(
+        run_vertex_rag,
         msg,
         rag_corpus=corpus,
         allowed_host=None,
