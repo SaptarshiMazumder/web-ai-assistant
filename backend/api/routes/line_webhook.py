@@ -14,6 +14,7 @@ import re
 import time
 import asyncio
 import unicodedata
+import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -83,6 +84,7 @@ from infrastructure.db.repositories import (
     PostgresLineUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
+from infrastructure.services.chat_cache import claim_webhook_event_once
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +114,31 @@ def _rate_limit(bot_id: str) -> None:
     _rl_state[bot_id] = (start, count)
     if count > _rl_max_per_window:
         raise HTTPException(status_code=429, detail="Rate limit exceeded")
+
+
+def _line_event_id(raw_event: Dict[str, Any]) -> str:
+    explicit = (
+        str(raw_event.get("webhookEventId") or "").strip()
+        or str(raw_event.get("eventId") or "").strip()
+        or str(raw_event.get("id") or "").strip()
+    )
+    if explicit:
+        return explicit
+    message = raw_event.get("message") or {}
+    message_id = str(message.get("id") or "").strip()
+    if message_id:
+        return f"msg:{message_id}"
+    event_type = str(raw_event.get("type") or "").strip().lower()
+    timestamp = str(raw_event.get("timestamp") or "").strip()
+    reply_token = str(raw_event.get("replyToken") or "").strip()
+    source = raw_event.get("source") or {}
+    user_id = str(source.get("userId") or "").strip()
+    postback = raw_event.get("postback") or {}
+    postback_data = str(postback.get("data") or "").strip()
+    fallback = f"{event_type}|{timestamp}|{user_id}|{reply_token}|{postback_data[:120]}"
+    if not fallback.strip("|"):
+        return ""
+    return "fp:" + hashlib.sha1(fallback.encode("utf-8", errors="ignore")).hexdigest()
 
 
 _LINE_EMPTY_ANSWER_MESSAGES = {
@@ -667,6 +694,10 @@ async def line_webhook(bot_id: str, request: Request):
 
     # Process each event through the channel adapter.
     for event in events:
+        event_id = _line_event_id(event if isinstance(event, dict) else {})
+        if event_id and not claim_webhook_event_once(provider="line", scope_id=bot_id, event_id=event_id):
+            logger.info("LINE webhook duplicate ignored bot_id=%s event_id=%s", bot_id, event_id)
+            continue
         parsed = _line_adapter.parse_event(event)
         if not parsed:
             continue

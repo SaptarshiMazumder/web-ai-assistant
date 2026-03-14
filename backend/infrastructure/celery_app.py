@@ -1,3 +1,6 @@
+import importlib
+import sys
+
 from celery import Celery
 from common.config import config
 
@@ -15,53 +18,27 @@ celery_app = Celery(
 # Load configuration
 celery_app.config_from_object("infrastructure.celery_config")
 
-# Import tasks to register them (must be after config and app creation)
-# This import registers the task decorators
-try:
-    from infrastructure.tasks import crawl_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import crawl_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import single_page_crawl_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import single_page_crawl_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import availability_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import availability_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import booking_link_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import booking_link_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import discovery_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import discovery_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import pdf_source_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import pdf_source_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import instagram_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import instagram_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import sync_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import sync_tasks: {e}", file=sys.stderr)
-try:
-    from infrastructure.tasks import job_pipeline_tasks  # noqa: E402, F401
-except ImportError as e:
-    import sys
-    print(f"WARNING: Failed to import job_pipeline_tasks: {e}", file=sys.stderr)
+# Import task modules to register decorated tasks.
+_TASK_MODULES = (
+    "infrastructure.tasks.analytics_tasks",
+    "infrastructure.tasks.availability_tasks",
+    "infrastructure.tasks.booking_link_tasks",
+    "infrastructure.tasks.crawl_tasks",
+    "infrastructure.tasks.discovery_tasks",
+    "infrastructure.tasks.docs_source_tasks",
+    "infrastructure.tasks.instagram_tasks",
+    "infrastructure.tasks.job_pipeline_tasks",
+    "infrastructure.tasks.pdf_source_tasks",
+    "infrastructure.tasks.single_page_crawl_tasks",
+    "infrastructure.tasks.sync_tasks",
+    "infrastructure.tasks.text_source_tasks",
+)
+
+for module_path in _TASK_MODULES:
+    try:
+        importlib.import_module(module_path)
+    except Exception as exc:
+        print(f"WARNING: Failed to import {module_path}: {exc}", file=sys.stderr)
 
 if __name__ == "__main__":
     print(f"Registered tasks: {list(celery_app.tasks.keys())}")

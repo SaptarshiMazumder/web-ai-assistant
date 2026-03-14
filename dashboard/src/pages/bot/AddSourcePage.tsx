@@ -26,10 +26,22 @@ import {
   type UrlCategory,
 } from '../createBot/urlCategorizer'
 import { AnimatedPage, GlassCard, GlassField } from '../../components/ui'
+import { writeAdditionalSourcesRun } from './additionalSourcesRun'
 
 type TabId = 'website' | 'pdf' | 'docs' | 'text' | 'custom'
 
 type CustomTextEntry = { id: string; title: string; content: string }
+
+function newAdditionalSourcesRunId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch {
+    // Fall through.
+  }
+  return `additional_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
 
 export default function AddSourcePage() {
   const { t } = useTranslation()
@@ -413,12 +425,14 @@ export default function AddSourcePage() {
     setError(null)
 
     let anyAdded = false
+    const submittedJobIds = new Set<string>()
     try {
       if (hasSelectedUrls) {
         const urls = Array.from(selectedDiscoveredUrls)
         const jobId = await queueCrawlUrls(selectedBot.bot_id, urls)
         if (jobId) {
           anyAdded = true
+          submittedJobIds.add(String(jobId).trim())
           await loadJobs(selectedBot.bot_id)
         }
       }
@@ -426,26 +440,58 @@ export default function AddSourcePage() {
         const resp = await uploadPdfSources(selectedBot.bot_id, pdfFiles, null)
         if (resp?.items?.length) {
           anyAdded = true
+          for (const item of resp.items) {
+            const jobId = String(item?.job_id || '').trim()
+            if (jobId) submittedJobIds.add(jobId)
+          }
           await loadSources(selectedBot.bot_id)
           await loadJobs(selectedBot.bot_id)
         }
       }
       if (hasDocFiles) {
         const resp = await uploadDocsSources(selectedBot.bot_id, textDocFiles)
-        if (resp?.items?.length) anyAdded = true
+        if (resp?.items?.length) {
+          anyAdded = true
+          for (const item of resp.items) {
+            const jobId = String(item?.job_id || '').trim()
+            if (jobId) submittedJobIds.add(jobId)
+          }
+        }
       }
       if (hasTextContent) {
         const resp = await uploadTextSources(selectedBot.bot_id, [{ content: textContent }])
-        if (resp?.items?.length) anyAdded = true
+        if (resp?.items?.length) {
+          anyAdded = true
+          for (const item of resp.items) {
+            const jobId = String(item?.job_id || '').trim()
+            if (jobId) submittedJobIds.add(jobId)
+          }
+        }
       }
       if (hasCustomEntries) {
         const entries = customTextEntries
           .filter((e) => e.content.trim())
           .map((e) => ({ title: e.title.trim() || undefined, content: e.content.trim() }))
         const resp = await uploadTextSources(selectedBot.bot_id, entries)
-        if (resp?.items?.length) anyAdded = true
+        if (resp?.items?.length) {
+          anyAdded = true
+          for (const item of resp.items) {
+            const jobId = String(item?.job_id || '').trim()
+            if (jobId) submittedJobIds.add(jobId)
+          }
+        }
       }
       if (anyAdded) {
+        const jobIds = Array.from(submittedJobIds)
+        if (jobIds.length > 0) {
+          writeAdditionalSourcesRun({
+            run_id: newAdditionalSourcesRunId(),
+            bot_id: selectedBot.bot_id,
+            job_ids: jobIds,
+            created_at: Date.now(),
+            total_sources: jobIds.length,
+          })
+        }
         navigate(`/bots/${botId}/knowledge`, { replace: true })
       } else {
         setLocalError('Add at least one source.')

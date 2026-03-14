@@ -9,6 +9,9 @@ const env = (import.meta as { env: Record<string, string> }).env
 const auth0Domain = env.VITE_AUTH0_DOMAIN || ''
 const auth0ClientId = env.VITE_AUTH0_CLIENT_ID || ''
 const auth0Audience = env.VITE_AUTH0_AUDIENCE || ''
+const dashboardBase = env.VITE_DASHBOARD_BASE || '/'
+const normalizedDashboardBase = dashboardBase.startsWith('/') ? dashboardBase : `/${dashboardBase}`
+const auth0RedirectUri = new URL(normalizedDashboardBase, window.location.origin).toString()
 
 const root = document.querySelector<HTMLDivElement>('#app')
 if (!root) {
@@ -21,7 +24,7 @@ createRoot(root).render(
       domain={auth0Domain}
       clientId={auth0ClientId}
       authorizationParams={{
-        redirect_uri: window.location.origin,
+        redirect_uri: auth0RedirectUri,
         audience: auth0Audience,
       }}
       cacheLocation="localstorage"

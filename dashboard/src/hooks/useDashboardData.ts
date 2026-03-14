@@ -135,6 +135,7 @@ export type EmbedSnippetConfig = {
 export type IndexStatus = {
   status: string
   stage?: string
+  hostname?: string
   pages_crawled?: number
   last_crawled_url?: string
   docs_count?: number

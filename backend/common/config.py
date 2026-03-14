@@ -75,6 +75,95 @@ class Config:
     # Redis (pubsub for conversations). Defaults to Celery broker if not set.
     REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 
+    # Chat hot-path cache (L1 in-process + L2 Redis cache-aside)
+    CHAT_CACHE_ENABLED = os.environ.get("CHAT_CACHE_ENABLED", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_CACHE_L2_ENABLED = os.environ.get("CHAT_CACHE_L2_ENABLED", "true").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_CACHE_NAMESPACE = os.environ.get("CHAT_CACHE_NAMESPACE", "webai:chatcache:v1").strip()
+    CHAT_CACHE_INVALIDATION_CHANNEL = os.environ.get(
+        "CHAT_CACHE_INVALIDATION_CHANNEL",
+        "webai:chatcache:v1:invalidate",
+    ).strip()
+
+    _CHAT_CACHE_L1_MAX_ITEMS_RAW = (os.environ.get("CHAT_CACHE_L1_MAX_ITEMS") or "5000").strip()
+    try:
+        _CHAT_CACHE_L1_MAX_ITEMS = int(_CHAT_CACHE_L1_MAX_ITEMS_RAW)
+    except ValueError:
+        _CHAT_CACHE_L1_MAX_ITEMS = 5000
+    CHAT_CACHE_L1_MAX_ITEMS = max(200, min(_CHAT_CACHE_L1_MAX_ITEMS, 20000))
+
+    _CHAT_CACHE_TTL_BOT_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_BOT_SEC") or "300").strip()
+    try:
+        _CHAT_CACHE_TTL_BOT_SEC = int(_CHAT_CACHE_TTL_BOT_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_BOT_SEC = 300
+    CHAT_CACHE_TTL_BOT_SEC = max(30, min(_CHAT_CACHE_TTL_BOT_SEC, 3600))
+
+    _CHAT_CACHE_TTL_CHANNEL_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_CHANNEL_SEC") or "300").strip()
+    try:
+        _CHAT_CACHE_TTL_CHANNEL_SEC = int(_CHAT_CACHE_TTL_CHANNEL_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_CHANNEL_SEC = 300
+    CHAT_CACHE_TTL_CHANNEL_SEC = max(30, min(_CHAT_CACHE_TTL_CHANNEL_SEC, 3600))
+
+    _CHAT_CACHE_TTL_DESIGN_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_DESIGN_SEC") or "300").strip()
+    try:
+        _CHAT_CACHE_TTL_DESIGN_SEC = int(_CHAT_CACHE_TTL_DESIGN_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_DESIGN_SEC = 300
+    CHAT_CACHE_TTL_DESIGN_SEC = max(30, min(_CHAT_CACHE_TTL_DESIGN_SEC, 3600))
+
+    _CHAT_CACHE_TTL_CORPUS_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_CORPUS_SEC") or "900").strip()
+    try:
+        _CHAT_CACHE_TTL_CORPUS_SEC = int(_CHAT_CACHE_TTL_CORPUS_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_CORPUS_SEC = 900
+    CHAT_CACHE_TTL_CORPUS_SEC = max(60, min(_CHAT_CACHE_TTL_CORPUS_SEC, 7200))
+
+    _CHAT_CACHE_TTL_SESSION_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_SESSION_SEC") or "180").strip()
+    try:
+        _CHAT_CACHE_TTL_SESSION_SEC = int(_CHAT_CACHE_TTL_SESSION_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_SESSION_SEC = 180
+    CHAT_CACHE_TTL_SESSION_SEC = max(30, min(_CHAT_CACHE_TTL_SESSION_SEC, 1800))
+
+    _CHAT_CACHE_TTL_HISTORY_SEC_RAW = (os.environ.get("CHAT_CACHE_TTL_HISTORY_SEC") or "120").strip()
+    try:
+        _CHAT_CACHE_TTL_HISTORY_SEC = int(_CHAT_CACHE_TTL_HISTORY_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_TTL_HISTORY_SEC = 120
+    CHAT_CACHE_TTL_HISTORY_SEC = max(30, min(_CHAT_CACHE_TTL_HISTORY_SEC, 900))
+
+    _CHAT_CACHE_HISTORY_MAX_MESSAGES_RAW = (os.environ.get("CHAT_CACHE_HISTORY_MAX_MESSAGES") or "100").strip()
+    try:
+        _CHAT_CACHE_HISTORY_MAX_MESSAGES = int(_CHAT_CACHE_HISTORY_MAX_MESSAGES_RAW)
+    except ValueError:
+        _CHAT_CACHE_HISTORY_MAX_MESSAGES = 100
+    CHAT_CACHE_HISTORY_MAX_MESSAGES = max(20, min(_CHAT_CACHE_HISTORY_MAX_MESSAGES, 200))
+
+    _CHAT_CACHE_NEGATIVE_TTL_SEC_RAW = (os.environ.get("CHAT_CACHE_NEGATIVE_TTL_SEC") or "20").strip()
+    try:
+        _CHAT_CACHE_NEGATIVE_TTL_SEC = int(_CHAT_CACHE_NEGATIVE_TTL_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_NEGATIVE_TTL_SEC = 20
+    CHAT_CACHE_NEGATIVE_TTL_SEC = max(5, min(_CHAT_CACHE_NEGATIVE_TTL_SEC, 120))
+
+    _CHAT_CACHE_IDEMPOTENCY_TTL_SEC_RAW = (os.environ.get("CHAT_CACHE_IDEMPOTENCY_TTL_SEC") or "86400").strip()
+    try:
+        _CHAT_CACHE_IDEMPOTENCY_TTL_SEC = int(_CHAT_CACHE_IDEMPOTENCY_TTL_SEC_RAW)
+    except ValueError:
+        _CHAT_CACHE_IDEMPOTENCY_TTL_SEC = 86400
+    CHAT_CACHE_IDEMPOTENCY_TTL_SEC = max(60, min(_CHAT_CACHE_IDEMPOTENCY_TTL_SEC, 604800))
+
     # Escalation email notifications (SMTP)
     SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))

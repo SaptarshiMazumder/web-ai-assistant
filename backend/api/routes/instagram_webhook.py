@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import time
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -61,6 +62,7 @@ from infrastructure.db.repositories import (
     PostgresInstagramUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
+from infrastructure.services.chat_cache import claim_webhook_event_once
 from domain.platform_profiles import (
     get_asset_rules_from_widget,
     get_instagram_support_messages,

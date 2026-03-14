@@ -1,9 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Trash2 } from 'lucide-react'
-import { useDashboardData, type AvailabilityJobRecord, type BookingLinkJobRecord, type JobPipelineRunRecord } from '../../hooks/useDashboardData'
+import {
+  useDashboardData,
+  type AvailabilityJobRecord,
+  type BookingLinkJobRecord,
+  type JobPipelineRunRecord,
+} from '../../hooks/useDashboardData'
 import {
   buildUnifiedSourcesProgress,
+  type AdditionalSourcesJobStatus,
+  type AdditionalSourcesProgressRun,
   type UnifiedSourcesProgress,
 } from './sourcesProgressModel'
 import {
@@ -19,6 +26,12 @@ import {
   AnimatedPage,
   GlassCard,
 } from '../../components/ui'
+import {
+  clearAdditionalSourcesRun,
+  type AdditionalSourcesRunPayload,
+  isAdditionalSourcesStageTerminal,
+  readAdditionalSourcesRun,
+} from './additionalSourcesRun'
 import { useTranslation } from 'react-i18next'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
@@ -128,6 +141,7 @@ type SourcesTrainingStatusSnapshot = {
   docs_count?: number
   last_error?: string
   updated_at?: string
+  hostname?: string
 }
 
 function sameSourcesTrainingStatus(
@@ -141,8 +155,37 @@ function sameSourcesTrainingStatus(
     Number(a.pages_crawled || 0) === Number(b.pages_crawled || 0) &&
     Number(a.docs_count || 0) === Number(b.docs_count || 0) &&
     (a.last_error || '') === (b.last_error || '') &&
-    (a.updated_at || '') === (b.updated_at || '')
+    (a.updated_at || '') === (b.updated_at || '') &&
+    (a.hostname || '') === (b.hostname || '')
   )
+}
+
+type AdditionalSourcesJobStatusSnapshot = {
+  job_id: string
+  stage?: string
+  hostname?: string
+  last_error?: string
+  updated_at?: string
+}
+
+function sameAdditionalSourcesJobStatuses(
+  a: AdditionalSourcesJobStatusSnapshot[] | null,
+  b: AdditionalSourcesJobStatusSnapshot[] | null
+): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i += 1) {
+    const lhs = a[i]
+    const rhs = b[i]
+    if (!lhs || !rhs) return false
+    if (lhs.job_id !== rhs.job_id) return false
+    if ((lhs.stage || '') !== (rhs.stage || '')) return false
+    if ((lhs.hostname || '') !== (rhs.hostname || '')) return false
+    if ((lhs.last_error || '') !== (rhs.last_error || '')) return false
+    if ((lhs.updated_at || '') !== (rhs.updated_at || '')) return false
+  }
+  return true
 }
 
 type SourcesProgressSnapshotPayload = {
@@ -214,6 +257,8 @@ export default function BotKnowledgeTab() {
 
   const [sourcesTrainingJobId, setSourcesTrainingJobId] = useState<string | null>(null)
   const [sourcesTrainingStatus, setSourcesTrainingStatus] = useState<SourcesTrainingStatusSnapshot | null>(null)
+  const [additionalSourcesRun, setAdditionalSourcesRun] = useState<AdditionalSourcesRunPayload | null>(null)
+  const [additionalSourcesStatuses, setAdditionalSourcesStatuses] = useState<AdditionalSourcesJobStatusSnapshot[] | null>(null)
 
   const [bookingLinkJob, setBookingLinkJob] = useState<BookingLinkJobRecord | null>(null)
   const [jobPipelineRun, setJobPipelineRun] = useState<JobPipelineRunRecord | null>(null)
@@ -254,6 +299,17 @@ export default function BotKnowledgeTab() {
 
   useEffect(() => {
     setJobPipelineHydrated(false)
+  }, [selectedBotId])
+
+  useEffect(() => {
+    if (!selectedBotId) {
+      setAdditionalSourcesRun(null)
+      setAdditionalSourcesStatuses(null)
+      return
+    }
+    const run = readAdditionalSourcesRun(selectedBotId)
+    setAdditionalSourcesRun(run)
+    if (!run) setAdditionalSourcesStatuses(null)
   }, [selectedBotId])
 
   useEffect(() => {
@@ -445,6 +501,7 @@ export default function BotKnowledgeTab() {
       docs_count: activeSourcesJob.docs_count,
       last_error: activeSourcesJob.last_error,
       updated_at: activeSourcesJob.updated_at,
+      hostname: activeSourcesJob.hostname,
     }
     setSourcesTrainingStatus((prev) => (sameSourcesTrainingStatus(prev, initialStatus) ? prev : initialStatus))
     let cancelled = false
@@ -457,6 +514,7 @@ export default function BotKnowledgeTab() {
         docs_count: status.docs_count,
         last_error: status.last_error,
         updated_at: status.updated_at,
+        hostname: status.hostname,
       }
       setSourcesTrainingStatus((prev) => (sameSourcesTrainingStatus(prev, nextStatus) ? prev : nextStatus))
       if (status.stage && SOURCES_JOB_TERMINAL_STAGES.has(status.stage.toLowerCase())) {
@@ -473,6 +531,126 @@ export default function BotKnowledgeTab() {
       clearInterval(timer)
     }
   }, [selectedBotId, activeSourcesJob?.job_id])
+
+  useEffect(() => {
+    if (!selectedBotId || !additionalSourcesRun) {
+      setAdditionalSourcesStatuses(null)
+      return
+    }
+    if (additionalSourcesRun.bot_id !== selectedBotId) {
+      clearAdditionalSourcesRun(additionalSourcesRun.bot_id)
+      setAdditionalSourcesRun(null)
+      setAdditionalSourcesStatuses(null)
+      return
+    }
+    const jobIds = Array.from(
+      new Set(
+        (additionalSourcesRun.job_ids || [])
+          .map((jobId) => String(jobId || '').trim())
+          .filter(Boolean)
+      )
+    )
+    if (jobIds.length === 0) {
+      clearAdditionalSourcesRun(selectedBotId)
+      setAdditionalSourcesRun(null)
+      setAdditionalSourcesStatuses(null)
+      return
+    }
+
+    let cancelled = false
+    const poll = async () => {
+      const statusResults = await Promise.all(
+        jobIds.map((jobId) => getJobStatusRef.current(selectedBotId, jobId))
+      )
+      if (cancelled) return
+      const nextStatuses = jobIds.map((jobId, index) => {
+        const status = statusResults[index]
+        return {
+          job_id: jobId,
+          stage: String(status?.stage || '').trim() || undefined,
+          hostname: String(status?.hostname || '').trim() || undefined,
+          last_error: String(status?.last_error || '').trim() || undefined,
+          updated_at: String(status?.updated_at || '').trim() || undefined,
+        }
+      })
+      setAdditionalSourcesStatuses((prev) =>
+        sameAdditionalSourcesJobStatuses(prev, nextStatuses) ? prev : nextStatuses
+      )
+    }
+
+    const timer = setInterval(() => {
+      void poll()
+    }, 4000)
+    void poll()
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [selectedBotId, additionalSourcesRun?.run_id])
+
+  const additionalRunTerminal = useMemo(() => {
+    if (!additionalSourcesRun || !additionalSourcesStatuses) return false
+    const statusById = new Map(additionalSourcesStatuses.map((item) => [item.job_id, item]))
+    const trackedIds = Array.from(
+      new Set(
+        (additionalSourcesRun.job_ids || [])
+          .map((jobId) => String(jobId || '').trim())
+          .filter(Boolean)
+      )
+    )
+    if (trackedIds.length === 0) return false
+    return trackedIds.every((jobId) => {
+      const status = statusById.get(jobId)
+      if (!status) return false
+      return isAdditionalSourcesStageTerminal(status.stage)
+    })
+  }, [additionalSourcesRun, additionalSourcesStatuses])
+
+  useEffect(() => {
+    if (!selectedBotId || !additionalSourcesRun || !additionalRunTerminal) return
+    const currentRunId = additionalSourcesRun.run_id
+    const timer = window.setTimeout(() => {
+      const persisted = readAdditionalSourcesRun(selectedBotId)
+      if (!persisted || persisted.run_id !== currentRunId) return
+      clearAdditionalSourcesRun(selectedBotId)
+      setAdditionalSourcesRun(null)
+      setAdditionalSourcesStatuses(null)
+    }, 12000)
+    return () => window.clearTimeout(timer)
+  }, [selectedBotId, additionalRunTerminal, additionalSourcesRun?.run_id])
+
+  const additionalSourcesAnchorJobId = useMemo(() => {
+    if (!additionalSourcesRun) return null
+    const trackedIds = Array.from(
+      new Set(
+        (additionalSourcesRun.job_ids || [])
+          .map((jobId) => String(jobId || '').trim())
+          .filter(Boolean)
+      )
+    )
+    if (trackedIds.length === 0) return null
+
+    const statusById = new Map(additionalSourcesStatuses?.map((item) => [item.job_id, item]) || [])
+    const jobById = new Map(jobs.map((job) => [job.job_id, job]))
+
+    for (const jobId of trackedIds) {
+      const stage = String(statusById.get(jobId)?.stage || '').trim().toLowerCase()
+      const hostname = String(statusById.get(jobId)?.hostname || jobById.get(jobId)?.hostname || '').trim().toLowerCase()
+      const inProgress = stage && !SOURCES_JOB_TERMINAL_STAGES.has(stage) && !SOURCES_JOB_POST_CRAWL_STAGES.has(stage)
+      const isCrawlLike = hostname && hostname !== 'text.local' && hostname !== 'pdf.local' && hostname !== 'docs.local'
+      if (inProgress && isCrawlLike) return jobId
+    }
+
+    for (const jobId of trackedIds) {
+      const hostname = String(statusById.get(jobId)?.hostname || jobById.get(jobId)?.hostname || '').trim().toLowerCase()
+      const isCrawlLike = hostname && hostname !== 'text.local' && hostname !== 'pdf.local' && hostname !== 'docs.local'
+      if (isCrawlLike) return jobId
+    }
+
+    return null
+  }, [additionalSourcesRun, additionalSourcesStatuses, jobs])
+
+  const pipelineMatchJobId = additionalSourcesRun ? additionalSourcesAnchorJobId : sourcesTrainingJobId
 
 
   // Booking link extraction (RAG) progress
@@ -529,26 +707,30 @@ export default function BotKnowledgeTab() {
     const normalizeStatus = (run: JobPipelineRunRecord | null): string =>
       String(run?.status || '').trim().toLowerCase()
 
+    const activePipelineJobId = String(pipelineMatchJobId || '').trim()
+    const hasAdditionalSourcesContext = Boolean(additionalSourcesRun)
+
     const isTerminalStatus = (run: JobPipelineRunRecord | null): boolean => {
       const status = normalizeStatus(run)
       return status === 'done' || status === 'error' || status === 'paused' || status === 'cancelled'
     }
 
     const runMatchesActiveCrawl = (run: JobPipelineRunRecord | null): boolean => {
-      if (!run || !sourcesTrainingJobId) return Boolean(run)
+      if (!run || !activePipelineJobId) return Boolean(run)
       const context = run.context && typeof run.context === 'object' ? run.context : {}
       const runIndexJobId = String((context as Record<string, unknown>).index_job_id || '').trim()
       if (!runIndexJobId) return false
-      return runIndexJobId === String(sourcesTrainingJobId).trim()
+      return runIndexJobId === activePipelineJobId
     }
 
     const shouldKeepPolling = (run: JobPipelineRunRecord | null): boolean => {
-      if (sourcesTrainingJobId) {
+      if (activePipelineJobId) {
         // During crawl/import, keep polling until the pipeline run for this crawl appears and reaches a terminal state.
         if (!run) return true
         if (!runMatchesActiveCrawl(run)) return true
         return !isTerminalStatus(run)
       }
+      if (hasAdditionalSourcesContext) return false
       if (!run) return false
       return !isTerminalStatus(run)
     }
@@ -557,8 +739,10 @@ export default function BotKnowledgeTab() {
       const run = await getLatestJobPipelineRef.current(selectedBotId)
       if (cancelled) return
       setJobPipelineHydrated(true)
-      if (sourcesTrainingJobId) {
+      if (activePipelineJobId) {
         setJobPipelineRun(runMatchesActiveCrawl(run) ? run : null)
+      } else if (hasAdditionalSourcesContext) {
+        setJobPipelineRun(null)
       } else {
         setJobPipelineRun(run)
       }
@@ -577,7 +761,7 @@ export default function BotKnowledgeTab() {
       cancelled = true
       if (pollTimer) clearInterval(pollTimer)
     }
-  }, [selectedBotId, sourcesTrainingJobId])
+  }, [selectedBotId, pipelineMatchJobId, additionalSourcesRun?.run_id])
 
   const handleResumeJobPipeline = useCallback(async () => {
     if (!selectedBot || !jobPipelineRun || (jobPipelineRun.status || '').toLowerCase() !== 'paused') return
@@ -593,15 +777,57 @@ export default function BotKnowledgeTab() {
     return overrideSteps.length > 0 ? overrideSteps : fallbackSteps
   }, [jobPipelineWorkflowConfig.default, jobPipelineWorkflowConfig.platformOverrides, selectedBotWidgetConfig, platforms])
 
+  const additionalSourcesProgressRun = useMemo<AdditionalSourcesProgressRun | null>(() => {
+    if (!additionalSourcesRun) return null
+    const runId = String(additionalSourcesRun.run_id || '').trim()
+    const jobIds = Array.from(
+      new Set(
+        (additionalSourcesRun.job_ids || [])
+          .map((jobId) => String(jobId || '').trim())
+          .filter(Boolean)
+      )
+    )
+    if (!runId || jobIds.length === 0) return null
+    const totalSourcesRaw = Number(additionalSourcesRun.total_sources || 0)
+    const totalSources = Number.isFinite(totalSourcesRaw) && totalSourcesRaw > 0
+      ? Math.round(totalSourcesRaw)
+      : jobIds.length
+    return {
+      runId,
+      jobIds,
+      totalSources: Math.max(1, totalSources),
+    }
+  }, [additionalSourcesRun])
+
+  const additionalSourcesProgressStatuses = useMemo<AdditionalSourcesJobStatus[] | null>(() => {
+    if (!additionalSourcesStatuses || additionalSourcesStatuses.length === 0) return null
+    return additionalSourcesStatuses.map((status) => ({
+      job_id: status.job_id,
+      stage: status.stage,
+      hostname: status.hostname,
+      last_error: status.last_error,
+      updated_at: status.updated_at,
+    }))
+  }, [additionalSourcesStatuses])
+
   const liveUnifiedSourcesProgress = useMemo(
     () =>
       buildUnifiedSourcesProgress({
-        crawlJobId: sourcesTrainingJobId,
+        crawlJobId: pipelineMatchJobId,
         crawlStatus: sourcesTrainingStatus,
         pipelineRun: jobPipelineRun,
         plannedPipelineJobIds,
+        additionalSourcesRun: additionalSourcesProgressRun,
+        additionalSourcesStatuses: additionalSourcesProgressStatuses,
       }),
-    [sourcesTrainingJobId, sourcesTrainingStatus, jobPipelineRun, plannedPipelineJobIds]
+    [
+      pipelineMatchJobId,
+      sourcesTrainingStatus,
+      jobPipelineRun,
+      plannedPipelineJobIds,
+      additionalSourcesProgressRun,
+      additionalSourcesProgressStatuses,
+    ]
   )
 
   useEffect(() => {
@@ -661,6 +887,21 @@ export default function BotKnowledgeTab() {
     liveUnifiedSourcesProgress?.steps[liveUnifiedSourcesProgress.activeStepIndex] || null
   const displayUnifiedStep =
     unifiedSourcesProgress?.steps[unifiedSourcesProgress.activeStepIndex] || null
+  const activeAdditionalSourcesStats = useMemo(() => {
+    if (!displayUnifiedStep) return null
+    if (String(displayUnifiedStep.id || '').trim().toLowerCase() !== 'additional_sources') return null
+    const details = displayUnifiedStep.details
+    if (!details || typeof details !== 'object') return null
+    const doneRaw = Number((details as Record<string, unknown>).done_sources || 0)
+    const totalRaw = Number((details as Record<string, unknown>).total_sources || 0)
+    const done = Number.isFinite(doneRaw) ? Math.max(0, Math.round(doneRaw)) : 0
+    const total = Number.isFinite(totalRaw) ? Math.max(0, Math.round(totalRaw)) : 0
+    if (total <= 0) return null
+    return {
+      done: Math.min(done, total),
+      total,
+    }
+  }, [displayUnifiedStep])
   const activeMenuExtractionStats = useMemo(() => {
     if (!displayUnifiedStep) return null
     if (String(displayUnifiedStep.id || '').trim().toLowerCase() !== 'menu_extraction') return null
@@ -1459,6 +1700,14 @@ export default function BotKnowledgeTab() {
                     : t('botKnowledge.learningContentProcessing', 'Processing website content')}
                 </div>
               )}
+            {!unifiedSourcesProgress.activeCrawlStats && activeAdditionalSourcesStats && (
+              <div className="muted" style={{ fontSize: '0.84rem', marginTop: '0.4rem' }}>
+                {t('botKnowledge.progressAdditionalSourcesMessage', '{{done}}/{{total}} sources', {
+                  done: activeAdditionalSourcesStats.done,
+                  total: activeAdditionalSourcesStats.total,
+                })}
+              </div>
+            )}
             {!unifiedSourcesProgress.activeCrawlStats && activeMenuExtractionStats && (
               <div className="muted" style={{ fontSize: '0.84rem', marginTop: '0.4rem' }}>
                 {t('botKnowledge.menuExtractionStats', 'Menu items: found {{found}} · prepared {{prepared}}', {

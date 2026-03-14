@@ -21,6 +21,10 @@ from infrastructure.services.conversation_ws import (
     start_pubsub as start_conversation_pubsub,
     stop_pubsub as stop_conversation_pubsub,
 )
+from infrastructure.services.chat_cache import (
+    cache_start_listener,
+    cache_stop_listener,
+)
 load_dotenv()
 
 
@@ -115,9 +119,17 @@ def create_app() -> FastAPI:
     async def _startup_conversation_pubsub() -> None:
         await start_conversation_pubsub()
 
+    @app.on_event("startup")
+    async def _startup_chat_cache_listener() -> None:
+        await cache_start_listener()
+
     @app.on_event("shutdown")
     async def _shutdown_conversation_pubsub() -> None:
         await stop_conversation_pubsub()
+
+    @app.on_event("shutdown")
+    async def _shutdown_chat_cache_listener() -> None:
+        await cache_stop_listener()
 
     @app.on_event("shutdown")
     async def _shutdown_db_pool() -> None:

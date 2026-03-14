@@ -4,7 +4,7 @@ export type UnifiedSourcesProgressStepStatus = 'queued' | 'running' | 'paused' |
 
 export type UnifiedSourcesProgressStep = {
   id: string
-  source: 'crawl' | 'pipeline'
+  source: 'crawl' | 'pipeline' | 'additional'
   status: UnifiedSourcesProgressStepStatus
   progressPct: number
   labelKey: string
@@ -39,6 +39,8 @@ export type BuildUnifiedSourcesProgressInput = {
   crawlStatus?: CrawlProgressStatus | null
   pipelineRun?: JobPipelineRunRecord | null
   plannedPipelineJobIds?: string[] | null
+  additionalSourcesRun?: AdditionalSourcesProgressRun | null
+  additionalSourcesStatuses?: AdditionalSourcesJobStatus[] | null
   nowMs?: number
   importSubmittedGraceMs?: number
 }
@@ -49,12 +51,28 @@ export type CrawlProgressStatus = {
   docs_count?: number | null
   last_error?: string | null
   updated_at?: string | null
+  hostname?: string | null
+}
+
+export type AdditionalSourcesProgressRun = {
+  runId: string
+  jobIds: string[]
+  totalSources: number
+}
+
+export type AdditionalSourcesJobStatus = {
+  job_id: string
+  stage?: string | null
+  hostname?: string | null
+  last_error?: string | null
+  updated_at?: string | null
 }
 
 const IMPORT_SUBMITTED_GRACE_MS = 30_000
 
 const STEP_LABELS: Record<string, { key: string; fallback: string }> = {
   crawl_import: { key: 'botKnowledge.progressStepCrawlImport', fallback: 'Learning from website pages' },
+  additional_sources: { key: 'botKnowledge.progressStepAdditionalSources', fallback: 'Training additional sources' },
   prompt_generation: { key: 'botKnowledge.progressStepPromptGeneration', fallback: 'Personalizing your assistant' },
   booking_link: { key: 'botKnowledge.progressStepBookingLink', fallback: 'Adding booking details' },
   asset_extraction: { key: 'botKnowledge.progressStepImageExtraction', fallback: 'Preparing your images' },
@@ -171,6 +189,35 @@ const CRAWL_STAGE_META: Record<
   },
 }
 
+const ADDITIONAL_STAGE_PROGRESS: Record<string, number> = {
+  queued: 8,
+  pending: 8,
+  crawling: 35,
+  running: 35,
+  uploading: 65,
+  importing: 85,
+  import_submitted: 100,
+  prompt_queued: 100,
+  prompt_generating: 100,
+  done: 100,
+  complete: 100,
+  cancelled: 100,
+  error: 100,
+  failed: 100,
+}
+
+const ADDITIONAL_SUCCESS_TERMINAL_STAGES = new Set([
+  'import_submitted',
+  'prompt_queued',
+  'prompt_generating',
+  'done',
+  'complete',
+  'cancelled',
+])
+
+const ADDITIONAL_ERROR_STAGES = new Set(['error', 'failed'])
+const ADDITIONAL_QUEUED_STAGES = new Set(['queued', 'pending'])
+
 function isUserCancelledMessage(...values: Array<unknown>): boolean {
   for (const value of values) {
     const text = String(value || '').trim().toLowerCase()
@@ -190,6 +237,14 @@ function clampPct(value: unknown): number {
 
 function normalize(value: unknown): string {
   return String(value || '').trim().toLowerCase()
+}
+
+function shouldExpectPipelineForCrawl(crawlStatus: CrawlProgressStatus | null): boolean {
+  const hostname = normalize(crawlStatus?.hostname)
+  if (!hostname) return true
+  // File/text source ingestion jobs do not trigger post-crawl pipeline.
+  if (hostname === 'pdf.local' || hostname === 'text.local' || hostname === 'docs.local') return false
+  return true
 }
 
 function formatStepId(stepId: string): string {
@@ -282,6 +337,91 @@ function resolveCrawlStep(
   }
 }
 
+function resolveAdditionalSourcesStep(
+  run: AdditionalSourcesProgressRun,
+  statuses: AdditionalSourcesJobStatus[],
+): UnifiedSourcesProgressStep {
+  const label = stepLabel('additional_sources')
+  const trackedJobIds =
+    run.jobIds.length > 0
+      ? Array.from(new Set(run.jobIds.map((jobId) => String(jobId || '').trim()).filter(Boolean)))
+      : Array.from(new Set(statuses.map((item) => String(item?.job_id || '').trim()).filter(Boolean)))
+  const statusByJobId = new Map<string, AdditionalSourcesJobStatus>()
+  for (const item of statuses) {
+    const jobId = String(item?.job_id || '').trim()
+    if (!jobId) continue
+    statusByJobId.set(jobId, item)
+  }
+
+  const totalSources = Math.max(1, Number(run.totalSources || trackedJobIds.length || 1))
+  let doneSources = 0
+  let errorSources = 0
+  let allQueued = trackedJobIds.length > 0
+  let allTerminal = trackedJobIds.length > 0
+  let hasAnyStage = false
+  let aggregateProgress = 0
+  let firstError = ''
+
+  for (const jobId of trackedJobIds) {
+    const item = statusByJobId.get(jobId)
+    const stage = normalize(item?.stage)
+    const errorText = String(item?.last_error || '').trim()
+    const progress =
+      typeof ADDITIONAL_STAGE_PROGRESS[stage] === 'number'
+        ? ADDITIONAL_STAGE_PROGRESS[stage]
+        : (!stage || ADDITIONAL_QUEUED_STAGES.has(stage) ? 8 : 35)
+    aggregateProgress += progress
+    if (stage) hasAnyStage = true
+    if (!stage || ADDITIONAL_QUEUED_STAGES.has(stage)) {
+      // queued
+    } else {
+      allQueued = false
+    }
+    if (ADDITIONAL_ERROR_STAGES.has(stage)) {
+      errorSources += 1
+      if (!firstError && errorText) firstError = errorText
+    }
+    if (ADDITIONAL_SUCCESS_TERMINAL_STAGES.has(stage)) {
+      doneSources += 1
+    }
+    if (!(ADDITIONAL_SUCCESS_TERMINAL_STAGES.has(stage) || ADDITIONAL_ERROR_STAGES.has(stage))) {
+      allTerminal = false
+    }
+  }
+
+  if (trackedJobIds.length === 0) {
+    allQueued = true
+    allTerminal = false
+  }
+
+  const status: UnifiedSourcesProgressStepStatus =
+    errorSources > 0
+      ? 'error'
+      : (allTerminal && hasAnyStage ? 'done' : (allQueued ? 'queued' : 'running'))
+
+  const avgProgress = trackedJobIds.length > 0 ? aggregateProgress / trackedJobIds.length : 0
+  const progressPct =
+    status === 'done' || status === 'error'
+      ? 100
+      : clampPct(Math.max(8, Math.round(avgProgress)))
+
+  return {
+    id: 'additional_sources',
+    source: 'additional',
+    status,
+    progressPct,
+    labelKey: label.key,
+    labelFallback: label.fallback,
+    messageKey: statusMessage(status).key,
+    messageFallback: statusMessage(status).fallback,
+    details: {
+      done_sources: Math.max(0, Math.min(totalSources, doneSources)),
+      total_sources: totalSources,
+    },
+    error: status === 'error' ? (firstError || 'Additional source training failed') : undefined,
+  }
+}
+
 function resolvePipelineStep(step: JobPipelineStepRecord): UnifiedSourcesProgressStep {
   const normalizedStatus = normalize(step.status)
   const cancelledByUser = isUserCancelledMessage(step.current_message, step.last_error)
@@ -306,8 +446,8 @@ function resolvePipelineStep(step: JobPipelineStepRecord): UnifiedSourcesProgres
   const error = status === 'error' ? String(step.last_error || '').trim() || undefined : undefined
   return {
     id: String(step.job_id || `step_${step.step_index}`),
-      source: 'pipeline',
-      status,
+    source: 'pipeline',
+    status,
     progressPct: status === 'done' ? 100 : clampPct(step.progress_pct),
     labelKey: label.key,
     labelFallback: label.fallback,
@@ -341,13 +481,32 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
   const importSubmittedGraceMs = input.importSubmittedGraceMs ?? IMPORT_SUBMITTED_GRACE_MS
   const plannedPipelineJobIds = Array.isArray(input.plannedPipelineJobIds)
     ? Array.from(
-        new Set(
-          input.plannedPipelineJobIds
-            .map((jobId) => String(jobId || '').trim())
-            .filter(Boolean)
-        )
+      new Set(
+        input.plannedPipelineJobIds
+          .map((jobId) => String(jobId || '').trim())
+          .filter(Boolean)
       )
+    )
     : []
+
+  const additionalRun = input.additionalSourcesRun || null
+  const additionalStatuses = Array.isArray(input.additionalSourcesStatuses)
+    ? input.additionalSourcesStatuses
+      .map((item) => ({
+        job_id: String(item?.job_id || '').trim(),
+        stage: String(item?.stage || '').trim() || undefined,
+        hostname: String(item?.hostname || '').trim() || undefined,
+        last_error: String(item?.last_error || '').trim() || undefined,
+        updated_at: String(item?.updated_at || '').trim() || undefined,
+      }))
+      .filter((item) => item.job_id)
+    : []
+  const hasAdditionalRun = Boolean(
+    additionalRun &&
+    String(additionalRun.runId || '').trim() &&
+    Array.isArray(additionalRun.jobIds) &&
+    additionalRun.jobIds.length > 0
+  )
 
   const candidateRun = input.pipelineRun || null
   const pipelineRun =
@@ -356,7 +515,9 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
       : null
 
   const steps: UnifiedSourcesProgressStep[] = []
-  if (crawlStatus && crawlJobId) {
+  if (hasAdditionalRun && additionalRun) {
+    steps.push(resolveAdditionalSourcesStep(additionalRun, additionalStatuses))
+  } else if (crawlStatus && crawlJobId) {
     steps.push(
       resolveCrawlStep(crawlStatus, {
         pipelineRun,
@@ -367,6 +528,7 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
   }
 
   const crawlStep = steps.find((step) => step.source === 'crawl')
+  const additionalStep = steps.find((step) => step.source === 'additional')
 
   if (pipelineRun) {
     const sortedSteps = [...(pipelineRun.steps || [])].sort((a, b) => a.step_index - b.step_index)
@@ -401,7 +563,13 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
             : undefined,
       })
     }
-  } else if (crawlStep && crawlStep.status !== 'error' && plannedPipelineJobIds.length > 0) {
+  } else if (
+    crawlStep &&
+    crawlStep.status !== 'error' &&
+    plannedPipelineJobIds.length > 0 &&
+    (!additionalStep || additionalStep.status === 'done') &&
+    shouldExpectPipelineForCrawl(crawlStatus)
+  ) {
     for (const jobId of plannedPipelineJobIds) {
       steps.push(resolvePlannedPipelineStep(jobId))
     }
@@ -448,16 +616,18 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
   const activeCrawlStats =
     activeStep.source === 'crawl'
       ? {
-          pagesCrawled: Number(crawlStatus?.pages_crawled || 0),
-          docsCount: Number(crawlStatus?.docs_count || 0),
-        }
+        pagesCrawled: Number(crawlStatus?.pages_crawled || 0),
+        docsCount: Number(crawlStatus?.docs_count || 0),
+      }
       : undefined
 
-  const runKey = pipelineRun?.run_id
-    ? `pipeline:${String(pipelineRun.run_id).trim()}`
-    : crawlJobId
-      ? `crawl:${crawlJobId}`
-      : 'none'
+  const runKey = hasAdditionalRun && additionalRun?.runId
+    ? `additional:${String(additionalRun.runId).trim()}`
+    : pipelineRun?.run_id
+      ? `pipeline:${String(pipelineRun.run_id).trim()}`
+      : crawlJobId
+        ? `crawl:${crawlJobId}`
+        : 'none'
   const pipelineStatus = normalize(pipelineRun?.status)
 
   return {

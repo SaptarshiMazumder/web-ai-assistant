@@ -1,12 +1,13 @@
 import json
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from psycopg import errors as pg_errors
 
+from common.config import config
 from domain.entities import (
     AvailabilityJob,
     BookingLinkJob,
@@ -49,6 +50,34 @@ from domain.repositories import (
 )
 from infrastructure.db.connection import get_connection
 from infrastructure.clients.rag_client import extract_topics_from_titles
+from infrastructure.services.chat_cache import (
+    cache_get_json,
+    cache_get_json_l1_only,
+    cache_invalidate_keys,
+    cache_invalidate_prefixes,
+    cache_key_bot_id,
+    cache_key_bot_pk,
+    cache_key_bot_record,
+    cache_key_channel_ig_bot,
+    cache_key_channel_ig_page,
+    cache_key_channel_ig_user,
+    cache_key_channel_line,
+    cache_key_corpus,
+    cache_key_design_line,
+    cache_key_history_tail,
+    cache_key_ig_user_session,
+    cache_key_ig_user_session_by_sid,
+    cache_key_line_user_session,
+    cache_key_line_user_session_by_sid,
+    cache_key_session_handoff,
+    cache_key_session_record,
+    cache_key_session_snapshot,
+    cache_key_verified_hosts,
+    cache_set_json,
+    cache_set_json_l1_only,
+    cache_set_negative,
+    cache_set_negative_l1_only,
+)
 
 
 def _utc_now() -> str:
@@ -103,6 +132,120 @@ def _new_pipeline_event_id() -> str:
     return "jpe_" + secrets.token_urlsafe(16).replace("-", "_").replace(".", "_")
 
 
+_CACHE_MISS = object()
+_BOT_TTL = int(getattr(config, "CHAT_CACHE_TTL_BOT_SEC", 300))
+_CHANNEL_TTL = int(getattr(config, "CHAT_CACHE_TTL_CHANNEL_SEC", 300))
+_DESIGN_TTL = int(getattr(config, "CHAT_CACHE_TTL_DESIGN_SEC", 300))
+_CORPUS_TTL = int(getattr(config, "CHAT_CACHE_TTL_CORPUS_SEC", 900))
+_SESSION_TTL = int(getattr(config, "CHAT_CACHE_TTL_SESSION_SEC", 180))
+_HISTORY_TTL = int(getattr(config, "CHAT_CACHE_TTL_HISTORY_SEC", 120))
+_NEGATIVE_TTL = int(getattr(config, "CHAT_CACHE_NEGATIVE_TTL_SEC", 20))
+_HISTORY_MAX_MESSAGES = int(getattr(config, "CHAT_CACHE_HISTORY_MAX_MESSAGES", 100))
+
+
+def _cache_get_dataclass(cache_key: str, cls, *, l2: bool = True):
+    cached = cache_get_json(cache_key) if l2 else cache_get_json_l1_only(cache_key)
+    if not cached.hit:
+        return _CACHE_MISS
+    if cached.negative:
+        return None
+    payload = cached.value if isinstance(cached.value, dict) else None
+    if payload is None:
+        cache_invalidate_keys([cache_key])
+        return _CACHE_MISS
+    try:
+        return cls(**payload)
+    except Exception:
+        cache_invalidate_keys([cache_key])
+        return _CACHE_MISS
+
+
+def _cache_set_dataclass(cache_key: str, value: Any, ttl: int, *, l2: bool = True) -> None:
+    if value is None:
+        if l2:
+            cache_set_negative(cache_key, _NEGATIVE_TTL)
+        else:
+            cache_set_negative_l1_only(cache_key, _NEGATIVE_TTL)
+        return
+    if l2:
+        cache_set_json(cache_key, asdict(value), ttl)
+    else:
+        cache_set_json_l1_only(cache_key, asdict(value), ttl)
+
+
+def _cache_get_string_list(cache_key: str):
+    cached = cache_get_json(cache_key)
+    if not cached.hit:
+        return _CACHE_MISS
+    if cached.negative:
+        return []
+    payload = cached.value if isinstance(cached.value, list) else None
+    if payload is None:
+        cache_invalidate_keys([cache_key])
+        return _CACHE_MISS
+    result = [str(x) for x in payload if str(x or "").strip()]
+    return result
+
+
+def _cache_set_string_list(cache_key: str, value: List[str], ttl: int) -> None:
+    cache_set_json(cache_key, [str(x) for x in (value or [])], ttl)
+
+
+def _cache_get_message_list(cache_key: str):
+    cached = cache_get_json(cache_key)
+    if not cached.hit:
+        return _CACHE_MISS
+    if cached.negative:
+        return []
+    payload = cached.value if isinstance(cached.value, list) else None
+    if payload is None:
+        cache_invalidate_keys([cache_key])
+        return _CACHE_MISS
+    try:
+        return [ConversationMessage(**item) for item in payload if isinstance(item, dict)]
+    except Exception:
+        cache_invalidate_keys([cache_key])
+        return _CACHE_MISS
+
+
+def _cache_set_message_list(cache_key: str, messages: List[ConversationMessage], ttl: int) -> None:
+    cache_set_json(cache_key, [asdict(m) for m in (messages or [])], ttl)
+
+
+def _cache_key_set(*values: Optional[str]) -> List[str]:
+    seen = set()
+    result: List[str] = []
+    for value in values:
+        key = (value or "").strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(key)
+    return result
+
+
+def _safe_strip(value: Optional[str]) -> str:
+    return (value or "").strip()
+
+
+def _instagram_cache_keys_for_channel(channel: Optional[InstagramChannel]) -> List[str]:
+    if channel is None:
+        return []
+    return _cache_key_set(
+        cache_key_channel_ig_bot(channel.bot_id),
+        cache_key_channel_ig_page(channel.ig_page_id) if channel.ig_page_id else "",
+        cache_key_channel_ig_user(channel.ig_user_id) if channel.ig_user_id else "",
+    )
+
+
+def _bot_cache_keys(bot_id: str, publishable_key: Optional[str]) -> List[str]:
+    return _cache_key_set(
+        cache_key_bot_id(bot_id) if bot_id else "",
+        cache_key_bot_record(bot_id) if bot_id else "",
+        cache_key_bot_pk(publishable_key or "") if publishable_key else "",
+    )
+
+
 class PostgresBotRepository:
     def create_bot(self, display_name: str, org_id: str) -> Bot:
         bot_id = _new_bot_id()
@@ -122,7 +265,30 @@ class PostgresBotRepository:
                 (bot_id, oid, display_name, pk, sk, now, now),
             )
             con.commit()
-            return Bot(bot_id=bot_id, org_id=oid, display_name=display_name, publishable_key=pk, secret_key=sk, widget_config=None)
+            bot = Bot(
+                bot_id=bot_id,
+                org_id=oid,
+                display_name=display_name,
+                publishable_key=pk,
+                secret_key=sk,
+                widget_config=None,
+            )
+            record = BotRecord(
+                bot_id=bot_id,
+                org_id=oid,
+                display_name=display_name,
+                publishable_key=pk,
+                secret_key=sk,
+                created_at=now,
+                updated_at=now,
+                widget_config=None,
+                agent_config=None,
+                escalation_config=None,
+            )
+            _cache_set_dataclass(cache_key_bot_pk(pk), bot, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_id(bot_id), bot, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_record(bot_id), record, _BOT_TTL, l2=False)
+            return bot
         finally:
             con.close()
 
@@ -130,6 +296,10 @@ class PostgresBotRepository:
         pk = (publishable_key or "").strip()
         if not pk:
             return None
+        cache_key = cache_key_bot_pk(pk)
+        cached = _cache_get_dataclass(cache_key, Bot, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -137,8 +307,21 @@ class PostgresBotRepository:
                 (pk,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _BOT_TTL, l2=False)
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None, escalation_config=row[7] if len(row) > 7 else None)
+            bot = Bot(
+                bot_id=row[0],
+                org_id=row[1],
+                display_name=row[2],
+                publishable_key=row[3],
+                secret_key=row[4],
+                widget_config=row[5] if len(row) > 5 else None,
+                agent_config=row[6] if len(row) > 6 else None,
+                escalation_config=row[7] if len(row) > 7 else None,
+            )
+            _cache_set_dataclass(cache_key, bot, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_id(bot.bot_id), bot, _BOT_TTL, l2=False)
+            return bot
         finally:
             con.close()
 
@@ -162,6 +345,10 @@ class PostgresBotRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_bot_id(bid)
+        cached = _cache_get_dataclass(cache_key, Bot, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -169,8 +356,21 @@ class PostgresBotRepository:
                 (bid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _BOT_TTL, l2=False)
                 return None
-            return Bot(bot_id=row[0], org_id=row[1], display_name=row[2], publishable_key=row[3], secret_key=row[4], widget_config=row[5] if len(row) > 5 else None, agent_config=row[6] if len(row) > 6 else None, escalation_config=row[7] if len(row) > 7 else None)
+            bot = Bot(
+                bot_id=row[0],
+                org_id=row[1],
+                display_name=row[2],
+                publishable_key=row[3],
+                secret_key=row[4],
+                widget_config=row[5] if len(row) > 5 else None,
+                agent_config=row[6] if len(row) > 6 else None,
+                escalation_config=row[7] if len(row) > 7 else None,
+            )
+            _cache_set_dataclass(cache_key, bot, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_pk(bot.publishable_key), bot, _BOT_TTL, l2=False)
+            return bot
         finally:
             con.close()
 
@@ -178,6 +378,10 @@ class PostgresBotRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_bot_record(bid)
+        cached = _cache_get_dataclass(cache_key, BotRecord, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -189,8 +393,9 @@ class PostgresBotRepository:
                 (bid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _BOT_TTL, l2=False)
                 return None
-            return BotRecord(
+            record = BotRecord(
                 bot_id=row[0],
                 org_id=row[1],
                 display_name=row[2],
@@ -202,6 +407,20 @@ class PostgresBotRepository:
                 agent_config=row[8] if len(row) > 8 else None,
                 escalation_config=row[9] if len(row) > 9 else None,
             )
+            bot = Bot(
+                bot_id=record.bot_id,
+                org_id=record.org_id,
+                display_name=record.display_name,
+                publishable_key=record.publishable_key,
+                secret_key=record.secret_key,
+                widget_config=record.widget_config,
+                agent_config=record.agent_config,
+                escalation_config=record.escalation_config,
+            )
+            _cache_set_dataclass(cache_key, record, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_id(record.bot_id), bot, _BOT_TTL, l2=False)
+            _cache_set_dataclass(cache_key_bot_pk(record.publishable_key), bot, _BOT_TTL, l2=False)
+            return record
         finally:
             con.close()
 
@@ -253,12 +472,18 @@ class PostgresBotRepository:
             raise ValueError("display_name is required")
         con = _connect()
         try:
+            pk_row = con.execute(
+                "SELECT publishable_key FROM bots WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
             now = _utc_now()
             con.execute(
                 "UPDATE bots SET display_name = %s, updated_at = %s WHERE bot_id = %s",
                 (name, now, bid),
             )
             con.commit()
+            pk = pk_row[0] if pk_row else None
+            cache_invalidate_keys(_bot_cache_keys(bid, pk))
         finally:
             con.close()
 
@@ -268,12 +493,18 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
+            pk_row = con.execute(
+                "SELECT publishable_key FROM bots WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
             now = _utc_now()
             con.execute(
                 "UPDATE bots SET widget_config = %s, updated_at = %s WHERE bot_id = %s",
                 (config_json, now, bid),
             )
             con.commit()
+            pk = pk_row[0] if pk_row else None
+            cache_invalidate_keys(_bot_cache_keys(bid, pk))
         finally:
             con.close()
 
@@ -283,12 +514,18 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
+            pk_row = con.execute(
+                "SELECT publishable_key FROM bots WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
             now = _utc_now()
             con.execute(
                 "UPDATE bots SET agent_config = %s, updated_at = %s WHERE bot_id = %s",
                 (config_json, now, bid),
             )
             con.commit()
+            pk = pk_row[0] if pk_row else None
+            cache_invalidate_keys(_bot_cache_keys(bid, pk))
         finally:
             con.close()
 
@@ -298,12 +535,18 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
+            pk_row = con.execute(
+                "SELECT publishable_key FROM bots WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
             now = _utc_now()
             con.execute(
                 "UPDATE bots SET escalation_config = %s, updated_at = %s WHERE bot_id = %s",
                 (config_json, now, bid),
             )
             con.commit()
+            pk = pk_row[0] if pk_row else None
+            cache_invalidate_keys(_bot_cache_keys(bid, pk))
         finally:
             con.close()
 
@@ -314,6 +557,59 @@ class PostgresBotRepository:
             raise ValueError("bot_id is required")
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT publishable_key, org_id
+                FROM bots
+                WHERE bot_id = %s
+                """,
+                (bid,),
+            ).fetchone()
+            pk = row[0] if row else None
+            ig_channel_rows = con.execute(
+                "SELECT ig_page_id, ig_user_id FROM instagram_channels WHERE bot_id = %s",
+                (bid,),
+            ).fetchall()
+            line_session_rows = con.execute(
+                "SELECT line_user_id, session_id FROM line_user_sessions WHERE bot_id = %s",
+                (bid,),
+            ).fetchall()
+            ig_session_rows = con.execute(
+                "SELECT ig_user_id, session_id FROM instagram_user_sessions WHERE bot_id = %s",
+                (bid,),
+            ).fetchall()
+
+            ig_page_keys = [
+                cache_key_channel_ig_page(r[0])
+                for r in (ig_channel_rows or [])
+                if len(r) > 0 and str(r[0] or "").strip()
+            ]
+            ig_user_keys = [
+                cache_key_channel_ig_user(r[1])
+                for r in (ig_channel_rows or [])
+                if len(r) > 1 and str(r[1] or "").strip()
+            ]
+            line_user_session_keys = [
+                cache_key_line_user_session(bid, r[0])
+                for r in (line_session_rows or [])
+                if len(r) > 0 and str(r[0] or "").strip()
+            ]
+            line_user_session_sid_keys = [
+                cache_key_line_user_session_by_sid(r[1])
+                for r in (line_session_rows or [])
+                if len(r) > 1 and str(r[1] or "").strip()
+            ]
+            ig_user_session_keys = [
+                cache_key_ig_user_session(bid, r[0])
+                for r in (ig_session_rows or [])
+                if len(r) > 0 and str(r[0] or "").strip()
+            ]
+            ig_user_session_sid_keys = [
+                cache_key_ig_user_session_by_sid(r[1])
+                for r in (ig_session_rows or [])
+                if len(r) > 1 and str(r[1] or "").strip()
+            ]
+
             # Delete in dependency order (children before parents)
             con.execute("DELETE FROM instagram_user_sessions WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM line_user_sessions WHERE bot_id = %s", (bid,))
@@ -343,6 +639,29 @@ class PostgresBotRepository:
             con.execute("DELETE FROM rollup_watermarks WHERE bot_id = %s", (bid,))
             con.execute("DELETE FROM bots WHERE bot_id = %s", (bid,))
             con.commit()
+            cache_invalidate_keys(
+                _cache_key_set(
+                    *(_bot_cache_keys(bid, pk)),
+                    cache_key_channel_line(bid),
+                    cache_key_channel_ig_bot(bid),
+                    cache_key_design_line(bid),
+                    cache_key_corpus(bid),
+                    cache_key_verified_hosts(bid),
+                    *ig_page_keys,
+                    *ig_user_keys,
+                    *line_user_session_keys,
+                    *line_user_session_sid_keys,
+                    *ig_user_session_keys,
+                    *ig_user_session_sid_keys,
+                )
+            )
+            cache_invalidate_prefixes(
+                _cache_key_set(
+                    f"session:line:{bid}:",
+                    f"session:instagram:{bid}:",
+                    f"session:chat:{bid}:",
+                )
+            )
         finally:
             con.close()
 
@@ -374,6 +693,7 @@ class PostgresBotDomainRepository:
                 (bot.org_id, bid, host, token, now, now),
             )
             con.commit()
+            cache_invalidate_keys([cache_key_verified_hosts(bid)])
             return ("pending", token)
         finally:
             con.close()
@@ -382,13 +702,19 @@ class PostgresBotDomainRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return []
+        cache_key = cache_key_verified_hosts(bid)
+        cached = _cache_get_string_list(cache_key)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             rows = con.execute(
                 "SELECT hostname FROM bot_domains WHERE bot_id = %s AND status = 'verified'",
                 (bid,),
             ).fetchall()
-            return [r[0] for r in rows] if rows else []
+            hosts = [r[0] for r in rows] if rows else []
+            _cache_set_string_list(cache_key, hosts, _BOT_TTL)
+            return hosts
         finally:
             con.close()
 
@@ -409,6 +735,7 @@ class PostgresBotDomainRepository:
                 (now, now, bid, host),
             )
             con.commit()
+            cache_invalidate_keys([cache_key_verified_hosts(bid)])
         finally:
             con.close()
 
@@ -463,6 +790,7 @@ class PostgresBotCorpusRepository:
                 (bid, corpus_resource, now, now),
             )
             con.commit()
+            cache_set_json(cache_key_corpus(bid), str(corpus_resource or ""), _CORPUS_TTL)
         finally:
             con.close()
 
@@ -470,13 +798,26 @@ class PostgresBotCorpusRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_corpus(bid)
+        cached = cache_get_json(cache_key)
+        if cached.hit:
+            if cached.negative:
+                return None
+            if isinstance(cached.value, str):
+                return cached.value
+            cache_invalidate_keys([cache_key])
         con = _connect()
         try:
             row = con.execute(
                 "SELECT corpus_resource FROM bot_corpora WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
-            return row[0] if row else None
+            if not row:
+                cache_set_negative(cache_key, _NEGATIVE_TTL)
+                return None
+            corpus_resource = str(row[0] or "")
+            cache_set_json(cache_key, corpus_resource, _CORPUS_TTL)
+            return corpus_resource
         finally:
             con.close()
 
@@ -2601,7 +2942,7 @@ class PostgresConversationRepository:
                 ),
             )
             con.commit()
-            return ConversationSession(
+            session = ConversationSession(
                 session_id=session_id,
                 bot_id=bid,
                 org_id=oid,
@@ -2617,6 +2958,8 @@ class PostgresConversationRepository:
                 user_agent=user_agent,
                 ip=ip,
             )
+            cache_set_json(cache_key_session_record(session_id), asdict(session), _SESSION_TTL)
+            return session
         finally:
             con.close()
 
@@ -2624,6 +2967,10 @@ class PostgresConversationRepository:
         sid = (session_id or "").strip()
         if not sid:
             return None
+        cache_key = cache_key_session_record(sid)
+        cached = _cache_get_dataclass(cache_key, ConversationSession)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -2641,8 +2988,11 @@ class PostgresConversationRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                cache_set_negative(cache_key, _NEGATIVE_TTL)
                 return None
-            return self._conversation_session_from_row(row)
+            session = self._conversation_session_from_row(row)
+            cache_set_json(cache_key, asdict(session), _SESSION_TTL)
+            return session
         finally:
             con.close()
 
@@ -2728,6 +3078,7 @@ class PostgresConversationRepository:
                 (now, sid),
             )
             con.commit()
+            cache_invalidate_keys([cache_key_session_record(sid)])
         finally:
             con.close()
 
@@ -2747,6 +3098,8 @@ class PostgresConversationRepository:
                 (next_title, sid),
             )
             con.commit()
+            if result.rowcount > 0:
+                cache_invalidate_keys([cache_key_session_record(sid)])
             return result.rowcount > 0
         finally:
             con.close()
@@ -2767,6 +3120,13 @@ class PostgresConversationRepository:
                 (status, now, now, sid),
             )
             con.commit()
+            cache_invalidate_keys(
+                _cache_key_set(
+                    cache_key_session_record(sid),
+                    cache_key_session_handoff(sid),
+                    cache_key_history_tail(sid),
+                )
+            )
         finally:
             con.close()
 
@@ -2812,7 +3172,7 @@ class PostgresConversationRepository:
                 (now, role, content or "", content or "", sid),
             )
             con.commit()
-            return ConversationMessage(
+            message = ConversationMessage(
                 message_id=msg_id,
                 session_id=sid,
                 bot_id=bid,
@@ -2822,6 +3182,13 @@ class PostgresConversationRepository:
                 citations=citations or [],
                 created_at=now,
             )
+            cache_invalidate_keys(
+                _cache_key_set(
+                    cache_key_session_record(sid),
+                    cache_key_history_tail(sid),
+                )
+            )
+            return message
         finally:
             con.close()
 
@@ -2870,8 +3237,15 @@ class PostgresConversationRepository:
         if not sid:
             return []
         lim = max(1, min(int(limit or 20), 200))
+        cache_key = cache_key_history_tail(sid)
+        cached = _cache_get_message_list(cache_key)
+        if cached is not _CACHE_MISS:
+            if not cached:
+                return []
+            return cached[-lim:] if len(cached) > lim else cached
         con = _connect()
         try:
+            fetch_lim = max(lim, min(_HISTORY_MAX_MESSAGES, 200))
             rows = con.execute(
                 """
                 SELECT message_id, session_id, bot_id, role, sender_name, content, citations, created_at
@@ -2880,7 +3254,7 @@ class PostgresConversationRepository:
                 ORDER BY created_at DESC
                 LIMIT %s
                 """,
-                (sid, lim),
+                (sid, fetch_lim),
             ).fetchall()
             result = []
             for row in rows or []:
@@ -2902,7 +3276,8 @@ class PostgresConversationRepository:
                     )
                 )
             result.reverse()
-            return result
+            _cache_set_message_list(cache_key, result, _HISTORY_TTL)
+            return result[-lim:] if len(result) > lim else result
         finally:
             con.close()
 
@@ -2918,6 +3293,10 @@ class PostgresConversationRepository:
         external_id = (external_user_id or "").strip()
         if not bid or not ch or not external_id:
             return None
+        cache_key = cache_key_session_snapshot(ch, bid, external_id)
+        cached = _cache_get_dataclass(cache_key, ConversationChannelContact)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -2930,8 +3309,11 @@ class PostgresConversationRepository:
                 (bid, ch, external_id),
             ).fetchone()
             if not row:
+                cache_set_negative(cache_key, _NEGATIVE_TTL)
                 return None
-            return self._contact_from_row(row)
+            contact = self._contact_from_row(row)
+            cache_set_json(cache_key, asdict(contact), _SESSION_TTL)
+            return contact
         finally:
             con.close()
 
@@ -2951,6 +3333,7 @@ class PostgresConversationRepository:
         name = (display_name or "").strip() or None
         if not bid or not ch or not external_id:
             raise ValueError("bot_id, channel, and external_user_id are required")
+        cache_key = cache_key_session_snapshot(ch, bid, external_id)
         now = _utc_now()
         con = _connect()
         try:
@@ -2988,7 +3371,7 @@ class PostgresConversationRepository:
                     ),
                 )
                 con.commit()
-                return ConversationChannelContact(
+                contact = ConversationChannelContact(
                     contact_id=existing.contact_id,
                     bot_id=existing.bot_id,
                     channel=existing.channel,
@@ -2999,6 +3382,8 @@ class PostgresConversationRepository:
                     created_at=existing.created_at,
                     updated_at=now,
                 )
+                cache_set_json(cache_key, asdict(contact), _SESSION_TTL)
+                return contact
 
             contact_id = _new_contact_id()
             metadata_payload = metadata if isinstance(metadata, dict) else {}
@@ -3024,7 +3409,7 @@ class PostgresConversationRepository:
                 ),
             )
             con.commit()
-            return ConversationChannelContact(
+            contact = ConversationChannelContact(
                 contact_id=contact_id,
                 bot_id=bid,
                 channel=ch,
@@ -3035,6 +3420,8 @@ class PostgresConversationRepository:
                 created_at=now,
                 updated_at=now,
             )
+            cache_set_json(cache_key, asdict(contact), _SESSION_TTL)
+            return contact
         finally:
             con.close()
 
@@ -3042,6 +3429,10 @@ class PostgresConversationRepository:
         sid = (session_id or "").strip()
         if not sid:
             return None
+        cache_key = cache_key_session_handoff(sid)
+        cached = _cache_get_dataclass(cache_key, ConversationSessionHandoff)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -3054,8 +3445,11 @@ class PostgresConversationRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                cache_set_negative(cache_key, _NEGATIVE_TTL)
                 return None
-            return self._handoff_from_row(row)
+            handoff = self._handoff_from_row(row)
+            cache_set_json(cache_key, asdict(handoff), _SESSION_TTL)
+            return handoff
         finally:
             con.close()
 
@@ -3077,6 +3471,8 @@ class PostgresConversationRepository:
         state = (assistant_state or "").strip() or "bot"
         if not bid or not sid:
             raise ValueError("bot_id and session_id are required")
+        handoff_cache_key = cache_key_session_handoff(sid)
+        session_cache_key = cache_key_session_record(sid)
         now = _utc_now()
         con = _connect()
         try:
@@ -3123,7 +3519,7 @@ class PostgresConversationRepository:
                     ),
                 )
                 con.commit()
-                return ConversationSessionHandoff(
+                handoff = ConversationSessionHandoff(
                     handoff_id=existing.handoff_id,
                     bot_id=bid,
                     session_id=sid,
@@ -3137,6 +3533,9 @@ class PostgresConversationRepository:
                     updated_at=now,
                     ended_at=ended_at,
                 )
+                cache_set_json(handoff_cache_key, asdict(handoff), _SESSION_TTL)
+                cache_invalidate_keys([session_cache_key])
+                return handoff
 
             handoff_id = _new_handoff_id()
             con.execute(
@@ -3163,7 +3562,7 @@ class PostgresConversationRepository:
                 ),
             )
             con.commit()
-            return ConversationSessionHandoff(
+            handoff = ConversationSessionHandoff(
                 handoff_id=handoff_id,
                 bot_id=bid,
                 session_id=sid,
@@ -3177,6 +3576,9 @@ class PostgresConversationRepository:
                 updated_at=now,
                 ended_at=ended_at,
             )
+            cache_set_json(handoff_cache_key, asdict(handoff), _SESSION_TTL)
+            cache_invalidate_keys([session_cache_key])
+            return handoff
         finally:
             con.close()
 
@@ -3244,7 +3646,7 @@ class PostgresConversationRepository:
                 (eid, bid, sid, email, details, "open", now),
             )
             con.commit()
-            return EscalationRecord(
+            record = EscalationRecord(
                 escalation_id=eid,
                 bot_id=bid,
                 session_id=sid,
@@ -3252,6 +3654,8 @@ class PostgresConversationRepository:
                 created_at=now,
                 status="open",
             )
+            cache_invalidate_keys([cache_key_session_record(sid)])
+            return record
         finally:
             con.close()
 
@@ -3522,13 +3926,22 @@ class PostgresConversationRepository:
         eid = (escalation_id or "").strip()
         if not bid or not eid:
             return False
+        session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                "SELECT session_id FROM conversation_escalations WHERE bot_id = %s AND escalation_id = %s",
+                (bid, eid),
+            ).fetchone()
+            if row:
+                session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 "UPDATE conversation_escalations SET status = %s WHERE bot_id = %s AND escalation_id = %s",
                 (status, bid, eid),
             )
             con.commit()
+            if result.rowcount > 0 and session_id:
+                cache_invalidate_keys([cache_key_session_record(session_id)])
             return result.rowcount > 0
         finally:
             con.close()
@@ -4373,7 +4786,7 @@ class PostgresLineChannelRepository:
                     (cid, bid, oid, line_channel_id, line_channel_secret, line_channel_access_token, is_active, now, now),
                 )
             con.commit()
-            return LineChannel(
+            channel = LineChannel(
                 channel_id=cid,
                 bot_id=bid,
                 org_id=oid,
@@ -4384,6 +4797,8 @@ class PostgresLineChannelRepository:
                 created_at=now,
                 updated_at=now,
             )
+            _cache_set_dataclass(cache_key_channel_line(bid), channel, _CHANNEL_TTL, l2=False)
+            return channel
         finally:
             con.close()
 
@@ -4391,6 +4806,10 @@ class PostgresLineChannelRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_channel_line(bid)
+        cached = _cache_get_dataclass(cache_key, LineChannel, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -4404,8 +4823,9 @@ class PostgresLineChannelRepository:
                 (bid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _CHANNEL_TTL, l2=False)
                 return None
-            return LineChannel(
+            channel = LineChannel(
                 channel_id=row[0],
                 bot_id=row[1],
                 org_id=row[2],
@@ -4416,6 +4836,8 @@ class PostgresLineChannelRepository:
                 created_at=row[7],
                 updated_at=row[8],
             )
+            _cache_set_dataclass(cache_key, channel, _CHANNEL_TTL, l2=False)
+            return channel
         finally:
             con.close()
 
@@ -4430,6 +4852,7 @@ class PostgresLineChannelRepository:
                 (bid,),
             )
             con.commit()
+            cache_invalidate_keys([cache_key_channel_line(bid)])
             return result.rowcount > 0
         finally:
             con.close()
@@ -4481,7 +4904,7 @@ class PostgresLineDesignConfigRepository:
                     (cfg_id, bid, oid, payload, now, now),
                 )
             con.commit()
-            return LineDesignConfig(
+            design = LineDesignConfig(
                 config_id=cfg_id,
                 bot_id=bid,
                 org_id=oid,
@@ -4489,6 +4912,8 @@ class PostgresLineDesignConfigRepository:
                 created_at=now,
                 updated_at=now,
             )
+            cache_set_json(cache_key_design_line(bid), asdict(design), _DESIGN_TTL)
+            return design
         finally:
             con.close()
 
@@ -4496,6 +4921,10 @@ class PostgresLineDesignConfigRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_design_line(bid)
+        cached = _cache_get_dataclass(cache_key, LineDesignConfig)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -4507,8 +4936,9 @@ class PostgresLineDesignConfigRepository:
                 (bid,),
             ).fetchone()
             if not row:
+                cache_set_negative(cache_key, _NEGATIVE_TTL)
                 return None
-            return LineDesignConfig(
+            design = LineDesignConfig(
                 config_id=row[0],
                 bot_id=row[1],
                 org_id=row[2],
@@ -4516,6 +4946,8 @@ class PostgresLineDesignConfigRepository:
                 created_at=row[4],
                 updated_at=row[5],
             )
+            cache_set_json(cache_key, asdict(design), _DESIGN_TTL)
+            return design
         finally:
             con.close()
 
@@ -4530,6 +4962,7 @@ class PostgresLineDesignConfigRepository:
                 (bid,),
             )
             con.commit()
+            cache_invalidate_keys([cache_key_design_line(bid)])
             return result.rowcount > 0
         finally:
             con.close()
@@ -4707,6 +5140,44 @@ class PostgresLineRichMenuStateRepository:
 class PostgresLineUserSessionRepository:
     """Maps LINE user IDs to conversation sessions per bot."""
 
+    @staticmethod
+    def _row_to_entity(row) -> LineUserSession:
+        return LineUserSession(
+            line_user_id=row[0],
+            bot_id=row[1],
+            session_id=row[2],
+            is_escalated=bool(row[3]),
+            created_at=row[4],
+            updated_at=row[5],
+            awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+            display_name=row[7] if len(row) > 7 else None,
+        )
+
+    @staticmethod
+    def _cache_keys(*, bot_id: str, line_user_id: str, session_id: str) -> List[str]:
+        return _cache_key_set(
+            cache_key_line_user_session(bot_id, line_user_id),
+            cache_key_line_user_session_by_sid(session_id),
+        )
+
+    @classmethod
+    def _cache_store(cls, session: LineUserSession) -> None:
+        for cache_key in cls._cache_keys(
+            bot_id=session.bot_id,
+            line_user_id=session.line_user_id,
+            session_id=session.session_id,
+        ):
+            _cache_set_dataclass(cache_key, session, _SESSION_TTL)
+
+    @staticmethod
+    def _cache_invalidate(*, bot_id: str, line_user_id: str, session_id: Optional[str]) -> None:
+        cache_invalidate_keys(
+            _cache_key_set(
+                cache_key_line_user_session(bot_id, line_user_id),
+                cache_key_line_user_session_by_sid(session_id) if session_id else "",
+            )
+        )
+
     def get_or_create(
         self,
         *,
@@ -4721,6 +5192,10 @@ class PostgresLineUserSessionRepository:
         name = (display_name or "").strip() or None
         if not uid or not bid:
             raise ValueError("line_user_id and bot_id are required")
+        cache_key = cache_key_line_user_session(bid, uid)
+        cached = _cache_get_dataclass(cache_key, LineUserSession)
+        if cached is not _CACHE_MISS and cached is not None:
+            return cached
         now = _utc_now()
         con = _connect()
         try:
@@ -4733,16 +5208,9 @@ class PostgresLineUserSessionRepository:
                 (uid, bid),
             ).fetchone()
             if row:
-                return LineUserSession(
-                    line_user_id=row[0],
-                    bot_id=row[1],
-                    session_id=row[2],
-                    is_escalated=bool(row[3]),
-                    created_at=row[4],
-                    updated_at=row[5],
-                    awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                    display_name=row[7] if len(row) > 7 else None,
-                )
+                mapping = self._row_to_entity(row)
+                self._cache_store(mapping)
+                return mapping
             con.execute(
                 """
                 INSERT INTO line_user_sessions(line_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, display_name, created_at, updated_at)
@@ -4751,7 +5219,7 @@ class PostgresLineUserSessionRepository:
                 (uid, bid, session_id, name, now, now),
             )
             con.commit()
-            return LineUserSession(
+            mapping = LineUserSession(
                 line_user_id=uid,
                 bot_id=bid,
                 session_id=session_id,
@@ -4761,6 +5229,8 @@ class PostgresLineUserSessionRepository:
                 updated_at=now,
                 display_name=name,
             )
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -4769,6 +5239,10 @@ class PostgresLineUserSessionRepository:
         bid = (bot_id or "").strip()
         if not uid or not bid:
             return None
+        cache_key = cache_key_line_user_session(bid, uid)
+        cached = _cache_get_dataclass(cache_key, LineUserSession)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -4780,17 +5254,11 @@ class PostgresLineUserSessionRepository:
                 (uid, bid),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _SESSION_TTL)
                 return None
-            return LineUserSession(
-                line_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                display_name=row[7] if len(row) > 7 else None,
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -4798,6 +5266,10 @@ class PostgresLineUserSessionRepository:
         sid = (session_id or "").strip()
         if not sid:
             return None
+        cache_key = cache_key_line_user_session_by_sid(sid)
+        cached = _cache_get_dataclass(cache_key, LineUserSession)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -4809,17 +5281,11 @@ class PostgresLineUserSessionRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _SESSION_TTL)
                 return None
-            return LineUserSession(
-                line_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                display_name=row[7] if len(row) > 7 else None,
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -4830,8 +5296,19 @@ class PostgresLineUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE line_user_sessions
@@ -4841,6 +5318,8 @@ class PostgresLineUserSessionRepository:
                 (name, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, line_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -4851,8 +5330,19 @@ class PostgresLineUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE line_user_sessions
@@ -4862,6 +5352,8 @@ class PostgresLineUserSessionRepository:
                 (escalated, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, line_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -4872,8 +5364,19 @@ class PostgresLineUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE line_user_sessions
@@ -4883,6 +5386,8 @@ class PostgresLineUserSessionRepository:
                 (awaiting, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, line_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -4890,20 +5395,40 @@ class PostgresLineUserSessionRepository:
     def update_session_id(self, *, line_user_id: str, bot_id: str, session_id: str) -> bool:
         uid = (line_user_id or "").strip()
         bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM line_user_sessions
+                WHERE line_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE line_user_sessions
                 SET session_id = %s, updated_at = %s
                 WHERE line_user_id = %s AND bot_id = %s
                 """,
-                (session_id, now, uid, bid),
+                (sid, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                cache_invalidate_keys(
+                    _cache_key_set(
+                        cache_key_line_user_session(bid, uid),
+                        cache_key_line_user_session_by_sid(old_session_id) if old_session_id else "",
+                        cache_key_line_user_session_by_sid(sid) if sid else "",
+                    )
+                )
             return result.rowcount > 0
         finally:
             con.close()
@@ -4934,8 +5459,9 @@ class PostgresLineUserSessionRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key_line_user_session_by_sid(sid), None, _SESSION_TTL)
                 return None
-            return LineUserSession(
+            mapping = LineUserSession(
                 line_user_id=row[0],
                 bot_id=row[1],
                 session_id=row[2],
@@ -4944,6 +5470,8 @@ class PostgresLineUserSessionRepository:
                 updated_at=row[5],
                 display_name=row[6] if len(row) > 6 else None,
             )
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -4973,8 +5501,9 @@ class PostgresLineUserSessionRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key_line_user_session_by_sid(sid), None, _SESSION_TTL)
                 return None
-            return LineUserSession(
+            mapping = LineUserSession(
                 line_user_id=row[0],
                 bot_id=row[1],
                 session_id=row[2],
@@ -4983,6 +5512,8 @@ class PostgresLineUserSessionRepository:
                 updated_at=row[5],
                 display_name=row[6] if len(row) > 6 else None,
             )
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -5027,6 +5558,26 @@ class PostgresInstagramChannelRepository:
             connection_method=row[13] if len(row) > 13 else "manual",
         )
 
+    @staticmethod
+    def _cache_store(channel: InstagramChannel) -> None:
+        for cache_key in _instagram_cache_keys_for_channel(channel):
+            _cache_set_dataclass(cache_key, channel, _CHANNEL_TTL, l2=False)
+
+    @staticmethod
+    def _invalidate_known_keys(
+        *,
+        bot_id: Optional[str] = None,
+        ig_page_id: Optional[str] = None,
+        ig_user_id: Optional[str] = None,
+    ) -> None:
+        cache_invalidate_keys(
+            _cache_key_set(
+                cache_key_channel_ig_bot(bot_id or "") if bot_id else "",
+                cache_key_channel_ig_page(ig_page_id or "") if ig_page_id else "",
+                cache_key_channel_ig_user(ig_user_id or "") if ig_user_id else "",
+            )
+        )
+
     def upsert(
         self,
         *,
@@ -5044,15 +5595,19 @@ class PostgresInstagramChannelRepository:
         now = _utc_now()
         cid = _new_ig_channel_id()
         verify_token = _new_ig_verify_token()
+        old_page_id: Optional[str] = None
+        old_ig_user_id: Optional[str] = None
         con = _connect()
         try:
             row = con.execute(
-                "SELECT channel_id, verify_token FROM instagram_channels WHERE bot_id = %s",
+                "SELECT channel_id, verify_token, ig_page_id, ig_user_id FROM instagram_channels WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
             if row:
                 cid = row[0]
                 verify_token = row[1]  # Keep existing verify_token on update
+                old_page_id = row[2] if len(row) > 2 else None
+                old_ig_user_id = row[3] if len(row) > 3 else None
                 con.execute(
                     """
                     UPDATE instagram_channels
@@ -5078,7 +5633,7 @@ class PostgresInstagramChannelRepository:
                     (cid, bid, oid, ig_page_id, app_secret, page_access_token, verify_token, is_active, now, now),
                 )
             con.commit()
-            return InstagramChannel(
+            channel = InstagramChannel(
                 channel_id=cid,
                 bot_id=bid,
                 org_id=oid,
@@ -5090,6 +5645,9 @@ class PostgresInstagramChannelRepository:
                 created_at=now,
                 updated_at=now,
             )
+            self._invalidate_known_keys(bot_id=bid, ig_page_id=old_page_id, ig_user_id=old_ig_user_id)
+            self._cache_store(channel)
+            return channel
         finally:
             con.close()
 
@@ -5121,15 +5679,19 @@ class PostgresInstagramChannelRepository:
         app_secret_placeholder = "__OAUTH__"
         # ig_page_id stores the webhook IGSID if available, else the app-scoped ID
         page_id_value = ig_webhook_id or ig_user_id
+        old_page_id: Optional[str] = None
+        old_ig_user_id: Optional[str] = None
         con = _connect()
         try:
             row = con.execute(
-                "SELECT channel_id, verify_token FROM instagram_channels WHERE bot_id = %s",
+                "SELECT channel_id, verify_token, ig_page_id, ig_user_id FROM instagram_channels WHERE bot_id = %s",
                 (bid,),
             ).fetchone()
             if row:
                 cid = row[0]
                 verify_token = row[1]
+                old_page_id = row[2] if len(row) > 2 else None
+                old_ig_user_id = row[3] if len(row) > 3 else None
                 con.execute(
                     """
                     UPDATE instagram_channels
@@ -5164,7 +5726,7 @@ class PostgresInstagramChannelRepository:
                      ig_user_id, ig_username, token_expires_at),
                 )
             con.commit()
-            return InstagramChannel(
+            channel = InstagramChannel(
                 channel_id=cid,
                 bot_id=bid,
                 org_id=oid,
@@ -5180,6 +5742,9 @@ class PostgresInstagramChannelRepository:
                 token_expires_at=token_expires_at,
                 connection_method="oauth",
             )
+            self._invalidate_known_keys(bot_id=bid, ig_page_id=old_page_id, ig_user_id=old_ig_user_id)
+            self._cache_store(channel)
+            return channel
         finally:
             con.close()
 
@@ -5187,6 +5752,10 @@ class PostgresInstagramChannelRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return None
+        cache_key = cache_key_channel_ig_bot(bid)
+        cached = _cache_get_dataclass(cache_key, InstagramChannel, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -5194,8 +5763,11 @@ class PostgresInstagramChannelRepository:
                 (bid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _CHANNEL_TTL, l2=False)
                 return None
-            return self._row_to_entity(row)
+            channel = self._row_to_entity(row)
+            self._cache_store(channel)
+            return channel
         finally:
             con.close()
 
@@ -5203,6 +5775,10 @@ class PostgresInstagramChannelRepository:
         pid = (ig_page_id or "").strip()
         if not pid:
             return None
+        cache_key = cache_key_channel_ig_page(pid)
+        cached = _cache_get_dataclass(cache_key, InstagramChannel, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -5210,8 +5786,11 @@ class PostgresInstagramChannelRepository:
                 (pid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _CHANNEL_TTL, l2=False)
                 return None
-            return self._row_to_entity(row)
+            channel = self._row_to_entity(row)
+            self._cache_store(channel)
+            return channel
         finally:
             con.close()
 
@@ -5220,6 +5799,10 @@ class PostgresInstagramChannelRepository:
         uid = (ig_user_id or "").strip()
         if not uid:
             return None
+        cache_key = cache_key_channel_ig_user(uid)
+        cached = _cache_get_dataclass(cache_key, InstagramChannel, l2=False)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -5227,8 +5810,11 @@ class PostgresInstagramChannelRepository:
                 (uid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _CHANNEL_TTL, l2=False)
                 return None
-            return self._row_to_entity(row)
+            channel = self._row_to_entity(row)
+            self._cache_store(channel)
+            return channel
         finally:
             con.close()
 
@@ -5291,6 +5877,7 @@ class PostgresInstagramChannelRepository:
                         token_expires_at=ch.token_expires_at,
                         connection_method=ch.connection_method,
                     )
+                    self._cache_store(ch)
                     return ch
                 else:
                     _logger.debug("resolve_by_webhook_id: %s returned %s for bot %s", wid, resp.status_code, ch.bot_id)
@@ -5301,13 +5888,26 @@ class PostgresInstagramChannelRepository:
 
     def _update_page_id(self, bot_id: str, new_page_id: str) -> None:
         """Update ig_page_id for a channel (self-healing webhook ID mapping)."""
+        bid = (bot_id or "").strip()
+        if not bid:
+            return
+        old_page_id: Optional[str] = None
+        old_ig_user_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                "SELECT ig_page_id, ig_user_id FROM instagram_channels WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            if row:
+                old_page_id = row[0] if len(row) > 0 else None
+                old_ig_user_id = row[1] if len(row) > 1 else None
             con.execute(
                 "UPDATE instagram_channels SET ig_page_id = %s, updated_at = %s WHERE bot_id = %s",
-                (new_page_id, _utc_now(), bot_id),
+                (new_page_id, _utc_now(), bid),
             )
             con.commit()
+            self._invalidate_known_keys(bot_id=bid, ig_page_id=old_page_id, ig_user_id=old_ig_user_id)
         finally:
             con.close()
 
@@ -5331,15 +5931,34 @@ class PostgresInstagramChannelRepository:
 
     def update_token(self, channel_id: str, *, access_token: str, token_expires_at: str) -> None:
         """Update the access token and expiration (used by token refresh job)."""
+        cid = (channel_id or "").strip()
+        if not cid:
+            return
+        bot_id: Optional[str] = None
+        ig_page_id: Optional[str] = None
+        ig_user_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT bot_id, ig_page_id, ig_user_id
+                FROM instagram_channels
+                WHERE channel_id = %s
+                """,
+                (cid,),
+            ).fetchone()
+            if row:
+                bot_id = row[0] if len(row) > 0 else None
+                ig_page_id = row[1] if len(row) > 1 else None
+                ig_user_id = row[2] if len(row) > 2 else None
             con.execute(
                 """UPDATE instagram_channels
                    SET page_access_token = %s, token_expires_at = %s, updated_at = %s
                    WHERE channel_id = %s""",
-                (access_token, token_expires_at, _utc_now(), channel_id),
+                (access_token, token_expires_at, _utc_now(), cid),
             )
             con.commit()
+            self._invalidate_known_keys(bot_id=bot_id, ig_page_id=ig_page_id, ig_user_id=ig_user_id)
         finally:
             con.close()
 
@@ -5347,13 +5966,23 @@ class PostgresInstagramChannelRepository:
         bid = (bot_id or "").strip()
         if not bid:
             return False
+        old_page_id: Optional[str] = None
+        old_ig_user_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                "SELECT ig_page_id, ig_user_id FROM instagram_channels WHERE bot_id = %s",
+                (bid,),
+            ).fetchone()
+            if row:
+                old_page_id = row[0] if len(row) > 0 else None
+                old_ig_user_id = row[1] if len(row) > 1 else None
             result = con.execute(
                 "DELETE FROM instagram_channels WHERE bot_id = %s",
                 (bid,),
             )
             con.commit()
+            self._invalidate_known_keys(bot_id=bid, ig_page_id=old_page_id, ig_user_id=old_ig_user_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -5361,6 +5990,44 @@ class PostgresInstagramChannelRepository:
 
 class PostgresInstagramUserSessionRepository:
     """Maps Instagram user IDs (IGSID) to conversation sessions per bot."""
+
+    @staticmethod
+    def _row_to_entity(row) -> InstagramUserSession:
+        return InstagramUserSession(
+            ig_user_id=row[0],
+            bot_id=row[1],
+            session_id=row[2],
+            is_escalated=bool(row[3]),
+            created_at=row[4],
+            updated_at=row[5],
+            awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
+            awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
+        )
+
+    @staticmethod
+    def _cache_keys(*, bot_id: str, ig_user_id: str, session_id: str) -> List[str]:
+        return _cache_key_set(
+            cache_key_ig_user_session(bot_id, ig_user_id),
+            cache_key_ig_user_session_by_sid(session_id),
+        )
+
+    @classmethod
+    def _cache_store(cls, session: InstagramUserSession) -> None:
+        for cache_key in cls._cache_keys(
+            bot_id=session.bot_id,
+            ig_user_id=session.ig_user_id,
+            session_id=session.session_id,
+        ):
+            _cache_set_dataclass(cache_key, session, _SESSION_TTL)
+
+    @staticmethod
+    def _cache_invalidate(*, bot_id: str, ig_user_id: str, session_id: Optional[str]) -> None:
+        cache_invalidate_keys(
+            _cache_key_set(
+                cache_key_ig_user_session(bot_id, ig_user_id),
+                cache_key_ig_user_session_by_sid(session_id) if session_id else "",
+            )
+        )
 
     def get_or_create(
         self,
@@ -5373,6 +6040,10 @@ class PostgresInstagramUserSessionRepository:
         bid = (bot_id or "").strip()
         if not uid or not bid:
             raise ValueError("ig_user_id and bot_id are required")
+        cache_key = cache_key_ig_user_session(bid, uid)
+        cached = _cache_get_dataclass(cache_key, InstagramUserSession)
+        if cached is not _CACHE_MISS and cached is not None:
+            return cached
         now = _utc_now()
         con = _connect()
         try:
@@ -5386,16 +6057,9 @@ class PostgresInstagramUserSessionRepository:
                 (uid, bid),
             ).fetchone()
             if row:
-                return InstagramUserSession(
-                    ig_user_id=row[0],
-                    bot_id=row[1],
-                    session_id=row[2],
-                    is_escalated=bool(row[3]),
-                    created_at=row[4],
-                    updated_at=row[5],
-                    awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                    awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
-                )
+                mapping = self._row_to_entity(row)
+                self._cache_store(mapping)
+                return mapping
             con.execute(
                 """
                 INSERT INTO instagram_user_sessions(ig_user_id, bot_id, session_id, is_escalated, awaiting_escalation_msg, awaiting_staff_takeover, created_at, updated_at)
@@ -5404,7 +6068,7 @@ class PostgresInstagramUserSessionRepository:
                 (uid, bid, session_id, now, now),
             )
             con.commit()
-            return InstagramUserSession(
+            mapping = InstagramUserSession(
                 ig_user_id=uid,
                 bot_id=bid,
                 session_id=session_id,
@@ -5414,6 +6078,8 @@ class PostgresInstagramUserSessionRepository:
                 created_at=now,
                 updated_at=now,
             )
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -5422,6 +6088,10 @@ class PostgresInstagramUserSessionRepository:
         bid = (bot_id or "").strip()
         if not uid or not bid:
             return None
+        cache_key = cache_key_ig_user_session(bid, uid)
+        cached = _cache_get_dataclass(cache_key, InstagramUserSession)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -5434,17 +6104,11 @@ class PostgresInstagramUserSessionRepository:
                 (uid, bid),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _SESSION_TTL)
                 return None
-            return InstagramUserSession(
-                ig_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -5452,6 +6116,10 @@ class PostgresInstagramUserSessionRepository:
         sid = (session_id or "").strip()
         if not sid:
             return None
+        cache_key = cache_key_ig_user_session_by_sid(sid)
+        cached = _cache_get_dataclass(cache_key, InstagramUserSession)
+        if cached is not _CACHE_MISS:
+            return cached
         con = _connect()
         try:
             row = con.execute(
@@ -5464,17 +6132,11 @@ class PostgresInstagramUserSessionRepository:
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key, None, _SESSION_TTL)
                 return None
-            return InstagramUserSession(
-                ig_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-                awaiting_escalation_msg=bool(row[6]) if row[6] is not None else False,
-                awaiting_staff_takeover=bool(row[7]) if len(row) > 7 and row[7] is not None else False,
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -5484,8 +6146,19 @@ class PostgresInstagramUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM instagram_user_sessions
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE instagram_user_sessions
@@ -5495,6 +6168,8 @@ class PostgresInstagramUserSessionRepository:
                 (escalated, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, ig_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -5505,8 +6180,19 @@ class PostgresInstagramUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM instagram_user_sessions
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE instagram_user_sessions
@@ -5516,6 +6202,8 @@ class PostgresInstagramUserSessionRepository:
                 (awaiting, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, ig_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -5526,8 +6214,19 @@ class PostgresInstagramUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM instagram_user_sessions
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE instagram_user_sessions
@@ -5537,6 +6236,8 @@ class PostgresInstagramUserSessionRepository:
                 (awaiting, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, ig_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -5548,8 +6249,19 @@ class PostgresInstagramUserSessionRepository:
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM instagram_user_sessions
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE instagram_user_sessions
@@ -5559,6 +6271,8 @@ class PostgresInstagramUserSessionRepository:
                 (now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                self._cache_invalidate(bot_id=bid, ig_user_id=uid, session_id=old_session_id)
             return result.rowcount > 0
         finally:
             con.close()
@@ -5566,20 +6280,40 @@ class PostgresInstagramUserSessionRepository:
     def update_session_id(self, *, ig_user_id: str, bot_id: str, session_id: str) -> bool:
         uid = (ig_user_id or "").strip()
         bid = (bot_id or "").strip()
+        sid = (session_id or "").strip()
         if not uid or not bid:
             return False
         now = _utc_now()
+        old_session_id: Optional[str] = None
         con = _connect()
         try:
+            row = con.execute(
+                """
+                SELECT session_id
+                FROM instagram_user_sessions
+                WHERE ig_user_id = %s AND bot_id = %s
+                """,
+                (uid, bid),
+            ).fetchone()
+            if row:
+                old_session_id = row[0] if len(row) > 0 else None
             result = con.execute(
                 """
                 UPDATE instagram_user_sessions
                 SET session_id = %s, updated_at = %s
                 WHERE ig_user_id = %s AND bot_id = %s
                 """,
-                (session_id, now, uid, bid),
+                (sid, now, uid, bid),
             )
             con.commit()
+            if result.rowcount > 0:
+                cache_invalidate_keys(
+                    _cache_key_set(
+                        cache_key_ig_user_session(bid, uid),
+                        cache_key_ig_user_session_by_sid(old_session_id) if old_session_id else "",
+                        cache_key_ig_user_session_by_sid(sid) if sid else "",
+                    )
+                )
             return result.rowcount > 0
         finally:
             con.close()
@@ -5603,22 +6337,19 @@ class PostgresInstagramUserSessionRepository:
             con.commit()
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg,
+                       COALESCE(awaiting_staff_takeover, FALSE)
                 FROM instagram_user_sessions
                 WHERE session_id = %s
                 """,
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key_ig_user_session_by_sid(sid), None, _SESSION_TTL)
                 return None
-            return InstagramUserSession(
-                ig_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 
@@ -5641,22 +6372,19 @@ class PostgresInstagramUserSessionRepository:
             con.commit()
             row = con.execute(
                 """
-                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at
+                SELECT ig_user_id, bot_id, session_id, is_escalated, created_at, updated_at, awaiting_escalation_msg,
+                       COALESCE(awaiting_staff_takeover, FALSE)
                 FROM instagram_user_sessions
                 WHERE session_id = %s
                 """,
                 (sid,),
             ).fetchone()
             if not row:
+                _cache_set_dataclass(cache_key_ig_user_session_by_sid(sid), None, _SESSION_TTL)
                 return None
-            return InstagramUserSession(
-                ig_user_id=row[0],
-                bot_id=row[1],
-                session_id=row[2],
-                is_escalated=bool(row[3]),
-                created_at=row[4],
-                updated_at=row[5],
-            )
+            mapping = self._row_to_entity(row)
+            self._cache_store(mapping)
+            return mapping
         finally:
             con.close()
 

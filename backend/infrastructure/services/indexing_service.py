@@ -21,6 +21,10 @@ from infrastructure.db.repositories import (
     PostgresBotDomainRepository,
     PostgresBotRepository,
 )
+from infrastructure.services.chat_cache import (
+    cache_invalidate_keys,
+    cache_key_corpus,
+)
 
 _bot_repo = PostgresBotRepository()
 _bot_domain_repo = PostgresBotDomainRepository()
@@ -175,6 +179,7 @@ def _is_not_found_error(exc: Exception) -> bool:
 def invalidate_corpus_cache(bot_id: str) -> None:
     """Remove a bot's corpus from the in-memory cache (call after re-indexing)."""
     _corpus_cache.pop(bot_id, None)
+    cache_invalidate_keys([cache_key_corpus(bot_id)])
 
 
 def ensure_bot_corpus(bot_id: str, *, force_new: bool = False) -> str:

@@ -1,4 +1,4 @@
-{
+﻿{
   "dashboard": {
     "title": "ダッシュボード",
     "controlCenter": "コントロールセンター",
@@ -239,6 +239,7 @@
     "progressStatusDone": "完了",
     "progressStatusError": "失敗",
     "progressStepCrawlImport": "Webサイトから学習中",
+    "progressStepAdditionalSources": "Training additional sources",
     "progressStepPromptGeneration": "アシスタントを最適化中",
     "progressStepBookingLink": "予約情報を追加中",
     "progressStepImageExtraction": "画像を準備中",
@@ -260,6 +261,7 @@
     "pagesAndDocs": "{{pages}} ページ · {{docs}} ドキュメント",
     "learningPagesCount": "これまでに{{pages}}ページを読み取りました",
     "learningContentProcessing": "Webサイトの内容を処理中",
+    "progressAdditionalSourcesMessage": "{{done}}/{{total}} sources",
     "menuExtractionStats": "メニュー項目: 検出 {{found}} · 準備完了 {{prepared}}",
     "bookingLinksTitle": "予約リンク",
     "bookingLinksSubtitle": "予約リンクはインポート完了後、トレーニングされた知識から抽出されます。",
@@ -982,3 +984,5 @@
     "website": "Webサイト"
   }
 }
+
+
