@@ -1170,7 +1170,8 @@ async def _handle_line_event(
 
     try:
         corpus = ensure_bot_corpus(bot.bot_id)
-        result = run_vertex_rag(
+        result = await asyncio.to_thread(
+            run_vertex_rag,
             ai_query,
             rag_corpus=corpus,
             allowed_host=None,

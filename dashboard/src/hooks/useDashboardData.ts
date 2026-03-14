@@ -616,7 +616,7 @@ type DashboardData = {
     format?: 'text' | 'html' | 'debug',
     maxChars?: number
   ) => Promise<{ format: string; content: string } | null>
-  deleteBot: (botId: string) => Promise<boolean>
+  deleteBot: (botId: string, skipReload?: boolean) => Promise<boolean>
   renameBot: (botId: string, displayName: string) => Promise<boolean>
   listConversations: (
     botId: string,
@@ -2370,9 +2370,11 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function deleteBot(botId: string): Promise<boolean> {
+  async function deleteBot(botId: string, skipReload = false): Promise<boolean> {
     if (isSuperAdmin && !activeOrgId) return false
-    setLoading(true)
+    if (!skipReload) {
+      setLoading(true)
+    }
     setError(null)
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
@@ -2383,13 +2385,17 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       if (selectedBotId === botId) {
         setSelectedBotId(null)
       }
-      await loadBots()
+      if (!skipReload) {
+        await loadBots()
+      }
       return true
     } catch (err) {
       setError((err as Error).message)
       return false
     } finally {
-      setLoading(false)
+      if (!skipReload) {
+        setLoading(false)
+      }
     }
   }
 

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useDialog } from '../contexts/DialogContext'
 
 export default function BotsPage() {
-  const { bots, loading, botsLoadedOnce, isSuperAdmin, activeOrgId, deleteBot, renameBot } = useDashboardData()
+  const { bots, loading, botsLoadedOnce, isSuperAdmin, activeOrgId, deleteBot, renameBot, loadBots } = useDashboardData()
   const { t } = useTranslation()
   const dialog = useDialog()
   const navigate = useNavigate()
@@ -57,9 +57,14 @@ export default function BotsPage() {
     })
     if (!ok) return
     const ids = Array.from(selectedBotIds)
+    console.log('Starting bulk deletion of', ids.length, 'bots:', ids)
     for (const botId of ids) {
-      await deleteBot(botId)
+      const success = await deleteBot(botId, true)
+      console.log('Deleted bot', botId, ':', success)
     }
+    console.log('Deletion loop complete, calling loadBots()')
+    await loadBots()
+    console.log('loadBots() complete')
     setSelectedBotIds(new Set())
   }
 
