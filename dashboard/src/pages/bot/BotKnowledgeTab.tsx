@@ -36,7 +36,7 @@ import { useTranslation } from 'react-i18next'
 
 /** Jobs not updated in this long are considered stale (e.g. server was killed) and not shown as in-progress. */
 const STALE_JOB_MS = 10 * 60 * 1000
-const SOURCES_PROGRESS_SNAPSHOT_TTL_MS = 30_000
+const SOURCES_PROGRESS_SNAPSHOT_TTL_MS = 10 * 60 * 1000 // 10 minutes
 const SOURCES_PROGRESS_SNAPSHOT_STORAGE_PREFIX = 'dashboard.sources.progress.snapshot.'
 const SOURCES_PROGRESS_HIDDEN_RUN_STORAGE_PREFIX = 'dashboard.sources.progress.hidden_run.'
 
@@ -332,7 +332,7 @@ export default function BotKnowledgeTab() {
 
     try {
       const snapshotKey = `${SOURCES_PROGRESS_SNAPSHOT_STORAGE_PREFIX}${selectedBotId}`
-      const raw = window.sessionStorage.getItem(snapshotKey)
+      const raw = window.localStorage.getItem(snapshotKey)
       if (!raw) return
       const parsed = JSON.parse(raw) as Partial<SourcesProgressSnapshotPayload> | null
       const savedAt = Number(parsed?.saved_at || 0)
@@ -841,7 +841,7 @@ export default function BotKnowledgeTab() {
         saved_at: savedAt,
         progress: liveUnifiedSourcesProgress,
       }
-      window.sessionStorage.setItem(snapshotKey, JSON.stringify(payload))
+      window.localStorage.setItem(snapshotKey, JSON.stringify(payload))
     } catch {
       // Best effort only.
     }
