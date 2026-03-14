@@ -90,6 +90,61 @@ def _format_exception_message(exc: BaseException, *, max_len: int = 1200, max_ca
     return merged[:max_len]
 
 
+def _format_stage_error(
+    stage: str,
+    message: str,
+    *,
+    exc: Optional[BaseException] = None,
+    error_kind: Optional[str] = None,
+    max_len: int = 1200,
+) -> str:
+    stage_name = (stage or "runtime").strip().lower() or "runtime"
+    detail = (message or "").strip() or "(no details)"
+    kind = (error_kind or "").strip() or (type(exc).__name__ if exc is not None else "")
+    if kind:
+        return f"{stage_name}: {kind}: {detail}"[:max_len]
+    return f"{stage_name}: {detail}"[:max_len]
+
+
+def _sample_failed_fetches(failures: List[Dict[str, str]], *, max_items: int = 3) -> str:
+    parts: List[str] = []
+    for item in failures[:max_items]:
+        raw_url = (item.get("url") or "").strip()
+        url = raw_url if len(raw_url) <= 120 else raw_url[:120] + "..."
+        raw_error = (item.get("error") or "").strip() or "Unknown error"
+        error = raw_error if len(raw_error) <= 140 else raw_error[:140] + "..."
+        status_code = (item.get("status_code") or "").strip()
+        if status_code:
+            parts.append(f"{url} ({status_code}) -> {error}")
+        else:
+            parts.append(f"{url} -> {error}")
+    return " | ".join(parts)
+
+
+def _set_crawl_stage(
+    job_repo: PostgresIndexJobRepository,
+    job: Any,
+    bot_id: str,
+    stage: str,
+    *,
+    detail: str = "",
+) -> None:
+    previous = str(getattr(job, "stage", "") or "").strip()
+    job.stage = stage
+    job_repo.update_job(job)
+    _emit_event("stage", {"stage": stage})
+    logger.info(
+        "[crawl %s] stage %s -> %s bot=%s pages=%s docs=%s detail=%s",
+        getattr(job, "job_id", ""),
+        previous or "-",
+        stage,
+        bot_id,
+        getattr(job, "pages_crawled", 0),
+        getattr(job, "docs_count", 0),
+        detail[:240] if detail else "",
+    )
+
+
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -931,13 +986,13 @@ async def _execute_crawl(
 
     try:
         source_lang = _get_source_language(bot_id, job.source_id)
-        job.stage = "crawling"
-        job_repo.update_job(job)
+        _set_crawl_stage(job_repo, job, bot_id, "crawling")
+        logger.info("[crawl %s] starting browser bot=%s", job_id, bot_id)
         _emit_event("stage", {"stage": "starting_browser"})
         _emit_event("progress", {"pages_crawled": 0, "url": (url or ""), "depth": 0})
-        _emit_event("stage", {"stage": "crawling"})
 
         crawler_repo = Crawl4AICrawlerRepository()
+        failed_fetches: List[Dict[str, str]] = []
 
         def _on_progress(evt: Dict[str, Any]):
             if evt.get("type") == "page_crawled":
@@ -951,11 +1006,15 @@ async def _execute_crawl(
                     "depth": job.last_depth,
                 })
             elif evt.get("type") == "fetch":
+                fetch_url = str(evt.get("url") or "")
+                fetch_success = bool(evt.get("success"))
+                fetch_status = evt.get("status_code")
+                fetch_error = str(evt.get("error") or "")
                 _emit_event("fetch", {
-                    "url": str(evt.get("url") or ""),
-                    "success": bool(evt.get("success")),
-                    "status_code": evt.get("status_code"),
-                    "error": str(evt.get("error") or ""),
+                    "url": fetch_url,
+                    "success": fetch_success,
+                    "status_code": fetch_status,
+                    "error": fetch_error,
                     "content_source": str(evt.get("content_source") or ""),
                     "markdown_len": int(evt.get("markdown_len") or 0),
                     "text_len": int(evt.get("text_len") or 0),
@@ -964,6 +1023,24 @@ async def _execute_crawl(
                     "html_len": int(evt.get("html_len") or 0),
                     "raw_html_len": int(evt.get("raw_html_len") or 0),
                 })
+                if not fetch_success:
+                    failed_fetches.append(
+                        {
+                            "url": fetch_url,
+                            "status_code": str(fetch_status or ""),
+                            "error": fetch_error,
+                        }
+                    )
+                    if len(failed_fetches) > 200:
+                        failed_fetches.pop(0)
+                    logger.warning(
+                        "[crawl %s] fetch_failed bot=%s url=%s status=%s error=%s",
+                        job_id,
+                        bot_id,
+                        fetch_url,
+                        fetch_status,
+                        fetch_error[:240],
+                    )
 
         # Crawl with comprehensive error handling - always returns partial results
         # Single URL or list of URLs: crawl only those pages (no link-following / BFS)
@@ -988,9 +1065,19 @@ async def _execute_crawl(
                     )
         except Exception as crawl_error:
             # Log error but continue - we might have partial results
-            error_msg = str(crawl_error)[:200]
-            logger.warning(f"Crawl error (continuing with partial results): {type(crawl_error).__name__}: {error_msg}")
-            job.last_error = f"Crawl error: {error_msg}"
+            error_msg = _format_stage_error(
+                "crawling",
+                str(crawl_error),
+                exc=crawl_error,
+                max_len=500,
+            )
+            logger.warning(
+                "[crawl %s] crawl_partial_error bot=%s error=%s",
+                job_id,
+                bot_id,
+                error_msg,
+            )
+            job.last_error = error_msg
             # Don't raise - continue to process whatever we got
 
         if docs:
@@ -1028,16 +1115,30 @@ async def _execute_crawl(
         job_repo.update_job(job)
         _emit_event("result", {"docs_count": job.docs_count})
 
-        # Even if no docs, continue to completion (might be a valid empty site)
+        # A zero-doc crawl is always a terminal failure.
         if not docs:
-            job.stage = "done"
-            job_repo.update_job(job)
-            _emit_event("stage", {"stage": "done"})
-            return {"status": "done", "docs_count": 0}
+            attempts = int(job.pages_crawled or 0)
+            summary = f"Crawl produced 0 docs after {attempts} URL attempts"
+            if failed_fetches:
+                summary += f"; failed_urls={len(failed_fetches)}"
+                sample = _sample_failed_fetches(failed_fetches)
+                if sample:
+                    summary += f"; sample={sample}"
+            if (job.last_error or "").strip():
+                summary += f"; prior_error={(job.last_error or '').strip()[:220]}"
+            error_msg = _format_stage_error(
+                "crawling",
+                summary,
+                error_kind="CrawlNoDocuments",
+                max_len=1200,
+            )
+            job.last_error = error_msg
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=error_msg)
+            _emit_event("error", {"error": error_msg})
+            logger.error("[crawl %s] terminal_error bot=%s error=%s", job_id, bot_id, error_msg)
+            return {"status": "error", "docs_count": 0, "error": error_msg}
 
-        job.stage = "uploading"
-        job_repo.update_job(job)
-        _emit_event("stage", {"stage": "uploading"})
+        _set_crawl_stage(job_repo, job, bot_id, "uploading")
 
         creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
         if not creds_path:
@@ -1049,6 +1150,13 @@ async def _execute_crawl(
             "creds_type": "service_account" if getattr(creds, "service_account_email", None) else "non_service_account",
             "project": proj,
         })
+        logger.info(
+            "[crawl %s] auth_ready bot=%s creds_type=%s project=%s",
+            job_id,
+            bot_id,
+            "service_account" if getattr(creds, "service_account_email", None) else "non_service_account",
+            proj,
+        )
 
         bot_id_from_prefix = ""
         if "/bots/" in base_prefix:
@@ -1065,17 +1173,33 @@ async def _execute_crawl(
             job.gcs_prefix = gcs_prefix
             job_repo.update_job(job)
             _emit_event("gcs_prefix", {"gcs_prefix": gcs_prefix})
+            logger.info(
+                "[crawl %s] upload_complete bot=%s gcs_prefix=%s docs=%d",
+                job_id,
+                bot_id,
+                gcs_prefix,
+                len(docs),
+            )
         except Exception as upload_error:
-            error_msg = str(upload_error)[:200]
-            logger.error(f"GCS upload error: {type(upload_error).__name__}: {error_msg}")
-            job.last_error = f"Upload error: {error_msg}"
-            job_repo.update_job(job)
-            # Continue even if upload fails - at least we tried
+            error_msg = _format_stage_error(
+                "uploading",
+                str(upload_error),
+                exc=upload_error,
+                max_len=1200,
+            )
+            job.last_error = error_msg
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=error_msg)
+            _emit_event("error", {"error": error_msg})
+            logger.error("[crawl %s] upload_failed bot=%s error=%s", job_id, bot_id, error_msg)
+            return {
+                "status": "error",
+                "docs_count": len(docs),
+                "gcs_prefix": "",
+                "error": error_msg,
+            }
 
         # Import to RAG with error handling
-        job.stage = "importing"
-        job_repo.update_job(job)
-        _emit_event("stage", {"stage": "importing"})
+        _set_crawl_stage(job_repo, job, bot_id, "importing")
 
         try:
             vertexai.init(project=proj, location=os.environ.get("LOCATION", "us-central1"), credentials=creds)
@@ -1086,9 +1210,7 @@ async def _execute_crawl(
             rag_repo = VertexRAGRepository()
             if gcs_prefix:
                 rag_repo.import_documents(corpus_resource, gcs_prefix)
-            job.stage = "import_submitted"
-            job_repo.update_job(job)
-            _emit_event("stage", {"stage": "import_submitted"})
+            _set_crawl_stage(job_repo, job, bot_id, "import_submitted")
             try:
                 _run_post_crawl_pipeline(
                     bot_id=bot_id,
@@ -1102,11 +1224,17 @@ async def _execute_crawl(
                     f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
                 )
         except Exception as import_error:
-            error_msg = _format_exception_message(import_error, max_len=1200)
-            logger.error(f"RAG import error: {error_msg}")
-            job.last_error = f"Import error: {error_msg}"
-            job.stage = "error"
-            job_repo.update_job(job)
+            import_detail = _format_exception_message(import_error, max_len=1000)
+            error_msg = _format_stage_error(
+                "importing",
+                import_detail,
+                exc=import_error,
+                max_len=1200,
+            )
+            job.last_error = error_msg
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=error_msg)
+            _emit_event("error", {"error": error_msg})
+            logger.error("[crawl %s] import_failed bot=%s error=%s", job_id, bot_id, error_msg)
             return {
                 "status": "error",
                 "docs_count": len(docs),
@@ -1114,16 +1242,24 @@ async def _execute_crawl(
                 "error": error_msg,
             }
 
+        logger.info(
+            "[crawl %s] completed bot=%s docs=%d stage=%s gcs_prefix=%s",
+            job_id,
+            bot_id,
+            len(docs),
+            job.stage,
+            gcs_prefix,
+        )
         return {"status": "done", "docs_count": len(docs), "gcs_prefix": gcs_prefix}
 
     except Exception as e:
         # Last resort error handling - update job and return error status
-        error_msg = str(e)[:500]
-        logger.error(f"Critical crawl error: {type(e).__name__}: {error_msg}")
+        current_stage = str(getattr(job, "stage", "") or "runtime")
+        error_msg = _format_stage_error(current_stage, str(e), exc=e, max_len=500)
+        logger.error("[crawl %s] critical_error bot=%s error=%s", job_id, bot_id, error_msg)
         try:
-            job.stage = "error"
             job.last_error = error_msg
-            job_repo.update_job(job)
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=error_msg)
             _emit_event("error", {"error": error_msg})
         except Exception:
             # Even job update failed - log and continue
@@ -1182,13 +1318,20 @@ def crawl_job_task(
     if job:
         job.celery_task_id = self.request.id
         job_repo.update_job(job)
+    logger.info(
+        "[crawl %s] task_started bot=%s celery_task_id=%s stage=%s",
+        job_id,
+        bot_id,
+        self.request.id,
+        getattr(job, "stage", ""),
+    )
 
-    # Resolve corpus in worker so the API can return job_id immediately (ensure_corpus can take 30+ s)
-    if not corpus_resource:
-        rag_repo = VertexRAGRepository()
-        corpus_resource = rag_repo.ensure_corpus(bot_id)
-    
     try:
+        # Resolve corpus in worker so the API can return job_id immediately (ensure_corpus can take 30+ s)
+        if not corpus_resource:
+            rag_repo = VertexRAGRepository()
+            corpus_resource = rag_repo.ensure_corpus(bot_id)
+
         # Run async function - create new event loop for Celery worker
         result = asyncio.run(
             _execute_crawl(job_id, bot_id, url, urls, bucket_name, base_prefix, corpus_resource, headless, start_time)
@@ -1213,14 +1356,16 @@ def crawl_job_task(
         return result
     except SoftTimeLimitExceeded:
         elapsed = time.monotonic() - start_time
-        logger.error(
-            "Crawl job %s TIMEOUT after %.1fs (bot=%s). 10-minute limit exceeded!",
-            job_id, elapsed, bot_id
-        )
+        logger.error("Crawl job %s TIMEOUT after %.1fs (bot=%s). 10-minute limit exceeded!", job_id, elapsed, bot_id)
         if job:
-            job.stage = "error"
-            job.last_error = f"Training timeout: exceeded 10-minute limit (ran {int(elapsed)}s)"
-            job_repo.update_job(job)
+            job.last_error = _format_stage_error(
+                "timeout",
+                f"exceeded 10-minute limit (ran {int(elapsed)}s)",
+                error_kind="SoftTimeLimitExceeded",
+                max_len=500,
+            )
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=job.last_error)
+            _emit_event("error", {"error": job.last_error})
         raise
     except (ConnectionError, TimeoutError, OSError) as exc:
         elapsed = time.monotonic() - start_time
@@ -1232,6 +1377,11 @@ def crawl_job_task(
         raise self.retry(exc=exc)
     except Exception as exc:
         elapsed = time.monotonic() - start_time
+        if job:
+            current_stage = str(getattr(job, "stage", "") or "runtime")
+            job.last_error = _format_stage_error(current_stage, str(exc), exc=exc, max_len=500)
+            _set_crawl_stage(job_repo, job, bot_id, "error", detail=job.last_error)
+            _emit_event("error", {"error": job.last_error})
         logger.exception(
             "Crawl job %s FAILED after %.1fs (bot=%s): %s",
             job_id, elapsed, bot_id, exc

@@ -35,6 +35,56 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _format_stage_error(
+    stage: str,
+    message: str,
+    *,
+    exc: Optional[BaseException] = None,
+    error_kind: Optional[str] = None,
+    max_len: int = 500,
+) -> str:
+    stage_name = (stage or "runtime").strip().lower() or "runtime"
+    detail = (message or "").strip() or "(no details)"
+    kind = (error_kind or "").strip() or (type(exc).__name__ if exc is not None else "")
+    if kind:
+        return f"{stage_name}: {kind}: {detail}"[:max_len]
+    return f"{stage_name}: {detail}"[:max_len]
+
+
+def _set_job_stage(job_repo: PostgresIndexJobRepository, job: Any, bot_id: str, stage: str, *, detail: str = "") -> None:
+    previous = str(getattr(job, "stage", "") or "").strip()
+    job.stage = stage
+    job.updated_at = _utc_now()
+    job_repo.update_job(job)
+    logger.info(
+        "[single-page %s] stage %s -> %s bot=%s docs=%s pages=%s detail=%s",
+        getattr(job, "job_id", ""),
+        previous or "-",
+        stage,
+        bot_id,
+        getattr(job, "docs_count", 0),
+        getattr(job, "pages_crawled", 0),
+        detail[:220] if detail else "",
+    )
+
+
+def _mark_job_error(
+    job_repo: PostgresIndexJobRepository,
+    job: Any,
+    bot_id: str,
+    stage: str,
+    message: str,
+    *,
+    exc: Optional[BaseException] = None,
+    error_kind: Optional[str] = None,
+) -> str:
+    error_msg = _format_stage_error(stage, message, exc=exc, error_kind=error_kind)
+    job.last_error = error_msg
+    _set_job_stage(job_repo, job, bot_id, "error", detail=error_msg)
+    logger.error("[single-page %s] terminal_error bot=%s error=%s", getattr(job, "job_id", ""), bot_id, error_msg)
+    return error_msg
+
+
 def _run_post_crawl_pipeline(
     *,
     bot_id: str,
@@ -243,8 +293,8 @@ async def _execute_single_page_crawl(
         raise ValueError(f"Job {job_id} not found")
     source_lang = _get_source_language(bot_id, job.source_id)
 
-    job.stage = "crawling"
-    job_repo.update_job(job)
+    _set_job_stage(job_repo, job, bot_id, "crawling")
+    logger.info("[single-page %s] crawl_start bot=%s url=%s", job_id, bot_id, url)
 
     # Robots.txt compliance: never fetch disallowed URLs.
     try:
@@ -253,10 +303,15 @@ async def _execute_single_page_crawl(
         allowed = True
     if not allowed:
         job.docs_count = 0
-        job.last_error = "Blocked by robots.txt"
-        job.stage = "done"
-        job_repo.update_job(job)
-        return {"status": "done", "docs_count": 0, "blocked_by_robots": True}
+        error_msg = _mark_job_error(
+            job_repo,
+            job,
+            bot_id,
+            "crawling",
+            "Blocked by robots.txt",
+            error_kind="RobotsBlocked",
+        )
+        return {"status": "error", "docs_count": 0, "blocked_by_robots": True, "error": error_msg}
 
     wait_for = (os.environ.get("SINGLE_PAGE_WAIT_FOR") or "").strip() or ""
     delay_before_return_html = float(os.environ.get("SINGLE_PAGE_DELAY_BEFORE_RETURN_HTML", "3.0"))
@@ -376,6 +431,14 @@ async def _execute_single_page_crawl(
                     raise
             if not result or not getattr(result, "success", False):
                 last_error = str(getattr(result, "error_message", "") or getattr(result, "error", "") or "crawl failed")
+                logger.warning(
+                    "[single-page %s] pass_failed bot=%s pass=%s url=%s error=%s",
+                    job_id,
+                    bot_id,
+                    pass_name,
+                    url,
+                    last_error[:220],
+                )
                 continue
             content = getattr(result, "markdown", None) or getattr(result, "cleaned_html", None) or ""
             content = _normalize_text_encoding(content)
@@ -404,7 +467,7 @@ async def _execute_single_page_crawl(
                 )
                 break
     if not docs and last_error:
-        job.last_error = last_error
+        job.last_error = _format_stage_error("crawling", last_error, error_kind="CrawlFailed")
 
     job.docs_count = len(docs) if docs else 0
     if docs:
@@ -412,9 +475,16 @@ async def _execute_single_page_crawl(
     job_repo.update_job(job)
 
     if not docs:
-        job.stage = "done"
-        job_repo.update_job(job)
-        return {"status": "done", "docs_count": 0}
+        error_detail = job.last_error or "Crawl produced 0 docs for the URL"
+        error_msg = _mark_job_error(
+            job_repo,
+            job,
+            bot_id,
+            "crawling",
+            error_detail,
+            error_kind="CrawlNoDocuments",
+        )
+        return {"status": "error", "docs_count": 0, "error": error_msg}
 
     if docs and is_crawl_preview_logging_enabled("crawl_raw"):
         preview_limit = int(os.environ.get("CRAWL_LOG_MAX_CHARS", "4000"))
@@ -443,8 +513,7 @@ async def _execute_single_page_crawl(
                         _preview_text(content, preview_limit),
                     )
 
-    job.stage = "uploading"
-    job_repo.update_job(job)
+    _set_job_stage(job_repo, job, bot_id, "uploading")
 
     creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
     if not creds_path:
@@ -456,9 +525,9 @@ async def _execute_single_page_crawl(
     gcs_prefix = storage_repo.save_documents(bot_id, docs)
     job.gcs_prefix = gcs_prefix
     job_repo.update_job(job)
+    logger.info("[single-page %s] upload_complete bot=%s gcs_prefix=%s docs=%d", job_id, bot_id, gcs_prefix, len(docs))
 
-    job.stage = "importing"
-    job_repo.update_job(job)
+    _set_job_stage(job_repo, job, bot_id, "importing")
 
     try:
         vertexai.init(project=proj, location=os.environ.get("LOCATION", "us-central1"), credentials=creds)
@@ -467,8 +536,7 @@ async def _execute_single_page_crawl(
 
     rag_repo = VertexRAGRepository()
     rag_repo.import_documents(corpus_resource, gcs_prefix)
-    job.stage = "import_submitted"
-    job_repo.update_job(job)
+    _set_job_stage(job_repo, job, bot_id, "import_submitted")
     try:
         _run_post_crawl_pipeline(
             bot_id=bot_id,
@@ -481,6 +549,7 @@ async def _execute_single_page_crawl(
         logger.warning(
             f"Post-crawl pipeline start failed: {type(pipeline_error).__name__}: {str(pipeline_error)[:200]}"
         )
+    logger.info("[single-page %s] completed bot=%s docs=%d stage=%s", job_id, bot_id, job.docs_count, job.stage)
     return {"status": "done", "docs_count": job.docs_count, "gcs_prefix": gcs_prefix}
 
 
@@ -508,21 +577,37 @@ def single_page_crawl_job(
     if job:
         job.celery_task_id = self.request.id
         job_repo.update_job(job)
-
-    if not corpus_resource:
-        rag_repo = VertexRAGRepository()
-        corpus_resource = rag_repo.ensure_corpus(bot_id)
+    logger.info(
+        "[single-page %s] task_started bot=%s celery_task_id=%s stage=%s",
+        job_id,
+        bot_id,
+        self.request.id,
+        getattr(job, "stage", ""),
+    )
 
     try:
+        if not corpus_resource:
+            rag_repo = VertexRAGRepository()
+            corpus_resource = rag_repo.ensure_corpus(bot_id)
+
         result = asyncio.run(
             _execute_single_page_crawl(job_id, bot_id, url, bucket_name, base_prefix, corpus_resource)
         )
         return result
     except (ConnectionError, TimeoutError, OSError) as exc:
+        logger.warning(
+            "[single-page %s] transient_error bot=%s type=%s message=%s (retrying)",
+            job_id,
+            bot_id,
+            type(exc).__name__,
+            str(exc)[:200],
+        )
         raise self.retry(exc=exc)
     except Exception as exc:
         if job:
-            job.stage = "error"
-            job.last_error = str(exc)[:200]
-            job_repo.update_job(job)
+            current_stage = str(getattr(job, "stage", "") or "runtime")
+            error_msg = _format_stage_error(current_stage, str(exc), exc=exc)
+            job.last_error = error_msg
+            _set_job_stage(job_repo, job, bot_id, "error", detail=error_msg)
+        logger.exception("[single-page %s] failed bot=%s: %s", job_id, bot_id, exc)
         raise
