@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from api.router import api_router
 from api.middleware.dynamic_cors import DynamicWidgetCORSMiddleware
 from common.config import config
-from infrastructure.db.connection import get_connection
+from infrastructure.db.connection import close_connection_pool, ensure_schema_once, get_connection, initialize_connection_pool
 from infrastructure.services.conversation_ws import (
     register as register_conversation_ws,
     unregister as unregister_conversation_ws,
@@ -80,6 +80,9 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def _startup_db_check() -> None:
+        initialize_connection_pool()
+        ensure_schema_once()
+        last_exc: Exception | None = None
         for _ in range(4):
             try:
                 con = get_connection()
@@ -90,8 +93,10 @@ def create_app() -> FastAPI:
                 app.state.db_ready = True
                 return
             except Exception as e:
+                last_exc = e
                 time.sleep(0.5)
-                raise HTTPException(status_code=503, detail=f"Database unavailable: {e}") from e
+        if last_exc is not None:
+            raise HTTPException(status_code=503, detail=f"Database unavailable: {last_exc}") from last_exc
         raise HTTPException(status_code=503, detail="Database unavailable")
 
     @app.middleware("http")
@@ -113,6 +118,10 @@ def create_app() -> FastAPI:
     @app.on_event("shutdown")
     async def _shutdown_conversation_pubsub() -> None:
         await stop_conversation_pubsub()
+
+    @app.on_event("shutdown")
+    async def _shutdown_db_pool() -> None:
+        close_connection_pool()
 
     if config.REQUIRE_DOMAIN_VERIFICATION:
         app.add_middleware(DynamicWidgetCORSMiddleware)

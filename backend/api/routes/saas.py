@@ -1801,12 +1801,12 @@ async def v1_admin_add_org_member(org_id: str, payload: OrgMemberAddRequest, use
 
 
 @router.get("/v1/org/self", response_model=OrgSelfResponse)
-async def v1_org_self(user=Depends(get_current_user)):
+def v1_org_self(user=Depends(get_current_user)):
     return OrgSelfResponse(org_ids=user.org_ids)
 
 
 @router.get("/v1/org/info", response_model=OrgSummary)
-async def v1_org_info(org_id: str, user=Depends(get_current_user)):
+def v1_org_info(org_id: str, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     org = org_service().get_org(resolved_org)
     if not org:
@@ -1843,7 +1843,7 @@ async def v1_org_update_name(org_id: str, payload: OrgUpdateRequest, user=Depend
 
 
 @router.get("/v1/org/members", response_model=OrgMembersListResponse)
-async def v1_org_list_members(org_id: str, user=Depends(get_current_user)):
+def v1_org_list_members(org_id: str, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     members = org_service().list_org_members(resolved_org)
     return OrgMembersListResponse(
@@ -1877,7 +1877,7 @@ async def v1_org_add_member(org_id: str, payload: OrgMemberAddRequest, user=Depe
 
 
 @router.get("/v1/org/platform-config")
-async def v1_org_platform_config(
+def v1_org_platform_config(
     lang: Optional[str] = None,
     user=Depends(get_current_user),
 ):
@@ -1940,7 +1940,7 @@ async def v1_org_platform_suggested_messages(
 
 
 @router.get("/v1/org/bots", response_model=BotListResponse)
-async def v1_org_list_bots(org_id: Optional[str] = None, user=Depends(get_current_user)):
+def v1_org_list_bots(org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     bots = bot_service().list_bots(resolved_org)
     return BotListResponse(
@@ -1973,7 +1973,7 @@ async def v1_org_create_bot(payload: BotCreateRequest, org_id: Optional[str] = N
 
 
 @router.get("/v1/org/bots/{bot_id}", response_model=BotDetailResponse)
-async def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+def v1_org_get_bot(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     bot = bot_service().get_bot_record(bot_id)
@@ -3222,7 +3222,7 @@ async def _build_escalation_record_response(
 
 
 @router.get("/v1/org/bots/{bot_id}/escalations/counts", response_model=EscalationCountsResponse)
-async def v1_org_escalation_counts(
+def v1_org_escalation_counts(
     bot_id: str,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),
@@ -3799,7 +3799,7 @@ async def v1_org_verify_domain(
 
 
 @router.get("/v1/org/bots/{bot_id}/jobs", response_model=BotIndexJobListResponse)
-async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     jobs = indexing_service().list_jobs_for_bot(bot_id)
@@ -3826,7 +3826,7 @@ async def v1_org_list_jobs(bot_id: str, org_id: Optional[str] = None, user=Depen
 
 
 @router.get("/v1/org/bots/{bot_id}/sources", response_model=BotSourceListResponse)
-async def v1_org_list_sources(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
+def v1_org_list_sources(bot_id: str, org_id: Optional[str] = None, user=Depends(get_current_user)):
     resolved_org = _resolve_org_id(user, org_id)
     _assert_bot_org(bot_id, resolved_org)
     sources = indexing_service().list_sources_for_bot(bot_id)
@@ -5174,7 +5174,7 @@ async def v1_org_get_booking_link_job(
 
 
 @router.get("/v1/org/bots/{bot_id}/job-pipelines/latest", response_model=JobPipelineLatestResponse)
-async def v1_org_get_latest_job_pipeline(
+def v1_org_get_latest_job_pipeline(
     bot_id: str,
     org_id: Optional[str] = None,
     user=Depends(get_current_user),

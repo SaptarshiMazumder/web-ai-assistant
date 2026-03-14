@@ -1,8 +1,12 @@
+import os
+import queue
+import threading
 import time
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from psycopg import connect
 from psycopg.errors import OperationalError
+from psycopg.pq import TransactionStatus
 from psycopg.rows import tuple_row
 
 from common.config import config
@@ -725,6 +729,34 @@ _SCHEMA_SQL: Iterable[str] = (
   )
 
 _SCHEMA_INITIALIZED = False
+_SCHEMA_LOCK = threading.Lock()
+
+
+def _env_int(name: str, default: int, minimum: int) -> int:
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        val = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, val)
+
+
+def _env_float(name: str, default: float, minimum: float) -> float:
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        val = float(raw)
+    except ValueError:
+        return default
+    return max(minimum, val)
+
+
+_POOL_MIN_SIZE = _env_int("DB_POOL_MIN_SIZE", default=2, minimum=1)
+_POOL_MAX_SIZE = _env_int("DB_POOL_MAX_SIZE", default=20, minimum=_POOL_MIN_SIZE)
+_POOL_ACQUIRE_TIMEOUT_SEC = _env_float("DB_POOL_ACQUIRE_TIMEOUT_SEC", default=10.0, minimum=0.1)
+_POOL_EXECUTE_RETRIES = _env_int("DB_POOL_EXECUTE_RETRIES", default=4, minimum=1)
+_POOL_IDLE: "queue.LifoQueue[Any]" = queue.LifoQueue(maxsize=_POOL_MAX_SIZE)
+_POOL_LOCK = threading.Lock()
+_POOL_TOTAL_CONNECTIONS = 0
 
 
 def _database_url() -> str:
@@ -743,6 +775,245 @@ def _connect_with_retry() -> "Connection":
             last_exc = exc
             time.sleep(0.4 * (2**attempt))
     raise last_exc or RuntimeError("Unable to connect to Postgres")
+
+
+def _borrow_raw_connection() -> "Connection":
+    global _POOL_TOTAL_CONNECTIONS
+
+    try:
+        con = _POOL_IDLE.get_nowait()
+        if getattr(con, "closed", False):
+            with _POOL_LOCK:
+                _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+            return _borrow_raw_connection()
+        return con
+    except queue.Empty:
+        pass
+
+    with _POOL_LOCK:
+        can_grow = _POOL_TOTAL_CONNECTIONS < _POOL_MAX_SIZE
+        if can_grow:
+            _POOL_TOTAL_CONNECTIONS += 1
+
+    if can_grow:
+        try:
+            return _connect_with_retry()
+        except Exception:
+            with _POOL_LOCK:
+                _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+            raise
+
+    try:
+        con = _POOL_IDLE.get(timeout=_POOL_ACQUIRE_TIMEOUT_SEC)
+    except queue.Empty as exc:
+        raise RuntimeError(
+            f"Timed out waiting for DB connection from pool after {_POOL_ACQUIRE_TIMEOUT_SEC:.1f}s "
+            f"(max={_POOL_MAX_SIZE})"
+        ) from exc
+
+    if getattr(con, "closed", False):
+        with _POOL_LOCK:
+            _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+        return _borrow_raw_connection()
+    return con
+
+
+def _release_raw_connection(con: "Connection") -> None:
+    global _POOL_TOTAL_CONNECTIONS
+    if con is None:
+        return
+
+    if getattr(con, "closed", False):
+        with _POOL_LOCK:
+            _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+        return
+
+    try:
+        tx_status = con.info.transaction_status
+        if tx_status != TransactionStatus.IDLE:
+            con.rollback()
+    except Exception:
+        try:
+            con.close()
+        finally:
+            with _POOL_LOCK:
+                _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+        return
+
+    try:
+        _POOL_IDLE.put_nowait(con)
+    except queue.Full:
+        try:
+            con.close()
+        finally:
+            with _POOL_LOCK:
+                _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+
+
+def _discard_raw_connection(con: "Connection") -> None:
+    global _POOL_TOTAL_CONNECTIONS
+    if con is None:
+        return
+    try:
+        con.close()
+    except Exception:
+        pass
+    with _POOL_LOCK:
+        _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+
+
+def _is_retryable_operational_error(exc: OperationalError) -> bool:
+    msg = str(exc or "").lower()
+    needles = (
+        "unexpected eof",
+        "consuming input failed",
+        "server closed the connection unexpectedly",
+        "connection not open",
+        "ssl error",
+    )
+    return any(n in msg for n in needles)
+
+
+class _PooledConnection:
+    def __init__(self, con: "Connection") -> None:
+        self._con = con
+        self._released = False
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._con, item)
+
+    def _replace_connection_after_failure(self) -> None:
+        _discard_raw_connection(self._con)
+        self._con = _borrow_raw_connection()
+
+    def execute(self, *args, **kwargs):
+        for attempt in range(_POOL_EXECUTE_RETRIES):
+            try:
+                cursor = self._con.execute(*args, **kwargs)
+                return _RetryingResultCursor(self, args, kwargs, cursor)
+            except OperationalError as exc:
+                if not _is_retryable_operational_error(exc):
+                    raise
+                if attempt >= _POOL_EXECUTE_RETRIES - 1:
+                    raise
+                self._replace_connection_after_failure()
+
+    def cursor(self, *args, **kwargs):
+        return _PooledCursor(self, self._con.cursor(*args, **kwargs))
+
+    def close(self) -> None:
+        if self._released:
+            return
+        _release_raw_connection(self._con)
+        self._released = True
+
+    def __enter__(self) -> "_PooledConnection":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
+class _PooledCursor:
+    def __init__(self, pooled_connection: "_PooledConnection", cursor: Any) -> None:
+        self._pooled_connection = pooled_connection
+        self._cursor = cursor
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._cursor, item)
+
+    def _replace_connection_after_failure(self) -> None:
+        try:
+            self._cursor.close()
+        except Exception:
+            pass
+        self._pooled_connection._replace_connection_after_failure()
+        self._cursor = self._pooled_connection._con.cursor()
+
+    def execute(self, *args, **kwargs):
+        for attempt in range(_POOL_EXECUTE_RETRIES):
+            try:
+                return self._cursor.execute(*args, **kwargs)
+            except OperationalError as exc:
+                if not _is_retryable_operational_error(exc):
+                    raise
+                if attempt >= _POOL_EXECUTE_RETRIES - 1:
+                    raise
+                self._replace_connection_after_failure()
+
+    def close(self) -> None:
+        try:
+            self._cursor.close()
+        except Exception:
+            pass
+
+    def __enter__(self) -> "_PooledCursor":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
+class _RetryingResultCursor:
+    """Wrap psycopg cursor so fetch failures can replay query once on a fresh connection."""
+
+    def __init__(self, pooled_connection: "_PooledConnection", execute_args: tuple, execute_kwargs: dict, cursor: Any) -> None:
+        self._pooled_connection = pooled_connection
+        self._execute_args = execute_args
+        self._execute_kwargs = execute_kwargs
+        self._cursor = cursor
+        self._replayed = False
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._cursor, item)
+
+    def _replay_once(self) -> bool:
+        if self._replayed:
+            return False
+        self._replayed = True
+        try:
+            self._cursor.close()
+        except Exception:
+            pass
+        self._pooled_connection._replace_connection_after_failure()
+        self._cursor = self._pooled_connection._con.execute(*self._execute_args, **self._execute_kwargs)
+        return True
+
+    def _call_with_retry(self, method_name: str, *args, **kwargs):
+        try:
+            return getattr(self._cursor, method_name)(*args, **kwargs)
+        except OperationalError as exc:
+            if not _is_retryable_operational_error(exc):
+                raise
+            if not self._replay_once():
+                raise
+            return getattr(self._cursor, method_name)(*args, **kwargs)
+
+    def fetchone(self):
+        return self._call_with_retry("fetchone")
+
+    def fetchmany(self, size: Optional[int] = None):
+        if size is None:
+            return self._call_with_retry("fetchmany")
+        return self._call_with_retry("fetchmany", size)
+
+    def fetchall(self):
+        return self._call_with_retry("fetchall")
+
+    def close(self) -> None:
+        try:
+            self._cursor.close()
+        except Exception:
+            pass
+
+    def __iter__(self):
+        return iter(self._cursor)
+
+    def __enter__(self) -> "_RetryingResultCursor":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
 
 def _ensure_schema(con: "Connection") -> None:
@@ -765,7 +1036,49 @@ def _ensure_schema(con: "Connection") -> None:
     _SCHEMA_INITIALIZED = True
 
 
-def get_connection() -> "Connection":
-    con = _connect_with_retry()
-    _ensure_schema(con)
-    return con
+def initialize_connection_pool() -> None:
+    global _POOL_TOTAL_CONNECTIONS
+    while True:
+        with _POOL_LOCK:
+            if _POOL_TOTAL_CONNECTIONS >= _POOL_MIN_SIZE:
+                return
+            _POOL_TOTAL_CONNECTIONS += 1
+        try:
+            con = _connect_with_retry()
+            _POOL_IDLE.put_nowait(con)
+        except Exception:
+            with _POOL_LOCK:
+                _POOL_TOTAL_CONNECTIONS = max(0, _POOL_TOTAL_CONNECTIONS - 1)
+            raise
+
+
+def close_connection_pool() -> None:
+    global _POOL_TOTAL_CONNECTIONS
+    while True:
+        try:
+            con = _POOL_IDLE.get_nowait()
+        except queue.Empty:
+            break
+        try:
+            con.close()
+        except Exception:
+            pass
+    with _POOL_LOCK:
+        _POOL_TOTAL_CONNECTIONS = 0
+
+
+def ensure_schema_once() -> None:
+    if _SCHEMA_INITIALIZED:
+        return
+    with _SCHEMA_LOCK:
+        if _SCHEMA_INITIALIZED:
+            return
+        con = _connect_with_retry()
+        try:
+            _ensure_schema(con)
+        finally:
+            con.close()
+
+
+def get_connection() -> "_PooledConnection":
+    return _PooledConnection(_borrow_raw_connection())

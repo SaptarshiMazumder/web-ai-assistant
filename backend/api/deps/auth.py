@@ -1,3 +1,5 @@
+import os
+import threading
 import time
 from typing import Optional
 
@@ -8,6 +10,56 @@ from psycopg.errors import OperationalError
 
 from application.auth.jwt_auth import UserContext, build_user_context, is_super_admin, verify_token
 from common.di.deps import get_org_service, get_user_service
+
+
+_AUTH_CONTEXT_CACHE_TTL_SEC = max(0, int((os.environ.get("AUTH_CONTEXT_CACHE_TTL_SEC") or "30").strip() or "30"))
+_AUTH_CONTEXT_CACHE_MAX = max(64, int((os.environ.get("AUTH_CONTEXT_CACHE_MAX") or "2048").strip() or "2048"))
+_AUTH_CONTEXT_CACHE: dict[str, tuple[float, UserContext]] = {}
+_AUTH_CONTEXT_CACHE_LOCK = threading.Lock()
+
+
+def _clone_user_context(ctx: UserContext) -> UserContext:
+    return UserContext(
+        user_id=ctx.user_id,
+        subject=ctx.subject,
+        email=ctx.email,
+        org_ids=list(ctx.org_ids),
+        roles=list(ctx.roles),
+        claims=dict(ctx.claims),
+    )
+
+
+def _cache_get_user_context(token: str) -> Optional[UserContext]:
+    if _AUTH_CONTEXT_CACHE_TTL_SEC <= 0:
+        return None
+    now = time.time()
+    with _AUTH_CONTEXT_CACHE_LOCK:
+        entry = _AUTH_CONTEXT_CACHE.get(token)
+        if not entry:
+            return None
+        expires_at, cached = entry
+        if expires_at <= now:
+            _AUTH_CONTEXT_CACHE.pop(token, None)
+            return None
+        return _clone_user_context(cached)
+
+
+def _cache_put_user_context(token: str, ctx: UserContext) -> None:
+    if _AUTH_CONTEXT_CACHE_TTL_SEC <= 0:
+        return
+    now = time.time()
+    expiry = now + _AUTH_CONTEXT_CACHE_TTL_SEC
+    exp_claim = ctx.claims.get("exp")
+    if isinstance(exp_claim, (int, float)):
+        expiry = min(expiry, float(exp_claim) - 5.0)
+    if expiry <= now:
+        return
+    with _AUTH_CONTEXT_CACHE_LOCK:
+        if len(_AUTH_CONTEXT_CACHE) >= _AUTH_CONTEXT_CACHE_MAX:
+            # Drop oldest by expiry to keep inserts O(n) only at capacity boundary.
+            oldest_key = min(_AUTH_CONTEXT_CACHE, key=lambda k: _AUTH_CONTEXT_CACHE[k][0])
+            _AUTH_CONTEXT_CACHE.pop(oldest_key, None)
+        _AUTH_CONTEXT_CACHE[token] = (expiry, _clone_user_context(ctx))
 
 
 def _bearer_token(authorization: Optional[str]) -> str:
@@ -73,6 +125,9 @@ def _extract_name_parts(claims: dict) -> tuple[Optional[str], Optional[str]]:
 
 def get_current_user(authorization: Optional[str] = Header(default=None)) -> UserContext:
     token = _bearer_token(authorization)
+    cached_ctx = _cache_get_user_context(token)
+    if cached_ctx is not None:
+        return cached_ctx
     try:
         claims = verify_token(token)
         ctx = build_user_context(claims)
@@ -98,7 +153,11 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Use
                     first_name=first_name,
                     last_name=last_name,
                 )
-            if ctx.email:
+            elif ctx.email and (
+                (user.email or "").strip().lower() != (ctx.email or "").strip().lower()
+                or (first_name and (user.first_name or "") != first_name)
+                or (last_name and (user.last_name or "") != last_name)
+            ):
                 user = user_service.upsert_user_from_claims(
                     subject=ctx.subject,
                     email=ctx.email,
@@ -124,6 +183,7 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> Use
                 time.sleep(0.5)
                 continue
             raise HTTPException(status_code=503, detail=f"Database unavailable: {exc}")
+    _cache_put_user_context(token, ctx)
     return ctx
 
 
