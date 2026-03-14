@@ -2,7 +2,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.api
       args:
         VITE_API_BASE: "${VITE_API_BASE:-}"
         VITE_DASHBOARD_BASE: "/dashboard/"
@@ -32,7 +32,7 @@ services:
   celery-worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,12 +48,6 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    command:
-      [
-        "sh",
-        "-lc",
-        "xvfb-run -a -s \"-screen 0 1920x1080x24\" --error-file=/dev/stdout celery -A infrastructure.celery_app worker --loglevel=info --concurrency=10"
-      ]
   redis:
     image: redis:7-alpine
     ports:
