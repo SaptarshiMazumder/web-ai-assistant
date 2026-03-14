@@ -127,21 +127,9 @@ def text_source_ingest_job(
     job.last_error = ""
     job_repo.update_job(job)
 
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-    if not creds_path:
-        error_msg = _mark_job_error(
-            job_repo,
-            job,
-            bot_id,
-            source_id,
-            "crawling",
-            "GOOGLE_APPLICATION_CREDENTIALS is not set for worker",
-            error_kind="MissingCredentials",
-        )
-        return {"status": "error", "error": error_msg}
-
     try:
-        creds, proj = google.auth.load_credentials_from_file(creds_path)
+        from common.gcp_auth import load_gcp_credentials
+        creds, proj = load_gcp_credentials()
         storage_client = storage.Client(credentials=creds, project=proj)
     except Exception as exc:
         error_msg = _mark_job_error(

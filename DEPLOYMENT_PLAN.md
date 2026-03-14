@@ -211,13 +211,21 @@ CMD ["celery", "-A", "infrastructure.celery_app", "worker", "--loglevel=info", "
 
 ### 3. Production Environment Config
 
-Create separate env files for production with:
+A production `.env.production.template` is provided at `backend/.env.production.template`.
+Copy it and fill in real values. Key differences from dev:
 - Neon PostgreSQL connection string (with `?sslmode=require`)
-- Upstash Redis connection string (with TLS: `rediss://`)
-- Production Auth0 tenant credentials
-- Production LINE/Instagram app credentials
+- Upstash Redis connection string (with TLS: `rediss://...?ssl_cert_reqs=required`)
+- `GOOGLE_APPLICATION_CREDENTIALS` left empty on Cloud Run (uses built-in service account via ADC)
+- `REQUIRE_DOMAIN_VERIFICATION=true` (enables per-bot CORS validation)
+- Production Auth0 tenant, LINE, Instagram credentials
 - Production domain URLs (`PUBLIC_BASE_URL`, `DASHBOARD_URL`)
-- GCP service account key or workload identity
+
+### 3b. GCP Credentials
+
+The codebase supports two credential modes (via `common/gcp_auth.py`):
+- **Local dev**: Set `GOOGLE_APPLICATION_CREDENTIALS` to a JSON key file path
+- **Cloud Run / GCE**: Leave it empty — uses Application Default Credentials (ADC) automatically
+- No code changes needed between environments; the shared utility handles fallback
 
 ### 4. CORS Update
 

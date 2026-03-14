@@ -94,14 +94,10 @@ async def _run(
 
     _emit({"type": "stage", "stage": "uploading"})
 
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-    if not creds_path:
-        raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS is not set for worker")
-
-    # Load credentials explicitly (avoid picking up ADC from a different user).
-    creds, proj = google.auth.load_credentials_from_file(creds_path)
-    creds_type = "service_account" if getattr(creds, "service_account_email", None) else "non_service_account"
-    _emit({"type": "auth", "creds_path": creds_path, "creds_type": creds_type, "project": proj})
+    from common.gcp_auth import load_gcp_credentials
+    creds, proj = load_gcp_credentials()
+    creds_type = "service_account" if getattr(creds, "service_account_email", None) else "adc"
+    _emit({"type": "auth", "creds_type": creds_type, "project": proj})
 
     # Extract bot_id from base_prefix (format: <tenant>/bots/<bot_id> or just <tenant>/bots/<bot_id>)
     # base_prefix already includes tenant/bots/bot_id, so we just need the bot_id part

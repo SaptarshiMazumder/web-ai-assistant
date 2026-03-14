@@ -1140,23 +1140,11 @@ async def _execute_crawl(
 
         _set_crawl_stage(job_repo, job, bot_id, "uploading")
 
-        creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-        if not creds_path:
-            raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS is not set for worker")
-
-        creds, proj = google.auth.load_credentials_from_file(creds_path)
-        _emit_event("auth", {
-            "creds_path": creds_path,
-            "creds_type": "service_account" if getattr(creds, "service_account_email", None) else "non_service_account",
-            "project": proj,
-        })
-        logger.info(
-            "[crawl %s] auth_ready bot=%s creds_type=%s project=%s",
-            job_id,
-            bot_id,
-            "service_account" if getattr(creds, "service_account_email", None) else "non_service_account",
-            proj,
-        )
+        from common.gcp_auth import load_gcp_credentials
+        creds, proj = load_gcp_credentials()
+        creds_type = "service_account" if getattr(creds, "service_account_email", None) else "adc"
+        _emit_event("auth", {"creds_type": creds_type, "project": proj})
+        logger.info("[crawl %s] auth_ready bot=%s creds_type=%s project=%s", job_id, bot_id, creds_type, proj)
 
         bot_id_from_prefix = ""
         if "/bots/" in base_prefix:

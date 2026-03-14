@@ -515,11 +515,8 @@ async def _execute_single_page_crawl(
 
     _set_job_stage(job_repo, job, bot_id, "uploading")
 
-    creds_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-    if not creds_path:
-        raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS is not set for worker")
-
-    creds, proj = google.auth.load_credentials_from_file(creds_path)
+    from common.gcp_auth import load_gcp_credentials
+    creds, proj = load_gcp_credentials()
     storage_client = storage.Client(credentials=creds, project=proj)
     storage_repo = GCSDocumentStorageRepository(bucket_name, base_prefix, storage_client=storage_client)
     gcs_prefix = storage_repo.save_documents(bot_id, docs)

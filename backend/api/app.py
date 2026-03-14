@@ -30,30 +30,16 @@ load_dotenv()
 
 def _log_google_creds() -> None:
     uvicorn_logger = logging.getLogger("uvicorn.error")
-
-    path = (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip()
-    if not path:
-        uvicorn_logger.warning("GOOGLE_APPLICATION_CREDENTIALS is not set (config has empty path)")
-        print("GCP creds: GOOGLE_APPLICATION_CREDENTIALS is not set")
-        return
-    if not os.path.exists(path):
-        uvicorn_logger.warning("GOOGLE_APPLICATION_CREDENTIALS path does not exist: %s", path)
-        print(f"GCP creds: creds_path does not exist: {path}")
-        return
     try:
-        import google.auth
-
-        creds, proj = google.auth.load_credentials_from_file(path)
+        from common.gcp_auth import load_gcp_credentials
+        creds, proj = load_gcp_credentials()
         email = getattr(creds, "service_account_email", None)
         if email:
-            uvicorn_logger.info("GCP creds: service_account=%s project=%s creds_path=%s", email, proj, path)
-            print(f"GCP creds: service_account={email} project={proj} creds_path={path}")
+            uvicorn_logger.info("GCP creds: service_account=%s project=%s", email, proj)
         else:
-            uvicorn_logger.info("GCP creds: non-service-account project=%s creds_path=%s", proj, path)
-            print(f"GCP creds: non-service-account project={proj} creds_path={path}")
+            uvicorn_logger.info("GCP creds: ADC project=%s", proj)
     except Exception as e:
-        uvicorn_logger.warning("Failed to load GOOGLE_APPLICATION_CREDENTIALS (%s): %s", path, e)
-        print(f"GCP creds: failed to load creds_path={path} err={e}")
+        uvicorn_logger.warning("GCP creds: failed to load: %s", e)
 
 
 def _dashboard_dist_path() -> str:
