@@ -686,6 +686,13 @@
     "deleteSelected": "Delete selected ({{count}})",
     "addBot": "Add Bot",
     "buildNewAgent": "Build a new AI agent",
+    "addBotHint": "Create a colorful AI workspace in minutes.",
+    "liveStatus": "Live",
+    "botIdLabel": "Bot ID",
+    "createdLabel": "Created",
+    "quickOverview": "Overview",
+    "quickSources": "Sources",
+    "openActions": "Open options for {{name}}",
     "rename": "Rename",
     "delete": "Delete"
   },

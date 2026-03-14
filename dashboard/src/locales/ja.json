@@ -686,6 +686,13 @@
     "deleteSelected": "選択した項目を削除 ({{count}})",
     "addBot": "ボットを追加",
     "buildNewAgent": "新しいAIエージェントを構築する",
+    "addBotHint": "数分でカラフルなAIワークスペースを作成。",
+    "liveStatus": "稼働中",
+    "botIdLabel": "ボットID",
+    "createdLabel": "作成日",
+    "quickOverview": "概要",
+    "quickSources": "ソース",
+    "openActions": "{{name}} のオプションを開く",
     "rename": "名前を変更",
     "delete": "削除"
   },
