@@ -46,8 +46,7 @@ class ConversationService:
         if existing and existing.bot_id == bot_id and existing.status == "active":
             if not self._is_expired(existing.last_active_at):
                 self._repo.touch_session(existing.session_id)
-                refreshed = self._repo.get_session(existing.session_id)
-                return refreshed or existing
+                return existing
             self.expire_session_runtime_state(bot_id=bot_id, session_id=existing.session_id)
             self._repo.end_session(existing.session_id, status="expired")
         return self._repo.create_session(

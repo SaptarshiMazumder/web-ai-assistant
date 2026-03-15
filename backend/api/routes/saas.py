@@ -1095,6 +1095,7 @@ async def v1_widget_chat(
     publishable_key: str,
     payload: WidgetChatRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     origin: Optional[str] = Header(default=None),
 ):
     trace_id = uuid.uuid4().hex
@@ -1201,20 +1202,16 @@ async def v1_widget_chat(
         user_agent=request.headers.get("user-agent"),
         ip=request.client.host if request.client else None,
     )
-    conversation_service().add_message(
-        session_id=session.session_id,
-        bot_id=bot.bot_id,
-        role="user",
-        content=msg,
-    )
     if getattr(session, "handoff_active", False):
         answer = _chat_handoff_paused_message(lang=turn_lang)
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=answer,
-            citations=[],
+        # Defer DB writes — run after response is sent
+        background_tasks.add_task(
+            conversation_service().add_message,
+            session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
+        )
+        background_tasks.add_task(
+            conversation_service().add_message,
+            session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer, citations=[],
         )
         return WidgetChatResponse(
             answer=answer,
@@ -1222,6 +1219,7 @@ async def v1_widget_chat(
             session_id=session.session_id,
             suggested_messages=suggested_messages,
         )
+    # Load conversation history (without current message — it's already in `query`)
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
 
@@ -1314,12 +1312,14 @@ async def v1_widget_chat(
             }
         )
         answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label)
-        conversation_service().add_message(
-            session_id=session.session_id,
-            bot_id=bot.bot_id,
-            role="bot",
-            content=answer,
-            citations=[],
+        # Defer DB writes — run after response is sent
+        background_tasks.add_task(
+            conversation_service().add_message,
+            session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
+        )
+        background_tasks.add_task(
+            conversation_service().add_message,
+            session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer, citations=[],
         )
         return WidgetChatResponse(
             answer=answer,
@@ -1371,11 +1371,14 @@ async def v1_widget_chat(
             )
     assets = [AssetCard(**c) for c in asset_cards]
 
-    conversation_service().add_message(
-        session_id=session.session_id,
-        bot_id=bot.bot_id,
-        role="bot",
-        content=answer,
+    # Defer DB writes — run after response is sent
+    background_tasks.add_task(
+        conversation_service().add_message,
+        session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
+    )
+    background_tasks.add_task(
+        conversation_service().add_message,
+        session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer,
         citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
     )
     return WidgetChatResponse(
@@ -1499,24 +1502,11 @@ async def v1_widget_chat_stream(
         user_agent=request.headers.get("user-agent"),
         ip=request.client.host if request.client else None,
     )
-    conversation_service().add_message(
-        session_id=session.session_id,
-        bot_id=bot.bot_id,
-        role="user",
-        content=msg,
-    )
     if getattr(session, "handoff_active", False):
         answer = _chat_handoff_paused_message(lang=turn_lang)
 
         async def _handoff_gen():
             yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="bot",
-                content=answer,
-                citations=[],
-            )
             yield json.dumps(
                 {
                     "type": "done",
@@ -1527,6 +1517,20 @@ async def v1_widget_chat_stream(
                 },
                 ensure_ascii=False,
             ) + "\n"
+            # Deferred DB writes — after response sent to user
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=msg,
+            )
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=answer,
+                citations=[],
+            )
 
         return StreamingResponse(
             _handoff_gen(),
@@ -1536,6 +1540,7 @@ async def v1_widget_chat_stream(
                 "X-Accel-Buffering": "no",
             },
         )
+    # Load conversation history (without current message — it's already in `query`)
     recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
     conversation_context = _format_conversation_context(recent)
 
@@ -1632,13 +1637,6 @@ async def v1_widget_chat_stream(
                             }
                         )
                         answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label, streamed=True)
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="bot",
-                            content=answer,
-                            citations=[],
-                        )
                         yield json.dumps(
                             {
                                 "type": "done",
@@ -1649,6 +1647,20 @@ async def v1_widget_chat_stream(
                             },
                             ensure_ascii=False,
                         ) + "\n"
+                        # Deferred DB writes — after response sent to user
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="user",
+                            content=msg,
+                        )
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="bot",
+                            content=answer,
+                            citations=[],
+                        )
                     else:
                         answer = str(evt.get("answer") or "")
                         answer = normalize_answer_links(
@@ -1690,13 +1702,6 @@ async def v1_widget_chat_stream(
                                 "assets": asset_cards_stream,
                             }
                         )
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="bot",
-                            content=answer,
-                            citations=citations,
-                        )
                         yield json.dumps(
                             {
                                 "type": "done",
@@ -1708,8 +1713,32 @@ async def v1_widget_chat_stream(
                             },
                             ensure_ascii=False,
                         ) + "\n"
+                        # Deferred DB writes — after response sent to user
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="user",
+                            content=msg,
+                        )
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="bot",
+                            content=answer,
+                            citations=citations,
+                        )
         except Exception as e:
             yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n"
+            # Still save user message on error so it's not lost
+            try:
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=msg,
+                )
+            except Exception:
+                pass
 
     return StreamingResponse(
         _gen(),
