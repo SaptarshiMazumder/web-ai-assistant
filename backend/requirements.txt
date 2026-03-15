@@ -28,3 +28,5 @@ pypdfium2
 Pillow
 pytesseract
 PyYAML>=6.0
+alembic>=1.13.0
+sqlalchemy>=2.0.0

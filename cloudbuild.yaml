@@ -1,0 +1,50 @@
+steps:
+  # Build API image (includes dashboard frontend)
+  - id: 'build-api'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${_TAG}'
+      - '-f'
+      - 'Dockerfile.api'
+      - '--build-arg=VITE_API_BASE=${_VITE_API_BASE}'
+      - '--build-arg=VITE_AUTH0_DOMAIN=${_VITE_AUTH0_DOMAIN}'
+      - '--build-arg=VITE_AUTH0_CLIENT_ID=${_VITE_AUTH0_CLIENT_ID}'
+      - '--build-arg=VITE_AUTH0_AUDIENCE=${_VITE_AUTH0_AUDIENCE}'
+      - '--build-arg=VITE_AUTH_ORG_CLAIM=${_VITE_AUTH_ORG_CLAIM}'
+      - '--build-arg=VITE_SUPER_ADMIN_EMAILS=${_VITE_SUPER_ADMIN_EMAILS}'
+      - '.'
+
+  # Build Worker image (with Playwright + Chromium) — runs in parallel
+  - id: 'build-worker'
+    name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['-']
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/worker:${_TAG}'
+      - '-f'
+      - 'Dockerfile.worker'
+      - '.'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/worker:${_TAG}'
+
+substitutions:
+  _REGION: 'asia-northeast1'
+  _REPO: 'webai'
+  _TAG: 'latest'
+  _VITE_API_BASE: ''
+  _VITE_AUTH0_DOMAIN: ''
+  _VITE_AUTH0_CLIENT_ID: ''
+  _VITE_AUTH0_AUDIENCE: ''
+  _VITE_AUTH_ORG_CLAIM: ''
+  _VITE_SUPER_ADMIN_EMAILS: ''
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '2400s'

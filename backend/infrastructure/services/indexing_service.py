@@ -16,6 +16,7 @@ import vertexai
 from vertexai import rag as vx_rag
 
 from common.config import config
+from common.gcp_auth import has_gcp_credentials
 from infrastructure.db.repositories import (
     PostgresBotCorpusRepository,
     PostgresBotDomainRepository,
@@ -286,8 +287,8 @@ async def start_index_for_bot(
 
     # Hard fail early if creds are missing; otherwise the worker may start with
     # surprising ADC/user credentials depending on environment/reload behavior.
-    if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-        raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+    if not has_gcp_credentials():
+        raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
 
     corpus = ensure_bot_corpus(bot_id)
     bucket_name, base_prefix_root = _parse_bucket_and_prefix()
@@ -438,8 +439,8 @@ async def start_index_for_bot_batch(
 
     # Hard fail early if creds are missing; otherwise the worker may start with
     # surprising ADC/user credentials depending on environment/reload behavior.
-    if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-        raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+    if not has_gcp_credentials():
+        raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
 
     corpus = ensure_bot_corpus(bot_id)
     bucket_name, base_prefix_root = _parse_bucket_and_prefix()

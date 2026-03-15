@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from google.cloud import storage
 
 from common.config import config
+from common.gcp_auth import has_gcp_credentials
 from domain.entities import BotSource, IndexJob
 from domain.platform_profiles import normalize_url_for_crawl, should_allow_url, resolve_platform_profile
 from domain.repositories import (
@@ -134,8 +135,8 @@ class IndexingService:
             if host not in verified_hosts:
                 raise PermissionError(f"Domain '{host}' is not verified for this bot")
 
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
 
         corpus = self._rag_repo.ensure_corpus(bot_id)
         bucket_name, base_prefix_root = _parse_bucket_and_prefix()
@@ -216,8 +217,8 @@ class IndexingService:
             if host not in verified_hosts:
                 raise PermissionError(f"Domain '{host}' is not verified for this bot")
 
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
 
         corpus = self._rag_repo.ensure_corpus(bot_id)
         bucket_name, base_prefix_root = _parse_bucket_and_prefix()
@@ -265,8 +266,8 @@ class IndexingService:
         Create a PDF source and immediately enqueue a background ingestion job.
         Returns (source, job_id).
         """
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
         if not bot_id:
             raise ValueError("Missing bot_id")
         if not pdf_bytes:
@@ -348,8 +349,8 @@ class IndexingService:
         For content >50 000 chars the raw text is stored in GCS instead of inline.
         Returns (source, job_id).
         """
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
         if not bot_id:
             raise ValueError("Missing bot_id")
         content = (content or "").strip()
@@ -436,8 +437,8 @@ class IndexingService:
         Create a docs source (.txt/.md/.docx/.doc) and enqueue a background ingestion job.
         Returns (source, job_id).
         """
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
         if not bot_id:
             raise ValueError("Missing bot_id")
         if not file_bytes:
@@ -524,8 +525,8 @@ class IndexingService:
         # Apply platform-specific crawl profiles (e.g., restaurant platform include/exclude rules)
         cleaned = apply_platform_profiles_to_urls(cleaned)
 
-        if not (config.GOOGLE_APPLICATION_CREDENTIALS or "").strip():
-            raise RuntimeError("Server is missing GOOGLE_APPLICATION_CREDENTIALS; cannot start indexing worker")
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available (set GOOGLE_APPLICATION_CREDENTIALS or use ADC)")
 
         now = datetime.now(timezone.utc).isoformat()
         for u in cleaned:

@@ -1067,7 +1067,26 @@ def close_connection_pool() -> None:
         _POOL_TOTAL_CONNECTIONS = 0
 
 
+def _alembic_manages_schema(con) -> bool:
+    """Check if alembic_version table exists and has a revision stamped."""
+    try:
+        with con.cursor() as cur:
+            cur.execute(
+                "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                "WHERE table_name = 'alembic_version')"
+            )
+            row = cur.fetchone()
+            if not row or not row[0]:
+                return False
+            cur.execute("SELECT COUNT(*) FROM alembic_version")
+            count_row = cur.fetchone()
+            return bool(count_row and count_row[0] > 0)
+    except Exception:
+        return False
+
+
 def ensure_schema_once() -> None:
+    global _SCHEMA_INITIALIZED
     if _SCHEMA_INITIALIZED:
         return
     with _SCHEMA_LOCK:
@@ -1075,6 +1094,9 @@ def ensure_schema_once() -> None:
             return
         con = _connect_with_retry()
         try:
+            if _alembic_manages_schema(con):
+                _SCHEMA_INITIALIZED = True
+                return
             _ensure_schema(con)
         finally:
             con.close()

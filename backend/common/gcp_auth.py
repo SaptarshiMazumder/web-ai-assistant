@@ -42,3 +42,12 @@ def load_gcp_credentials() -> Tuple:
 
     _cached_credentials = (creds, project)
     return creds, project
+
+
+def has_gcp_credentials() -> bool:
+    """Check if GCP credentials are available (file OR ADC)."""
+    try:
+        load_gcp_credentials()
+        return True
+    except Exception:
+        return False

@@ -1,0 +1,26 @@
+# Exclude from Cloud Build uploads
+.git/
+.gitignore
+.vscode/
+.idea/
+.env
+.env.*
+!.env.production.template
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.DS_Store
+npm-debug.log
+yarn-error.log
+backend/_data/
+backend/creds/
+docker-compose*.yml
+Dockerfile.legacy
+*.md
