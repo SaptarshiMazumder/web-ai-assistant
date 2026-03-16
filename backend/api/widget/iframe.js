@@ -1036,10 +1036,17 @@
     return html;
   }
 
-  function setBubbleText(bubble, text, who) {
+  function setBubbleText(bubble, text, who, options) {
+    var opts = options || {};
     const existingLabel = bubble.querySelector(".sender-label");
     bubble.innerHTML = "";
     if (existingLabel) bubble.appendChild(existingLabel);
+
+    if (opts.raw === true) {
+      appendSoftWrappedText(bubble, text || "");
+      return;
+    }
+
     var cleaned = who === "bot" && typeof text === "string" ? stripBracketCitations(text) : text;
 
     // User messages: plain text
@@ -1203,9 +1210,6 @@
     if (chat) chat.scrollTop = chat.scrollHeight;
   }
 
-  const STREAM_TICK_MS = 16;
-  const STREAM_CHARS_PER_TICK = 12;
-
   async function streamResponse(resp) {
     if (!resp.body) throw new Error("No response body");
     botPending = true;
@@ -1214,8 +1218,6 @@
     const decoder = new TextDecoder();
     let buffer = "";
     let text = "";
-    let pending = "";
-    let ticking = false;
     let doneEvent = null;
     let bubble = null;
     let finalized = false;
@@ -1242,33 +1244,30 @@
     }
     const headerSession = resp.headers.get("x-conversation-id");
     if (headerSession) setSession(headerSession);
-    function startTicker() {
-      if (ticking) return;
-      ticking = true;
-      const tick = () => {
-        if (pending.length > 0) {
-          var slice;
-          var nl = pending.indexOf("\n");
-          if (nl >= 0) {
-            slice = pending.slice(0, nl + 1);
-            pending = pending.slice(nl + 1);
-          } else {
-            slice = pending.slice(0, STREAM_CHARS_PER_TICK);
-            pending = pending.slice(STREAM_CHARS_PER_TICK);
-          }
-          text += slice;
-          setBubbleText(ensureBubble(), getVisibleStreamingText(text), "bot");
-          if (chat) chat.scrollTop = chat.scrollHeight;
-          setTimeout(tick, STREAM_TICK_MS);
-          return;
-        }
-        ticking = false;
-        if (doneEvent) {
-          finalizeDoneEvent();
-        }
-      };
-      setTimeout(tick, STREAM_TICK_MS);
+
+    function appendDelta(deltaText) {
+      if (!deltaText) return;
+      text += deltaText;
+      setBubbleText(ensureBubble(), text, "bot", { raw: true });
+      if (chat) chat.scrollTop = chat.scrollHeight;
     }
+
+    function handleStreamEvent(evt) {
+      if (!evt) return;
+      if (evt.type === "delta") {
+        appendDelta(evt.text || "");
+      } else if (evt.type === "meta") {
+        if (evt.session_id) setSession(evt.session_id);
+      } else if (evt.type === "done") {
+        doneEvent = evt;
+        updateSuggestedMessages(evt.suggested_messages || evt.suggestedMessages);
+        if (evt.session_id) setSession(evt.session_id);
+        finalizeDoneEvent();
+      } else if (evt.type === "error") {
+        setBubbleText(ensureBubble(), evt.message || "Request failed.", "bot");
+      }
+    }
+
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -1284,29 +1283,23 @@
           } catch (e) {
             evt = null;
           }
-          if (evt && evt.type === "delta") {
-            pending += evt.text || "";
-            startTicker();
-          } else if (evt && evt.type === "meta") {
-            if (evt.session_id) setSession(evt.session_id);
-          } else if (evt && evt.type === "done") {
-            doneEvent = evt;
-            updateSuggestedMessages(evt.suggested_messages || evt.suggestedMessages);
-            if (evt.session_id) setSession(evt.session_id);
-            startTicker();
-          } else if (evt && evt.type === "error") {
-            setBubbleText(ensureBubble(), evt.message || "Request failed.", "bot");
-          }
+          handleStreamEvent(evt);
         }
         idx = buffer.indexOf("\n");
       }
     }
-    if (pending.length) {
-      startTicker();
-      return;
+
+    const tail = buffer.trim();
+    if (tail) {
+      try {
+        handleStreamEvent(JSON.parse(tail));
+      } catch (e) {
+        // Ignore partial tail chunks.
+      }
     }
+
     if (doneEvent && !finalized) {
-      startTicker();
+      finalizeDoneEvent();
     }
   }
 

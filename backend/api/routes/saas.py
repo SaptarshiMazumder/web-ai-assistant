@@ -177,6 +177,38 @@ def _normalize_prompt_text(value: str) -> str:
     return str(value or "").replace("\r\n", "\n").strip()
 
 
+_SENTINEL = object()
+
+
+async def _async_iter_from_sync_gen(sync_gen_func, *args, **kwargs):
+    """Run a synchronous generator in a thread, yielding events via an async queue.
+
+    This prevents the sync generator from blocking the event loop,
+    allowing uvicorn to flush HTTP chunks between yields (required for streaming).
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+
+    def _run():
+        try:
+            for item in sync_gen_func(*args, **kwargs):
+                loop.call_soon_threadsafe(queue.put_nowait, item)
+        except Exception as exc:
+            loop.call_soon_threadsafe(queue.put_nowait, exc)
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, _SENTINEL)
+
+    loop.run_in_executor(None, _run)
+
+    while True:
+        item = await queue.get()
+        if item is _SENTINEL:
+            break
+        if isinstance(item, Exception):
+            raise item
+        yield item
+
+
 def _resolve_system_instruction(
     agent_config: dict,
     *,
@@ -1605,7 +1637,8 @@ async def v1_widget_chat_stream(
     async def _gen():
         yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
         try:
-            for evt in run_vertex_rag_stream(
+            async for evt in _async_iter_from_sync_gen(
+                run_vertex_rag_stream,
                 query,
                 rag_corpus=corpus,
                 allowed_host=None,

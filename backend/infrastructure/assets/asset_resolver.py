@@ -10,6 +10,7 @@ Design:
 import logging
 import os
 import re
+import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlparse
 
@@ -35,6 +36,11 @@ def _trace_stdout(msg: str) -> None:
 
 
 _URL_RE = re.compile(r"https?://[^\s<>()\"']+")
+
+# In-memory cache for build_asset_bank (avoids DB query on every chat message)
+_ASSET_BANK_CACHE: Dict[str, Tuple[str, float]] = {}  # bot_id → (result, expires_at)
+_ASSET_BANK_CACHE_TTL = 300  # 5 minutes, matches _BOT_TTL
+
 _GLOBAL_ASSET_CARD_LIMIT = 6
 _MAX_ASSET_CARDS_PER_ANSWER = max(
     1,
@@ -539,9 +545,18 @@ def build_asset_bank(
     Build a compact asset reference (id, name, price, type, category) for the LLM.
     Up to 150 assets. URLs are resolved server-side from asset IDs after generation.
     marker_rule from asset_rules (config) controls the instruction text.
+    Cached per bot_id for 5 minutes to avoid DB query on every chat message.
     """
+    now = time.monotonic()
+    cached = _ASSET_BANK_CACHE.get(bot_id)
+    if cached is not None:
+        result, expires_at = cached
+        if now < expires_at:
+            return result
+
     assets = _get_repo().list_assets_for_bot(bot_id, active_only=True)
     if not assets:
+        _ASSET_BANK_CACHE[bot_id] = ("", now + _ASSET_BANK_CACHE_TTL)
         return ""
 
     marker_rule = (
@@ -561,7 +576,14 @@ def build_asset_bank(
     if len(assets) > len(selected):
         header += f" (showing first {len(selected)} of {len(assets)})"
     bank = header + "\n" + "\n".join(lines)
-    return f"\n\n{bank}\n\nASSET RULES (CRITICAL): {marker_rule}\n"
+    result = f"\n\n{bank}\n\nASSET RULES (CRITICAL): {marker_rule}\n"
+    _ASSET_BANK_CACHE[bot_id] = (result, now + _ASSET_BANK_CACHE_TTL)
+    return result
+
+
+def invalidate_asset_bank_cache(bot_id: str) -> None:
+    """Clear cached asset bank for a bot (call after asset create/update/delete)."""
+    _ASSET_BANK_CACHE.pop(bot_id, None)
 
 
 def build_asset_instruction(

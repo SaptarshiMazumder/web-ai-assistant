@@ -1228,6 +1228,7 @@ def run_vertex_rag_stream(
         bot_display_name=bot_display_name,
     ):
         answer_parts.append(delta)
+        # Stream model output directly (including raw JSON chunks).
         yield {"type": "delta", "text": delta}
 
     answer = sanitize_answer_citations("".join(answer_parts).strip())

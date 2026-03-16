@@ -7,9 +7,10 @@ import time
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api.router import api_router
 from api.middleware.dynamic_cors import DynamicWidgetCORSMiddleware
@@ -89,13 +90,27 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail=f"Database unavailable: {last_exc}") from last_exc
         raise HTTPException(status_code=503, detail="Database unavailable")
 
-    @app.middleware("http")
-    async def _readiness_gate(request: Request, call_next):
-        if request.url.path in {"/live", "/health"}:
-            return await call_next(request)
-        if not app.state.db_ready:
-            raise HTTPException(status_code=503, detail="Service not ready")
-        return await call_next(request)
+    # Pure ASGI middleware — does NOT buffer streaming responses
+    # (unlike @app.middleware("http") which uses BaseHTTPMiddleware and kills streaming)
+    class _ReadinessGateMiddleware:
+        def __init__(self, asgi_app: ASGIApp) -> None:
+            self.app = asgi_app
+
+        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+            if scope["type"] != "http":
+                await self.app(scope, receive, send)
+                return
+            path = scope.get("path", "")
+            if path in {"/live", "/health"}:
+                await self.app(scope, receive, send)
+                return
+            if not app.state.db_ready:
+                resp = JSONResponse(status_code=503, content={"detail": "Service not ready"})
+                await resp(scope, receive, send)
+                return
+            await self.app(scope, receive, send)
+
+    app.add_middleware(_ReadinessGateMiddleware)
 
     @app.on_event("startup")
     async def _startup_log_creds() -> None:

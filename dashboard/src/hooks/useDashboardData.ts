@@ -724,6 +724,15 @@ function isAuthError(err: unknown): boolean {
   )
 }
 
+function isTransientNetworkError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase()
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('network request failed') ||
+    msg.includes('networkerror')
+  )
+}
+
 async function fetchJson<T>(
   path: string,
   init?: RequestInit,
@@ -1970,13 +1979,19 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
-  async function getEscalationCounts(botId: string): Promise<{ total: number; open: number; unread: number } | null> {
+  async function getEscalationCounts(
+    botId: string,
+    options?: { suppressTransientErrors?: boolean }
+  ): Promise<{ total: number; open: number; unread: number } | null> {
     if (isSuperAdmin && !activeOrgId) return null
     try {
       const orgOverride = activeOrgId === ALL_ORGS_ID ? null : activeOrgId
       const path = withOrgParam(`/v1/org/bots/${botId}/escalations/counts`, orgOverride)
       return await fetchAuthedJson<{ bot_id: string; total: number; open: number; unread: number }>(path)
     } catch (err) {
+      if (options?.suppressTransientErrors && isTransientNetworkError(err)) {
+        return null
+      }
       setError((err as Error).message)
       return null
     }
@@ -1988,7 +2003,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       setSelectedBotUnreadNotifications(0)
       return
     }
-    const counts = await getEscalationCounts(targetBotId)
+    const counts = await getEscalationCounts(targetBotId, { suppressTransientErrors: true })
     setSelectedBotUnreadNotifications(counts?.unread ?? 0)
   }
 

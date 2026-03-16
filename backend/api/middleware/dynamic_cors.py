@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Optional
 from urllib.parse import urlparse
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from common.di.container import bot_service
 
@@ -29,19 +29,29 @@ def _pk_from_path(path: str) -> Optional[str]:
     return None
 
 
-class DynamicWidgetCORSMiddleware(BaseHTTPMiddleware):
+class DynamicWidgetCORSMiddleware:
     """
-    Dynamic CORS for widget API endpoints. We only allow cross-origin XHR from verified
-    domains for the specific bot key in the request path.
+    Pure ASGI CORS middleware for widget API endpoints.
+    Does NOT extend BaseHTTPMiddleware — streaming responses pass through unbuffered.
     """
 
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin")
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        origin = (headers.get(b"origin") or b"").decode("latin-1", errors="ignore")
         origin_host = _origin_host(origin)
+        path = scope.get("path", "")
+        method = scope.get("method", "GET")
 
         allow_origin = None
         if origin_host:
-            pk = _pk_from_path(request.url.path)
+            pk = _pk_from_path(path)
             if pk:
                 bot = bot_service().get_bot_by_publishable_key(pk)
                 if bot:
@@ -49,22 +59,45 @@ class DynamicWidgetCORSMiddleware(BaseHTTPMiddleware):
                     if origin_host in verified:
                         allow_origin = origin
 
-        if request.method == "OPTIONS":
-            resp = Response(status_code=204)
+        # Handle preflight
+        if method == "OPTIONS":
+            resp_headers: dict[str, str] = {}
             if allow_origin:
-                resp.headers["Access-Control-Allow-Origin"] = allow_origin
-                resp.headers["Vary"] = "Origin"
-                resp.headers["Access-Control-Allow-Credentials"] = "true"
-                req_headers = request.headers.get("access-control-request-headers") or "content-type,authorization"
-                req_method = request.headers.get("access-control-request-method") or "POST,GET,OPTIONS"
-                resp.headers["Access-Control-Allow-Headers"] = req_headers
-                resp.headers["Access-Control-Allow-Methods"] = req_method
-                resp.headers["Access-Control-Max-Age"] = "600"
-            return resp
+                resp_headers["access-control-allow-origin"] = allow_origin
+                resp_headers["vary"] = "Origin"
+                resp_headers["access-control-allow-credentials"] = "true"
+                req_headers = (headers.get(b"access-control-request-headers") or b"content-type,authorization").decode(
+                    "latin-1", errors="ignore"
+                )
+                req_method = (headers.get(b"access-control-request-method") or b"POST,GET,OPTIONS").decode(
+                    "latin-1", errors="ignore"
+                )
+                resp_headers["access-control-allow-headers"] = req_headers
+                resp_headers["access-control-allow-methods"] = req_method
+                resp_headers["access-control-max-age"] = "600"
+            resp = Response(status_code=204, headers=resp_headers)
+            await resp(scope, receive, send)
+            return
 
-        resp = await call_next(request)
-        if allow_origin:
-            resp.headers["Access-Control-Allow-Origin"] = allow_origin
-            resp.headers["Vary"] = "Origin"
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
+        # For non-preflight: inject CORS headers into the response
+        if not allow_origin:
+            await self.app(scope, receive, send)
+            return
+
+        cors_headers = [
+            (b"access-control-allow-origin", allow_origin.encode("latin-1")),
+            (b"vary", b"Origin"),
+            (b"access-control-allow-credentials", b"true"),
+        ]
+        response_started = False
+
+        async def send_with_cors(message):
+            nonlocal response_started
+            if message["type"] == "http.response.start" and not response_started:
+                response_started = True
+                existing = list(message.get("headers", []))
+                existing.extend(cors_headers)
+                message = {**message, "headers": existing}
+            await send(message)
+
+        await self.app(scope, receive, send_with_cors)

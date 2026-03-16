@@ -15,6 +15,7 @@ from fastapi.responses import Response
 from google.cloud import storage  # type: ignore[import-untyped]
 
 from application.services.asset_image_service import optimize_asset_image
+from infrastructure.assets.asset_resolver import invalidate_asset_bank_cache
 from api.deps.auth import get_current_user, is_super_admin
 from api.schemas import (
     AssetExtractionStatusResponse,
@@ -334,6 +335,7 @@ async def create_asset(
         updated_at=now,
     )
     asset_repo().create_asset(asset)
+    invalidate_asset_bank_cache(bot_id)
     return _asset_to_response(asset)
 
 
@@ -437,6 +439,7 @@ async def update_asset(
     existing.is_active = is_active
     existing.updated_at = now
     asset_repo().update_asset(existing)
+    invalidate_asset_bank_cache(bot_id)
     return _asset_to_response(existing)
 
 
@@ -469,6 +472,7 @@ async def delete_asset(
         logger.warning("Failed to delete GCS blob for asset %s: %s", asset_id, e)
 
     asset_repo().delete_asset(bot_id, asset_id)
+    invalidate_asset_bank_cache(bot_id)
     return BotAssetDeleteResponse(bot_id=bot_id, asset_id=asset_id)
 
 
