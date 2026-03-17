@@ -75,6 +75,104 @@ class Config:
     # Redis (pubsub for conversations). Defaults to Celery broker if not set.
     REDIS_URL = os.environ.get("REDIS_URL", "").strip()
 
+    # Redis-first chat runtime (conversation/session/message hot path)
+    CHAT_RUNTIME_REDIS_ENABLED = os.environ.get("CHAT_RUNTIME_REDIS_ENABLED", "false").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_RUNTIME_STRICT_NO_DB_PRE_RESPONSE = os.environ.get(
+        "CHAT_RUNTIME_STRICT_NO_DB_PRE_RESPONSE",
+        "false",
+    ).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_RUNTIME_REDIS_OUTAGE_DB_FALLBACK = os.environ.get(
+        "CHAT_RUNTIME_REDIS_OUTAGE_DB_FALLBACK",
+        "true",
+    ).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_RUNTIME_ASYNC_PERSIST_ENABLED = os.environ.get(
+        "CHAT_RUNTIME_ASYNC_PERSIST_ENABLED",
+        "false",
+    ).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    CHAT_RUNTIME_REDIS_NAMESPACE = os.environ.get(
+        "CHAT_RUNTIME_REDIS_NAMESPACE",
+        "webai:chatruntime:v1",
+    ).strip()
+
+    _CHAT_RUNTIME_HISTORY_MAX_MESSAGES_RAW = (os.environ.get("CHAT_RUNTIME_HISTORY_MAX_MESSAGES") or "100").strip()
+    try:
+        _CHAT_RUNTIME_HISTORY_MAX_MESSAGES = int(_CHAT_RUNTIME_HISTORY_MAX_MESSAGES_RAW)
+    except ValueError:
+        _CHAT_RUNTIME_HISTORY_MAX_MESSAGES = 100
+    CHAT_RUNTIME_HISTORY_MAX_MESSAGES = max(20, min(_CHAT_RUNTIME_HISTORY_MAX_MESSAGES, 300))
+
+    _CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS_RAW = (os.environ.get("CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS") or "30").strip()
+    try:
+        _CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS = int(_CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS_RAW)
+    except ValueError:
+        _CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS = 30
+    CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS = max(5, min(_CHAT_RUNTIME_TURN_LOCK_TTL_SECONDS, 300))
+
+    _CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS_RAW = (
+        os.environ.get("CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS") or "8000"
+    ).strip()
+    try:
+        _CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS = int(_CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS_RAW)
+    except ValueError:
+        _CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS = 8000
+    CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS = max(100, min(_CHAT_RUNTIME_TURN_LOCK_WAIT_TIMEOUT_MS, 60000))
+
+    CHAT_RUNTIME_PERSIST_STREAM_KEY = os.environ.get(
+        "CHAT_RUNTIME_PERSIST_STREAM_KEY",
+        "webai:chatruntime:persist:v1",
+    ).strip()
+    _CHAT_RUNTIME_PERSIST_STREAM_MAXLEN_RAW = (os.environ.get("CHAT_RUNTIME_PERSIST_STREAM_MAXLEN") or "200000").strip()
+    try:
+        _CHAT_RUNTIME_PERSIST_STREAM_MAXLEN = int(_CHAT_RUNTIME_PERSIST_STREAM_MAXLEN_RAW)
+    except ValueError:
+        _CHAT_RUNTIME_PERSIST_STREAM_MAXLEN = 200000
+    CHAT_RUNTIME_PERSIST_STREAM_MAXLEN = max(1000, min(_CHAT_RUNTIME_PERSIST_STREAM_MAXLEN, 2_000_000))
+
+    CHAT_RUNTIME_PERSIST_CONSUMER_GROUP = os.environ.get(
+        "CHAT_RUNTIME_PERSIST_CONSUMER_GROUP",
+        "webai:chatruntime:persist:group:v1",
+    ).strip()
+    CHAT_RUNTIME_PERSIST_CONSUMER_NAME = os.environ.get("CHAT_RUNTIME_PERSIST_CONSUMER_NAME", "").strip()
+    _CHAT_RUNTIME_PERSIST_MAX_RETRIES_RAW = (os.environ.get("CHAT_RUNTIME_PERSIST_MAX_RETRIES") or "8").strip()
+    try:
+        _CHAT_RUNTIME_PERSIST_MAX_RETRIES = int(_CHAT_RUNTIME_PERSIST_MAX_RETRIES_RAW)
+    except ValueError:
+        _CHAT_RUNTIME_PERSIST_MAX_RETRIES = 8
+    CHAT_RUNTIME_PERSIST_MAX_RETRIES = max(1, min(_CHAT_RUNTIME_PERSIST_MAX_RETRIES, 100))
+    CHAT_RUNTIME_PERSIST_DLQ_STREAM_KEY = os.environ.get(
+        "CHAT_RUNTIME_PERSIST_DLQ_STREAM_KEY",
+        "webai:chatruntime:persist:dlq:v1",
+    ).strip()
+    CHAT_STORAGE_TRACE_LOGS = os.environ.get(
+        "CHAT_STORAGE_TRACE_LOGS",
+        "false",
+    ).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+
     # Chat hot-path cache (L1 in-process + L2 Redis cache-aside)
     CHAT_CACHE_ENABLED = os.environ.get("CHAT_CACHE_ENABLED", "true").strip().lower() in (
         "1",

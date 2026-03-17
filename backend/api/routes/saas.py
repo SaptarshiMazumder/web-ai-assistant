@@ -144,6 +144,7 @@ from application.services.prompt_provider import ConfigPromptProvider
 from application.auth.jwt_auth import is_super_admin
 from common.config import config
 from common.language_utils import detect_user_language, normalize_lang
+from application.services.chat_runtime_context import reset_runtime_mode, set_runtime_mode
 from application.services.conversation_service import CONVERSATION_HISTORY_MESSAGES
 from common.di.container import asset_repo, bot_service, conversation_service, indexing_service, line_rich_menu_service, org_service, url_discovery, user_service, job_pipeline_service
 from common.di.container import analytics_service
@@ -1174,7 +1175,7 @@ async def v1_widget_chat(
         try:
             hostname = (urlparse(site_url).hostname or "").lower().split(":")[0]
             if hostname in ("localhost", "127.0.0.1"):
-                allowed_host = ""  # Dashboard Testing tab: skip host filter so all RAG evidence is used
+                allowed_host = ""
             else:
                 allowed_host = hostname
         except Exception:
@@ -1224,203 +1225,304 @@ async def v1_widget_chat(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
-    session = conversation_service().get_or_create_session(
-        bot_id=bot.bot_id,
-        org_id=bot.org_id,
+    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+        request_path=f"/v1/pk/{publishable_key}/chat",
         channel="chat",
-        session_id=getattr(payload, "session_id", None),
-        site_url=site_url or None,
-        site_title=site_title or None,
-        user_agent=request.headers.get("user-agent"),
-        ip=request.client.host if request.client else None,
+        bot_id=bot.bot_id,
     )
-    if getattr(session, "handoff_active", False):
-        answer = _chat_handoff_paused_message(lang=turn_lang)
-        # Defer DB writes — run after response is sent
-        background_tasks.add_task(
-            conversation_service().add_message,
-            session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
+    runtime_token = set_runtime_mode(runtime_enabled)
+    turn_lock_owner = f"widget:{trace_id}"
+    turn_lock_acquired = False
+    session = None
+    try:
+        session = conversation_service().get_or_create_session(
+            bot_id=bot.bot_id,
+            org_id=bot.org_id,
+            channel="chat",
+            session_id=getattr(payload, "session_id", None),
+            site_url=site_url or None,
+            site_title=site_title or None,
+            user_agent=request.headers.get("user-agent"),
+            ip=request.client.host if request.client else None,
         )
-        background_tasks.add_task(
-            conversation_service().add_message,
-            session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer, citations=[],
-        )
-        return WidgetChatResponse(
-            answer=answer,
-            citations=[],
-            session_id=session.session_id,
-            suggested_messages=suggested_messages,
-        )
-    # Load conversation history (without current message — it's already in `query`)
-    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
-    conversation_context = _format_conversation_context(recent)
+        if runtime_enabled:
+            turn_lock_acquired = conversation_service().acquire_turn_lock(
+                session_id=session.session_id,
+                owner=turn_lock_owner,
+            )
+            if not turn_lock_acquired:
+                raise HTTPException(status_code=409, detail="Session is busy. Please retry.")
 
-    # If message asks about availability and bot has booking config, run sync check and inject as evidence
-    extra_evidence: List[Dict[str, str]] = []
-    availability_summary, availability_skip_reason = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
-    if availability_skip_reason:
-        chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason})
-    if availability_summary and _is_real_availability_summary(availability_summary):
-        extra_evidence.append({"url": "Live availability check", "snippet": availability_summary})
-        chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
-    booking_url = _get_booking_url_for_chat(widget_config)
-    if booking_url:
-        extra_evidence.append({"url": booking_url, "snippet": f"To book or check availability, visit: {booking_url}"})
+        if getattr(session, "handoff_active", False):
+            answer = _chat_handoff_paused_message(lang=turn_lang)
+            if runtime_enabled:
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=msg,
+                )
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="bot",
+                    content=answer,
+                    citations=[],
+                )
+                background_tasks.add_task(
+                    conversation_service().finalize_runtime_turn,
+                    session_id=session.session_id,
+                    channel="chat",
+                    transport_sent=True,
+                )
+            else:
+                background_tasks.add_task(
+                    conversation_service().add_message,
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=msg,
+                )
+                background_tasks.add_task(
+                    conversation_service().add_message,
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="bot",
+                    content=answer,
+                    citations=[],
+                )
+            return WidgetChatResponse(
+                answer=answer,
+                citations=[],
+                session_id=session.session_id,
+                suggested_messages=suggested_messages,
+            )
 
-    url_bank = _get_url_bank_for_chat(widget_config)
-    if url_bank:
-        for it in url_bank:
-            label = it["label"]
-            url = it["url"]
-            extra_evidence.append(
+        recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+        conversation_context = _format_conversation_context(recent)
+
+        extra_evidence: List[Dict[str, str]] = []
+        availability_summary, availability_skip_reason = maybe_run_chat_availability(bot.bot_id, msg, widget_config)
+        if availability_skip_reason:
+            chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason})
+        if availability_summary and _is_real_availability_summary(availability_summary):
+            extra_evidence.append({"url": "Live availability check", "snippet": availability_summary})
+            chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+        booking_url = _get_booking_url_for_chat(widget_config)
+        if booking_url:
+            extra_evidence.append({"url": booking_url, "snippet": f"To book or check availability, visit: {booking_url}"})
+
+        url_bank = _get_url_bank_for_chat(widget_config)
+        if url_bank:
+            for it in url_bank:
+                label = it["label"]
+                url = it["url"]
+                extra_evidence.append(
+                    {
+                        "url": url,
+                        "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                    }
+                )
+            bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank])
+            bank_instruction = (
+                "Answer links (use only when they match the customer's question):\n"
+                f"{bank_lines}\n\n"
+                "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
+                "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+            )
+            system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
+
+        reservation_cfg = get_reservation_config_from_widget(widget_config, lang=turn_lang)
+        if reservation_cfg:
+            extra_evidence.append({
+                "url": reservation_cfg["url"],
+                "snippet": f"Official online reservation page: {reservation_cfg['url']}",
+            })
+            system_instruction = (
+                f"{system_instruction}\n\n{reservation_cfg['instruction']}"
+                if system_instruction
+                else reservation_cfg["instruction"]
+            )
+
+        asset_rules = get_asset_rules_from_widget(widget_config)
+        asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
+        if asset_instruction:
+            system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
+        platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=turn_lang)
+        if platform_asset_instruction:
+            system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
+        json_response_instruction = get_platform_json_response_instruction(widget_config, lang=turn_lang)
+        if json_response_instruction:
+            system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
+
+        corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
+        result = await asyncio.to_thread(
+            run_vertex_rag,
+            query,
+            rag_corpus=corpus,
+            allowed_host=None,
+            debug_cb=_rag_dbg,
+            system_instruction=system_instruction,
+            model_name=model_name,
+            temperature=temperature,
+            conversation_context=conversation_context or None,
+            extra_evidence=extra_evidence if extra_evidence else None,
+            bot_display_name=getattr(bot, "display_name", None),
+            parse_json_response=get_platform_json_response_enabled(widget_config),
+        )
+        chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
+        sources = result.get("sources") or []
+        citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
+
+        if not citations:
+            host_label = allowed_host or "this site"
+            chat_debug_emit(
                 {
-                    "url": url,
-                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                    "type": "chat_refusal",
+                    "trace_id": trace_id,
+                    "reason": "no_citations_after_host_filter",
+                    "host_label": host_label,
                 }
             )
-        bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank])
-        bank_instruction = (
-            "Answer links (use only when they match the customer’s question):\n"
-            f"{bank_lines}\n\n"
-            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
-            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
-        )
-        system_instruction = f"{system_instruction}\n\n{bank_instruction}" if system_instruction else bank_instruction
+            answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label)
+            if runtime_enabled:
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=msg,
+                )
+                conversation_service().add_message(
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="bot",
+                    content=answer,
+                    citations=[],
+                )
+                background_tasks.add_task(
+                    conversation_service().finalize_runtime_turn,
+                    session_id=session.session_id,
+                    channel="chat",
+                    transport_sent=True,
+                )
+            else:
+                background_tasks.add_task(
+                    conversation_service().add_message,
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="user",
+                    content=msg,
+                )
+                background_tasks.add_task(
+                    conversation_service().add_message,
+                    session_id=session.session_id,
+                    bot_id=bot.bot_id,
+                    role="bot",
+                    content=answer,
+                    citations=[],
+                )
+            return WidgetChatResponse(
+                answer=answer,
+                citations=[],
+                session_id=session.session_id,
+                suggested_messages=suggested_messages,
+            )
 
-    # Inject reservation config from platform profile if applicable
-    reservation_cfg = get_reservation_config_from_widget(widget_config, lang=turn_lang)
-    if reservation_cfg:
-        extra_evidence.append({
-            "url": reservation_cfg["url"],
-            "snippet": f"Official online reservation page: {reservation_cfg['url']}",
-        })
-        system_instruction = (
-            f"{system_instruction}\n\n{reservation_cfg['instruction']}"
-            if system_instruction
-            else reservation_cfg["instruction"]
-        )
-
-    # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
-    asset_rules = get_asset_rules_from_widget(widget_config)
-    asset_instruction = build_asset_instruction(bot.bot_id, asset_rules=asset_rules)
-    if asset_instruction:
-        system_instruction = f"{system_instruction}\n\n{asset_instruction}" if system_instruction else asset_instruction
-    platform_asset_instruction = get_platform_asset_instructions(widget_config, lang=turn_lang)
-    if platform_asset_instruction:
-        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction}" if system_instruction else platform_asset_instruction
-    json_response_instruction = get_platform_json_response_instruction(widget_config, lang=turn_lang)
-    if json_response_instruction:
-        system_instruction = f"{system_instruction}\n\n{json_response_instruction}" if system_instruction else json_response_instruction
-
-    corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
-    result = await asyncio.to_thread(
-        run_vertex_rag,
-        query,
-        rag_corpus=corpus,
-        allowed_host=None,
-        debug_cb=_rag_dbg,
-        system_instruction=system_instruction,
-        model_name=model_name,
-        temperature=temperature,
-        conversation_context=conversation_context or None,
-        extra_evidence=extra_evidence if extra_evidence else None,
-        bot_display_name=getattr(bot, "display_name", None),
-        parse_json_response=get_platform_json_response_enabled(widget_config),
-    )
-    chat_debug_emit({"type": "chat_rag_result", "trace_id": trace_id, "result": result})
-    sources = result.get("sources") or []
-    citations = []
-    for s in sources:
-        citations.append(Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")))
-
-    if not citations:
-        host_label = allowed_host or "this site"
         chat_debug_emit(
             {
-                "type": "chat_refusal",
+                "type": "chat_response",
                 "trace_id": trace_id,
-                "reason": "no_citations_after_host_filter",
-                "host_label": host_label,
+                "answer": str(result.get("answer") or ""),
+                "citations": [c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
             }
         )
-        answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label)
-        # Defer DB writes — run after response is sent
-        background_tasks.add_task(
-            conversation_service().add_message,
-            session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
-        )
-        background_tasks.add_task(
-            conversation_service().add_message,
-            session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer, citations=[],
-        )
+        answer = str(result.get("answer") or "")
+        answer = normalize_answer_links(
+            answer,
+            candidates=build_answer_link_candidates(
+                reservation_config=reservation_cfg,
+                url_bank=url_bank,
+                sources=sources,
+            ),
+            render_target=RENDER_TARGET_WEB_MARKDOWN,
+        ).text
+
+        platform_features = get_platform_features_from_widget(widget_config)
+        menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
+        allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
+        show_assets = result.get("show_assets")
+
+        if show_assets is False:
+            asset_cards = []
+        else:
+            answer, marker_cards = resolve_asset_markers(
+                answer,
+                bot.bot_id,
+                session.session_id,
+                allowed_asset_types=allowed_asset_types,
+            )
+            if marker_cards:
+                asset_cards = marker_cards
+            else:
+                answer, asset_cards = process_answer_assets(
+                    answer,
+                    bot.bot_id,
+                    user_query=msg,
+                    session_id=session.session_id,
+                    allowed_asset_types=allowed_asset_types,
+                    asset_term_config=asset_rules.get("asset_term_config"),
+                )
+        assets = [AssetCard(**c) for c in asset_cards]
+        bot_citations = [c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations]
+
+        if runtime_enabled:
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=msg,
+            )
+            conversation_service().add_message(
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=answer,
+                citations=bot_citations,
+            )
+            background_tasks.add_task(
+                conversation_service().finalize_runtime_turn,
+                session_id=session.session_id,
+                channel="chat",
+                transport_sent=True,
+            )
+        else:
+            background_tasks.add_task(
+                conversation_service().add_message,
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="user",
+                content=msg,
+            )
+            background_tasks.add_task(
+                conversation_service().add_message,
+                session_id=session.session_id,
+                bot_id=bot.bot_id,
+                role="bot",
+                content=answer,
+                citations=bot_citations,
+            )
+
         return WidgetChatResponse(
             answer=answer,
-            citations=[],
+            citations=citations,
+            assets=assets,
             session_id=session.session_id,
             suggested_messages=suggested_messages,
         )
-
-    chat_debug_emit(
-        {
-            "type": "chat_response",
-            "trace_id": trace_id,
-            "answer": str(result.get("answer") or ""),
-            "citations": [c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
-        }
-    )
-    answer = str(result.get("answer") or "")
-    answer = normalize_answer_links(
-        answer,
-        candidates=build_answer_link_candidates(
-            reservation_config=reservation_cfg,
-            url_bank=url_bank,
-            sources=sources,
-        ),
-        render_target=RENDER_TARGET_WEB_MARKDOWN,
-    ).text
-
-    platform_features = get_platform_features_from_widget(widget_config)
-    menu_extraction_enabled = platform_features.get("menu_extraction_enabled") if platform_features else False
-    allowed_asset_types = {"menu_item"} if menu_extraction_enabled else None
-    show_assets = result.get("show_assets")
-
-    if show_assets is False:
-        asset_cards = []
-    else:
-        answer, marker_cards = resolve_asset_markers(
-            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types
-        )
-        if marker_cards:
-            asset_cards = marker_cards
-        else:
-            answer, asset_cards = process_answer_assets(
-                answer,
-                bot.bot_id,
-                user_query=msg,
-                session_id=session.session_id,
-                allowed_asset_types=allowed_asset_types,
-                asset_term_config=asset_rules.get("asset_term_config"),
-            )
-    assets = [AssetCard(**c) for c in asset_cards]
-
-    # Defer DB writes — run after response is sent
-    background_tasks.add_task(
-        conversation_service().add_message,
-        session_id=session.session_id, bot_id=bot.bot_id, role="user", content=msg,
-    )
-    background_tasks.add_task(
-        conversation_service().add_message,
-        session_id=session.session_id, bot_id=bot.bot_id, role="bot", content=answer,
-        citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
-    )
-    return WidgetChatResponse(
-        answer=answer,
-        citations=citations,
-        assets=assets,
-        session_id=session.session_id,
-        suggested_messages=suggested_messages,
-    )
-
+    finally:
+        if runtime_enabled and turn_lock_acquired and session is not None:
+            conversation_service().release_turn_lock(session_id=session.session_id, owner=turn_lock_owner)
+        reset_runtime_mode(runtime_token)
 
 @router.post("/v1/pk/{publishable_key}/chat/stream")
 async def v1_widget_chat_stream(
@@ -1473,7 +1575,7 @@ async def v1_widget_chat_stream(
         try:
             hostname = (urlparse(site_url).hostname or "").lower().split(":")[0]
             if hostname in ("localhost", "127.0.0.1"):
-                allowed_host = ""  # Dashboard Testing tab: skip host filter so all RAG evidence is used
+                allowed_host = ""
             else:
                 allowed_host = hostname
         except Exception:
@@ -1524,265 +1626,320 @@ async def v1_widget_chat_stream(
     model_name = agent_config.get("model_id") if agent_config else None
     temperature = agent_config.get("temperature") if agent_config else None
 
-    session = conversation_service().get_or_create_session(
-        bot_id=bot.bot_id,
-        org_id=bot.org_id,
+    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+        request_path=f"/v1/pk/{publishable_key}/chat/stream",
         channel="chat",
-        session_id=getattr(payload, "session_id", None),
-        site_url=site_url or None,
-        site_title=site_title or None,
-        user_agent=request.headers.get("user-agent"),
-        ip=request.client.host if request.client else None,
+        bot_id=bot.bot_id,
     )
-    if getattr(session, "handoff_active", False):
-        answer = _chat_handoff_paused_message(lang=turn_lang)
+    runtime_token = set_runtime_mode(runtime_enabled)
+    turn_lock_owner = f"widget_stream:{trace_id}"
+    turn_lock_acquired = False
 
-        async def _handoff_gen():
-            yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
-            yield json.dumps(
-                {
-                    "type": "done",
-                    "answer": answer,
-                    "citations": [],
-                    "suggested_messages": suggested_messages,
-                    "session_id": session.session_id,
+    try:
+        session = conversation_service().get_or_create_session(
+            bot_id=bot.bot_id,
+            org_id=bot.org_id,
+            channel="chat",
+            session_id=getattr(payload, "session_id", None),
+            site_url=site_url or None,
+            site_title=site_title or None,
+            user_agent=request.headers.get("user-agent"),
+            ip=request.client.host if request.client else None,
+        )
+        if runtime_enabled:
+            turn_lock_acquired = conversation_service().acquire_turn_lock(
+                session_id=session.session_id,
+                owner=turn_lock_owner,
+            )
+            if not turn_lock_acquired:
+                raise HTTPException(status_code=409, detail="Session is busy. Please retry.")
+
+        if getattr(session, "handoff_active", False):
+            answer = _chat_handoff_paused_message(lang=turn_lang)
+
+            async def _handoff_gen():
+                stream_runtime_token = set_runtime_mode(runtime_enabled)
+                try:
+                    yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
+                    yield json.dumps(
+                        {
+                            "type": "done",
+                            "answer": answer,
+                            "citations": [],
+                            "suggested_messages": suggested_messages,
+                            "session_id": session.session_id,
+                        },
+                        ensure_ascii=False,
+                    ) + "\n"
+                    conversation_service().add_message(
+                        session_id=session.session_id,
+                        bot_id=bot.bot_id,
+                        role="user",
+                        content=msg,
+                    )
+                    conversation_service().add_message(
+                        session_id=session.session_id,
+                        bot_id=bot.bot_id,
+                        role="bot",
+                        content=answer,
+                        citations=[],
+                    )
+                    conversation_service().finalize_runtime_turn(
+                        session_id=session.session_id,
+                        channel="chat",
+                        transport_sent=True,
+                    )
+                finally:
+                    if runtime_enabled and turn_lock_acquired:
+                        conversation_service().release_turn_lock(session_id=session.session_id, owner=turn_lock_owner)
+                    reset_runtime_mode(stream_runtime_token)
+
+            reset_runtime_mode(runtime_token)
+            runtime_token = None
+
+            return StreamingResponse(
+                _handoff_gen(),
+                media_type="application/x-ndjson",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
                 },
-                ensure_ascii=False,
-            ) + "\n"
-            # Deferred DB writes — after response sent to user
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="user",
-                content=msg,
             )
-            conversation_service().add_message(
-                session_id=session.session_id,
-                bot_id=bot.bot_id,
-                role="bot",
-                content=answer,
-                citations=[],
+
+        recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+        conversation_context = _format_conversation_context(recent)
+
+        extra_evidence_stream: List[Dict[str, str]] = []
+        availability_summary_stream, availability_skip_reason_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
+        if availability_skip_reason_stream:
+            chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason_stream})
+        if availability_summary_stream and _is_real_availability_summary(availability_summary_stream):
+            extra_evidence_stream.append({"url": "Live availability check", "snippet": availability_summary_stream})
+            chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
+        booking_url_stream = _get_booking_url_for_chat(widget_config_stream)
+        if booking_url_stream:
+            extra_evidence_stream.append({"url": booking_url_stream, "snippet": f"To book or check availability, visit: {booking_url_stream}"})
+
+        url_bank_stream = _get_url_bank_for_chat(widget_config_stream)
+        if url_bank_stream:
+            for it in url_bank_stream:
+                label = it["label"]
+                url = it["url"]
+                extra_evidence_stream.append(
+                    {
+                        "url": url,
+                        "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                    }
+                )
+            bank_lines_stream = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_stream])
+            bank_instruction_stream = (
+                "Answer links (use only when they match the customer's question):\n"
+                f"{bank_lines_stream}\n\n"
+                "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
+                "Write links as markdown like [Pricing](https://...) inside a normal sentence."
             )
+            system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
+
+        reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=turn_lang)
+        if reservation_cfg_stream:
+            extra_evidence_stream.append({
+                "url": reservation_cfg_stream["url"],
+                "snippet": f"Official online reservation page: {reservation_cfg_stream['url']}",
+            })
+            system_instruction = (
+                f"{system_instruction}\n\n{reservation_cfg_stream['instruction']}"
+                if system_instruction
+                else reservation_cfg_stream["instruction"]
+            )
+
+        asset_rules_stream = get_asset_rules_from_widget(widget_config_stream)
+        asset_instruction_stream = build_asset_instruction(bot.bot_id, asset_rules=asset_rules_stream)
+        if asset_instruction_stream:
+            system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
+        platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=turn_lang)
+        if platform_asset_instruction_stream:
+            system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
+        json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=turn_lang)
+        if json_response_instruction_stream:
+            system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
+
+        corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
+
+        async def _gen():
+            stream_runtime_token = set_runtime_mode(runtime_enabled)
+            try:
+                yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
+                try:
+                    async for evt in _async_iter_from_sync_gen(
+                        run_vertex_rag_stream,
+                        query,
+                        rag_corpus=corpus,
+                        allowed_host=None,
+                        debug_cb=_rag_dbg,
+                        system_instruction=system_instruction,
+                        model_name=model_name,
+                        temperature=temperature,
+                        conversation_context=conversation_context or None,
+                        extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
+                        bot_display_name=getattr(bot, "display_name", None),
+                        parse_json_response=get_platform_json_response_enabled(widget_config_stream),
+                    ):
+                        if evt.get("type") == "delta":
+                            yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
+                            continue
+                        if evt.get("type") == "done":
+                            sources = evt.get("sources") or []
+                            citations = []
+                            for s in sources:
+                                citations.append({"url": str(s.get("url") or ""), "snippet": str(s.get("excerpt") or "")})
+                            if not citations:
+                                host_label = allowed_host or "this site"
+                                chat_debug_emit(
+                                    {
+                                        "type": "chat_refusal",
+                                        "trace_id": trace_id,
+                                        "reason": "no_citations_after_host_filter",
+                                        "host_label": host_label,
+                                    }
+                                )
+                                answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label, streamed=True)
+                                yield json.dumps(
+                                    {
+                                        "type": "done",
+                                        "answer": answer,
+                                        "citations": [],
+                                        "suggested_messages": suggested_messages,
+                                        "session_id": session.session_id,
+                                    },
+                                    ensure_ascii=False,
+                                ) + "\n"
+                                conversation_service().add_message(
+                                    session_id=session.session_id,
+                                    bot_id=bot.bot_id,
+                                    role="user",
+                                    content=msg,
+                                )
+                                conversation_service().add_message(
+                                    session_id=session.session_id,
+                                    bot_id=bot.bot_id,
+                                    role="bot",
+                                    content=answer,
+                                    citations=[],
+                                )
+                            else:
+                                answer = str(evt.get("answer") or "")
+                                answer = normalize_answer_links(
+                                    answer,
+                                    candidates=build_answer_link_candidates(
+                                        reservation_config=reservation_cfg_stream,
+                                        url_bank=url_bank_stream,
+                                        sources=sources,
+                                    ),
+                                    render_target=RENDER_TARGET_WEB_MARKDOWN,
+                                ).text
+                                platform_features_stream = get_platform_features_from_widget(widget_config_stream)
+                                menu_extraction_enabled_stream = platform_features_stream.get("menu_extraction_enabled") if platform_features_stream else False
+                                allowed_asset_types_stream = {"menu_item"} if menu_extraction_enabled_stream else None
+                                show_assets_stream = evt.get("show_assets")
+                                if show_assets_stream is False:
+                                    asset_cards_stream = []
+                                else:
+                                    answer, marker_cards_stream = resolve_asset_markers(
+                                        answer,
+                                        bot.bot_id,
+                                        session.session_id,
+                                        allowed_asset_types=allowed_asset_types_stream,
+                                    )
+                                    if marker_cards_stream:
+                                        asset_cards_stream = marker_cards_stream
+                                    else:
+                                        answer, asset_cards_stream = process_answer_assets(
+                                            answer,
+                                            bot.bot_id,
+                                            user_query=msg,
+                                            session_id=session.session_id,
+                                            allowed_asset_types=allowed_asset_types_stream,
+                                            asset_term_config=asset_rules_stream.get("asset_term_config"),
+                                        )
+                                chat_debug_emit(
+                                    {
+                                        "type": "chat_response",
+                                        "trace_id": trace_id,
+                                        "answer": answer,
+                                        "citations": citations,
+                                        "assets": asset_cards_stream,
+                                    }
+                                )
+                                yield json.dumps(
+                                    {
+                                        "type": "done",
+                                        "answer": answer,
+                                        "citations": citations,
+                                        "assets": asset_cards_stream,
+                                        "suggested_messages": suggested_messages,
+                                        "session_id": session.session_id,
+                                    },
+                                    ensure_ascii=False,
+                                ) + "\n"
+                                conversation_service().add_message(
+                                    session_id=session.session_id,
+                                    bot_id=bot.bot_id,
+                                    role="user",
+                                    content=msg,
+                                )
+                                conversation_service().add_message(
+                                    session_id=session.session_id,
+                                    bot_id=bot.bot_id,
+                                    role="bot",
+                                    content=answer,
+                                    citations=citations,
+                                )
+                            conversation_service().finalize_runtime_turn(
+                                session_id=session.session_id,
+                                channel="chat",
+                                transport_sent=True,
+                            )
+                            return
+                except Exception as e:
+                    yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n"
+                    try:
+                        conversation_service().add_message(
+                            session_id=session.session_id,
+                            bot_id=bot.bot_id,
+                            role="user",
+                            content=msg,
+                        )
+                    except Exception:
+                        pass
+                    conversation_service().finalize_runtime_turn(
+                        session_id=session.session_id,
+                        channel="chat",
+                        transport_sent=False,
+                        force=True,
+                    )
+            finally:
+                if runtime_enabled and turn_lock_acquired:
+                    conversation_service().release_turn_lock(session_id=session.session_id, owner=turn_lock_owner)
+                reset_runtime_mode(stream_runtime_token)
+
+        reset_runtime_mode(runtime_token)
+        runtime_token = None
 
         return StreamingResponse(
-            _handoff_gen(),
+            _gen(),
             media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
                 "X-Accel-Buffering": "no",
+                "X-Conversation-Id": session.session_id,
             },
         )
-    # Load conversation history (without current message — it's already in `query`)
-    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
-    conversation_context = _format_conversation_context(recent)
-
-    # If message asks about availability and bot has booking config, run sync check and inject as evidence
-    extra_evidence_stream: List[Dict[str, str]] = []
-    availability_summary_stream, availability_skip_reason_stream = maybe_run_chat_availability(bot.bot_id, msg, widget_config_stream)
-    if availability_skip_reason_stream:
-        chat_debug_emit({"type": "chat_availability_skipped", "trace_id": trace_id, "reason": availability_skip_reason_stream})
-    if availability_summary_stream and _is_real_availability_summary(availability_summary_stream):
-        extra_evidence_stream.append({"url": "Live availability check", "snippet": availability_summary_stream})
-        chat_debug_emit({"type": "chat_availability_injected", "trace_id": trace_id})
-    booking_url_stream = _get_booking_url_for_chat(widget_config_stream)
-    if booking_url_stream:
-        extra_evidence_stream.append({"url": booking_url_stream, "snippet": f"To book or check availability, visit: {booking_url_stream}"})
-
-    url_bank_stream = _get_url_bank_for_chat(widget_config_stream)
-    if url_bank_stream:
-        for it in url_bank_stream:
-            label = it["label"]
-            url = it["url"]
-            extra_evidence_stream.append(
-                {
-                    "url": url,
-                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
-                }
-            )
-        bank_lines_stream = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_stream])
-        bank_instruction_stream = (
-            "Answer links (use only when they match the customer’s question):\n"
-            f"{bank_lines_stream}\n\n"
-            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
-            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
-        )
-        system_instruction = f"{system_instruction}\n\n{bank_instruction_stream}" if system_instruction else bank_instruction_stream
-
-    # Inject restaurant reservation instructions if applicable
-    reservation_cfg_stream = get_reservation_config_from_widget(widget_config_stream, lang=turn_lang)
-    if reservation_cfg_stream:
-        extra_evidence_stream.append({
-            "url": reservation_cfg_stream["url"],
-            "snippet": f"Official online reservation page: {reservation_cfg_stream['url']}",
-        })
-        system_instruction = (
-            f"{system_instruction}\n\n{reservation_cfg_stream['instruction']}"
-            if system_instruction
-            else reservation_cfg_stream["instruction"]
-        )
-
-    # Inject asset bank as system instruction (up to 150 items; URLs resolved server-side)
-    asset_rules_stream = get_asset_rules_from_widget(widget_config_stream)
-    asset_instruction_stream = build_asset_instruction(bot.bot_id, asset_rules=asset_rules_stream)
-    if asset_instruction_stream:
-        system_instruction = f"{system_instruction}\n\n{asset_instruction_stream}" if system_instruction else asset_instruction_stream
-    platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=turn_lang)
-    if platform_asset_instruction_stream:
-        system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
-    json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=turn_lang)
-    if json_response_instruction_stream:
-        system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
-
-    corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
-    async def _gen():
-        yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
-        try:
-            async for evt in _async_iter_from_sync_gen(
-                run_vertex_rag_stream,
-                query,
-                rag_corpus=corpus,
-                allowed_host=None,
-                debug_cb=_rag_dbg,
-                system_instruction=system_instruction,
-                model_name=model_name,
-                temperature=temperature,
-                conversation_context=conversation_context or None,
-                extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
-                bot_display_name=getattr(bot, "display_name", None),
-                parse_json_response=get_platform_json_response_enabled(widget_config_stream),
-            ):
-                if evt.get("type") == "delta":
-                    yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
-                    continue
-                if evt.get("type") == "done":
-                    sources = evt.get("sources") or []
-                    citations = []
-                    for s in sources:
-                        citations.append({"url": str(s.get("url") or ""), "snippet": str(s.get("excerpt") or "")})
-                    if not citations:
-                        host_label = allowed_host or "this site"
-                        chat_debug_emit(
-                            {
-                                "type": "chat_refusal",
-                                "trace_id": trace_id,
-                                "reason": "no_citations_after_host_filter",
-                                "host_label": host_label,
-                            }
-                        )
-                        answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label, streamed=True)
-                        yield json.dumps(
-                            {
-                                "type": "done",
-                                "answer": answer,
-                                "citations": [],
-                                "suggested_messages": suggested_messages,
-                                "session_id": session.session_id,
-                            },
-                            ensure_ascii=False,
-                        ) + "\n"
-                        # Deferred DB writes — after response sent to user
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="user",
-                            content=msg,
-                        )
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="bot",
-                            content=answer,
-                            citations=[],
-                        )
-                    else:
-                        answer = str(evt.get("answer") or "")
-                        answer = normalize_answer_links(
-                            answer,
-                            candidates=build_answer_link_candidates(
-                                reservation_config=reservation_cfg_stream,
-                                url_bank=url_bank_stream,
-                                sources=sources,
-                            ),
-                            render_target=RENDER_TARGET_WEB_MARKDOWN,
-                        ).text
-                        platform_features_stream = get_platform_features_from_widget(widget_config_stream)
-                        menu_extraction_enabled_stream = platform_features_stream.get("menu_extraction_enabled") if platform_features_stream else False
-                        allowed_asset_types_stream = {"menu_item"} if menu_extraction_enabled_stream else None
-                        show_assets_stream = evt.get("show_assets")
-                        if show_assets_stream is False:
-                            asset_cards_stream = []
-                        else:
-                            answer, marker_cards_stream = resolve_asset_markers(
-                                answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_stream
-                            )
-                            if marker_cards_stream:
-                                asset_cards_stream = marker_cards_stream
-                            else:
-                                answer, asset_cards_stream = process_answer_assets(
-                                    answer,
-                                    bot.bot_id,
-                                    user_query=msg,
-                                    session_id=session.session_id,
-                                    allowed_asset_types=allowed_asset_types_stream,
-                                    asset_term_config=asset_rules_stream.get("asset_term_config"),
-                                )
-                        chat_debug_emit(
-                            {
-                                "type": "chat_response",
-                                "trace_id": trace_id,
-                                "answer": answer,
-                                "citations": citations,
-                                "assets": asset_cards_stream,
-                            }
-                        )
-                        yield json.dumps(
-                            {
-                                "type": "done",
-                                "answer": answer,
-                                "citations": citations,
-                                "assets": asset_cards_stream,
-                                "suggested_messages": suggested_messages,
-                                "session_id": session.session_id,
-                            },
-                            ensure_ascii=False,
-                        ) + "\n"
-                        # Deferred DB writes — after response sent to user
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="user",
-                            content=msg,
-                        )
-                        conversation_service().add_message(
-                            session_id=session.session_id,
-                            bot_id=bot.bot_id,
-                            role="bot",
-                            content=answer,
-                            citations=citations,
-                        )
-        except Exception as e:
-            yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n"
-            # Still save user message on error so it's not lost
-            try:
-                conversation_service().add_message(
-                    session_id=session.session_id,
-                    bot_id=bot.bot_id,
-                    role="user",
-                    content=msg,
-                )
-            except Exception:
-                pass
-
-    return StreamingResponse(
-        _gen(),
-        media_type="application/x-ndjson",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-            "X-Conversation-Id": session.session_id,
-        },
-    )
-
+    except Exception:
+        if runtime_enabled and turn_lock_acquired:
+            conversation_service().release_turn_lock(session_id=session.session_id, owner=turn_lock_owner)
+        if runtime_token is not None:
+            reset_runtime_mode(runtime_token)
+        raise
 
 @router.get("/v1/admin/orgs", response_model=OrgListResponse)
 async def v1_admin_list_orgs(user=Depends(require_super_admin)):
@@ -2640,163 +2797,192 @@ async def v1_org_test_chat(
     msg = (payload.message or "").strip()
     if not msg:
         raise HTTPException(status_code=400, detail="message is required")
-    session = conversation_service().get_or_create_session(
-        bot_id=bot.bot_id,
-        org_id=bot.org_id,
+
+    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+        request_path=f"/v1/org/bots/{bot_id}/test-chat",
         channel="test",
-        session_id=getattr(payload, "session_id", None),
-        site_url=None,
-        site_title=None,
-        user_agent=request.headers.get("user-agent"),
-        ip=request.client.host if request.client else None,
-    )
-    conversation_service().add_message(
-        session_id=session.session_id,
         bot_id=bot.bot_id,
-        role="user",
-        content=msg,
     )
-    recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
-    conversation_context = _format_conversation_context(recent)
-    agent_config = {}
-    if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
-        try:
-            agent_config = json.loads(bot.agent_config)
-        except (TypeError, ValueError):
-            pass
-    widget_config_test: Dict[str, Any] = {}
-    if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
-        try:
-            widget_config_test = json.loads(bot.widget_config)
-        except (TypeError, ValueError):
-            pass
-    system_instruction = _resolve_system_instruction(
-        agent_config,
-        lang=_get_bot_language(bot),
-        bot_name=getattr(bot, "display_name", "") or "",
-        widget_config=widget_config_test,
-    )
-    model_name = agent_config.get("model_id") if agent_config else None
-    temperature = agent_config.get("temperature") if agent_config else None
-
-    # Keep dashboard test-chat behavior aligned with live chat routes.
-    extra_evidence_test: List[Dict[str, str]] = []
-    availability_summary_test, _ = maybe_run_chat_availability(bot.bot_id, msg, widget_config_test)
-    if availability_summary_test and _is_real_availability_summary(availability_summary_test):
-        extra_evidence_test.append({"url": "Live availability check", "snippet": availability_summary_test})
-
-    booking_url_test = _get_booking_url_for_chat(widget_config_test)
-    if booking_url_test:
-        extra_evidence_test.append({"url": booking_url_test, "snippet": f"To book or check availability, visit: {booking_url_test}"})
-
-    url_bank_test = _get_url_bank_for_chat(widget_config_test)
-    if url_bank_test:
-        for it in url_bank_test:
-            label = it["label"]
-            url = it["url"]
-            extra_evidence_test.append(
-                {
-                    "url": url,
-                    "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
-                }
-            )
-        bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_test])
-        bank_instruction_test = (
-            "Answer links (use only when they match the customer’s question):\n"
-            f"{bank_lines}\n\n"
-            "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
-            "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+    runtime_token = set_runtime_mode(runtime_enabled)
+    turn_lock_owner = f"test_chat:{uuid.uuid4().hex}"
+    turn_lock_acquired = False
+    session = None
+    try:
+        session = conversation_service().get_or_create_session(
+            bot_id=bot.bot_id,
+            org_id=bot.org_id,
+            channel="test",
+            session_id=getattr(payload, "session_id", None),
+            site_url=None,
+            site_title=None,
+            user_agent=request.headers.get("user-agent"),
+            ip=request.client.host if request.client else None,
         )
-        system_instruction = (
-            f"{system_instruction}\n\n{bank_instruction_test}" if system_instruction else bank_instruction_test
-        )
-
-    reservation_cfg_test = get_reservation_config_from_widget(
-        widget_config_test, lang=_get_bot_language(bot)
-    )
-    if reservation_cfg_test:
-        extra_evidence_test.append({
-            "url": reservation_cfg_test["url"],
-            "snippet": f"Official online reservation page: {reservation_cfg_test['url']}",
-        })
-        system_instruction = (
-            f"{system_instruction}\n\n{reservation_cfg_test['instruction']}"
-            if system_instruction
-            else reservation_cfg_test["instruction"]
-        )
-
-    asset_rules_test = get_asset_rules_from_widget(widget_config_test)
-    asset_instruction_test = build_asset_instruction(bot.bot_id, asset_rules=asset_rules_test)
-    if asset_instruction_test:
-        system_instruction = (
-            f"{system_instruction}\n\n{asset_instruction_test}" if system_instruction else asset_instruction_test
-        )
-    platform_asset_instruction_test = get_platform_asset_instructions(widget_config_test, lang=_get_bot_language(bot))
-    if platform_asset_instruction_test:
-        system_instruction = (
-            f"{system_instruction}\n\n{platform_asset_instruction_test}" if system_instruction else platform_asset_instruction_test
-        )
-    json_response_instruction_test = get_platform_json_response_instruction(widget_config_test, lang=_get_bot_language(bot))
-    if json_response_instruction_test:
-        system_instruction = (
-            f"{system_instruction}\n\n{json_response_instruction_test}" if system_instruction else json_response_instruction_test
-        )
-
-    result = await asyncio.to_thread(
-        run_vertex_rag,
-        msg,
-        rag_corpus=corpus,
-        allowed_host=None,
-        system_instruction=system_instruction,
-        model_name=model_name,
-        temperature=temperature,
-        conversation_context=conversation_context or None,
-        extra_evidence=extra_evidence_test if extra_evidence_test else None,
-        bot_display_name=getattr(bot, "display_name", None),
-        parse_json_response=get_platform_json_response_enabled(widget_config_test),
-    )
-    sources = result.get("sources") or []
-    citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
-    answer = str(result.get("answer") or "")
-    answer = normalize_answer_links(
-        answer,
-        candidates=build_answer_link_candidates(
-            reservation_config=reservation_cfg_test,
-            url_bank=url_bank_test,
-            sources=sources,
-        ),
-        render_target=RENDER_TARGET_WEB_MARKDOWN,
-    ).text
-    platform_features_test = get_platform_features_from_widget(widget_config_test)
-    menu_extraction_enabled_test = platform_features_test.get("menu_extraction_enabled") if platform_features_test else False
-    allowed_asset_types_test = {"menu_item"} if menu_extraction_enabled_test else None
-    show_assets_test = result.get("show_assets")
-    if show_assets_test is False:
-        asset_cards = []
-    else:
-        answer, marker_cards = resolve_asset_markers(
-            answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_test
-        )
-        if marker_cards:
-            asset_cards = marker_cards
-        else:
-            answer, asset_cards = process_answer_assets(
-                answer,
-                bot.bot_id,
-                user_query=msg,
+        if runtime_enabled:
+            turn_lock_acquired = conversation_service().acquire_turn_lock(
                 session_id=session.session_id,
-                allowed_asset_types=allowed_asset_types_test,
-                asset_term_config=asset_rules_test.get("asset_term_config"),
+                owner=turn_lock_owner,
             )
-    assets = [AssetCard(**c) for c in asset_cards]
-    conversation_service().add_message(
-        session_id=session.session_id,
-        bot_id=bot.bot_id,
-        role="bot",
-        content=answer,
-        citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
-    )
-    return TestChatResponse(answer=answer, citations=citations, assets=assets, session_id=session.session_id)
+            if not turn_lock_acquired:
+                raise HTTPException(status_code=409, detail="Session is busy. Please retry.")
+
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="user",
+            content=msg,
+        )
+        recent = conversation_service().list_recent_messages(session.session_id, limit=CONVERSATION_HISTORY_MESSAGES)
+        conversation_context = _format_conversation_context(recent)
+
+        agent_config = {}
+        if getattr(bot, "agent_config", None) and (bot.agent_config or "").strip():
+            try:
+                agent_config = json.loads(bot.agent_config)
+            except (TypeError, ValueError):
+                pass
+        widget_config_test: Dict[str, Any] = {}
+        if getattr(bot, "widget_config", None) and (bot.widget_config or "").strip():
+            try:
+                widget_config_test = json.loads(bot.widget_config)
+            except (TypeError, ValueError):
+                pass
+        system_instruction = _resolve_system_instruction(
+            agent_config,
+            lang=_get_bot_language(bot),
+            bot_name=getattr(bot, "display_name", "") or "",
+            widget_config=widget_config_test,
+        )
+        model_name = agent_config.get("model_id") if agent_config else None
+        temperature = agent_config.get("temperature") if agent_config else None
+
+        # Keep dashboard test-chat behavior aligned with live chat routes.
+        extra_evidence_test: List[Dict[str, str]] = []
+        availability_summary_test, _ = maybe_run_chat_availability(bot.bot_id, msg, widget_config_test)
+        if availability_summary_test and _is_real_availability_summary(availability_summary_test):
+            extra_evidence_test.append({"url": "Live availability check", "snippet": availability_summary_test})
+
+        booking_url_test = _get_booking_url_for_chat(widget_config_test)
+        if booking_url_test:
+            extra_evidence_test.append({"url": booking_url_test, "snippet": f"To book or check availability, visit: {booking_url_test}"})
+
+        url_bank_test = _get_url_bank_for_chat(widget_config_test)
+        if url_bank_test:
+            for it in url_bank_test:
+                label = it["label"]
+                url = it["url"]
+                extra_evidence_test.append(
+                    {
+                        "url": url,
+                        "snippet": f"If the customer asks about {label}, share this link: [{label}]({url})",
+                    }
+                )
+            bank_lines = "\n".join([f"- {it['label']}: [{it['label']}]({it['url']})" for it in url_bank_test])
+            bank_instruction_test = (
+                "Answer links (use only when they match the customer's question):\n"
+                f"{bank_lines}\n\n"
+                "If the question matches one of these topics, answer from that URL's content when it appears in the evidence, and include the matching link in your response.\n"
+                "Write links as markdown like [Pricing](https://...) inside a normal sentence."
+            )
+            system_instruction = (
+                f"{system_instruction}\n\n{bank_instruction_test}" if system_instruction else bank_instruction_test
+            )
+
+        reservation_cfg_test = get_reservation_config_from_widget(
+            widget_config_test, lang=_get_bot_language(bot)
+        )
+        if reservation_cfg_test:
+            extra_evidence_test.append({
+                "url": reservation_cfg_test["url"],
+                "snippet": f"Official online reservation page: {reservation_cfg_test['url']}",
+            })
+            system_instruction = (
+                f"{system_instruction}\n\n{reservation_cfg_test['instruction']}"
+                if system_instruction
+                else reservation_cfg_test["instruction"]
+            )
+
+        asset_rules_test = get_asset_rules_from_widget(widget_config_test)
+        asset_instruction_test = build_asset_instruction(bot.bot_id, asset_rules=asset_rules_test)
+        if asset_instruction_test:
+            system_instruction = (
+                f"{system_instruction}\n\n{asset_instruction_test}" if system_instruction else asset_instruction_test
+            )
+        platform_asset_instruction_test = get_platform_asset_instructions(widget_config_test, lang=_get_bot_language(bot))
+        if platform_asset_instruction_test:
+            system_instruction = (
+                f"{system_instruction}\n\n{platform_asset_instruction_test}" if system_instruction else platform_asset_instruction_test
+            )
+        json_response_instruction_test = get_platform_json_response_instruction(widget_config_test, lang=_get_bot_language(bot))
+        if json_response_instruction_test:
+            system_instruction = (
+                f"{system_instruction}\n\n{json_response_instruction_test}" if system_instruction else json_response_instruction_test
+            )
+
+        result = await asyncio.to_thread(
+            run_vertex_rag,
+            msg,
+            rag_corpus=corpus,
+            allowed_host=None,
+            system_instruction=system_instruction,
+            model_name=model_name,
+            temperature=temperature,
+            conversation_context=conversation_context or None,
+            extra_evidence=extra_evidence_test if extra_evidence_test else None,
+            bot_display_name=getattr(bot, "display_name", None),
+            parse_json_response=get_platform_json_response_enabled(widget_config_test),
+        )
+        sources = result.get("sources") or []
+        citations = [Citation(url=str(s.get("url") or ""), snippet=str(s.get("excerpt") or "")) for s in sources]
+        answer = str(result.get("answer") or "")
+        answer = normalize_answer_links(
+            answer,
+            candidates=build_answer_link_candidates(
+                reservation_config=reservation_cfg_test,
+                url_bank=url_bank_test,
+                sources=sources,
+            ),
+            render_target=RENDER_TARGET_WEB_MARKDOWN,
+        ).text
+        platform_features_test = get_platform_features_from_widget(widget_config_test)
+        menu_extraction_enabled_test = platform_features_test.get("menu_extraction_enabled") if platform_features_test else False
+        allowed_asset_types_test = {"menu_item"} if menu_extraction_enabled_test else None
+        show_assets_test = result.get("show_assets")
+        if show_assets_test is False:
+            asset_cards = []
+        else:
+            answer, marker_cards = resolve_asset_markers(
+                answer, bot.bot_id, session.session_id, allowed_asset_types=allowed_asset_types_test
+            )
+            if marker_cards:
+                asset_cards = marker_cards
+            else:
+                answer, asset_cards = process_answer_assets(
+                    answer,
+                    bot.bot_id,
+                    user_query=msg,
+                    session_id=session.session_id,
+                    allowed_asset_types=allowed_asset_types_test,
+                    asset_term_config=asset_rules_test.get("asset_term_config"),
+                )
+        assets = [AssetCard(**c) for c in asset_cards]
+        conversation_service().add_message(
+            session_id=session.session_id,
+            bot_id=bot.bot_id,
+            role="bot",
+            content=answer,
+            citations=[c.model_dump() if hasattr(c, "model_dump") else {"url": c.url, "snippet": c.snippet} for c in citations],
+        )
+        conversation_service().finalize_runtime_turn(
+            session_id=session.session_id,
+            channel="test",
+            transport_sent=True,
+        )
+        return TestChatResponse(answer=answer, citations=citations, assets=assets, session_id=session.session_id)
+    finally:
+        if runtime_enabled and session is not None and turn_lock_acquired:
+            conversation_service().release_turn_lock(session_id=session.session_id, owner=turn_lock_owner)
+        reset_runtime_mode(runtime_token)
 
 
 @router.post("/v1/org/bots/{bot_id}/analytics/recompute", response_model=RecomputeResponse)

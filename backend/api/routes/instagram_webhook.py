@@ -36,6 +36,7 @@ from application.services.answer_normalization_service import (
     build_answer_link_candidates,
     normalize_answer_links,
 )
+from application.services.chat_runtime_context import reset_runtime_mode, set_runtime_mode
 from common.di.container import asset_repo, bot_service, conversation_service
 from infrastructure.clients.instagram_client import (
     INSTAGRAM_APP_SECRET,
@@ -59,7 +60,6 @@ from infrastructure.assets.asset_resolver import (
 from infrastructure.db.repositories import (
     PostgresBotSourceRepository,
     PostgresInstagramChannelRepository,
-    PostgresInstagramUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.chat_cache import claim_webhook_event_once
@@ -86,7 +86,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _ig_channel_repo = PostgresInstagramChannelRepository()
-_ig_user_session_repo = PostgresInstagramUserSessionRepository()
 _bot_source_repo = PostgresBotSourceRepository()
 
 # Global webhook verify token (set in Meta App Dashboard, stored in env)
@@ -969,90 +968,116 @@ async def instagram_webhook_global(request: Request):
     except (json.JSONDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
+    runtime_enabled = False
+    runtime_token = None
     entries = payload.get("entry", [])
-    for entry in entries:
-        messaging_events = entry.get("messaging", [])
-        for event in messaging_events:
-            message = event.get("message", {})
-            text = (message.get("text") or "").strip()
-            quick_payload = str((message.get("quick_reply") or {}).get("payload") or "").strip()
-            if not text and not quick_payload:
-                continue
-
-            sender = event.get("sender", {})
-            ig_sender_id = str(sender.get("id", ""))
-            if not ig_sender_id:
-                continue
-
-            # The recipient is the IG professional account that received the DM
-            recipient = event.get("recipient", {})
-            ig_recipient_id = str(recipient.get("id", ""))
-            if not ig_recipient_id:
-                continue
-
-            # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
-            if message.get("is_echo"):
-                channel = _ig_channel_repo.get_by_ig_user_id(ig_sender_id)
-                if not channel:
-                    channel = _ig_channel_repo.get_by_page_id(ig_sender_id)
-                if channel and channel.is_active and not _did_we_recently_send(ig_recipient_id, channel.bot_id):
-                    passed = await pass_thread_control_to_inbox(
-                        ig_user_id=ig_recipient_id,
-                        page_access_token=channel.page_access_token,
-                    )
-                    if not passed:
-                        logger.debug(
-                            "pass_thread_control on echo failed for ig_user=%s (may already have control)",
-                            ig_recipient_id,
-                        )
-                    mapping = _ig_user_session_repo.get(ig_user_id=ig_recipient_id, bot_id=channel.bot_id)
-                    if mapping:
-                        conversation_service().begin_handoff(
-                            bot_id=channel.bot_id,
-                            session_id=mapping.session_id,
-                            source_channel="instagram",
-                            started_by="staff",
-                        )
-                continue
-
-            # Look up which bot owns this IG account
-            channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id)
-            if not channel:
-                # Fallback: try ig_page_id (covers both OAuth and manual)
-                channel = _ig_channel_repo.get_by_page_id(ig_recipient_id)
-            if not channel:
-                # Last resort: the webhook IGSID may differ from the stored
-                # app-scoped ID.  Try all active OAuth channels and resolve.
-                channel = _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
-            if not channel or not channel.is_active:
-                logger.warning("Instagram global webhook: no active channel for recipient %s", ig_recipient_id)
-                continue
-
-            # For OAuth channels, use the global app secret for signature verification
-            # (already verified above), but use the channel's token for sending
-            bot = bot_service().get_bot_record(channel.bot_id)
-            if not bot:
-                # Orphaned channel (bot was deleted without disconnecting). Remove it and retry.
-                logger.info("Instagram global webhook: removing orphan channel for deleted bot_id %s", channel.bot_id)
-                _ig_channel_repo.delete_by_bot_id(channel.bot_id)
-                channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id) or _ig_channel_repo.get_by_page_id(ig_recipient_id) or _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
-                if not channel or not channel.is_active:
+    try:
+        for entry in entries:
+            messaging_events = entry.get("messaging", [])
+            for event in messaging_events:
+                message = event.get("message", {})
+                text = (message.get("text") or "").strip()
+                quick_payload = str((message.get("quick_reply") or {}).get("payload") or "").strip()
+                if not text and not quick_payload:
                     continue
+
+                sender = event.get("sender", {})
+                ig_sender_id = str(sender.get("id", ""))
+                if not ig_sender_id:
+                    continue
+
+                # The recipient is the IG professional account that received the DM
+                recipient = event.get("recipient", {})
+                ig_recipient_id = str(recipient.get("id", ""))
+                if not ig_recipient_id:
+                    continue
+
+                # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
+                if message.get("is_echo"):
+                    channel = _ig_channel_repo.get_by_ig_user_id(ig_sender_id)
+                    if not channel:
+                        channel = _ig_channel_repo.get_by_page_id(ig_sender_id)
+                    if channel and channel.is_active:
+                        if runtime_token is None:
+                            runtime_enabled = conversation_service().resolve_runtime_request_mode(
+                                request_path="/webhooks/instagram",
+                                channel="instagram",
+                                bot_id=channel.bot_id,
+                            )
+                            runtime_token = set_runtime_mode(runtime_enabled)
+                        if not _did_we_recently_send(ig_recipient_id, channel.bot_id):
+                            passed = await pass_thread_control_to_inbox(
+                                ig_user_id=ig_recipient_id,
+                                page_access_token=channel.page_access_token,
+                            )
+                            if not passed:
+                                logger.debug(
+                                    "pass_thread_control on echo failed for ig_user=%s (may already have control)",
+                                    ig_recipient_id,
+                                )
+                            mapping = conversation_service().get_instagram_user_session(
+                                ig_user_id=ig_recipient_id,
+                                bot_id=channel.bot_id,
+                            )
+                            if mapping:
+                                conversation_service().begin_handoff(
+                                    bot_id=channel.bot_id,
+                                    session_id=mapping.session_id,
+                                    source_channel="instagram",
+                                    started_by="staff",
+                                )
+                    continue
+
+                # Look up which bot owns this IG account
+                channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id)
+                if not channel:
+                    # Fallback: try ig_page_id (covers both OAuth and manual)
+                    channel = _ig_channel_repo.get_by_page_id(ig_recipient_id)
+                if not channel:
+                    # Last resort: the webhook IGSID may differ from the stored
+                    # app-scoped ID.  Try all active OAuth channels and resolve.
+                    channel = _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
+                if not channel or not channel.is_active:
+                    logger.warning("Instagram global webhook: no active channel for recipient %s", ig_recipient_id)
+                    continue
+
+                if runtime_token is None:
+                    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+                        request_path="/webhooks/instagram",
+                        channel="instagram",
+                        bot_id=channel.bot_id,
+                    )
+                    runtime_token = set_runtime_mode(runtime_enabled)
+
+                # For OAuth channels, use the global app secret for signature verification
+                # (already verified above), but use the channel's token for sending
                 bot = bot_service().get_bot_record(channel.bot_id)
                 if not bot:
-                    logger.warning("Instagram global webhook: no valid channel for recipient %s", ig_recipient_id)
-                    continue
+                    # Orphaned channel (bot was deleted without disconnecting). Remove it and retry.
+                    logger.info("Instagram global webhook: removing orphan channel for deleted bot_id %s", channel.bot_id)
+                    _ig_channel_repo.delete_by_bot_id(channel.bot_id)
+                    channel = _ig_channel_repo.get_by_ig_user_id(ig_recipient_id) or _ig_channel_repo.get_by_page_id(ig_recipient_id) or _ig_channel_repo.resolve_by_webhook_id(ig_recipient_id)
+                    if not channel or not channel.is_active:
+                        continue
+                    bot = bot_service().get_bot_record(channel.bot_id)
+                    if not bot:
+                        logger.warning("Instagram global webhook: no valid channel for recipient %s", ig_recipient_id)
+                        continue
 
-            _rate_limit(channel.bot_id)
+                _rate_limit(channel.bot_id)
 
-            await _handle_text_message(
-                bot=bot,
-                channel=channel,
-                ig_user_id=ig_sender_id,
-                text=text,
-                quick_payload=quick_payload or None,
-                request=request,
-            )
+                await _handle_text_message(
+                    bot=bot,
+                    channel=channel,
+                    ig_user_id=ig_sender_id,
+                    text=text,
+                    quick_payload=quick_payload or None,
+                    request=request,
+                    runtime_enabled=runtime_enabled,
+                )
+    finally:
+        if runtime_token is not None:
+            reset_runtime_mode(runtime_token)
 
     return {"ok": True}
 
@@ -1133,55 +1158,68 @@ async def instagram_webhook(bot_id: str, request: Request):
 
     # 6. Process messaging events
     # Meta sends: { "object": "instagram", "entry": [ { "messaging": [...] } ] }
+    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+        request_path=f"/webhooks/instagram/{bot_id}",
+        channel="instagram",
+        bot_id=bot_id,
+    )
+    runtime_token = set_runtime_mode(runtime_enabled)
     entries = payload.get("entry", [])
-    for entry in entries:
-        messaging_events = entry.get("messaging", [])
-        for event in messaging_events:
-            message = event.get("message", {})
-            text = (message.get("text") or "").strip()
-            quick_payload = str((message.get("quick_reply") or {}).get("payload") or "").strip()
-            if not text and not quick_payload:
-                continue  # Skip non-text (images, stickers, etc.)
+    try:
+        for entry in entries:
+            messaging_events = entry.get("messaging", [])
+            for event in messaging_events:
+                message = event.get("message", {})
+                text = (message.get("text") or "").strip()
+                quick_payload = str((message.get("quick_reply") or {}).get("payload") or "").strip()
+                if not text and not quick_payload:
+                    continue  # Skip non-text (images, stickers, etc.)
 
-            sender = event.get("sender", {})
-            recipient = event.get("recipient", {})
-            ig_sender_id = str(sender.get("id", ""))
-            ig_recipient_id = str(recipient.get("id", ""))
-            if not ig_sender_id or not ig_recipient_id:
-                continue
+                sender = event.get("sender", {})
+                recipient = event.get("recipient", {})
+                ig_sender_id = str(sender.get("id", ""))
+                ig_recipient_id = str(recipient.get("id", ""))
+                if not ig_sender_id or not ig_recipient_id:
+                    continue
 
-            # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
-            if message.get("is_echo"):
-                if not _did_we_recently_send(ig_recipient_id, bot_id):
-                    passed = await pass_thread_control_to_inbox(
-                        ig_user_id=ig_recipient_id,
-                        page_access_token=channel.page_access_token,
-                    )
-                    if not passed:
-                        logger.debug(
-                            "pass_thread_control on echo failed for ig_user=%s (may already have control)",
-                            ig_recipient_id,
+                # Echo: business sent a message to the customer. If we didn't send it (via API), client took over.
+                if message.get("is_echo"):
+                    if not _did_we_recently_send(ig_recipient_id, bot_id):
+                        passed = await pass_thread_control_to_inbox(
+                            ig_user_id=ig_recipient_id,
+                            page_access_token=channel.page_access_token,
                         )
-                    mapping = _ig_user_session_repo.get(ig_user_id=ig_recipient_id, bot_id=bot_id)
-                    if mapping:
-                        conversation_service().begin_handoff(
+                        if not passed:
+                            logger.debug(
+                                "pass_thread_control on echo failed for ig_user=%s (may already have control)",
+                                ig_recipient_id,
+                            )
+                        mapping = conversation_service().get_instagram_user_session(
+                            ig_user_id=ig_recipient_id,
                             bot_id=bot_id,
-                            session_id=mapping.session_id,
-                            source_channel="instagram",
-                            started_by="staff",
                         )
-                continue
+                        if mapping:
+                            conversation_service().begin_handoff(
+                                bot_id=bot_id,
+                                session_id=mapping.session_id,
+                                source_channel="instagram",
+                                started_by="staff",
+                            )
+                    continue
 
-            ig_user_id = ig_sender_id
+                ig_user_id = ig_sender_id
 
-            await _handle_text_message(
-                bot=bot,
-                channel=channel,
-                ig_user_id=ig_user_id,
-                text=text,
-                quick_payload=quick_payload or None,
-                request=request,
-            )
+                await _handle_text_message(
+                    bot=bot,
+                    channel=channel,
+                    ig_user_id=ig_user_id,
+                    text=text,
+                    quick_payload=quick_payload or None,
+                    request=request,
+                    runtime_enabled=runtime_enabled,
+                )
+    finally:
+        reset_runtime_mode(runtime_token)
 
     return {"ok": True}
 
@@ -1194,9 +1232,28 @@ async def _handle_text_message(
     text: str,
     quick_payload: Optional[str],
     request: Request,
+    runtime_enabled: bool = False,
 ) -> None:
     """Core handler for a single text DM from Instagram."""
     access_token = channel.page_access_token
+    turn_lock_owner = f"instagram:{ig_user_id}:{int(time.time() * 1000)}"
+    turn_lock_acquired = False
+    runtime_finalize_session_id: Optional[str] = None
+    runtime_transport_sent = False
+
+    def _runtime_finalize_and_release() -> None:
+        if not runtime_enabled:
+            return
+        sid = (runtime_finalize_session_id or "").strip()
+        if sid:
+            conversation_service().finalize_runtime_turn(
+                session_id=sid,
+                channel="instagram",
+                transport_sent=runtime_transport_sent,
+                force=not runtime_transport_sent,
+            )
+        if sid and turn_lock_acquired:
+            conversation_service().release_turn_lock(session_id=sid, owner=turn_lock_owner)
 
     effective_text = (text or "").strip() or (quick_payload or "").strip()
 
@@ -1216,7 +1273,7 @@ async def _handle_text_message(
     logger.info("Instagram quick replies bot_id=%s quick_reply_count=%s", bot.bot_id, len(ig_quick_replies or []))
 
     # Mapping rows keep the current routed session; runtime handoff state is session-scoped.
-    mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id)
+    mapping = conversation_service().get_instagram_user_session(ig_user_id=ig_user_id, bot_id=bot.bot_id)
     session, contact, _session_changed = conversation_service().resolve_or_create_channel_session(
         bot_id=bot.bot_id,
         org_id=bot.org_id,
@@ -1230,19 +1287,27 @@ async def _handle_text_message(
         user_agent="Instagram",
         ip=None,
     )
+    runtime_finalize_session_id = session.session_id
+    if runtime_enabled:
+        turn_lock_acquired = conversation_service().acquire_turn_lock(
+            session_id=session.session_id,
+            owner=turn_lock_owner,
+        )
+        if not turn_lock_acquired:
+            raise HTTPException(status_code=409, detail="Session is busy. Please retry.")
     if mapping is None:
-        mapping = _ig_user_session_repo.get_or_create(
+        mapping = conversation_service().get_or_create_instagram_user_session(
             ig_user_id=ig_user_id,
             bot_id=bot.bot_id,
             session_id=session.session_id,
         )
     elif mapping.session_id != session.session_id:
-        _ig_user_session_repo.update_session_id(
+        conversation_service().update_instagram_user_session_id(
             ig_user_id=ig_user_id,
             bot_id=bot.bot_id,
             session_id=session.session_id,
         )
-        mapping = _ig_user_session_repo.get(ig_user_id=ig_user_id, bot_id=bot.bot_id) or mapping
+        mapping = conversation_service().get_instagram_user_session(ig_user_id=ig_user_id, bot_id=bot.bot_id) or mapping
 
     assistant_state = getattr(session, "assistant_state", "bot") or "bot"
     skip_typing = assistant_state == "human_handoff" and not _wants_cancel_escalation(effective_text)
@@ -1273,12 +1338,14 @@ async def _handle_text_message(
             cancel_msg = get_instagram_support_messages(lang=lang)["cancel_ack"]
             _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
+            runtime_transport_sent = True
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
                 role="bot",
                 content=cancel_msg,
             )
+            _runtime_finalize_and_release()
             return
         conversation_service().add_message(
             session_id=session.session_id,
@@ -1287,6 +1354,7 @@ async def _handle_text_message(
             content=effective_text,
         )
         # No bot reply - human has control. User was told to wait.
+        _runtime_finalize_and_release()
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Awaiting optional escalation message ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
@@ -1307,12 +1375,14 @@ async def _handle_text_message(
             cancel_msg = get_instagram_support_messages(lang=lang)["cancel_ack"]
             _record_outbound_send(ig_user_id, bot.bot_id)
             await send_message(ig_user_id, cancel_msg, access_token, quick_replies=ig_quick_replies)
+            runtime_transport_sent = True
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
                 role="bot",
                 content=cancel_msg,
             )
+            _runtime_finalize_and_release()
             return
         user_msg = effective_text.strip()
         conversation_service().add_message(
@@ -1365,6 +1435,7 @@ async def _handle_text_message(
         ack_msg = msgs["escalation_ack"]
         _record_outbound_send(ig_user_id, bot.bot_id)
         await send_message(ig_user_id, ack_msg, access_token)
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1382,6 +1453,7 @@ async def _handle_text_message(
                 ig_user_id,
                 bot.bot_id,
             )
+        _runtime_finalize_and_release()
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Escalation request ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
@@ -1402,12 +1474,14 @@ async def _handle_text_message(
         prompt_msg = get_instagram_support_messages(lang=lang)["prompt"]
         _record_outbound_send(ig_user_id, bot.bot_id)
         await send_message(ig_user_id, prompt_msg, access_token)
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
             content=prompt_msg,
         )
+        _runtime_finalize_and_release()
         return
 
     # Full menu request (quick reply tap or explicit short command)
@@ -1431,12 +1505,14 @@ async def _handle_text_message(
             publishable_key=getattr(bot, "publishable_key", None),
             request=request,
         )
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
             content=f"Shared more {category} menu items.",
         )
+        _runtime_finalize_and_release()
         return
 
     if menu_extraction_enabled and _is_full_menu_request(effective_text, quick_payload):
@@ -1455,12 +1531,14 @@ async def _handle_text_message(
             publishable_key=getattr(bot, "publishable_key", None),
             request=request,
         )
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
             role="bot",
             content="Shared the categorized menu.",
         )
+        _runtime_finalize_and_release()
         return
 
     # ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ Normal AI flow ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬
@@ -1652,6 +1730,8 @@ async def _handle_text_message(
         access_token=access_token,
         quick_replies=ig_quick_replies,
     )
+    runtime_transport_sent = True
+    _runtime_finalize_and_release()
 
 
 

@@ -34,6 +34,7 @@ from application.services.answer_normalization_service import (
     build_answer_link_candidates,
     normalize_answer_links,
 )
+from application.services.chat_runtime_context import reset_runtime_mode, set_runtime_mode
 from application.services.asset_policy import ConfigAssetPolicy
 from application.services.channel_adapters import LineChannelAdapter
 from application.services.function_registry import FunctionRegistry
@@ -81,7 +82,6 @@ from infrastructure.assets.asset_resolver import (
 from infrastructure.db.repositories import (
     PostgresLineChannelRepository,
     PostgresLineDesignConfigRepository,
-    PostgresLineUserSessionRepository,
 )
 from infrastructure.services.indexing_service import ensure_bot_corpus
 from infrastructure.services.chat_cache import claim_webhook_event_once
@@ -92,7 +92,6 @@ router = APIRouter()
 
 _line_channel_repo = PostgresLineChannelRepository()
 _line_design_repo = PostgresLineDesignConfigRepository()
-_line_user_session_repo = PostgresLineUserSessionRepository()
 _line_adapter = LineChannelAdapter()
 _prompt_provider = ConfigPromptProvider()
 _asset_policy = ConfigAssetPolicy()
@@ -692,22 +691,32 @@ async def line_webhook(bot_id: str, request: Request):
     if not bot:
         raise HTTPException(status_code=404, detail="Unknown bot_id")
 
-    # Process each event through the channel adapter.
-    for event in events:
-        event_id = _line_event_id(event if isinstance(event, dict) else {})
-        if event_id and not claim_webhook_event_once(provider="line", scope_id=bot_id, event_id=event_id):
-            logger.info("LINE webhook duplicate ignored bot_id=%s event_id=%s", bot_id, event_id)
-            continue
-        parsed = _line_adapter.parse_event(event)
-        if not parsed:
-            continue
+    runtime_enabled = conversation_service().resolve_runtime_request_mode(
+        request_path=f"/webhooks/line/{bot_id}",
+        channel="line",
+        bot_id=bot_id,
+    )
+    runtime_token = set_runtime_mode(runtime_enabled)
+    try:
+        # Process each event through the channel adapter.
+        for event in events:
+            event_id = _line_event_id(event if isinstance(event, dict) else {})
+            if event_id and not claim_webhook_event_once(provider="line", scope_id=bot_id, event_id=event_id):
+                logger.info("LINE webhook duplicate ignored bot_id=%s event_id=%s", bot_id, event_id)
+                continue
+            parsed = _line_adapter.parse_event(event)
+            if not parsed:
+                continue
 
-        await _handle_line_event(
-            bot=bot,
-            channel=channel,
-            event=parsed,
-            request=request,
-        )
+            await _handle_line_event(
+                bot=bot,
+                channel=channel,
+                event=parsed,
+                request=request,
+                runtime_enabled=runtime_enabled,
+            )
+    finally:
+        reset_runtime_mode(runtime_token)
 
     return {"ok": True}
 
@@ -718,6 +727,7 @@ async def _handle_line_event(
     channel,
     event,
     request: Request,
+    runtime_enabled: bool = False,
 ) -> None:
     """Core handler for a single LINE text or postback event."""
     line_user_id = event.user_id
@@ -726,6 +736,24 @@ async def _handle_line_event(
     postback_action = _parse_line_postback_action(getattr(event, "postback_data", None))
     suggested_message_id = _parse_line_suggested_message_id(getattr(event, "postback_data", None))
     access_token = channel.line_channel_access_token
+    turn_lock_owner = f"line:{reply_token or line_user_id}"
+    turn_lock_acquired = False
+    runtime_finalize_session_id: Optional[str] = None
+    runtime_transport_sent = False
+
+    def _runtime_finalize_and_release() -> None:
+        if not runtime_enabled:
+            return
+        sid = (runtime_finalize_session_id or "").strip()
+        if sid:
+            conversation_service().finalize_runtime_turn(
+                session_id=sid,
+                channel="line",
+                transport_sent=runtime_transport_sent,
+                force=not runtime_transport_sent,
+            )
+        if sid and turn_lock_acquired:
+            conversation_service().release_turn_lock(session_id=sid, owner=turn_lock_owner)
 
     # Load suggested messages and session BEFORE typing — we must not show typing when
     # user is escalated and we won't reply (avoids typing bubble stuck until timeout)
@@ -786,7 +814,7 @@ async def _handle_line_event(
     )
 
     # Mapping rows only keep the current routed session and display name.
-    mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id)
+    mapping = conversation_service().get_line_user_session(line_user_id=line_user_id, bot_id=bot.bot_id)
     line_display_name = (getattr(mapping, "display_name", None) or "").strip() or None
     if not line_display_name:
         try:
@@ -797,14 +825,14 @@ async def _handle_line_event(
         fetched_name = str((profile or {}).get("displayName") or "").strip()
         if fetched_name:
             line_display_name = fetched_name
-            _line_user_session_repo.set_display_name(
+            conversation_service().set_line_user_display_name(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
                 display_name=line_display_name,
             )
     if event.event_type == "follow":
         if mapping and line_display_name and line_display_name != (getattr(mapping, "display_name", None) or "").strip():
-            _line_user_session_repo.set_display_name(
+            conversation_service().set_line_user_display_name(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
                 display_name=line_display_name,
@@ -823,6 +851,8 @@ async def _handle_line_event(
             lang=bot_lang,
             assistant_state="bot",
         )
+        runtime_finalize_session_id = (getattr(mapping, "session_id", None) or "").strip() or None
+        _runtime_finalize_and_release()
         return
     session, contact, _session_changed = conversation_service().resolve_or_create_channel_session(
         bot_id=bot.bot_id,
@@ -837,8 +867,16 @@ async def _handle_line_event(
         user_agent="LINE",
         ip=None,
     )
+    runtime_finalize_session_id = session.session_id
+    if runtime_enabled:
+        turn_lock_acquired = conversation_service().acquire_turn_lock(
+            session_id=session.session_id,
+            owner=turn_lock_owner,
+        )
+        if not turn_lock_acquired:
+            raise HTTPException(status_code=409, detail="Session is busy. Please retry.")
     if mapping is None:
-        mapping = _line_user_session_repo.get_or_create(
+        mapping = conversation_service().get_or_create_line_user_session(
             line_user_id=line_user_id,
             bot_id=bot.bot_id,
             session_id=session.session_id,
@@ -846,18 +884,18 @@ async def _handle_line_event(
         )
     else:
         if mapping.session_id != session.session_id:
-            _line_user_session_repo.update_session_id(
+            conversation_service().update_line_user_session_id(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
                 session_id=session.session_id,
             )
         if line_display_name and line_display_name != (getattr(mapping, "display_name", None) or "").strip():
-            _line_user_session_repo.set_display_name(
+            conversation_service().set_line_user_display_name(
                 line_user_id=line_user_id,
                 bot_id=bot.bot_id,
                 display_name=line_display_name,
             )
-        mapping = _line_user_session_repo.get(line_user_id=line_user_id, bot_id=bot.bot_id) or mapping
+        mapping = conversation_service().get_line_user_session(line_user_id=line_user_id, bot_id=bot.bot_id) or mapping
     if line_display_name:
         conversation_service().set_session_title(session.session_id, line_display_name)
     assistant_state = getattr(session, "assistant_state", "bot") or "bot"
@@ -885,6 +923,7 @@ async def _handle_line_event(
             lang=lang,
             assistant_state="human_handoff",
         )
+        _runtime_finalize_and_release()
         return
 
     # Show typing only when we will send a reply (avoids stuck typing when escalated)
@@ -913,6 +952,7 @@ async def _handle_line_event(
             )
         cancel_msg = msgs["cancel_ack"]
         await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -925,6 +965,7 @@ async def _handle_line_event(
             lang=lang,
             assistant_state="bot",
         )
+        _runtime_finalize_and_release()
         return
 
     # ── Awaiting optional escalation message ─────────────────────────
@@ -945,6 +986,7 @@ async def _handle_line_event(
                 )
             cancel_msg = msgs["cancel_ack"]
             await reply_message(reply_token, [cancel_msg], access_token, suggested_flex=suggested_flex)
+            runtime_transport_sent = True
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
@@ -957,6 +999,7 @@ async def _handle_line_event(
                 lang=lang,
                 assistant_state="bot",
             )
+            _runtime_finalize_and_release()
             return
         if postback_action != "menu" and event.event_type != "message":
             _schedule_line_rich_menu_update(
@@ -965,6 +1008,7 @@ async def _handle_line_event(
                 lang=lang,
                 assistant_state="awaiting_support_details",
             )
+            _runtime_finalize_and_release()
             return
         if postback_action == "menu":
             assistant_state = "awaiting_support_details"
@@ -997,6 +1041,7 @@ async def _handle_line_event(
             )
             ack_msg = msgs["escalation_ack"]
             await reply_message(reply_token, [ack_msg], access_token)
+            runtime_transport_sent = True
             conversation_service().add_message(
                 session_id=session.session_id,
                 bot_id=bot.bot_id,
@@ -1009,6 +1054,7 @@ async def _handle_line_event(
                 lang=lang,
                 assistant_state="human_handoff",
             )
+            _runtime_finalize_and_release()
             return
 
     # ── Escalation request ───────────────────────────────────────────
@@ -1029,6 +1075,7 @@ async def _handle_line_event(
             )
         prompt_msg = msgs["prompt"]
         await reply_message(reply_token, [prompt_msg], access_token)
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1041,6 +1088,7 @@ async def _handle_line_event(
             lang=lang,
             assistant_state="awaiting_support_details",
         )
+        _runtime_finalize_and_release()
         return
 
     # ── Menu flow (matches Instagram) ─────────────────────────────────
@@ -1073,6 +1121,7 @@ async def _handle_line_event(
             request=request,
             widget_config=widget_config,
         )
+        runtime_transport_sent = True
         conversation_service().add_message(
             session_id=session.session_id,
             bot_id=bot.bot_id,
@@ -1085,6 +1134,7 @@ async def _handle_line_event(
             lang=lang,
             assistant_state=assistant_state,
         )
+        _runtime_finalize_and_release()
         return
 
     # Run menu flow when user explicitly requests menu (Menu/SHOW_FULL_MENU),
@@ -1102,6 +1152,7 @@ async def _handle_line_event(
                 request=request,
                 widget_config=widget_config,
             )
+            runtime_transport_sent = True
             if (event.event_type == "message" and effective_text) or suggested_message_id:
                 conversation_service().add_message(
                     session_id=session.session_id,
@@ -1122,6 +1173,7 @@ async def _handle_line_event(
                 lang=lang,
                 assistant_state=assistant_state,
             )
+            _runtime_finalize_and_release()
             return
         except Exception as e:
             logger.warning("LINE menu flow failed for bot_id=%s, falling back to RAG: %s", bot.bot_id, e)
@@ -1277,6 +1329,7 @@ async def _handle_line_event(
             suggested_flex=suggested_flex,
             carousel_style_cfg=carousel_style_cfg,
         )
+        runtime_transport_sent = True
     else:
         await reply_message(
             reply_token,
@@ -1286,12 +1339,14 @@ async def _handle_line_event(
             suggested_flex=suggested_flex,
             carousel_style_cfg=carousel_style_cfg,
         )
+        runtime_transport_sent = True
     _schedule_line_rich_menu_update(
         bot_id=bot.bot_id,
         line_user_id=line_user_id,
         lang=lang,
         assistant_state=assistant_state,
     )
+    _runtime_finalize_and_release()
 
 
 # ══════════════════════════════════════════════════════════════════════

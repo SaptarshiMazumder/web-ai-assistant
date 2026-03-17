@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import secrets
 from dataclasses import asdict, dataclass
@@ -86,6 +87,13 @@ def _utc_now() -> str:
 
 def _connect():
     return get_connection()
+
+
+_conversation_storage_logger = logging.getLogger("conversation_storage")
+
+
+def _chat_storage_trace_enabled() -> bool:
+    return bool(getattr(config, "CHAT_STORAGE_TRACE_LOGS", False))
 
 
 def _normalize_hostname(hostname: str) -> str:
@@ -2958,6 +2966,14 @@ class PostgresConversationRepository:
                 user_agent=user_agent,
                 ip=ip,
             )
+            if _chat_storage_trace_enabled():
+                _conversation_storage_logger.warning(
+                    "chat_storage db_write_direct session_id=%s bot_id=%s org_id=%s channel=%s",
+                    session_id,
+                    bid,
+                    oid,
+                    channel,
+                )
             cache_set_json(cache_key_session_record(session_id), asdict(session), _SESSION_TTL)
             return session
         finally:
@@ -3182,6 +3198,15 @@ class PostgresConversationRepository:
                 citations=citations or [],
                 created_at=now,
             )
+            if _chat_storage_trace_enabled():
+                _conversation_storage_logger.warning(
+                    "chat_storage db_write_direct message_id=%s session_id=%s bot_id=%s role=%s content_len=%s",
+                    msg_id,
+                    sid,
+                    bid,
+                    role,
+                    len(content or ""),
+                )
             cache_invalidate_keys(
                 _cache_key_set(
                     cache_key_session_record(sid),
@@ -3241,8 +3266,25 @@ class PostgresConversationRepository:
         cached = _cache_get_message_list(cache_key)
         if cached is not _CACHE_MISS:
             if not cached:
+                if _chat_storage_trace_enabled():
+                    _conversation_storage_logger.warning(
+                        "chat_storage db_history_read source=db_repo_cache session_id=%s limit=%s returned=0 cache_key=%s",
+                        sid,
+                        lim,
+                        cache_key,
+                    )
                 return []
-            return cached[-lim:] if len(cached) > lim else cached
+            out_cached = cached[-lim:] if len(cached) > lim else cached
+            if _chat_storage_trace_enabled():
+                _conversation_storage_logger.warning(
+                    "chat_storage db_history_read source=db_repo_cache session_id=%s limit=%s returned=%s cache_key=%s cached_total=%s",
+                    sid,
+                    lim,
+                    len(out_cached),
+                    cache_key,
+                    len(cached),
+                )
+            return out_cached
         con = _connect()
         try:
             fetch_lim = max(lim, min(_HISTORY_MAX_MESSAGES, 200))
@@ -3277,7 +3319,17 @@ class PostgresConversationRepository:
                 )
             result.reverse()
             _cache_set_message_list(cache_key, result, _HISTORY_TTL)
-            return result[-lim:] if len(result) > lim else result
+            out_recent = result[-lim:] if len(result) > lim else result
+            if _chat_storage_trace_enabled():
+                _conversation_storage_logger.warning(
+                    "chat_storage db_history_read source=db_repo_query session_id=%s limit=%s returned=%s fetched=%s cache_key=%s",
+                    sid,
+                    lim,
+                    len(out_recent),
+                    len(result),
+                    cache_key,
+                )
+            return out_recent
         finally:
             con.close()
 

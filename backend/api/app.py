@@ -26,6 +26,10 @@ from infrastructure.services.chat_cache import (
     cache_start_listener,
     cache_stop_listener,
 )
+from infrastructure.services.runtime_persistence_worker import (
+    start_runtime_persistence_worker,
+    stop_runtime_persistence_worker,
+)
 load_dotenv()
 
 
@@ -124,6 +128,10 @@ def create_app() -> FastAPI:
     async def _startup_chat_cache_listener() -> None:
         await cache_start_listener()
 
+    @app.on_event("startup")
+    async def _startup_runtime_persistence_worker() -> None:
+        await start_runtime_persistence_worker()
+
     @app.on_event("shutdown")
     async def _shutdown_conversation_pubsub() -> None:
         await stop_conversation_pubsub()
@@ -131,6 +139,10 @@ def create_app() -> FastAPI:
     @app.on_event("shutdown")
     async def _shutdown_chat_cache_listener() -> None:
         await cache_stop_listener()
+
+    @app.on_event("shutdown")
+    async def _shutdown_runtime_persistence_worker() -> None:
+        await stop_runtime_persistence_worker()
 
     @app.on_event("shutdown")
     async def _shutdown_db_pool() -> None:

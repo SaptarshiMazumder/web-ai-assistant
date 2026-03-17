@@ -331,6 +331,25 @@ _SCHEMA_SQL: Iterable[str] = (
     "CREATE INDEX IF NOT EXISTS conversation_messages_bot_id ON conversation_messages (bot_id)",
     "CREATE INDEX IF NOT EXISTS conversation_messages_created_at ON conversation_messages (created_at DESC)",
     """
+    CREATE TABLE IF NOT EXISTS conversation_persist_events (
+      idempotency_key TEXT PRIMARY KEY,
+      event_id TEXT,
+      session_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      processed_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS conversation_persist_session_seq (
+      session_id TEXT PRIMARY KEY,
+      last_seq BIGINT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS conversation_persist_events_session ON conversation_persist_events (session_id, processed_at DESC)",
+    "CREATE INDEX IF NOT EXISTS conversation_persist_events_event_type ON conversation_persist_events (event_type, processed_at DESC)",
+    """
     CREATE TABLE IF NOT EXISTS conversation_feedback (
       feedback_id TEXT PRIMARY KEY,
       org_id TEXT NOT NULL,
