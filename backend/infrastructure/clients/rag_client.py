@@ -143,6 +143,58 @@ def parse_structured_llm_response(raw: str) -> Dict[str, Any]:
     return {"answer": raw.strip(), "intent": None, "show_assets": None}
 
 
+def _extract_partial_json_answer(raw: str) -> Optional[str]:
+    """
+    Extract a partial value of the top-level JSON "answer" field from an
+    in-progress JSON string. Returns None until the answer key appears.
+    """
+    if not (raw or "").strip():
+        return None
+    m = re.search(r'"answer"\s*:\s*"', raw)
+    if not m:
+        return None
+    i = m.end()
+    n = len(raw)
+    out: List[str] = []
+    esc = False
+    while i < n:
+        ch = raw[i]
+        if esc:
+            if ch == "n":
+                out.append("\n")
+            elif ch == "r":
+                out.append("\r")
+            elif ch == "t":
+                out.append("\t")
+            elif ch == "b":
+                out.append("\b")
+            elif ch == "f":
+                out.append("\f")
+            elif ch == "u":
+                # Decode \uXXXX when available; otherwise stop with partial.
+                if i + 4 < n:
+                    hx = raw[i + 1 : i + 5]
+                    if re.fullmatch(r"[0-9a-fA-F]{4}", hx):
+                        out.append(chr(int(hx, 16)))
+                        i += 4
+                    else:
+                        out.append("u")
+                else:
+                    break
+            else:
+                out.append(ch)
+            esc = False
+        else:
+            if ch == "\\":
+                esc = True
+            elif ch == '"':
+                return "".join(out)
+            else:
+                out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def sanitize_answer_citations(text: str) -> str:
     """Post-process LLM answer to strip forbidden citation patterns.
 
@@ -1216,6 +1268,7 @@ def run_vertex_rag_stream(
     evidence = asset_evidence + corpus_evidence
 
     answer_parts: List[str] = []
+    streamed_answer_prefix = ""
     for delta in synthesize_with_evidence_stream(
         client,
         question,
@@ -1228,8 +1281,23 @@ def run_vertex_rag_stream(
         bot_display_name=bot_display_name,
     ):
         answer_parts.append(delta)
-        # Stream model output directly (including raw JSON chunks).
-        yield {"type": "delta", "text": delta}
+        if parse_json_response:
+            # Keep structured output for backend parsing (intent/show_assets),
+            # but stream only the evolving "answer" field text.
+            partial_answer = _extract_partial_json_answer("".join(answer_parts))
+            if partial_answer is None:
+                continue
+            if partial_answer.startswith(streamed_answer_prefix):
+                next_text = partial_answer[len(streamed_answer_prefix) :]
+            else:
+                # Fallback if the model rewrites prior characters mid-stream.
+                next_text = partial_answer
+            if next_text:
+                streamed_answer_prefix = partial_answer
+                yield {"type": "delta", "text": next_text}
+        else:
+            # Non-JSON mode: stream raw model output.
+            yield {"type": "delta", "text": delta}
 
     answer = sanitize_answer_citations("".join(answer_parts).strip())
     _dbg({"type": "model_answer", "answer": answer})

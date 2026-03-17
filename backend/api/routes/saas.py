@@ -1759,9 +1759,17 @@ async def v1_widget_chat_stream(
         platform_asset_instruction_stream = get_platform_asset_instructions(widget_config_stream, lang=turn_lang)
         if platform_asset_instruction_stream:
             system_instruction = f"{system_instruction}\n\n{platform_asset_instruction_stream}" if system_instruction else platform_asset_instruction_stream
-        json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=turn_lang)
-        if json_response_instruction_stream:
-            system_instruction = f"{system_instruction}\n\n{json_response_instruction_stream}" if system_instruction else json_response_instruction_stream
+        # Streaming UX: avoid forcing structured JSON output by default, otherwise
+        # users see raw JSON fragments during live delta rendering.
+        stream_structured_response_enabled = bool(getattr(config, "CHAT_STREAM_STRUCTURED_RESPONSE_ENABLED", False))
+        if stream_structured_response_enabled:
+            json_response_instruction_stream = get_platform_json_response_instruction(widget_config_stream, lang=turn_lang)
+            if json_response_instruction_stream:
+                system_instruction = (
+                    f"{system_instruction}\n\n{json_response_instruction_stream}"
+                    if system_instruction
+                    else json_response_instruction_stream
+                )
 
         corpus = await asyncio.to_thread(ensure_bot_corpus, bot.bot_id)
 
@@ -1782,7 +1790,10 @@ async def v1_widget_chat_stream(
                         conversation_context=conversation_context or None,
                         extra_evidence=extra_evidence_stream if extra_evidence_stream else None,
                         bot_display_name=getattr(bot, "display_name", None),
-                        parse_json_response=get_platform_json_response_enabled(widget_config_stream),
+                        parse_json_response=(
+                            stream_structured_response_enabled
+                            and get_platform_json_response_enabled(widget_config_stream)
+                        ),
                     ):
                         if evt.get("type") == "delta":
                             yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"

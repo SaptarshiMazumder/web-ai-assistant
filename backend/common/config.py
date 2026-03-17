@@ -163,6 +163,15 @@ class Config:
         "CHAT_RUNTIME_PERSIST_DLQ_STREAM_KEY",
         "webai:chatruntime:persist:dlq:v1",
     ).strip()
+    CHAT_STREAM_STRUCTURED_RESPONSE_ENABLED = os.environ.get(
+        "CHAT_STREAM_STRUCTURED_RESPONSE_ENABLED",
+        "false",
+    ).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
     CHAT_STORAGE_TRACE_LOGS = os.environ.get(
         "CHAT_STORAGE_TRACE_LOGS",
         "false",
