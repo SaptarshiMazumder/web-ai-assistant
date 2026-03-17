@@ -39,8 +39,19 @@ ENABLE_THINKING   = os.environ.get("VERTEX_RAG_ENABLE_THINKING", "").strip().low
 ENABLE_LLM_SUBQUERIES = os.environ.get("ENABLE_LLM_SUBQUERIES", "").strip().lower() in ("1", "true", "yes", "y")
 ENABLE_LLM_RERANK = os.environ.get("ENABLE_LLM_RERANK", "").strip().lower() in ("1", "true", "yes", "y")
 
-RETRIEVAL_TOP_K   = 16         # per subquery; increase to 24–32 for broader recall
-MAX_SUBQUERIES    = 5
+_RETRIEVAL_TOP_K_RAW = (os.environ.get("VERTEX_RAG_RETRIEVAL_TOP_K") or "16").strip()
+try:
+    _RETRIEVAL_TOP_K = int(_RETRIEVAL_TOP_K_RAW)
+except ValueError:
+    _RETRIEVAL_TOP_K = 16
+RETRIEVAL_TOP_K   = max(4, min(_RETRIEVAL_TOP_K, 40))  # per subquery
+
+_MAX_SUBQUERIES_RAW = (os.environ.get("VERTEX_RAG_MAX_SUBQUERIES") or "5").strip()
+try:
+    _MAX_SUBQUERIES = int(_MAX_SUBQUERIES_RAW)
+except ValueError:
+    _MAX_SUBQUERIES = 5
+MAX_SUBQUERIES    = max(1, min(_MAX_SUBQUERIES, 8))
 MAX_STEPS         = 1          # keep 1 for simplicity; raise if you want re-plan loops
 ONESHOT_TOP_K     = 40         # broader recall for one-shot
 
@@ -140,6 +151,26 @@ def parse_structured_llm_response(raw: str) -> Dict[str, Any]:
             }
     except (json.JSONDecodeError, TypeError):
         pass
+    # Best-effort recovery for malformed JSON: still extract answer so UI does not
+    # render raw JSON text.
+    recovered_answer = _extract_partial_json_answer(text)
+    if recovered_answer is not None and recovered_answer.strip():
+        recovered_intent: Optional[str] = None
+        recovered_show_assets: Optional[bool] = None
+        intent_match = re.search(r'"intent"\s*:\s*"((?:\\.|[^"\\])*)"', text)
+        if intent_match:
+            try:
+                recovered_intent = str(json.loads(f"\"{intent_match.group(1)}\"") or "").strip() or None
+            except Exception:
+                recovered_intent = None
+        show_assets_match = re.search(r'"show_assets"\s*:\s*(true|false)', text, flags=re.IGNORECASE)
+        if show_assets_match:
+            recovered_show_assets = show_assets_match.group(1).lower() == "true"
+        return {
+            "answer": recovered_answer.strip(),
+            "intent": recovered_intent,
+            "show_assets": recovered_show_assets,
+        }
     return {"answer": raw.strip(), "intent": None, "show_assets": None}
 
 
