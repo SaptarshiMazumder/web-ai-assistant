@@ -1,0 +1,35 @@
+name: Build Docker Images
+
+on:
+  workflow_dispatch:  # Manual trigger from any branch
+
+jobs:
+  build-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: |
+          docker build \
+            -f Dockerfile.api \
+            --build-arg VITE_API_BASE=${{ vars.VITE_API_BASE }} \
+            --build-arg VITE_AUTH0_DOMAIN=${{ vars.VITE_AUTH0_DOMAIN }} \
+            --build-arg VITE_AUTH0_CLIENT_ID=${{ vars.VITE_AUTH0_CLIENT_ID }} \
+            --build-arg VITE_AUTH0_AUDIENCE=${{ vars.VITE_AUTH0_AUDIENCE }} \
+            --build-arg VITE_AUTH_ORG_CLAIM=${{ vars.VITE_AUTH_ORG_CLAIM }} \
+            --build-arg VITE_SUPER_ADMIN_EMAILS=${{ vars.VITE_SUPER_ADMIN_EMAILS }} \
+            -t webai-api:latest \
+            .
+
+  build-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Worker image
+        run: |
+          docker build \
+            -f Dockerfile.worker \
+            -t webai-worker:latest \
+            .

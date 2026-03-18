@@ -271,6 +271,14 @@ class Config:
         _CHAT_CACHE_IDEMPOTENCY_TTL_SEC = 86400
     CHAT_CACHE_IDEMPOTENCY_TTL_SEC = max(60, min(_CHAT_CACHE_IDEMPOTENCY_TTL_SEC, 604800))
 
+    # Cloudflare R2 (S3-compatible image storage)
+    R2_ACCOUNT_ID = os.environ.get("R2_ACCOUNT_ID", "").strip()
+    R2_ACCESS_KEY_ID = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
+    R2_SECRET_ACCESS_KEY = os.environ.get("R2_SECRET_ACCESS_KEY", "").strip()
+    R2_BUCKET_NAME = os.environ.get("R2_BUCKET_NAME", "").strip()
+    # Public URL for the R2 bucket (e.g. https://pub-xxx.r2.dev or custom domain)
+    R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "").strip().rstrip("/")
+
     # Escalation email notifications (SMTP)
     SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))

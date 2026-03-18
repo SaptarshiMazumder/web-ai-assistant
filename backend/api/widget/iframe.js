@@ -1268,34 +1268,41 @@
       }
     }
 
+    function parseSSEData(raw) {
+      // Extract JSON from SSE "data: {...}" lines
+      var jsonStr = "";
+      var lines = raw.split("\n");
+      for (var i = 0; i < lines.length; i++) {
+        var ln = lines[i];
+        if (ln.indexOf("data: ") === 0) {
+          jsonStr += ln.slice(6);
+        } else if (ln.indexOf("data:") === 0) {
+          jsonStr += ln.slice(5);
+        }
+      }
+      if (!jsonStr) return null;
+      try { return JSON.parse(jsonStr); } catch (e) { return null; }
+    }
+
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
-      let idx = buffer.indexOf("\n");
+      // SSE events are separated by double newline
+      let idx = buffer.indexOf("\n\n");
       while (idx !== -1) {
-        const line = buffer.slice(0, idx).trim();
-        buffer = buffer.slice(idx + 1);
-        if (line) {
-          let evt = null;
-          try {
-            evt = JSON.parse(line);
-          } catch (e) {
-            evt = null;
-          }
-          handleStreamEvent(evt);
+        const eventBlock = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 2);
+        if (eventBlock) {
+          handleStreamEvent(parseSSEData(eventBlock));
         }
-        idx = buffer.indexOf("\n");
+        idx = buffer.indexOf("\n\n");
       }
     }
 
     const tail = buffer.trim();
     if (tail) {
-      try {
-        handleStreamEvent(JSON.parse(tail));
-      } catch (e) {
-        // Ignore partial tail chunks.
-      }
+      handleStreamEvent(parseSSEData(tail));
     }
 
     if (doneEvent && !finalized) {
@@ -1332,7 +1339,7 @@
             suggested_message_id: options && options.suggestedMessageId ? options.suggestedMessageId : undefined,
           }),
         });
-      const isStream = (resp.headers.get("content-type") || "").includes("application/x-ndjson");
+      const isStream = (resp.headers.get("content-type") || "").includes("text/event-stream");
       if (!resp.ok) {
         removeTypingBubble();
         const data = await resp.json().catch(async () => ({ answer: await resp.text() }));

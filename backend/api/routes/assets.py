@@ -11,11 +11,12 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, Response as FastAPIResponse, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from google.cloud import storage  # type: ignore[import-untyped]
 
 from application.services.asset_image_service import optimize_asset_image
 from infrastructure.assets.asset_resolver import invalidate_asset_bank_cache
+from infrastructure.clients import r2_client
 from api.deps.auth import get_current_user, is_super_admin
 from api.schemas import (
     AssetExtractionStatusResponse,
@@ -303,19 +304,23 @@ async def create_asset(
         raise HTTPException(status_code=400, detail="Empty file")
     data, content_type, ext = optimize_asset_image(data, content_type)
 
-    # Upload to GCS
-    bucket_name, base_prefix = _parse_bucket_and_prefix()
     asset_id = "asset_" + uuid.uuid4().hex[:16]
-    blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
 
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
-    blob = bucket.blob(blob_name)
-    blob.upload_from_string(data, content_type=content_type)
-    gcs_uri = f"gs://{bucket_name}/{blob_name}"
-
-    # Public URL goes through our proxy endpoint (using new image-assets path)
-    public_url = f"/v1/image-assets/{asset_id}/image"
+    if r2_client.is_available():
+        # Upload to Cloudflare R2 — served directly from CDN
+        r2_key = f"assets/{bot_id}/{asset_id}.{ext}"
+        _, public_url = r2_client.upload_image(data, r2_key, content_type)
+        gcs_uri = f"r2://{r2_key}"
+    else:
+        # Fallback: upload to GCS
+        bucket_name, base_prefix = _parse_bucket_and_prefix()
+        blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_string(data, content_type=content_type)
+        gcs_uri = f"gs://{bucket_name}/{blob_name}"
+        public_url = f"/v1/image-assets/{asset_id}/image"
 
     now = datetime.now(timezone.utc).isoformat()
     kw_list = [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
@@ -419,15 +424,20 @@ async def update_asset(
         data = await file.read()
         if data:
             data, content_type, ext = optimize_asset_image(data, content_type)
-            bucket_name, base_prefix = _parse_bucket_and_prefix()
-            blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
-            client = storage.Client()
-            bucket_obj = client.bucket(bucket_name)
-            blob = bucket_obj.blob(blob_name)
-            blob.upload_from_string(data, content_type=content_type)
-            existing.image_gcs_uri = f"gs://{bucket_name}/{blob_name}"
-            # Update to new public URL format
-            existing.image_public_url = f"/v1/image-assets/{asset_id}/image"
+            if r2_client.is_available():
+                r2_key = f"assets/{bot_id}/{asset_id}.{ext}"
+                _, public_url = r2_client.upload_image(data, r2_key, content_type)
+                existing.image_gcs_uri = f"r2://{r2_key}"
+                existing.image_public_url = public_url
+            else:
+                bucket_name, base_prefix = _parse_bucket_and_prefix()
+                blob_name = f"{base_prefix}/assets/{bot_id}/{asset_id}.{ext}".strip("/")
+                client = storage.Client()
+                bucket_obj = client.bucket(bucket_name)
+                blob = bucket_obj.blob(blob_name)
+                blob.upload_from_string(data, content_type=content_type)
+                existing.image_gcs_uri = f"gs://{bucket_name}/{blob_name}"
+                existing.image_public_url = f"/v1/image-assets/{asset_id}/image"
 
     now = datetime.now(timezone.utc).isoformat()
     kw_list = [k.strip() for k in keywords.split(",") if k.strip()] if keywords else []
@@ -457,19 +467,21 @@ async def delete_asset(
     if not existing or existing.bot_id != bot_id:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    # Delete from GCS
+    # Delete from storage
     try:
-        bucket_name, _ = _parse_bucket_and_prefix()
-        gcs_uri = existing.image_gcs_uri or ""
-        if gcs_uri.startswith("gs://"):
-            parts = gcs_uri.replace("gs://", "").split("/", 1)
+        uri = existing.image_gcs_uri or ""
+        if uri.startswith("r2://"):
+            r2_key = uri.replace("r2://", "", 1)
+            r2_client.delete_image(r2_key)
+        elif uri.startswith("gs://"):
+            parts = uri.replace("gs://", "").split("/", 1)
             if len(parts) == 2:
                 client = storage.Client()
                 bucket_obj = client.bucket(parts[0])
                 blob = bucket_obj.blob(parts[1])
                 blob.delete()
     except Exception as e:
-        logger.warning("Failed to delete GCS blob for asset %s: %s", asset_id, e)
+        logger.warning("Failed to delete blob for asset %s: %s", asset_id, e)
 
     asset_repo().delete_asset(bot_id, asset_id)
     invalidate_asset_bank_cache(bot_id)
@@ -666,15 +678,32 @@ async def public_asset_image_legacy(asset_id: str):
 
 @router.get("/v1/image-assets/{asset_id}/image")
 async def public_asset_image(asset_id: str):
-    """Serve asset image from GCS – publicly accessible for external channels."""
+    """Serve asset image – redirects to R2 CDN or proxies from GCS."""
     asset = asset_repo().get_asset(asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
-    gcs_uri = asset.image_gcs_uri or ""
-    if not gcs_uri.startswith("gs://"):
+
+    uri = asset.image_gcs_uri or ""
+
+    # R2 images: redirect to Cloudflare CDN URL
+    if uri.startswith("r2://"):
+        public_url = asset.image_public_url or ""
+        if not public_url or public_url.startswith("/"):
+            # Reconstruct from key if public_url wasn't stored properly
+            from common.config import config as app_config
+            r2_key = uri.replace("r2://", "", 1)
+            public_url = f"{app_config.R2_PUBLIC_URL}/{r2_key}"
+        return RedirectResponse(
+            url=public_url,
+            status_code=302,
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    # GCS images: proxy as before
+    if not uri.startswith("gs://"):
         raise HTTPException(status_code=404, detail="No image stored")
 
-    parts = gcs_uri.replace("gs://", "").split("/", 1)
+    parts = uri.replace("gs://", "").split("/", 1)
     if len(parts) != 2:
         raise HTTPException(status_code=404, detail="Invalid GCS URI")
 

@@ -26,6 +26,7 @@ pdfplumber
 pymupdf
 pypdfium2
 Pillow
+boto3
 pytesseract
 PyYAML>=6.0
 alembic>=1.13.0

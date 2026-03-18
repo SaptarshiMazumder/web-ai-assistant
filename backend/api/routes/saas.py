@@ -1660,8 +1660,8 @@ async def v1_widget_chat_stream(
             async def _handoff_gen():
                 stream_runtime_token = set_runtime_mode(runtime_enabled)
                 try:
-                    yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
-                    yield json.dumps(
+                    yield "data: " + json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps(
                         {
                             "type": "done",
                             "answer": answer,
@@ -1670,7 +1670,7 @@ async def v1_widget_chat_stream(
                             "session_id": session.session_id,
                         },
                         ensure_ascii=False,
-                    ) + "\n"
+                    ) + "\n\n"
                     conversation_service().add_message(
                         session_id=session.session_id,
                         bot_id=bot.bot_id,
@@ -1699,10 +1699,11 @@ async def v1_widget_chat_stream(
 
             return StreamingResponse(
                 _handoff_gen(),
-                media_type="application/x-ndjson",
+                media_type="text/event-stream",
                 headers={
-                    "Cache-Control": "no-cache",
+                    "Cache-Control": "no-cache, no-transform",
                     "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive",
                 },
             )
 
@@ -1776,7 +1777,7 @@ async def v1_widget_chat_stream(
         async def _gen():
             stream_runtime_token = set_runtime_mode(runtime_enabled)
             try:
-                yield json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n"
+                yield "data: " + json.dumps({"type": "meta", "session_id": session.session_id}, ensure_ascii=False) + "\n\n"
                 try:
                     async for evt in _async_iter_from_sync_gen(
                         run_vertex_rag_stream,
@@ -1796,7 +1797,8 @@ async def v1_widget_chat_stream(
                         ),
                     ):
                         if evt.get("type") == "delta":
-                            yield json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n"
+                            yield "data: " + json.dumps({"type": "delta", "text": evt.get("text") or ""}, ensure_ascii=False) + "\n\n"
+                            await asyncio.sleep(0)
                             continue
                         if evt.get("type") == "done":
                             sources = evt.get("sources") or []
@@ -1814,7 +1816,7 @@ async def v1_widget_chat_stream(
                                     }
                                 )
                                 answer = _chat_no_citations_message(lang=turn_lang, host_label=host_label, streamed=True)
-                                yield json.dumps(
+                                yield "data: " + json.dumps(
                                     {
                                         "type": "done",
                                         "answer": answer,
@@ -1823,7 +1825,7 @@ async def v1_widget_chat_stream(
                                         "session_id": session.session_id,
                                     },
                                     ensure_ascii=False,
-                                ) + "\n"
+                                ) + "\n\n"
                                 conversation_service().add_message(
                                     session_id=session.session_id,
                                     bot_id=bot.bot_id,
@@ -1881,7 +1883,7 @@ async def v1_widget_chat_stream(
                                         "assets": asset_cards_stream,
                                     }
                                 )
-                                yield json.dumps(
+                                yield "data: " + json.dumps(
                                     {
                                         "type": "done",
                                         "answer": answer,
@@ -1891,7 +1893,7 @@ async def v1_widget_chat_stream(
                                         "session_id": session.session_id,
                                     },
                                     ensure_ascii=False,
-                                ) + "\n"
+                                ) + "\n\n"
                                 conversation_service().add_message(
                                     session_id=session.session_id,
                                     bot_id=bot.bot_id,
@@ -1912,7 +1914,7 @@ async def v1_widget_chat_stream(
                             )
                             return
                 except Exception as e:
-                    yield json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n"
+                    yield "data: " + json.dumps({"type": "error", "message": f"{type(e).__name__}: {str(e)}"}, ensure_ascii=False) + "\n\n"
                     try:
                         conversation_service().add_message(
                             session_id=session.session_id,
@@ -1938,10 +1940,11 @@ async def v1_widget_chat_stream(
 
         return StreamingResponse(
             _gen(),
-            media_type="application/x-ndjson",
+            media_type="text/event-stream",
             headers={
-                "Cache-Control": "no-cache",
+                "Cache-Control": "no-cache, no-transform",
                 "X-Accel-Buffering": "no",
+                "Connection": "keep-alive",
                 "X-Conversation-Id": session.session_id,
             },
         )

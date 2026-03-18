@@ -181,21 +181,13 @@ def _download_and_store_image(
     asset_id: str,
 ) -> Tuple[str, str]:
     """
-    Download image from URL and store in GCS.
-    Returns (gcs_uri, public_url) tuple. Returns ("","") on failure.
+    Download image from URL and store in R2 (preferred) or GCS.
+    Returns (storage_uri, public_url) tuple. Returns ("","") on failure.
     """
-    from google.cloud import storage as gcs_storage
-
     try:
         from common.config import config
     except Exception:
         return "", ""
-
-    bucket_raw = (config.GCS_BUCKET or os.environ.get("GCS_BUCKET", "")).strip()
-    if not bucket_raw:
-        return "", ""
-    bucket_name = bucket_raw.strip("/").split("/", 1)[0]
-    base_prefix = bucket_raw.strip("/").split("/", 1)[1] if "/" in bucket_raw else ""
 
     # Download image with timeout
     try:
@@ -231,7 +223,27 @@ def _download_and_store_image(
     # Resize/compress to keep asset storage + client load fast.
     data, content_type, ext = optimize_asset_image(data, content_type)
 
-    # Upload to GCS
+    # Upload to R2 if configured, otherwise GCS
+    from infrastructure.clients import r2_client
+
+    if r2_client.is_available():
+        try:
+            r2_key = f"assets/{bot_id}/{asset_id}.{ext}"
+            _, public_url = r2_client.upload_image(data, r2_key, content_type)
+            return f"r2://{r2_key}", public_url
+        except Exception as e:
+            logger.warning("[AssetExtraction] R2 upload failed: %s", type(e).__name__)
+            return "", ""
+
+    # Fallback: GCS
+    from google.cloud import storage as gcs_storage
+
+    bucket_raw = (config.GCS_BUCKET or os.environ.get("GCS_BUCKET", "")).strip()
+    if not bucket_raw:
+        return "", ""
+    bucket_name = bucket_raw.strip("/").split("/", 1)[0]
+    base_prefix = bucket_raw.strip("/").split("/", 1)[1] if "/" in bucket_raw else ""
+
     try:
         client = gcs_storage.Client()
         bucket = client.bucket(bucket_name)
