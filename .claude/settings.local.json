@@ -38,7 +38,8 @@
       "Bash(node -c backend/api/widget/widget.js)",
       "Bash(find /c/Users/googler/OneDrive/Desktop/Projects/web-ai/dashboard -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\))",
       "Bash(find /c/Users/googler/OneDrive/Desktop/Projects/web-ai -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.jsx -o -name *.js \\\\\\) -path */widget/*)",
-      "Bash(find c:UsersgooglerOneDriveDesktopProjectsweb-ai -maxdepth 2 -type f \\\\\\(-name *.yml -o -name *.yaml -o -name *Makefile* -o -name *.env* \\\\\\))"
+      "Bash(find c:UsersgooglerOneDriveDesktopProjectsweb-ai -maxdepth 2 -type f \\\\\\(-name *.yml -o -name *.yaml -o -name *Makefile* -o -name *.env* \\\\\\))",
+      "Bash(find c:UsersgooglerOneDriveDesktopProjectsweb-aidashboardsrc -type f \\\\\\(-name *.css -o -name tailwind.config.* \\\\\\))"
     ]
   }
 }

@@ -17,14 +17,32 @@ import {
 const SAVED_FEEDBACK_MS = 2000
 
 const DEFAULT_ESCALATION_CONFIG: EscalationConfig = {
-  notify_enabled: false,
-  notify_website: false,
+  notify_enabled: true,
+  notify_website: true,
   notify_instagram: false,
   notify_line: false,
   notification_emails: '',
 }
 
 type ChannelTab = 'website' | 'line'
+
+function applyEscalationDefaults(config: EscalationConfig, userEmail: string): EscalationConfig {
+  const hasSavedConfig =
+    config.notify_enabled ||
+    config.notify_website ||
+    config.notify_instagram ||
+    config.notify_line ||
+    config.notification_emails.trim().length > 0
+
+  if (hasSavedConfig) return config
+
+  return {
+    ...config,
+    notify_enabled: true,
+    notify_website: true,
+    notification_emails: userEmail || config.notification_emails,
+  }
+}
 
 export default function BotHumanSupportTab() {
   const { t } = useTranslation()
@@ -36,7 +54,9 @@ export default function BotHumanSupportTab() {
     getEscalationConfig,
     saveEscalationConfig,
     loading,
+    user,
   } = useDashboardData()
+  const loggedInEmail = String(user?.email || '').trim()
 
   const defaultEscalationBtnLabel = t('botSuggestedMessages.defaultEscalationBtnLabel', 'Request human support')
 
@@ -61,18 +81,24 @@ export default function BotHumanSupportTab() {
 
   useEffect(() => {
     if (!botId) return
+    let active = true
     void getEscalationConfig(botId).then((data) => {
-      if (data) {
-        setEscalationConfig({
+      if (data && active) {
+        const normalized: EscalationConfig = {
           ...DEFAULT_ESCALATION_CONFIG,
           ...data,
-          notify_website: data.notify_website ?? data.notify_enabled ?? false,
-          notify_instagram: data.notify_instagram ?? data.notify_enabled ?? false,
-          notify_line: data.notify_line ?? data.notify_enabled ?? false,
-        })
+          notify_website: data.notify_website ?? data.notify_enabled ?? DEFAULT_ESCALATION_CONFIG.notify_website,
+          notify_instagram: data.notify_instagram ?? data.notify_enabled ?? DEFAULT_ESCALATION_CONFIG.notify_instagram,
+          notify_line: data.notify_line ?? data.notify_enabled ?? DEFAULT_ESCALATION_CONFIG.notify_line,
+          notification_emails: String(data.notification_emails || ''),
+        }
+        setEscalationConfig(applyEscalationDefaults(normalized, loggedInEmail))
       }
     })
-  }, [botId, getEscalationConfig])
+    return () => {
+      active = false
+    }
+  }, [botId, getEscalationConfig, loggedInEmail])
 
   const saveMessages = async (next: SuggestedMessageConfig[]) => {
     if (!botId) return
