@@ -518,6 +518,7 @@ export default function CreateBotUrlsPage() {
         </div>
 
         <div
+          className="flow-section"
           style={{
             border: '1px solid var(--flow-border)',
             borderRadius: 'var(--flow-radius)',
@@ -559,6 +560,7 @@ export default function CreateBotUrlsPage() {
 
           {/* URL Input Container for all sources */}
           <div
+            className="flow-section"
             style={{
               border: '1px solid var(--flow-border)',
               borderRadius: 'var(--flow-radius)',
@@ -793,18 +795,23 @@ export default function CreateBotUrlsPage() {
           <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
             {t('common.back', 'Back')}
           </UiButton>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <UiButton variant="ghost" onClick={() => void handleSkip()}>
-              {t('createBot.skip', 'Skip for now')}
-            </UiButton>
+          {(sharedSelectedDiscoveredUrls.size > 0 || pdfFiles.length > 0) ? (
             <UiButton
               variant="primary"
               onClick={() => void handleContinue()}
-              disabled={sharedSelectedDiscoveredUrls.size === 0 && pdfFiles.length === 0}
+              style={{ marginLeft: 'auto' }}
             >
               {t('common.continue', 'Continue')}
             </UiButton>
-          </div>
+          ) : (
+            <UiButton
+              variant="ghost"
+              onClick={() => void handleSkip()}
+              style={{ marginLeft: 'auto' }}
+            >
+              {t('createBot.skip', 'Skip for now')}
+            </UiButton>
+          )}
         </div>
       </div>
     )
@@ -1101,19 +1108,18 @@ export default function CreateBotUrlsPage() {
           {t('common.back', 'Back')}
         </UiButton>
         {isDiscovering ? (
-          <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
             <StopIcon />
             {t('createBot.stop', 'Stop')}
           </UiButton>
+        ) : (selectedUrls.length > 0 || pdfFiles.length > 0) ? (
+          <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
+            {t('common.continue', 'Continue')}
+          </UiButton>
         ) : (
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <UiButton variant="ghost" onClick={() => void handleSkip()}>
-              {t('createBot.skip', 'Skip for now')}
-            </UiButton>
-            <UiButton variant="primary" onClick={handleContinue} disabled={selectedUrls.length === 0 && pdfFiles.length === 0}>
-              {t('common.continue', 'Continue')}
-            </UiButton>
-          </div>
+          <UiButton variant="ghost" onClick={() => void handleSkip()} style={{ marginLeft: 'auto' }}>
+            {t('createBot.skip', 'Skip for now')}
+          </UiButton>
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, CheckCircle2, ChevronLeft, Globe, MessageCircle } from 'lucide-react'
+import { Check, CheckCircle2, Globe, MessageCircle } from 'lucide-react'
 import { SectionHeader, UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { useCreateBotFlow } from './CreateBotContext'
@@ -202,28 +202,6 @@ export default function CreateBotWidgetPage() {
     </>
   )
 
-  const renderBackButton = (targetView: DesignView, label: string) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-      <button
-        type="button"
-        onClick={() => setDesignView(targetView)}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.35rem',
-          border: 'none',
-          background: 'transparent',
-          color: 'var(--flow-muted)',
-          cursor: 'pointer',
-          padding: 0,
-        }}
-      >
-        <ChevronLeft size={16} />
-        {label}
-      </button>
-    </div>
-  )
-
   const websiteActions = (
     <>
       <UiButton variant="secondary" onClick={() => setDesignView('hub')} disabled={Boolean(savingScope)}>
@@ -254,7 +232,6 @@ export default function CreateBotWidgetPage() {
           subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
         />
         <div style={{ marginBottom: '1rem' }}>{banner}</div>
-        {renderBackButton('hub', t('createBot.backToAppearanceHub', 'Back to appearance'))}
         <WidgetDesignForm
           value={value}
           onChange={onChange}
@@ -274,7 +251,6 @@ export default function CreateBotWidgetPage() {
           subtitle={t('botDesign.subtitle', 'Customize how your agent looks on Website and LINE. Changes update the preview on the right.')}
         />
         <div style={{ marginBottom: '1rem' }}>{banner}</div>
-        {renderBackButton('hub', t('createBot.backToAppearanceHub', 'Back to appearance'))}
         <LineDesignForm
           profile={lineDesignProfile}
           value={lineDesignOverrides}

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { UiButton, UiCard } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
@@ -48,6 +48,11 @@ export default function CreateBotProgressPage() {
 
   const handleFinish = () => {
     resetFlow()
+    if (botId) {
+      navigate(`/bots/${botId}/overview`)
+      return
+    }
+    navigate('/bots')
   }
 
   const currentStageLabel =
@@ -149,17 +154,25 @@ export default function CreateBotProgressPage() {
             <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)} disabled={isStartingTraining}>
               {t('common.back', 'Back')}
             </UiButton>
-            <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
-              {hasAnySources ? (
-                <UiButton variant="primary" onClick={() => void handleStartTraining()} disabled={isStartingTraining}>
-                  {isStartingTraining ? t('createBot.starting', 'Starting...') : t('createBot.startTraining', 'Start training')}
-                </UiButton>
-              ) : (
-                <UiButton variant="ghost" onClick={() => void handleSkipTraining()} disabled={isStartingTraining}>
-                  {isStartingTraining ? t('createBot.skipping', 'Skipping...') : t('createBot.skipTrainingForNow', 'Skip training for now')}
-                </UiButton>
-              )}
-            </div>
+            {hasAnySources ? (
+              <UiButton
+                variant="primary"
+                onClick={() => void handleStartTraining()}
+                disabled={isStartingTraining}
+                style={{ marginLeft: 'auto' }}
+              >
+                {isStartingTraining ? t('createBot.starting', 'Starting...') : t('createBot.startTraining', 'Start training')}
+              </UiButton>
+            ) : (
+              <UiButton
+                variant="ghost"
+                onClick={() => void handleSkipTraining()}
+                disabled={isStartingTraining}
+                style={{ marginLeft: 'auto' }}
+              >
+                {isStartingTraining ? t('createBot.skipping', 'Skipping...') : t('createBot.skipTrainingForNow', 'Skip training for now')}
+              </UiButton>
+            )}
           </div>
         </>
       ) : (
@@ -234,31 +247,34 @@ export default function CreateBotProgressPage() {
           )}
 
           <div className="flow-actions">
+            <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)} style={{ marginRight: 'auto' }}>
+              {t('common.back', 'Back')}
+            </UiButton>
             {isComplete ? (
-              <>
-                {flow.nextPath && (
-                  <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
-                    {t('common.continue', 'Continue')}
-                  </UiButton>
-                )}
-                {botId ? (
-                  <Link className="secondary" to={`/bots/${botId}/overview`} onClick={handleFinish}
-                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
-                    {t('createBot.goToBotOverview', 'Go to bot overview')}
-                  </Link>
-                ) : (
-                  <Link className="secondary" to="/bots" onClick={handleFinish}
-                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.65rem 1.25rem', borderRadius: 10, border: '1.5px solid var(--flow-border)', textDecoration: 'none', fontWeight: 500, fontSize: '0.9rem', color: 'var(--flow-text)' }}>
-                    {t('createBot.goToBots', 'Go to bots')}
-                  </Link>
-                )}
-              </>
+              flow.nextPath ? (
+                <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)} style={{ marginLeft: 'auto' }}>
+                  {t('common.continue', 'Continue')}
+                </UiButton>
+              ) : (
+                <UiButton variant="primary" onClick={handleFinish} style={{ marginLeft: 'auto' }}>
+                  {t('createBot.finishSetup', 'Finish setup')}
+                </UiButton>
+              )
+            ) : flow.nextPath ? (
+              <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)} style={{ marginLeft: 'auto' }}>
+                {t('common.continue', 'Continue')}
+              </UiButton>
             ) : (
-              <div className="muted" style={{ fontSize: '0.85rem' }}>
-                {t('createBot.thisRunsInBackground', 'This runs in the background. We\'ll take you to the design step shortly.')}
-              </div>
+              <UiButton variant="primary" disabled style={{ marginLeft: 'auto' }}>
+                {t('common.continue', 'Continue')}
+              </UiButton>
             )}
           </div>
+          {!isComplete && (
+            <div className="muted" style={{ fontSize: '0.85rem' }}>
+              {t('createBot.thisRunsInBackground', 'This runs in the background. We\'ll take you to the design step shortly.')}
+            </div>
+          )}
         </>
       )}
     </div>

@@ -62,9 +62,22 @@ export default function CreateBotDetailsPage() {
 
       <div className="flow-actions">
         <UiButton
+          variant="secondary"
+          onClick={() => {
+            if (flow.prevPath) {
+              navigate(flow.prevPath)
+              return
+            }
+            navigate('/bots')
+          }}
+        >
+          {t('common.back', 'Back')}
+        </UiButton>
+        <UiButton
           variant="primary"
           onClick={() => void handleContinue()}
           disabled={!botName.trim()}
+          style={{ marginLeft: 'auto' }}
         >
           {t('common.continue', 'Continue')}
         </UiButton>

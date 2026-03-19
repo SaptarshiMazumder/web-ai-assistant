@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, ChevronLeft, Globe, MessageCircle } from 'lucide-react'
+import { CheckCircle2, Globe, MessageCircle } from 'lucide-react'
 import { FlowIcon } from '../../components/FlowIcon'
 import { UiButton } from '../../components/ui'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -70,17 +70,6 @@ export default function CreateBotEmbedPage() {
   if (installView === 'website') {
     return (
       <div className="flow-panel-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setInstallView('hub')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'transparent', color: 'var(--flow-muted)', cursor: 'pointer', padding: 0 }}
-          >
-            <ChevronLeft size={16} />
-            {t('createBot.backToInstallHub', 'Back to install')}
-          </button>
-        </div>
-
         <div>
           <div className="card-title">{t('createBot.websiteInstallTitle', 'Website installation')}</div>
           <div className="card-subtitle">
@@ -126,7 +115,7 @@ export default function CreateBotEmbedPage() {
         </div>
         <div className="flow-actions">
           <UiButton variant="secondary" onClick={() => setInstallView('hub')}>
-            {t('createBot.skipForNow', 'Skip for now')}
+            {t('common.back', 'Back')}
           </UiButton>
           <UiButton
             variant="primary"
@@ -145,16 +134,6 @@ export default function CreateBotEmbedPage() {
   if (installView === 'line') {
     return (
       <div className="flow-panel-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-          <button
-            type="button"
-            onClick={() => setInstallView('hub')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: 'none', background: 'transparent', color: 'var(--flow-muted)', cursor: 'pointer', padding: 0 }}
-          >
-            <ChevronLeft size={16} />
-            {t('createBot.backToInstallHub', 'Back to install')}
-          </button>
-        </div>
         {botId ? (
           <BotLineSettingsTab
             botIdOverride={botId}
@@ -164,6 +143,14 @@ export default function CreateBotEmbedPage() {
             }}
           />
         ) : null}
+        <div className="flow-actions">
+          <UiButton variant="secondary" onClick={() => setInstallView('hub')}>
+            {t('common.back', 'Back')}
+          </UiButton>
+          <UiButton variant="primary" onClick={() => setInstallView('hub')} style={{ marginLeft: 'auto' }}>
+            {t('common.continue', 'Continue')}
+          </UiButton>
+        </div>
       </div>
     )
   }

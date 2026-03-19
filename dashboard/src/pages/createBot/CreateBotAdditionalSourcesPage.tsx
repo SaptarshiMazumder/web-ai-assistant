@@ -142,6 +142,7 @@ export default function CreateBotAdditionalSourcesPage() {
               {customTextEntries.map((field, index) => (
                 <div
                   key={field.id}
+                  className="flow-section"
                   style={{
                     background: 'var(--flow-surface)',
                     border: '1px solid var(--flow-border)',
@@ -222,14 +223,15 @@ export default function CreateBotAdditionalSourcesPage() {
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           {t('common.back', 'Back')}
         </UiButton>
-        <div style={{ display: 'flex', gap: '0.75rem', marginLeft: 'auto' }}>
-          <UiButton variant="ghost" onClick={handleSkip}>
-            {t('createBot.skip', 'Skip for now')}
-          </UiButton>
-          <UiButton variant="primary" onClick={handleContinue} disabled={!hasAnySources}>
+        {hasAnySources ? (
+          <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
             {t('common.continue', 'Continue')}
           </UiButton>
-        </div>
+        ) : (
+          <UiButton variant="ghost" onClick={handleSkip} style={{ marginLeft: 'auto' }}>
+            {t('createBot.skip', 'Skip for now')}
+          </UiButton>
+        )}
       </div>
     </div>
   )

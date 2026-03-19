@@ -64,6 +64,7 @@ export default function CreateBotActionDestinationPage() {
 
       {fallbackUrl && selectedPlatform && (
         <div
+          className="flow-section"
           style={{
             border: '1px solid var(--flow-border)',
             borderRadius: 'var(--flow-radius)',

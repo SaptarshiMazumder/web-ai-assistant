@@ -1,28 +1,12 @@
 import { Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { FlowIcon } from '../../components/FlowIcon'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import { CreateBotProvider, useCreateBotFlow } from './CreateBotContext'
 import { TrainingProgressCircle } from './TrainingProgressCircle'
 import CreateBotScreenHost from './CreateBotScreenHost'
-
-
-function StepCheckIcon() {
-  return (
-    <svg className="flow-mstepper-check" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-      <motion.path
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ delay: 0.1, type: 'tween', ease: 'easeOut', duration: 0.3 }}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M5 13l4 4L19 7"
-      />
-    </svg>
-  )
-}
 
 function MobileStepIndicator() {
   const { flow } = useCreateBotFlow()
@@ -48,17 +32,25 @@ function MobileStepIndicator() {
                   initial={false}
                   variants={{
                     pending: { scale: 1 },
-                    active: { scale: 1 },
+                    active: { scale: 1.18 },
                     done: { scale: 1 },
                   }}
                   transition={{ duration: 0.3 }}
                 >
-                  {isCompleted ? (
-                    <StepCheckIcon />
-                  ) : isCurrent ? (
-                    <div className="flow-mstepper-active-pip" />
+                  {step.iconUrl ? (
+                    <img
+                      className="flow-mstepper-icon-img"
+                      src={step.iconUrl}
+                      alt=""
+                      aria-hidden="true"
+                    />
                   ) : (
-                    <span className="flow-mstepper-num">{index + 1}</span>
+                    <FlowIcon
+                      name={step.icon as import('../../components/FlowIcon').FlowIconName}
+                      filled
+                      size="sm"
+                      className="flow-mstepper-icon"
+                    />
                   )}
                 </motion.div>
               </div>
@@ -76,26 +68,11 @@ function MobileStepIndicator() {
           )
         })}
       </div>
-      {steps[activeStep] && (
-        <div className="flow-mstepper-label">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={activeStep}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.2 }}
-            >
-              {steps[activeStep].description || steps[activeStep].label}
-            </motion.span>
-          </AnimatePresence>
-        </div>
-      )}
     </div>
   )
 }
 
-function FlowStepsWithProgress({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
+function FlowStepsWithProgress() {
   const { step3, flow } = useCreateBotFlow()
   const steps = flow.stepGroups
   const activeStep = flow.activeStepIndex
@@ -115,9 +92,8 @@ function FlowStepsWithProgress({ navigate }: { navigate: ReturnType<typeof useNa
 
   return (
     <aside className="flow-steps">
-      {/* Mobile: back + step indicator */}
+      {/* Mobile: step indicator */}
       <div className="flow-mobile-header-controls">
-        <CreateBotProviderInnerMobileBack navigate={navigate} />
         <MobileStepIndicator />
       </div>
       {/* Desktop: full step list */}
@@ -188,7 +164,7 @@ export default function CreateBotLayout() {
         </header>
 
         <div className="flow-grid">
-          <FlowStepsWithProgress navigate={navigate} />
+          <FlowStepsWithProgress />
           <section className="flow-panel">
             {error && <div className="alert error">{error}</div>}
             <div key={location.pathname} className="flow-panel-animate">
@@ -198,23 +174,5 @@ export default function CreateBotLayout() {
         </div>
       </div>
     </CreateBotProvider>
-  )
-}
-
-function CreateBotProviderInnerMobileBack({ navigate }: { navigate: ReturnType<typeof useNavigate> }) {
-  const { t } = useTranslation()
-  const { flow } = useCreateBotFlow()
-  if (!flow.prevPath) {
-    return <span className="flow-mobile-back-spacer" aria-hidden="true" />
-  }
-  return (
-    <button
-      type="button"
-      className="flow-mobile-back"
-      onClick={() => navigate(flow.prevPath!)}
-      aria-label={t('common.goBack', 'Go back')}
-    >
-      <FlowIcon name="arrow_back" size="md" />
-    </button>
   )
 }
