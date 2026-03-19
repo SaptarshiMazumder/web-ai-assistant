@@ -3992,6 +3992,14 @@ select.design-form-input:focus {
   display: none;
 }
 
+.flow-mobile-header-controls {
+  display: none;
+}
+
+.flow-mobile-back-spacer {
+  display: none;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MOBILE RESPONSIVENESS — Create-bot flow
    Collapse sidebar to horizontal stepper, single-column layout,
@@ -4012,10 +4020,23 @@ select.design-form-input:focus {
     background: var(--flow-accent-soft, #fff1ef) !important;
     color: var(--flow-accent, #e4587a) !important;
     cursor: pointer;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0;
     transition: all 0.2s ease;
     flex-shrink: 0;
     /* ensure icon is centered */
+  }
+
+  .flow-mobile-header-controls {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .flow-mobile-back-spacer {
+    display: block !important;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
   }
 
   /* Force SVG to be visible and colored */
@@ -4077,63 +4098,23 @@ select.design-form-input:focus {
     min-height: 0 !important;
   }
 
-  /* --- Sidebar → horizontal icon stepper ----------------------------- */
+  /* --- Sidebar → single step indicator on mobile -------------------- */
   .flow-steps {
     display: flex !important;
-    /* override the 900px breakpoint display:none */
-    padding: 0.6rem 0.75rem !important;
+    padding: 0.65rem 1rem !important;
     flex-direction: row !important;
     gap: 0 !important;
     border-right: none !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    border-bottom: none !important;
+    overflow: hidden !important;
     min-height: auto !important;
+    justify-content: center !important;
+    align-items: center !important;
   }
 
+  /* Hide desktop step list on mobile */
   .flow-steps-list {
-    display: flex !important;
-    flex-direction: row !important;
-    gap: 0.15rem !important;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .flow-step {
-    grid-template-columns: auto !important;
-    gap: 0 !important;
-    padding: 0.35rem !important;
-    justify-items: center;
-    min-width: 0;
-    flex-shrink: 0;
-  }
-
-  .flow-step-title,
-  .flow-step-desc {
     display: none !important;
-  }
-
-  .flow-step-number {
-    width: 34px !important;
-    height: 34px !important;
-    font-size: 0.7rem !important;
-  }
-
-  .flow-step-icon {
-    width: 16px !important;
-    height: 16px !important;
-  }
-
-  .flow-step.active .flow-step-number {
-    width: 38px !important;
-    height: 38px !important;
-    transform: scale(1) !important;
-  }
-
-  .flow-step.active .flow-step-icon {
-    width: 18px !important;
-    height: 18px !important;
   }
 
   /* Hide training progress in sidebar on mobile */
@@ -10081,5 +10062,651 @@ select:hover {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+}
+
+/* ╔══════════════════════════════════════════════════════════════════════════╗
+   ║  MOBILE OVERHAUL — BOLD REDESIGN                                      ║
+   ║  Bigger fonts, dramatic stepper, fixed dropdowns, edge-to-edge cards  ║
+   ╚══════════════════════════════════════════════════════════════════════════╝ */
+
+/* ---------- New keyframes for mobile ---------- */
+@keyframes mobile-step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(228, 88, 122, 0.5); }
+  50% { box-shadow: 0 0 18px 6px rgba(228, 88, 122, 0.35); }
+}
+
+@keyframes mobile-step-slide-in {
+  from { opacity: 0; transform: scale(0.6) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes mobile-card-enter {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mobile-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mobile-glow-ring {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(246, 180, 109, 0.3), 0 0 12px rgba(228, 88, 122, 0.2); }
+  50% { box-shadow: 0 0 0 5px rgba(246, 180, 109, 0.15), 0 0 24px rgba(228, 88, 122, 0.35); }
+}
+
+/* --- Mobile step indicator: hidden on desktop --- */
+.flow-mobile-step-indicator {
+  display: none;
+}
+
+/* --- Mobile stepper (ReactBits-style): hidden on desktop --- */
+.flow-mstepper {
+  display: none;
+}
+
+@media (max-width: 768px) {
+
+  /* ================================================================
+     1. BIGGER FONTS — everything feels more readable and premium
+     ================================================================ */
+
+  /* Base font bump */
+  :root {
+    font-size: 16.5px !important;
+  }
+
+  body {
+    font-size: 1rem !important;
+    -webkit-text-size-adjust: 100% !important;
+  }
+
+  /* Page titles — big and commanding */
+  .page-header h1,
+  .page-header-title,
+  .page-title-text {
+    font-size: 1.55rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.01em !important;
+    line-height: 1.2 !important;
+  }
+
+  .section-header h1,
+  .section-header h2,
+  .section-header-title {
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* Card titles */
+  .card-title,
+  .flow-shell .card-title,
+  .ui-glass-card h2,
+  .ui-glass-card h3 {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+  }
+
+  .card-subtitle,
+  .flow-shell .card-subtitle {
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Body text and paragraphs */
+  p, li, .page-body, .flow-panel-body {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Labels and small text — not too small */
+  label,
+  .ui-glass-field-label,
+  .flow-field-label,
+  .design-form-label {
+    font-size: 0.88rem !important;
+  }
+
+  .ui-glass-field-helper,
+  .flow-field-helper,
+  .design-form-hint,
+  .muted {
+    font-size: 0.88rem !important;
+  }
+
+  /* Inputs */
+  input, select, textarea,
+  .flow-select-trigger,
+  .flow-select-option {
+    font-size: 1rem !important;
+  }
+
+  /* Buttons */
+  .ui-flow-btn,
+  button {
+    font-size: 0.98rem !important;
+  }
+
+  /* Nav link labels */
+  .nav-link-text,
+  .sidebar-link-label {
+    font-size: 0.82rem !important;
+  }
+
+  /* Segmented tabs */
+  .ui-segmented-tabs button,
+  .ui-segmented-tab {
+    font-size: 0.9rem !important;
+    padding: 0.5rem 0.85rem !important;
+  }
+
+  /* Bot cards */
+  .bot-workspace-card__title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+  }
+
+  .bot-workspace-card__meta-label,
+  .bot-workspace-card__meta-value {
+    font-size: 0.9rem !important;
+  }
+
+  .bot-create-card__title {
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* ================================================================
+     2. CREATE AGENT STEPPER — single step indicator on mobile
+     ================================================================ */
+
+  /* Hide the full desktop step list on mobile */
+  .flow-steps-list {
+    display: none !important;
+  }
+
+  /* Keep mobile stepper clean: no step label/description text below icons */
+  .flow-step-title,
+  .flow-step-desc {
+    display: none !important;
+  }
+
+  /* Hide training progress in sidebar on mobile */
+  .flow-steps-progress {
+    display: none !important;
+  }
+
+  /* Hide old ring indicator */
+  .flow-mobile-step-indicator {
+    display: none !important;
+  }
+
+  /* Stepper bar — sits in normal flow below the header */
+  .flow-steps {
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    min-height: 0 !important;
+    z-index: auto !important;
+    pointer-events: auto !important;
+    overflow: visible !important;
+  }
+
+  .flow-grid {
+    position: static !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Header controls: relative container so back btn can be absolute */
+  .flow-mobile-header-controls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    padding: 0.85rem 1rem 0.65rem !important;
+    pointer-events: auto !important;
+    width: 100% !important;
+  }
+
+  /* Hide spacer — no longer needed */
+  .flow-mobile-back-spacer {
+    display: none !important;
+  }
+
+  /* === REACTBITS-STYLE HORIZONTAL STEPPER === */
+
+  .flow-mstepper {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 340px !important;
+    gap: 0.45rem !important;
+  }
+
+  /* Dot + connector row */
+  .flow-mstepper-row {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+
+  /* Dot wrapper */
+  .flow-mstepper-dot {
+    position: relative !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Dot inner circle */
+  .flow-mstepper-dot-inner {
+    display: flex !important;
+    width: 34px !important;
+    height: 34px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    font-weight: 600 !important;
+    transition: background 0.3s ease, box-shadow 0.3s ease !important;
+  }
+
+  /* Pending */
+  .flow-mstepper-dot.pending .flow-mstepper-dot-inner {
+    background: #f0f0f0 !important;
+    color: #b0b0b0 !important;
+  }
+
+  /* Active */
+  .flow-mstepper-dot.active .flow-mstepper-dot-inner {
+    background: linear-gradient(135deg, #f59672, #e4587a) !important;
+    color: #fff !important;
+    box-shadow: 0 3px 14px rgba(228, 88, 122, 0.45) !important;
+  }
+
+  /* Done */
+  .flow-mstepper-dot.done .flow-mstepper-dot-inner {
+    background: linear-gradient(135deg, #f59672, #e4587a) !important;
+    color: #fff !important;
+  }
+
+  /* Active pip (white dot inside active circle) */
+  .flow-mstepper-active-pip {
+    width: 11px !important;
+    height: 11px !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+  }
+
+  /* Step number text */
+  .flow-mstepper-num {
+    font-size: 0.82rem !important;
+  }
+
+  /* Check icon */
+  .flow-mstepper-check {
+    width: 16px !important;
+    height: 16px !important;
+    color: #fff !important;
+  }
+
+  /* Connector track */
+  .flow-mstepper-connector {
+    position: relative !important;
+    margin: 0 0.35rem !important;
+    height: 2.5px !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    border-radius: 2px !important;
+    background: #e8e8e8 !important;
+  }
+
+  /* Connector fill (animated via framer-motion) */
+  .flow-mstepper-connector-fill {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100% !important;
+    background: linear-gradient(90deg, #f59672, #e4587a) !important;
+    border-radius: 2px !important;
+  }
+
+  /* Label — only shown for active step */
+  .flow-mstepper-label {
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    color: #e4587a !important;
+    text-align: center !important;
+    letter-spacing: 0.01em !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Flow header — more dramatic */
+  .flow-header {
+    padding: 0.85rem 1.15rem !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .flow-title {
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+  }
+
+  .flow-eyebrow {
+    font-size: 0.65rem !important;
+    letter-spacing: 0.16em !important;
+    color: var(--ui-flow-accent) !important;
+  }
+
+  /* Panel content */
+  .flow-panel {
+    padding: 1.35rem 1.15rem !important;
+  }
+
+  .flow-panel-animate {
+    animation: mobile-card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Mobile back button — floats top-left of stepper bar */
+  .flow-mobile-back {
+    position: absolute !important;
+    left: 0.9rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #fff1ef !important;
+    color: #e4587a !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    pointer-events: auto !important;
+    z-index: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .flow-mobile-back:active {
+    transform: translateY(-50%) scale(0.88) !important;
+    background: var(--ui-flow-accent) !important;
+    color: #fff !important;
+  }
+
+  /* ================================================================
+     3. DROPDOWN Z-INDEX FIX
+     ================================================================ */
+
+  /* The root cause: glass-field clips dropdown with overflow:hidden
+     and z-index stacking context traps the menu */
+
+  /* Ensure flow-select creates its own stacking context above siblings */
+  .flow-select {
+    z-index: auto !important;
+  }
+
+  /* When a dropdown is open, elevate the entire field */
+  .ui-glass-field:has(.flow-select-menu),
+  .flow-field:has(.flow-select-menu),
+  .design-form-field:has(.flow-select-menu) {
+    z-index: 100 !important;
+    overflow: visible !important;
+  }
+
+  /* The dropdown menu itself */
+  .flow-select-menu {
+    z-index: 10000 !important;
+    position: absolute !important;
+    overflow: visible !important;
+    max-height: 45vh !important;
+    box-shadow:
+      0 20px 48px rgba(58, 34, 54, 0.2),
+      0 0 0 1px rgba(228, 88, 122, 0.12) !important;
+    border-radius: 16px !important;
+    animation: mobile-fade-up 0.2s ease-out !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+  }
+
+  /* Larger touch targets for dropdown options */
+  .flow-select-option {
+    padding: 0.7rem 0.85rem !important;
+    border-radius: 12px !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  /* Also fix native select dropdowns and any absolute menus */
+  .ui-glass-card {
+    overflow: visible !important;
+  }
+
+  /* Prevent parent containers from clipping dropdown */
+  .flow-panel-body {
+    overflow: visible !important;
+  }
+
+  /* Also handle glass field focus-within — ensure it doesn't get clipped */
+  .ui-glass-field:focus-within {
+    z-index: 50 !important;
+    overflow: visible !important;
+  }
+
+  /* Profile dropdown and other header dropdowns */
+  .page-header-profile-dropdown {
+    z-index: 10000 !important;
+  }
+
+  /* ================================================================
+     4. STRIP OUTER CONTAINERS ON MOBILE — edge-to-edge content
+     ================================================================ */
+
+  /* Remove content-shell border and excess padding on mobile */
+  .content-shell {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0.65rem 0.5rem !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Glass cards become flat, edge-to-edge panels on mobile */
+  .content-shell .ui-glass-card {
+    border: none !important;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: 0 2px 12px rgba(184, 88, 130, 0.06) !important;
+    padding: 1.1rem 0.9rem !important;
+    animation: mobile-card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+
+  /* Stagger card animations */
+  .content-shell .ui-glass-card:nth-child(1) { animation-delay: 0s !important; }
+  .content-shell .ui-glass-card:nth-child(2) { animation-delay: 0.06s !important; }
+  .content-shell .ui-glass-card:nth-child(3) { animation-delay: 0.12s !important; }
+  .content-shell .ui-glass-card:nth-child(4) { animation-delay: 0.18s !important; }
+  .content-shell .ui-glass-card:nth-child(5) { animation-delay: 0.24s !important; }
+
+  /* Page body — tighter, no extra gaps */
+  .page-body,
+  .page-body-centered,
+  .page-body-narrow {
+    gap: 0.85rem !important;
+    padding: 0 !important;
+  }
+
+  .page {
+    gap: 0.85rem !important;
+  }
+
+  /* Page header — full width, no extra padding */
+  .page-header {
+    padding: 0.5rem 0.25rem !important;
+  }
+
+  /* Section headers — more breathing room */
+  .section-header {
+    padding: 0.25rem 0 !important;
+  }
+
+  /* ================================================================
+     5. BOLD MOBILE DESIGN ENHANCEMENTS
+     ================================================================ */
+
+  /* Smooth page transitions */
+  .animated-page {
+    animation: mobile-card-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Primary buttons — larger, more prominent */
+  .ui-flow-btn--primary {
+    padding: 0.85rem 1.5rem !important;
+    border-radius: 14px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em !important;
+    min-height: 50px !important;
+    box-shadow: 0 4px 16px rgba(228, 88, 122, 0.3) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  }
+
+  .ui-flow-btn--primary:active {
+    transform: scale(0.96) !important;
+    box-shadow: 0 2px 8px rgba(228, 88, 122, 0.4) !important;
+  }
+
+  /* Secondary buttons — subtle but clear */
+  .ui-flow-btn--secondary {
+    padding: 0.8rem 1.25rem !important;
+    border-radius: 14px !important;
+    min-height: 48px !important;
+    transition: all 0.25s ease !important;
+  }
+
+  .ui-flow-btn--secondary:active {
+    transform: scale(0.96) !important;
+  }
+
+  /* Input fields — taller, easier to tap */
+  .ui-glass-field-input-wrap input,
+  .ui-glass-field-input-wrap select,
+  .ui-glass-field-input-wrap textarea,
+  .content-shell .ui-glass-field-input-wrap input,
+  .content-shell .ui-glass-field-input-wrap select,
+  .content-shell .ui-glass-field-input-wrap textarea {
+    padding: 1rem 1rem !important;
+    border-radius: 12px !important;
+    min-height: 48px !important;
+    transition: border-color 0.2s ease, box-shadow 0.3s ease !important;
+  }
+
+  /* Input focus — dramatic glow */
+  .ui-glass-field-input-wrap input:focus,
+  .ui-glass-field-input-wrap select:focus,
+  .ui-glass-field-input-wrap textarea:focus,
+  .content-shell .ui-glass-field-input-wrap input:focus,
+  .content-shell .ui-glass-field-input-wrap select:focus,
+  .content-shell .ui-glass-field-input-wrap textarea:focus {
+    box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.15), 0 4px 16px rgba(228, 88, 122, 0.1) !important;
+    border-color: var(--ui-flow-accent) !important;
+  }
+
+  /* Bot cards — more dramatic entrance */
+  .bot-workspace-card,
+  .bot-create-card {
+    border-radius: 20px !important;
+    padding: 1.1rem !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    animation: mobile-card-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+
+  .bot-workspace-card:active,
+  .bot-create-card:active {
+    transform: scale(0.98) !important;
+  }
+
+  /* Flow select trigger — taller on mobile */
+  .flow-select-trigger {
+    padding: 0.8rem 0.95rem !important;
+    border-radius: 12px !important;
+    min-height: 48px !important;
+  }
+
+  /* Chips and pills — bigger touch target */
+  .ui-flow-chip {
+    padding: 0.4rem 0.9rem !important;
+    font-size: 0.88rem !important;
+  }
+
+  /* Info link bubbles — easier to tap */
+  .info-links-bubble {
+    padding: 0.55rem 1rem !important;
+    font-size: 0.92rem !important;
+    border-radius: 999px !important;
+  }
+
+
+  /* Conversation grid — smoother sliding */
+  .conversation-panel--list,
+  .conversation-panel--detail {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Modals — slide up from bottom on mobile */
+  .app-dialog-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .app-dialog {
+    border-radius: 24px 24px 0 0 !important;
+    max-height: 90dvh !important;
+    animation: mobile-card-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* Modal overlay — deeper blur */
+  .modal-overlay {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  /* Knowledge/source table rows — cleaner on mobile */
+  .knowledge-table tr {
+    padding: 0.8rem 0.15rem !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  /* Snippet code blocks — bigger text */
+  .snippet,
+  .flow-shell .snippet {
+    font-size: 0.88rem !important;
+    border-radius: 14px !important;
+    padding: 1rem 1.1rem !important;
+  }
+
+  /* Smooth scroll everywhere */
+  * {
+    scroll-behavior: smooth !important;
+  }
+
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
