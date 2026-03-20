@@ -98,9 +98,11 @@ export default function AddSourcePage() {
   }, [discoveredUrls, normalizedDiscoveryUrl])
 
   useEffect(() => {
-    if (urlCategories && expandedCategories.size === 0) {
-      setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
+    if (!urlCategories) {
+      setExpandedCategories(new Set())
+      return
     }
+    setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
   }, [urlCategories])
 
   const discoveryDurationLabel =

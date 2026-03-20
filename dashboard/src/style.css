@@ -3578,9 +3578,16 @@ button.delete-btn:disabled svg {
   margin-left: calc(var(--tree-level, 0) * var(--flow-url-tree-indent));
 }
 
+.flow-url-tree-node + .flow-url-tree-node {
+  border-top: 1px solid rgba(58, 34, 54, 0.08);
+}
+
 .flow-url-tree-nested {
   margin-left: var(--flow-url-tree-indent);
   padding-left: var(--flow-url-tree-indent);
+  border-top: 1px solid rgba(58, 34, 54, 0.06);
+  padding-top: 0.35rem;
+  margin-top: 0.2rem;
 }
 
 /* --- Suggested bubbles --------------------------------------------------- */
@@ -4070,50 +4077,19 @@ select.design-form-input:focus {
 
 @media (max-width: 768px) {
 
-  /* --- Mobile back arrow at top of panel ----------------------------- */
+  /* --- Mobile back arrow — hidden, back is in bottom bar now ---------- */
   .flow-mobile-back {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 50%;
-    background: var(--flow-accent-soft, #fff1ef) !important;
-    color: var(--flow-accent, #e4587a) !important;
-    cursor: pointer;
-    margin-bottom: 0;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-    /* ensure icon is centered */
+    display: none !important;
   }
 
   .flow-mobile-header-controls {
     display: flex !important;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: stretch;
+    width: 100%;
   }
 
   .flow-mobile-back-spacer {
-    display: block !important;
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-  }
-
-  /* Force SVG to be visible and colored */
-  .flow-mobile-back svg {
-    display: block;
-    pointer-events: none;
-    /* let clicks go to button */
-  }
-
-  .flow-mobile-back:active {
-    transform: scale(0.92);
-    /* when active, keep the pink color or go white? 
-       Previous was white text on pink bg. Let's stick to that. */
-    background: var(--flow-accent, #e4587a) !important;
-    color: #fff !important;
+    display: none !important;
   }
 
   /* --- Shell: scrollable container ----------------------------------- */
@@ -4123,26 +4099,31 @@ select.design-form-input:focus {
     min-height: 0 !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
+    background: #ffffff !important;
   }
 
-  /* --- Header: compact ------------------------------------------------ */
+  /* --- Header: minimal & clean (app-style) --------------------------- */
   .flow-header {
-    padding: 0.75rem 1rem !important;
+    padding: 0.9rem 1.25rem !important;
     gap: 0.75rem;
+    border-bottom: none !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .flow-title {
-    font-size: 1.15rem !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
   }
 
   .flow-eyebrow {
-    font-size: 0.6rem !important;
-    margin-bottom: 0.05rem;
+    display: none !important;
   }
 
   .flow-close {
-    width: 32px !important;
-    height: 32px !important;
+    width: 34px !important;
+    height: 34px !important;
   }
 
   /* --- Grid: single column, sidebar on top --------------------------- */
@@ -4153,18 +4134,18 @@ select.design-form-input:focus {
     min-height: 0 !important;
   }
 
-  /* --- Sidebar → single step indicator on mobile -------------------- */
+  /* --- Sidebar → progress bar only on mobile ------------------------- */
   .flow-steps {
-    display: flex !important;
-    padding: 0.65rem 1rem !important;
-    flex-direction: row !important;
+    display: block !important;
+    padding: 0 !important;
     gap: 0 !important;
     border-right: none !important;
     border-bottom: none !important;
     overflow: hidden !important;
-    min-height: auto !important;
-    justify-content: center !important;
-    align-items: center !important;
+    min-height: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
   }
 
   /* Hide desktop step list on mobile */
@@ -4177,9 +4158,29 @@ select.design-form-input:focus {
     display: none !important;
   }
 
-  /* --- Panel: reduced padding, constrain width ----------------------- */
+  /* --- Progress bar (replaces dot stepper) --------------------------- */
+  .flow-progress-bar {
+    width: 100% !important;
+    height: 3px !important;
+    background: #f0f0f0 !important;
+    overflow: hidden !important;
+  }
+
+  .flow-progress-bar-fill {
+    height: 100% !important;
+    background: linear-gradient(90deg, #f59672, #e4587a) !important;
+    border-radius: 0 2px 2px 0 !important;
+  }
+
+  /* Hide old dot stepper if still rendered */
+  .flow-mstepper {
+    display: none !important;
+  }
+
+  /* --- Panel: generous whitespace, room for fixed bottom buttons ----- */
   .flow-panel {
-    padding: 1.25rem 1rem !important;
+    padding: 1.75rem 1.5rem !important;
+    padding-bottom: 10rem !important;
     overflow: visible !important;
     max-width: 100% !important;
     min-width: 0 !important;
@@ -4188,7 +4189,7 @@ select.design-form-input:focus {
   /* --- Panel body: fill width, prevent overflow ----------------------- */
   .flow-panel-body {
     max-width: none !important;
-    gap: 1.25rem !important;
+    gap: 1.75rem !important;
     overflow-x: hidden !important;
     word-break: break-word;
     min-width: 0 !important;
@@ -4217,13 +4218,19 @@ select.design-form-input:focus {
     min-width: 0 !important;
   }
 
-  /* --- Typography: slightly smaller ---------------------------------- */
+  /* --- Typography: large & bold (app-style) -------------------------- */
   .flow-shell .card-title {
-    font-size: 1.2rem !important;
+    font-size: 1.55rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.02em !important;
+    color: #1a1a1a !important;
   }
 
   .flow-shell .card-subtitle {
-    font-size: 0.85rem !important;
+    font-size: 0.93rem !important;
+    color: #888 !important;
+    line-height: 1.55 !important;
   }
 
   /* --- Inputs: remove max-width, full width -------------------------- */
@@ -4241,19 +4248,32 @@ select.design-form-input:focus {
     /* prevents iOS zoom on focus */
   }
 
-  /* --- Buttons: flow-actions ----------------------------------------- */
-  .flow-actions {
+  /* --- Buttons: flow-actions — fixed bottom bar (app-style) ---------- */
+  .flow-shell .flow-actions {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
     display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.6rem !important;
+    flex-wrap: nowrap !important;
+    gap: 0.75rem !important;
     width: 100% !important;
+    margin: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0.85rem 1.5rem !important;
+    padding-bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: none !important;
+    border-top: none !important;
   }
 
   /* On mobile, flatten nested button wrappers inside flow-actions */
-  .flow-actions>div {
+  .flow-shell .flow-actions>div {
     display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.6rem !important;
+    flex-wrap: nowrap !important;
+    gap: 0.75rem !important;
     margin-left: 0 !important;
     width: 100% !important;
   }
@@ -4274,15 +4294,44 @@ select.design-form-input:focus {
   }
 
   /* Make all buttons inside flow-actions fill available width */
-  .flow-actions>button,
-  .flow-actions>div>button,
-  .flow-actions .ui-flow-btn,
-  .flow-actions .star-border-container {
+  .flow-shell .flow-actions>button,
+  .flow-shell .flow-actions>div>button,
+  .flow-shell .flow-actions .ui-flow-btn,
+  .flow-shell .flow-actions .star-border-container {
     flex: 1 1 0 !important;
     min-width: 0 !important;
     width: auto !important;
     justify-content: center !important;
     text-align: center !important;
+  }
+
+  /* Primary buttons in flow-actions — pill-shaped with brand gradient */
+  .flow-shell .flow-actions .ui-flow-btn--primary,
+  .flow-shell .flow-actions>button.ui-flow-btn--primary {
+    border-radius: 999px !important;
+    background: var(--ui-flow-brand-gradient) !important;
+    color: #ffffff !important;
+    min-height: 52px !important;
+  }
+
+  .flow-shell .flow-actions .ui-flow-btn--primary:active,
+  .flow-shell .flow-actions>button.ui-flow-btn--primary:active {
+    background: var(--ui-flow-brand-gradient-dark) !important;
+  }
+
+  /* Secondary buttons in flow-actions — pill-shaped outlined */
+  .flow-shell .flow-actions .ui-flow-btn--secondary,
+  .flow-shell .flow-actions>button.ui-flow-btn--secondary {
+    border-radius: 999px !important;
+    border: 1.5px solid #e0e0e0 !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
+    min-height: 50px !important;
+  }
+
+  .flow-shell .flow-actions .ui-flow-btn--secondary:active,
+  .flow-shell .flow-actions>button.ui-flow-btn--secondary:active {
+    background: #f5f5f5 !important;
   }
 
   /* --- Toolbar: wrap on mobile --------------------------------------- */
@@ -4599,7 +4648,6 @@ select.design-form-input:focus {
 
 .design-form-input,
 .design-form input[type="text"],
-.design-form input[type="color"],
 .design-form textarea,
 .design-form select {
   padding: 0.625rem 0.75rem;
@@ -4613,8 +4661,7 @@ select.design-form-input:focus {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.design-form textarea,
-.design-form input[type="color"] {
+.design-form textarea {
   min-height: unset;
 }
 
@@ -4632,24 +4679,37 @@ select.design-form-input:focus {
 }
 
 .design-form input[type="color"] {
-  width: 44px;
-  height: 40px;
-  min-width: 44px;
-  padding: 4px;
-  cursor: pointer;
-}
-
-/* Color swatch: circle, no outer box (do not use design-form-input on color input) */
-.design-form-color-swatch {
   width: 2rem;
   height: 2rem;
   min-width: 2rem;
-  padding: 2px;
-  border: none;
+  padding: 0;
+  border: 2px solid #e4587a;
+  border-radius: 50%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* Color swatch: fixed circle, never stretches */
+.design-form-color-swatch {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0;
+  border: 2px solid #e4587a;
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
   background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
 }
 
 .design-form-color-swatch::-webkit-color-swatch-wrapper {
@@ -4682,7 +4742,7 @@ select.design-form-input:focus {
 }
 
 .design-form-advanced-trigger:hover {
-  color: var(--flow-accent, #e4587a);
+  color: var(--flow-text);
 }
 
 .design-form-advanced-trigger-icon {
@@ -4713,6 +4773,30 @@ select.design-form-input:focus {
   gap: 1.5rem;
   padding-top: 1rem;
   margin-top: 0;
+}
+
+.design-form-advanced-title {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ui-flow-btn--secondary.widget-design-reset-btn {
+  border: 1.5px solid rgba(232, 139, 63, 0.45);
+  background: linear-gradient(135deg, #ffe7ce 0%, #ffd5ad 100%);
+  color: #9a5122;
+  box-shadow: 0 8px 18px rgba(232, 139, 63, 0.22);
+}
+
+.ui-flow-btn--secondary.widget-design-reset-btn:hover:not(:disabled) {
+  border-color: rgba(210, 108, 41, 0.58);
+  background: linear-gradient(135deg, #ffddb9 0%, #ffc893 100%);
+  color: #844119;
+  transform: translateY(-1px);
+  box-shadow: 0 11px 22px rgba(210, 108, 41, 0.25);
+}
+
+.widget-design-reset-btn-icon {
+  flex-shrink: 0;
 }
 
 .design-form-training-in-progress {
@@ -8617,15 +8701,21 @@ select:hover {
 }
 
 .design-form-color-swatch {
-  width: 36px;
-  height: 36px;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
   padding: 0;
-  border: none;
-  border-radius: 8px;
+  border: 2px solid #e4587a;
+  border-radius: 50%;
   background: transparent;
   cursor: pointer;
   overflow: hidden;
   flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .design-form-color-swatch::-webkit-color-swatch-wrapper {
@@ -8634,8 +8724,14 @@ select:hover {
 
 .design-form-color-swatch::-webkit-color-swatch {
   border: none;
-  border-radius: 8px;
-  border: 1px solid var(--ui-flow-border);
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.design-form-color-swatch::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+  box-shadow: none;
 }
 
 .design-form-radio-group {
@@ -10055,9 +10151,12 @@ select:hover {
   }
 
   .design-form-color-swatch {
-    width: 44px !important;
-    height: 44px !important;
-    flex-shrink: 0 !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
   }
 
   /* ---- Conversations: sliding master/detail on mobile ---- */
@@ -10143,24 +10242,51 @@ select:hover {
   }
 }
 
-/* Design color controls: keep swatch + hex input on one line without overflow */
+/* Design color controls: swatch + hex input on one line */
 .design-form-color-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.5rem;
-  width: 100%;
-  min-width: 0;
-}
-
-.design-form-color-row .design-form-color-swatch {
-  flex-shrink: 0;
 }
 
 .design-form-color-row .design-color-hex-input {
-  width: 100% !important;
-  max-width: 100% !important;
-  min-width: 0 !important;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Force color swatches to fixed circular chips across mobile browsers */
+.design-form-color-row input.design-form-color-swatch[type="color"] {
+  flex: 0 0 36px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 2px solid #e4587a !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+  display: block !important;
+  overflow: hidden !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.design-form-color-row input.design-form-color-swatch[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0 !important;
+}
+
+.design-form-color-row input.design-form-color-swatch[type="color"]::-webkit-color-swatch {
+  border: none !important;
+  border-radius: 50% !important;
+}
+
+.design-form-color-row input.design-form-color-swatch[type="color"]::-moz-color-swatch {
+  border: none !important;
+  border-radius: 50% !important;
 }
 
 /* Design preview overflow guard (keep this at end so it wins cascade) */
@@ -10217,6 +10343,13 @@ select:hover {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Opacity-only fade for flow panels — avoids creating a stacking context
+   which would break position:fixed on .flow-actions children */
+@keyframes mobile-flow-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes mobile-fade-up {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -10270,9 +10403,8 @@ select:hover {
     font-weight: 700 !important;
   }
 
-  /* Card titles */
+  /* Card titles — bold & commanding in flow */
   .card-title,
-  .flow-shell .card-title,
   .ui-glass-card h2,
   .ui-glass-card h3 {
     font-size: 1.25rem !important;
@@ -10280,10 +10412,23 @@ select:hover {
     line-height: 1.25 !important;
   }
 
-  .card-subtitle,
-  .flow-shell .card-subtitle {
+  .flow-shell .card-title {
+    font-size: 1.55rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.02em !important;
+    color: #1a1a1a !important;
+  }
+
+  .card-subtitle {
     font-size: 0.95rem !important;
     line-height: 1.5 !important;
+  }
+
+  .flow-shell .card-subtitle {
+    font-size: 0.93rem !important;
+    color: #888 !important;
+    line-height: 1.55 !important;
   }
 
   /* Body text and paragraphs */
@@ -10350,7 +10495,7 @@ select:hover {
   }
 
   /* ================================================================
-     2. CREATE AGENT STEPPER — single step indicator on mobile
+     2. CREATE AGENT FLOW — app-style mobile redesign
      ================================================================ */
 
   /* Hide the full desktop step list on mobile */
@@ -10358,36 +10503,32 @@ select:hover {
     display: none !important;
   }
 
-  /* Keep mobile stepper clean: no step label/description text below icons */
   .flow-step-title,
   .flow-step-desc {
     display: none !important;
   }
 
-  /* Hide training progress in sidebar on mobile */
   .flow-steps-progress {
     display: none !important;
   }
 
-  /* Hide old ring indicator */
   .flow-mobile-step-indicator {
     display: none !important;
   }
 
-  /* Stepper bar — sits in normal flow below the header */
+  /* Stepper area — minimal, just holds progress bar */
   .flow-steps {
     position: static !important;
     width: 100% !important;
     padding: 0 !important;
     gap: 0 !important;
-    background: #ffffff !important;
+    background: transparent !important;
     background-image: none !important;
     border-right: none !important;
     border-bottom: none !important;
     box-shadow: none !important;
     min-height: 0 !important;
     z-index: auto !important;
-    pointer-events: auto !important;
     overflow: visible !important;
   }
 
@@ -10397,214 +10538,80 @@ select:hover {
     flex-direction: column !important;
   }
 
-  /* Header controls: relative container so back btn can be absolute */
+  /* Header controls — edge-to-edge progress bar container */
   .flow-mobile-header-controls {
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    align-items: stretch !important;
     position: relative !important;
-    padding: 0.85rem 1rem 0.65rem !important;
-    pointer-events: auto !important;
+    padding: 0 !important;
     width: 100% !important;
   }
 
-  /* Hide spacer — no longer needed */
   .flow-mobile-back-spacer {
     display: none !important;
   }
 
-  /* === REACTBITS-STYLE HORIZONTAL STEPPER === */
-
-  .flow-mstepper {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
+  /* === PROGRESS BAR (replaces dot stepper) === */
+  .flow-progress-bar {
     width: 100% !important;
-    max-width: 340px !important;
-    gap: 0.45rem !important;
-  }
-
-  /* Dot + connector row */
-  .flow-mstepper-row {
-    display: flex !important;
-    align-items: center !important;
-    width: 100% !important;
-  }
-
-  /* Dot wrapper */
-  .flow-mstepper-dot {
-    position: relative !important;
-    flex-shrink: 0 !important;
-  }
-
-  /* Dot inner circle */
-  .flow-mstepper-dot-inner {
-    display: flex !important;
-    width: 34px !important;
-    height: 34px !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 50% !important;
-    font-weight: 600 !important;
-    transition: background 0.3s ease, box-shadow 0.3s ease !important;
-  }
-
-  .flow-mstepper-icon,
-  .flow-mstepper-icon-img {
-    width: 16px !important;
-    height: 16px !important;
-    flex-shrink: 0 !important;
-  }
-
-  .flow-mstepper-icon {
-    color: currentColor !important;
-  }
-
-  .flow-mstepper-icon-img {
-    object-fit: contain !important;
-  }
-
-  /* Pending */
-  .flow-mstepper-dot.pending .flow-mstepper-dot-inner {
-    background: #f3f3f3 !important;
-    color: #c4c4c4 !important;
-  }
-
-  .flow-mstepper-dot.pending .flow-mstepper-icon-img {
-    filter: grayscale(1) brightness(1.3) contrast(0.82) !important;
-    opacity: 0.78 !important;
-  }
-
-  /* Active */
-  .flow-mstepper-dot.active .flow-mstepper-dot-inner {
-    background: linear-gradient(135deg, #f59672, #e4587a) !important;
-    color: #fff !important;
-    box-shadow: 0 3px 14px rgba(228, 88, 122, 0.45) !important;
-  }
-
-  .flow-mstepper-dot.active .flow-mstepper-icon,
-  .flow-mstepper-dot.active .flow-mstepper-icon-img {
-    width: 19px !important;
-    height: 19px !important;
-  }
-
-  .flow-mstepper-dot.active .flow-mstepper-icon-img {
-    filter: brightness(0) invert(1) !important;
-  }
-
-  /* Done */
-  .flow-mstepper-dot.done .flow-mstepper-dot-inner {
-    background: linear-gradient(135deg, #f59672, #e4587a) !important;
-    color: #fff !important;
-  }
-
-  .flow-mstepper-dot.done .flow-mstepper-icon-img {
-    filter: brightness(0) invert(1) !important;
-  }
-
-  /* Active pip (white dot inside active circle) */
-  .flow-mstepper-active-pip {
-    width: 11px !important;
-    height: 11px !important;
-    border-radius: 50% !important;
-    background: #fff !important;
-  }
-
-  /* Step number text */
-  .flow-mstepper-num {
-    font-size: 0.82rem !important;
-  }
-
-  /* Check icon */
-  .flow-mstepper-check {
-    width: 16px !important;
-    height: 16px !important;
-    color: #fff !important;
-  }
-
-  /* Connector track */
-  .flow-mstepper-connector {
-    position: relative !important;
-    margin: 0 0.35rem !important;
-    height: 2.5px !important;
-    flex: 1 !important;
+    height: 3px !important;
+    background: #f0f0f0 !important;
     overflow: hidden !important;
-    border-radius: 2px !important;
-    background: #e8e8e8 !important;
   }
 
-  /* Connector fill (animated via framer-motion) */
-  .flow-mstepper-connector-fill {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  .flow-progress-bar-fill {
     height: 100% !important;
     background: linear-gradient(90deg, #f59672, #e4587a) !important;
-    border-radius: 2px !important;
+    border-radius: 0 2px 2px 0 !important;
   }
 
-  /* Label — only shown for active step */
-  .flow-mstepper-label {
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
-    color: #e4587a !important;
-    text-align: center !important;
-    letter-spacing: 0.01em !important;
-    line-height: 1.3 !important;
+  /* Hide old dot stepper completely */
+  .flow-mstepper {
+    display: none !important;
   }
 
-  /* Flow header — more dramatic */
+  /* Flow header — clean & minimal */
   .flow-header {
-    padding: 0.85rem 1.15rem !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
+    padding: 0.9rem 1.25rem !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-bottom: none !important;
   }
 
   .flow-title {
-    font-size: 1.3rem !important;
-    font-weight: 700 !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
   }
 
   .flow-eyebrow {
-    font-size: 0.65rem !important;
-    letter-spacing: 0.16em !important;
-    color: var(--ui-flow-accent) !important;
+    display: none !important;
   }
 
-  /* Panel content */
+  /* Panel content — generous spacing */
   .flow-panel {
-    padding: 1.25rem 1rem !important;
+    padding: 1.75rem 1.5rem !important;
+    padding-bottom: 9rem !important;
   }
 
+  /* Use opacity-only animation — transform-based animations create a new
+     stacking context that breaks position:fixed on .flow-actions children */
   .flow-panel-animate {
-    animation: mobile-card-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    animation: mobile-flow-fade 0.35s ease !important;
   }
 
-  /* Mobile back button — floats top-left of stepper bar */
+  .flow-panel-body {
+    animation: mobile-flow-fade 0.35s ease !important;
+  }
+
+  /* Also disable per-child stagger transforms that could affect fixed children */
+  .flow-panel-body > * {
+    animation: none !important;
+  }
+
+  /* Mobile back button — hidden (back is in bottom bar) */
   .flow-mobile-back {
-    position: absolute !important;
-    left: 0.9rem !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 50% !important;
-    background: #fff1ef !important;
-    color: #e4587a !important;
-    border: none !important;
-    transition: all 0.2s ease !important;
-    pointer-events: auto !important;
-    z-index: 2 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-
-  .flow-mobile-back:active {
-    transform: translateY(-50%) scale(0.88) !important;
-    background: var(--ui-flow-accent) !important;
-    color: #fff !important;
+    display: none !important;
   }
 
   /* ================================================================
@@ -10735,56 +10742,86 @@ select:hover {
     animation: mobile-card-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 
-  /* Primary buttons — larger, more prominent */
-  .ui-flow-btn--primary {
+  /* Primary buttons — pill-shaped with brand gradient */
+  .flow-shell .ui-flow-btn--primary {
+    border-radius: 999px !important;
     padding: 0.85rem 1.5rem !important;
-    border-radius: 14px !important;
     font-weight: 600 !important;
+    font-size: 1rem !important;
     letter-spacing: 0.01em !important;
-    min-height: 50px !important;
+    min-height: 52px !important;
+    background: var(--ui-flow-brand-gradient) !important;
+    color: #ffffff !important;
     box-shadow: 0 4px 16px rgba(228, 88, 122, 0.3) !important;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   }
 
-  .ui-flow-btn--primary:active {
+  .flow-shell .ui-flow-btn--primary:active {
     transform: scale(0.96) !important;
+    background: var(--ui-flow-brand-gradient-dark) !important;
     box-shadow: 0 2px 8px rgba(228, 88, 122, 0.4) !important;
   }
 
-  /* Secondary buttons — subtle but clear */
-  .ui-flow-btn--secondary {
+  /* Secondary buttons — pill-shaped, outlined */
+  .flow-shell .ui-flow-btn--secondary {
+    border-radius: 999px !important;
     padding: 0.8rem 1.25rem !important;
-    border-radius: 14px !important;
-    min-height: 48px !important;
+    min-height: 50px !important;
+    border: 1.5px solid #e0e0e0 !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
     transition: all 0.25s ease !important;
   }
 
-  .ui-flow-btn--secondary:active {
+  .flow-shell .ui-flow-btn--secondary:active {
     transform: scale(0.96) !important;
   }
 
-  /* Input fields — taller, easier to tap */
+  /* Ghost buttons — pill-shaped */
+  .flow-shell .ui-flow-btn--ghost {
+    border-radius: 999px !important;
+    min-height: 50px !important;
+  }
+
+  /* Input fields — clean, tall, app-style */
   .ui-glass-field-input-wrap input,
   .ui-glass-field-input-wrap select,
   .ui-glass-field-input-wrap textarea,
   .content-shell .ui-glass-field-input-wrap input,
   .content-shell .ui-glass-field-input-wrap select,
   .content-shell .ui-glass-field-input-wrap textarea {
-    padding: 1rem 1rem !important;
-    border-radius: 12px !important;
-    min-height: 48px !important;
+    padding: 1rem 1.1rem !important;
+    border-radius: 14px !important;
+    border: 1.5px solid #e8e8e8 !important;
+    min-height: 52px !important;
     transition: border-color 0.2s ease, box-shadow 0.3s ease !important;
   }
 
-  /* Input focus — dramatic glow */
+  /* Flow-specific inputs too */
+  .flow-shell .flow-field-input-wrap input,
+  .flow-shell .flow-field-input-wrap select,
+  .flow-shell .flow-field-input-wrap textarea {
+    border-radius: 14px !important;
+    border: 1.5px solid #e8e8e8 !important;
+    min-height: 52px !important;
+  }
+
+  /* Input focus — clean glow */
   .ui-glass-field-input-wrap input:focus,
   .ui-glass-field-input-wrap select:focus,
   .ui-glass-field-input-wrap textarea:focus,
   .content-shell .ui-glass-field-input-wrap input:focus,
   .content-shell .ui-glass-field-input-wrap select:focus,
   .content-shell .ui-glass-field-input-wrap textarea:focus {
-    box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.15), 0 4px 16px rgba(228, 88, 122, 0.1) !important;
+    box-shadow: 0 0 0 3px rgba(228, 88, 122, 0.12), 0 4px 16px rgba(228, 88, 122, 0.08) !important;
     border-color: var(--ui-flow-accent) !important;
+  }
+
+  /* Flow select trigger — match input style */
+  .flow-shell .flow-select-trigger {
+    border-radius: 14px !important;
+    border: 1.5px solid #e8e8e8 !important;
+    min-height: 52px !important;
   }
 
   /* Bot cards — more dramatic entrance */
@@ -10864,6 +10901,15 @@ select:hover {
   /* Smooth scroll everywhere */
   * {
     scroll-behavior: smooth !important;
+  }
+
+  /* Create-bot flow: keep plenty of scrollable space above fixed Back/Continue bar */
+  .flow-shell .flow-panel {
+    padding-bottom: calc(14rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .flow-shell .flow-panel-body {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   /* Reduce motion for users who prefer it */

@@ -986,17 +986,13 @@ export default function BotKnowledgeTab() {
     return categorizeUrls(discoveredUrls, normalizedDiscoverUrl)
   }, [discoveredUrls, normalizedDiscoverUrl])
 
-  const hasExpandedDefault = useRef(false)
   useEffect(() => {
-    if (!discoveredUrls.length) {
-      hasExpandedDefault.current = false
+    if (!urlCategories) {
+      setExpandedCategories(new Set())
       return
     }
-    if (urlCategories && !hasExpandedDefault.current) {
-      setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
-      hasExpandedDefault.current = true
-    }
-  }, [urlCategories, discoveredUrls.length])
+    setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
+  }, [urlCategories])
 
   // Refetch jobs/sources when Knowledge tab is shown for a bot so we pick up data from create-bot (queueCrawlUrls may have completed after initial load).
   const lastRefetchedBotIdRef = useRef<string | null>(null)
@@ -1527,13 +1523,12 @@ export default function BotKnowledgeTab() {
   }, [urlSources])
 
   const [expandedSourceGroups, setExpandedSourceGroups] = useState<Set<string>>(new Set())
-  const hasAutoExpandedSourceGroups = useRef(false)
   useEffect(() => {
-    if (sourceCategories && !hasAutoExpandedSourceGroups.current) {
-      setExpandedSourceGroups(new Set(getAllExpandablePaths(sourceCategories)))
-      hasAutoExpandedSourceGroups.current = true
+    if (!sourceCategories) {
+      setExpandedSourceGroups(new Set())
+      return
     }
-    if (!sourceCategories) hasAutoExpandedSourceGroups.current = false
+    setExpandedSourceGroups(new Set(getAllExpandablePaths(sourceCategories)))
   }, [sourceCategories])
 
   const getSourcesForCategoryUrls = useCallback(

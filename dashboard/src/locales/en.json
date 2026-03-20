@@ -553,7 +553,7 @@
     "websiteAppearanceNotConfigured": "Not configured",
     "lineAppearanceConfigured": "Appearance configured",
     "lineAppearanceNotConfigured": "Not configured",
-    "appearanceOptionalHint": "You can set this up now and keep refining later.",
+    "appearanceOptionalHint": "Skip this now and set up later.",
     "doneForWebsiteAppearance": "Done for Website",
     "doneForLineAppearance": "Done for LINE",
     "agentLearnedFromContent": "Your agent has learned from your content.",
@@ -803,7 +803,7 @@
   "widgetDesign": {
     "botLanguage": "Bot language",
     "botLanguageHint": "The language for your widget content, suggested messages, and persona prompts.",
-    "basics": "Basics",
+    "basics": "Basic",
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",

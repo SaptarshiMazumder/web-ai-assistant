@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
@@ -15,59 +14,16 @@ function MobileStepIndicator() {
 
   if (!steps.length) return null
 
+  const progress = steps.length > 1 ? (activeStep / (steps.length - 1)) * 100 : 0
+
   return (
-    <div className="flow-mstepper">
-      <div className="flow-mstepper-row">
-        {steps.map((step, index) => {
-          const isCompleted = index < activeStep
-          const isCurrent = index === activeStep
-          const isNotLast = index < steps.length - 1
-          const status = isCompleted ? 'done' : isCurrent ? 'active' : 'pending'
-          return (
-            <Fragment key={step.id}>
-              <div className={`flow-mstepper-dot ${status}`}>
-                <motion.div
-                  className="flow-mstepper-dot-inner"
-                  animate={status}
-                  initial={false}
-                  variants={{
-                    pending: { scale: 1 },
-                    active: { scale: 1.18 },
-                    done: { scale: 1 },
-                  }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {step.iconUrl ? (
-                    <img
-                      className="flow-mstepper-icon-img"
-                      src={step.iconUrl}
-                      alt=""
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <FlowIcon
-                      name={step.icon as import('../../components/FlowIcon').FlowIconName}
-                      filled
-                      size="sm"
-                      className="flow-mstepper-icon"
-                    />
-                  )}
-                </motion.div>
-              </div>
-              {isNotLast && (
-                <div className="flow-mstepper-connector">
-                  <motion.div
-                    className="flow-mstepper-connector-fill"
-                    initial={false}
-                    animate={{ width: isCompleted ? '100%' : '0%' }}
-                    transition={{ duration: 0.4 }}
-                  />
-                </div>
-              )}
-            </Fragment>
-          )
-        })}
-      </div>
+    <div className="flow-progress-bar">
+      <motion.div
+        className="flow-progress-bar-fill"
+        animate={{ width: `${progress}%` }}
+        initial={false}
+        transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+      />
     </div>
   )
 }

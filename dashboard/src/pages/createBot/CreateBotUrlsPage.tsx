@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ScanSearch } from 'lucide-react'
-import { UiButton } from '../../components/ui'
+import { GlassField, UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { StopIcon } from './DiscoveryIcons'
 import { categorizeUrls, getAllUrlsFromCategory, getCategoryUrlCount, getCategoryDisplayPath, getAllExpandablePaths, type UrlCategory } from './urlCategorizer'
@@ -99,26 +99,20 @@ export default function CreateBotUrlsPage() {
     }
   }, [websiteUrl, sharedDiscoveryUrl])
 
-  const hasExpandedDefault = useRef(false)
   useEffect(() => {
-    if (urlCategories && !hasExpandedDefault.current) {
-      setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
-      hasExpandedDefault.current = true
+    if (!urlCategories) {
+      setExpandedCategories(new Set())
+      return
     }
+    setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
   }, [urlCategories])
-  const hasExpandedSharedDefault = useRef(false)
   useEffect(() => {
-    if (sharedUrlCategories && !hasExpandedSharedDefault.current) {
-      setExpandedSharedCategories(new Set(getAllExpandablePaths(sharedUrlCategories)))
-      hasExpandedSharedDefault.current = true
-    }
-  }, [sharedUrlCategories])
-  useEffect(() => {
-    if (!sharedDiscoveredUrls.length) {
-      hasExpandedSharedDefault.current = false
+    if (!sharedUrlCategories) {
       setExpandedSharedCategories(new Set())
+      return
     }
-  }, [sharedDiscoveredUrls.length])
+    setExpandedSharedCategories(new Set(getAllExpandablePaths(sharedUrlCategories)))
+  }, [sharedUrlCategories])
 
   const expandAll = () => {
     if (urlCategories) setExpandedCategories(new Set(getAllExpandablePaths(urlCategories)))
@@ -579,10 +573,7 @@ export default function CreateBotUrlsPage() {
             }}
           >
             {/* Main website URL */}
-            <div style={{ marginBottom: '0.6rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                {t('createBot.websiteUrl', 'Website URL')}
-              </label>
+            <GlassField label={t('createBot.websiteUrl', 'Website URL')} style={{ maxWidth: 'none', marginBottom: '0.6rem' }}>
               <input
                 type="url"
                 value={sharedDiscoveryUrl}
@@ -596,7 +587,7 @@ export default function CreateBotUrlsPage() {
                   }
                 }}
               />
-            </div>
+            </GlassField>
 
             {/* OR separator for restaurants */}
             {businessType === 'restaurant' && (
@@ -642,10 +633,7 @@ export default function CreateBotUrlsPage() {
                       </div>
                     </div>
                     {selectedReservationPlatform && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--flow-muted)', marginBottom: '0.3rem' }}>
-                          {selectedReservationPlatform.label} URL
-                        </label>
+                      <GlassField label={`${selectedReservationPlatform.label} URL`} style={{ maxWidth: 'none' }}>
                         <input
                           type="url"
                           value={platformUrls[reservationPlatform] || ''}
@@ -654,7 +642,7 @@ export default function CreateBotUrlsPage() {
                           disabled={isSharedDiscovering}
                           style={{ width: '100%' }}
                         />
-                      </div>
+                      </GlassField>
                     )}
                   </div>
                 </div>
@@ -663,7 +651,7 @@ export default function CreateBotUrlsPage() {
           </div>
 
           {/* Scan button below all URL fields */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '0.5rem', marginBottom: '0.75rem' }}>
             {!isSharedDiscovering ? (
               <UiButton
                 variant="primary"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FlowIcon } from '../../components/FlowIcon'
-import { UiButton } from '../../components/ui'
+import { GlassField, UiButton } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 
 type SuggestedBubble = { key: string; label: string; description: string }
@@ -241,7 +241,7 @@ export default function CreateBotSharedUrlsPage() {
               marginBottom: '10px',
             }}>
               <div style={{ flex: 2, minWidth: 220 }}>
-                <div className="flow-field-input-wrap">
+                <GlassField label={t('createBot.urlLabel', 'URL')} style={{ maxWidth: 'none' }}>
                   <input
                     type="url"
                     ref={(el) => {
@@ -256,10 +256,10 @@ export default function CreateBotSharedUrlsPage() {
                     placeholder={t('createBot.sharedUrlPlaceholder', 'https://example.com/pricing')}
                     style={{ width: '100%' }}
                   />
-                </div>
+                </GlassField>
               </div>
               <div style={{ flex: 1, minWidth: 160 }}>
-                <div className="flow-field-input-wrap">
+                <GlassField label={t('createBot.labelLabel', 'Label')} style={{ maxWidth: 'none' }}>
                   <input
                     type="text"
                     value={row.label}
@@ -271,7 +271,7 @@ export default function CreateBotSharedUrlsPage() {
                     placeholder={t('createBot.sharedLabelPlaceholder', 'What is this page about? (e.g. Pricing)')}
                     style={{ width: '100%' }}
                   />
-                </div>
+                </GlassField>
               </div>
               <UiButton
                 variant="ghost"

@@ -1,24 +1,34 @@
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileText, Plus, X, FileIcon } from 'lucide-react'
-import { SegmentedTabs, UiButton, type SegmentedTabOption } from '../../components/ui'
+import { FileText, Plus, X, FileIcon, Type } from 'lucide-react'
+import { GlassField, SegmentedTabs, UiButton, type SegmentedTabOption } from '../../components/ui'
 import { useCreateBotFlow } from './CreateBotContext'
 import { FileDropzone } from '../../components/FileDropzone'
 
-type TabId = 'pdfs' | 'text-docs' | 'custom-text'
+type TabId = 'pdfs' | 'text-docs' | 'text' | 'custom-text'
 
 export default function CreateBotAdditionalSourcesPage() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { flow, step2 } = useCreateBotFlow()
-  const { pdfFiles, setPdfFiles, textDocFiles, setTextDocFiles, customTextEntries, setCustomTextEntries } = step2
+  const {
+    pdfFiles,
+    setPdfFiles,
+    textDocFiles,
+    setTextDocFiles,
+    plainTextContent,
+    setPlainTextContent,
+    customTextEntries,
+    setCustomTextEntries,
+  } = step2
 
   const [activeTab, setActiveTab] = useState<TabId>('pdfs')
 
   const hasAnySources =
     pdfFiles.length > 0 ||
     textDocFiles.length > 0 ||
+    plainTextContent.trim().length > 0 ||
     customTextEntries.some(f => f.title.trim() || f.content.trim())
 
   const handleAddTextField = () => {
@@ -49,15 +59,17 @@ export default function CreateBotAdditionalSourcesPage() {
 
   const handleSkip = useCallback(() => {
     setTextDocFiles([])
+    setPlainTextContent('')
     setCustomTextEntries([{ id: '1', title: '', content: '' }])
     if (flow.nextPath) {
       navigate(flow.nextPath)
     }
-  }, [flow.nextPath, navigate, setTextDocFiles, setCustomTextEntries])
+  }, [flow.nextPath, navigate, setTextDocFiles, setPlainTextContent, setCustomTextEntries])
 
   const tabs: SegmentedTabOption<TabId>[] = [
     { id: 'pdfs', label: t('createBot.pdfSources', 'PDF Sources'), icon: <FileText size={16} /> },
     { id: 'text-docs', label: t('createBot.textDocs', 'Text Docs'), icon: <FileIcon size={16} /> },
+    { id: 'text', label: t('createBot.text', 'Text'), icon: <Type size={16} /> },
     { id: 'custom-text', label: t('createBot.customText', 'Custom Text'), icon: <Plus size={16} /> },
   ]
 
@@ -125,6 +137,34 @@ export default function CreateBotAdditionalSourcesPage() {
           </div>
         )}
 
+        {activeTab === 'text' && (
+          <div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.5rem' }}>
+                {t('createBot.plainText', 'Plain Text')}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--flow-muted)', marginBottom: '1rem' }}>
+                {t('createBot.plainTextSubtitle', 'Paste or type text for your assistant to learn from.')}
+              </div>
+            </div>
+            <textarea
+              value={plainTextContent}
+              onChange={(e) => setPlainTextContent(e.target.value)}
+              placeholder={t('createBot.pasteOrTypeContent', 'Paste or type your content here...')}
+              rows={10}
+              style={{
+                width: '100%',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                padding: '0.75rem',
+                border: '1px solid var(--flow-border)',
+                borderRadius: 'var(--flow-radius)',
+                background: 'var(--flow-surface)',
+              }}
+            />
+          </div>
+        )}
+
 
 
         {activeTab === 'custom-text' && (
@@ -174,10 +214,7 @@ export default function CreateBotAdditionalSourcesPage() {
                     )}
                   </div>
 
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-                      {t('createBot.title', 'Title')}
-                    </label>
+                  <GlassField label={t('createBot.title', 'Title')} style={{ maxWidth: 'none', marginBottom: '0.75rem' }}>
                     <input
                       type="text"
                       value={field.title}
@@ -185,12 +222,9 @@ export default function CreateBotAdditionalSourcesPage() {
                       placeholder={t('createBot.titlePlaceholder', 'e.g., Return Policy, Office Hours, etc.')}
                       style={{ width: '100%' }}
                     />
-                  </div>
+                  </GlassField>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--flow-heading)' }}>
-                      {t('createBot.content', 'Content')}
-                    </label>
+                  <GlassField label={t('createBot.content', 'Content')} style={{ maxWidth: 'none' }}>
                     <textarea
                       value={field.content}
                       onChange={(e) => handleUpdateTextField(field.id, 'content', e.target.value)}
@@ -202,7 +236,7 @@ export default function CreateBotAdditionalSourcesPage() {
                         resize: 'vertical'
                       }}
                     />
-                  </div>
+                  </GlassField>
                 </div>
               ))}
             </div>

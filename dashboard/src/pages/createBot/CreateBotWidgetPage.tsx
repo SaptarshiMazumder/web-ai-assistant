@@ -335,7 +335,7 @@ export default function CreateBotWidgetPage() {
 
       <div style={{ border: '1px dashed var(--flow-border, #f2d8d2)', borderRadius: 12, padding: '0.9rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--flow-muted)', fontSize: '0.9rem' }}>
         <MessageCircle size={16} />
-        {t('createBot.appearanceOptionalHint', 'You can set this up now and keep refining later.')}
+        {t('createBot.appearanceOptionalHint', 'Skip this now and set up later.')}
       </div>
 
       <div className="flow-actions">{continueActions}</div>

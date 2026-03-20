@@ -3,8 +3,9 @@ import { WidgetPreview } from '../pages/createBot/WidgetPreview'
 import { WIDGET_SIZE_DIMENSIONS } from '../constants/widgetSizes'
 import { FlowIcon } from './FlowIcon'
 import { FlowSelect } from './FlowSelect'
-import { UiButton } from './ui'
+import { GlassField, UiButton } from './ui'
 import { useTranslation } from 'react-i18next'
+import { RotateCcw } from 'lucide-react'
 
 
 const FOOTER_MAX_LENGTH = 200
@@ -292,12 +293,14 @@ export function WidgetDesignForm({
                 flexWrap: 'wrap',
               }}
             >
-              <div className="card-title" style={{ marginBottom: 0 }}>{t('widgetDesign.basics', 'Basics')}</div>
+              <div className="card-title" style={{ marginBottom: 0 }}>{t('widgetDesign.basics', 'Basic')}</div>
               <UiButton
-                variant="danger"
+                variant="secondary"
+                className="widget-design-reset-btn"
                 onClick={handleResetAppearance}
-                style={{ display: 'inline-flex', alignItems: 'center' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
               >
+                <RotateCcw size={16} className="widget-design-reset-btn-icon" />
                 {t('widgetDesign.resetAppearance', 'Reset to defaults')}
               </UiButton>
             </div>
@@ -381,18 +384,19 @@ export function WidgetDesignForm({
 
               </div>
                 {showWelcomeMessage && (
-                  <div className="design-form-field design-form-field-full">
-                    <label className="design-form-label">{t('widgetDesign.initialWelcomeMessage', 'Initial welcome message')}</label>
-                    <span className="design-form-hint">{t('widgetDesign.initialWelcomeHint', 'First message shown by the bot when the chat opens.')}</span>
+                  <GlassField
+                    label={t('widgetDesign.initialWelcomeMessage', 'Initial welcome message')}
+                    helper={t('widgetDesign.initialWelcomeHint', 'First message shown by the bot when the chat opens.')}
+                    style={{ maxWidth: 'none' }}
+                  >
                     <textarea
-                      className="design-form-input"
                       value={welcomeMessage}
                       onChange={(e) => update('welcomeMessage', e.target.value)}
                       placeholder={t('widgetDesign.welcomePlaceholder', 'Welcome! How can I help you today?')}
                       rows={2}
                       style={{ resize: 'vertical', width: '100%' }}
                     />
-                  </div>
+                  </GlassField>
                 )}
             </div>
           </section>
@@ -404,7 +408,9 @@ export function WidgetDesignForm({
               onClick={() => setAdvancedOpen((o) => !o)}
               aria-expanded={advancedOpen}
             >
-              <span>{t('widgetDesign.advanced', 'Advanced')}</span>
+              <span className="card-title design-form-advanced-title" style={{ marginBottom: 0 }}>
+                {t('widgetDesign.advanced', 'Advanced')}
+              </span>
               <span className="design-form-advanced-trigger-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 9l6 6 6-6" />
@@ -416,23 +422,22 @@ export function WidgetDesignForm({
                 <section className="ui-glass-card">
                   <div className="card-title">{t('widgetDesign.messages', 'Messages')}</div>
                   <div className="design-form-section">
-                    <div className="design-form-field design-form-field-full">
-                      <label className="design-form-label">{t('widgetDesign.placeholderMessage', 'Placeholder message')}</label>
+                    <GlassField label={t('widgetDesign.placeholderMessage', 'Placeholder message')} style={{ maxWidth: 'none' }}>
                       <input
                         type="text"
-                        className="design-form-input"
                         value={placeholder}
                         onChange={(e) => update('placeholder', e.target.value)}
                         placeholder={t('widgetDesign.askQuestionPlaceholder', 'Ask a question...')}
                         style={{ width: '100%' }}
                       />
-                    </div>
-                    <div className="design-form-field design-form-field-full">
-                      <label className="design-form-label">{t('widgetDesign.footerMessage', 'Footer message')}</label>
-                      <span className="design-form-hint">{t('widgetDesign.footerHint', 'Optional message under the chat input. Supports markdown.')}</span>
+                    </GlassField>
+                    <GlassField
+                      label={t('widgetDesign.footerMessage', 'Footer message')}
+                      helper={t('widgetDesign.footerHint', 'Optional message under the chat input. Supports markdown.')}
+                      style={{ maxWidth: 'none' }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                         <textarea
-                          className="design-form-input"
                           value={footerMessage}
                           onChange={(e) => update('footerMessage', e.target.value.slice(0, FOOTER_MAX_LENGTH))}
                           placeholder=""
@@ -443,7 +448,7 @@ export function WidgetDesignForm({
                           {footerMessage.length}/{FOOTER_MAX_LENGTH}
                         </span>
                       </div>
-                    </div>
+                    </GlassField>
 
                   </div>
                 </section>
@@ -476,10 +481,9 @@ export function WidgetDesignForm({
                           )}
                         </div>
                       </div>
-                      <div className="design-form-field">
-                        <label className="design-form-label">{t('widgetDesign.launcherText', 'Launcher text')}</label>
-                        <input type="text" className="design-form-input" value={launcherText} onChange={(e) => update('launcherText', e.target.value)} placeholder={t('widgetDesign.launcherTextPlaceholder', 'Help')} style={{ width: '100%', minWidth: '220px' }} />
-                      </div>
+                      <GlassField label={t('widgetDesign.launcherText', 'Launcher text')} style={{ maxWidth: 'none' }}>
+                        <input type="text" value={launcherText} onChange={(e) => update('launcherText', e.target.value)} placeholder={t('widgetDesign.launcherTextPlaceholder', 'Help')} style={{ width: '100%', minWidth: '220px' }} />
+                      </GlassField>
                     </div>
                     <div className="design-form-row">
                       <div className="design-form-field">

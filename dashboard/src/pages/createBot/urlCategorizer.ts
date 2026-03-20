@@ -55,6 +55,13 @@ function hasPathTrailingSlash(url: string): boolean {
 /** Returns the path-style label for a category (e.g. "/", "/articles", "/articles/bmr"). */
 export function getCategoryDisplayPath(category: UrlCategory): string {
   if (category.path === '' || category.path === ROOT_PAGES_KEY) return '/'
+  const segments = category.path.split('/').filter(Boolean)
+  if (segments.length === 1) {
+    const topLevelRaw = segments[0]
+    const topLevelNormalized = topLevelRaw.replace(/\.[a-z]{2,8}$/i, '')
+    const topLevel = topLevelNormalized || topLevelRaw
+    return `/${topLevel}/`
+  }
   return '/' + category.path
 }
 
