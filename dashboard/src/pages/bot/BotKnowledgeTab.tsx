@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Trash2 } from 'lucide-react'
+import { MoreVertical, RefreshCw, Trash2 } from 'lucide-react'
 import {
   useDashboardData,
   type AvailabilityJobRecord,
@@ -231,6 +231,10 @@ export default function BotKnowledgeTab() {
   const [sourcesSelected, setSourcesSelected] = useState<Set<string>>(new Set())
   const [deletingSelectedSources, setDeletingSelectedSources] = useState(false)
   const [stoppingTraining, setStoppingTraining] = useState(false)
+
+  // Action menu (three-dots, mobile)
+  const [actionMenuSourceId, setActionMenuSourceId] = useState<string | null>(null)
+  const actionMenuRef = useRef<HTMLElement>(null)
 
   // Sync state
   const [syncingSourceIds, setSyncingSourceIds] = useState<Set<string>>(new Set())
@@ -1479,6 +1483,18 @@ export default function BotKnowledgeTab() {
     return () => document.removeEventListener('mousedown', handler)
   }, [syncSettingsSourceId])
 
+  // Close action menu on outside click
+  useEffect(() => {
+    if (!actionMenuSourceId) return
+    const handler = (e: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(e.target as Node)) {
+        setActionMenuSourceId(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [actionMenuSourceId])
+
   /** True if at least one selected source is a URL type. */
   const hasSelectedUrlSources = useMemo(() => {
     return sources.some((s) => s.type.toLowerCase() === 'url' && sourcesSelected.has(s.source_id))
@@ -1834,9 +1850,23 @@ export default function BotKnowledgeTab() {
                             style={{ cursor: 'pointer', accentColor: 'var(--ui-flow-accent-secondary)' }}
                           />
                         </td>
-                        <td>
+                        <td className="knowledge-badges-cell">
                           <span className="source-type-badge" data-type={s.type.toLowerCase()}>
                             {sourceTypeLabel(s.type)}
+                          </span>
+                          <span
+                            className="knowledge-mobile-status-pill"
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              ...(training
+                                ? { background: '#e2e8f0', color: '#64748b' }
+                                : { background: 'rgba(246, 180, 109, 0.2)', color: '#d97706' }),
+                            }}
+                          >
+                            {training ? t('botKnowledge.training', 'Training') : t('botKnowledge.trained', 'Trained')}
                           </span>
                         </td>
                         <td className="knowledge-name">{sourceDisplayName(s)}</td>
@@ -1976,6 +2006,55 @@ export default function BotKnowledgeTab() {
                               <Trash2 size={18} aria-hidden />
                             )}
                           </button>
+                        </td>
+                        {/* Col 9: Three-dots action menu — shown on mobile only */}
+                        <td className="knowledge-action-menu-cell" ref={actionMenuRef as any}>
+                          <button
+                            type="button"
+                            className="knowledge-action-menu-btn"
+                            onClick={() => setActionMenuSourceId(actionMenuSourceId === s.source_id ? null : s.source_id)}
+                            aria-label="Actions"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                          {actionMenuSourceId === s.source_id && (
+                            <div className="knowledge-action-menu">
+                              {s.type.toLowerCase() === 'url' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => { void handleSyncSource(s.source_id); setActionMenuSourceId(null) }}
+                                    disabled={training || syncingSourceIds.has(s.source_id)}
+                                  >
+                                    <RefreshCw size={15} style={{ animation: syncingSourceIds.has(s.source_id) ? 'spin 1s linear infinite' : 'none' }} />
+                                    {syncingSourceIds.has(s.source_id) ? t('botKnowledge.syncing', 'Syncing...') : t('botKnowledge.syncNow', 'Sync now')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { handleOpenSyncSettings(s); setActionMenuSourceId(null) }}
+                                  >
+                                    <RefreshCw size={15} />
+                                    {t('botKnowledge.syncSettings', 'Sync settings')}
+                                    {s.sync_enabled && (
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', borderRadius: 4, background: 'var(--ui-flow-accent)', color: '#fff', marginLeft: 'auto' }}>
+                                        AUTO
+                                      </span>
+                                    )}
+                                  </button>
+                                  <div className="knowledge-action-menu-divider" />
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => { void handleDeleteSource(s.source_id); setActionMenuSourceId(null) }}
+                                disabled={deletingSourceId === s.source_id}
+                              >
+                                <Trash2 size={15} />
+                                {t('botKnowledge.delete', 'Delete')}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )
