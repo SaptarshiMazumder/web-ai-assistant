@@ -296,7 +296,7 @@ export function WidgetDesignForm({
               <div className="card-title" style={{ marginBottom: 0 }}>{t('widgetDesign.basics', 'Basic')}</div>
               <UiButton
                 variant="secondary"
-                className="widget-design-reset-btn"
+                className="widget-design-reset-btn design-form-reset-btn"
                 onClick={handleResetAppearance}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
               >
@@ -465,8 +465,7 @@ export function WidgetDesignForm({
                           <button
                             type="button"
                             onClick={() => launcherInputRef.current?.click()}
-                            className="design-form-input"
-                            style={{ width: 100, height: 100, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}
+                            className="design-form-input design-form-icon-btn"
                           >
                             {launcherIconUrl ? (
                               <img src={launcherIconUrl} alt="Launcher" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -491,7 +490,7 @@ export function WidgetDesignForm({
                         <span className="design-form-hint">{t('widgetDesign.iconHint100', 'Click to choose image. 100x100px recommended.')}</span>
                         <input ref={headerInputRef} type="file" accept="image/*" onChange={handleFile((url) => update('headerIconUrl', url), headerInputRef)} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden />
                         <div className="design-form-icon-wrap">
-                          <button type="button" onClick={() => headerInputRef.current?.click()} className="design-form-input" style={{ width: 100, height: 100, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
+                          <button type="button" onClick={() => headerInputRef.current?.click()} className="design-form-input design-form-icon-btn">
                             {headerIconUrl ? <img src={headerIconUrl} alt="Header" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>}
                           </button>
                           {headerIconUrl && (
@@ -506,7 +505,7 @@ export function WidgetDesignForm({
                         <span className="design-form-hint">{t('widgetDesign.iconHint', 'Click to choose image.')}</span>
                         <input ref={shareInputRef} type="file" accept="image/*" onChange={handleFile((url) => update('shareIconUrl', url), shareInputRef)} style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} aria-hidden />
                         <div className="design-form-icon-wrap">
-                          <button type="button" onClick={() => shareInputRef.current?.click()} className="design-form-input" style={{ width: 100, height: 100, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer' }}>
+                          <button type="button" onClick={() => shareInputRef.current?.click()} className="design-form-input design-form-icon-btn">
                             {shareIconUrl ? <img src={shareIconUrl} alt="Share" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <span className="muted" style={{ fontSize: '0.9375rem' }}>—</span>}
                           </button>
                           {shareIconUrl && (

@@ -116,28 +116,35 @@
     font-size: 0.83rem !important;
   }
 
+  /* === Add Source page mobile fixes === */
+
+  /* Page body: proper container */
   .add-source-page-body {
     overflow-x: hidden;
+    padding: 0 !important;
   }
 
+  /* Tabs: wrap to next line instead of horizontal scroll */
   .add-source-tabs-wrap {
     width: 100%;
     max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible;
+    overflow-y: visible;
   }
 
   .add-source-tabs-wrap .ui-segmented-tabs {
-    display: inline-flex !important;
-    width: max-content;
-    min-width: max-content;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    gap: 0.4rem !important;
   }
 
   .add-source-tabs-wrap .ui-segmented-tab {
     flex: 0 0 auto;
   }
 
+  /* Discovery row: stack vertically */
   .add-source-discovery-row {
     flex-wrap: wrap;
   }
@@ -152,21 +159,65 @@
     justify-content: center;
   }
 
-  .add-source-actions {
-    width: 100%;
+  /* Bottom actions: inline (not fixed), show only Cancel + Add sources */
+  .flow-shell .flow-actions.add-source-actions {
+    position: static !important;
+    padding: 0.5rem 0 1.5rem 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-top: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    margin: 0 !important;
   }
 
+  /* Hide redundant Back button at bottom — header already has back arrow */
+  .flow-shell .flow-actions.add-source-actions > .ui-flow-btn--secondary {
+    display: none !important;
+  }
+
+  /* Right side button group: full-width row */
   .add-source-actions .add-source-actions-right {
     width: 100% !important;
     margin-left: 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex !important;
+    gap: 0.5rem !important;
   }
 
   .add-source-actions .add-source-actions-right .ui-flow-btn {
-    width: 100%;
+    flex: 1 1 0 !important;
     min-width: 0;
     justify-content: center;
+    border-radius: 999px !important;
+  }
+
+  /* All buttons: pill-shaped with consistent styling */
+  .add-source-page-body .ui-flow-btn {
+    border-radius: 999px !important;
+  }
+
+  .add-source-page-body .ui-flow-btn--ghost {
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 999px !important;
+    color: #555 !important;
+  }
+
+  /* Primary buttons: brand gradient */
+  .add-source-actions .ui-flow-btn--primary {
+    background: var(--ui-flow-brand-gradient) !important;
+    color: #fff !important;
+    min-height: 48px !important;
+    border-radius: 999px !important;
+  }
+
+  /* Ghost/cancel button in actions */
+  .add-source-actions .ui-flow-btn--ghost {
+    border: 1px solid #e0e0e0 !important;
+    border-radius: 999px !important;
+    min-height: 48px !important;
   }
 }
 
@@ -1024,6 +1075,7 @@ button.delete-btn:disabled svg {
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-gutter: stable;
   border: 1px solid var(--ui-flow-border);
 }
@@ -1042,6 +1094,8 @@ button.delete-btn:disabled svg {
 .page-body {
   display: grid;
   gap: 1.5rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 @media (min-width: 1200px) {
@@ -1063,6 +1117,33 @@ button.delete-btn:disabled svg {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Back navigation button in page header */
+.page-header-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #999;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 0.18s ease, color 0.18s ease;
+  margin-right: 0.15rem;
+}
+
+.page-header-back:hover {
+  background: #fff0ec;
+  color: var(--ui-flow-accent, #e4587a);
+}
+
+@media (max-width: 768px) {
+  .page-header-back {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .page-actions {
@@ -2117,6 +2198,7 @@ button.delete-btn:disabled svg {
 .list {
   display: grid;
   gap: 0.75rem;
+  min-width: 0;
 }
 
 .org-select-row {
@@ -2340,6 +2422,8 @@ button.delete-btn:disabled svg {
   background: #fff8f5;
   border: 1px solid var(--ui-flow-border);
   text-align: left;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .list-row.button-row {
@@ -3626,6 +3710,48 @@ button.delete-btn:disabled svg {
   word-break: break-all;
 }
 
+.flow-shell .embed-snippet-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Icon-only copy: global `button` padding + border-box made 40×40 leave no room for the glyph */
+.flow-shell .embed-snippet-copy-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 !important;
+  border-radius: var(--ui-flow-radius-sm);
+  border: 1px solid var(--flow-border, var(--ui-flow-border));
+  background: var(--flow-surface, #ffffff);
+  color: var(--flow-muted, var(--ui-flow-muted));
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.flow-shell .embed-snippet-copy-btn:hover:not(:disabled) {
+  border-color: var(--flow-accent, var(--ui-flow-accent));
+  color: var(--flow-accent, var(--ui-flow-accent));
+  background: var(--flow-accent-soft, #fff1ef);
+}
+
+.flow-shell .embed-snippet-copy-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.flow-shell .embed-snippet-copy-btn--copied {
+  background: var(--flow-accent-soft, #fff1ef);
+  color: var(--ui-flow-accent);
+  border-color: rgba(228, 88, 122, 0.35);
+}
+
 /* --- Scrollbars (scoped to flow shell) ----------------------------------- */
 .flow-shell {
   scrollbar-width: thin;
@@ -4099,7 +4225,7 @@ select.design-form-input:focus {
     min-height: 0 !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    background: #ffffff !important;
+    background: transparent !important;
   }
 
   /* --- Header: minimal & clean (app-style) --------------------------- */
@@ -4323,7 +4449,7 @@ select.design-form-input:focus {
   .flow-shell .flow-actions .ui-flow-btn--secondary,
   .flow-shell .flow-actions>button.ui-flow-btn--secondary {
     border-radius: 999px !important;
-    border: 1.5px solid #e0e0e0 !important;
+    border: 1px solid var(--ui-flow-border) !important;
     background: #fff !important;
     color: #1a1a1a !important;
     min-height: 50px !important;
@@ -4388,6 +4514,21 @@ select.design-form-input:focus {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  /* --- Add Source page: restore card styling (higher specificity override) */
+  .flow-shell .add-source-page-body .ui-glass-card {
+    background: #ffffff !important;
+    border: 1px solid #f0e8e4 !important;
+    border-radius: 16px !important;
+    padding: 1.25rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* OR divider: compact spacing, override inline margin */
+  .flow-shell .add-source-page-body .add-source-or-divider {
+    margin: 0.5rem 0 !important;
   }
 
   /* --- Segmented tabs: mobile-friendly wrapping style ------------------- */
@@ -4460,6 +4601,34 @@ select.design-form-input:focus {
 
   .design-form-card-icons .design-form-row {
     grid-template-columns: 1fr !important;
+  }
+
+  /* --- Design page: radio cards (Position, Size) — equal-width, no text wrap */
+  .design-form-radio-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+  }
+
+  .design-form-radio-card {
+    flex: 1 !important;
+    min-width: 0 !important;
+    padding: 0.65rem 0.5rem !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+
+  .design-form-radio-card span {
+    white-space: nowrap !important;
+    font-size: 0.85rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .design-form-radio-card input[type="radio"] {
+    width: 1rem !important;
+    height: 1rem !important;
+    flex-shrink: 0 !important;
   }
 
   /* --- Training progress page cards: full width ---------------------- */
@@ -4781,6 +4950,7 @@ select.design-form-input:focus {
 }
 
 .ui-flow-btn--secondary.widget-design-reset-btn {
+  border-radius: var(--ui-flow-radius-sm);
   border: 1.5px solid rgba(232, 139, 63, 0.45);
   background: linear-gradient(135deg, #ffe7ce 0%, #ffd5ad 100%);
   color: #9a5122;
@@ -4974,6 +5144,25 @@ select.design-form-input:focus {
 .design-form-icon-clear svg {
   width: 14px;
   height: 14px;
+}
+
+/* Icon upload tile (button): square, matches input corners — not full-width on mobile */
+button.design-form-input.design-form-icon-btn {
+  width: 100px;
+  height: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  min-height: 100px;
+  max-height: 100px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: flex-start;
+  box-sizing: border-box;
 }
 
 /* Text-only Reset / secondary actions in form */
@@ -8277,6 +8466,9 @@ pre {
 /* ===== GlassCard padding ===== */
 .ui-glass-card {
   padding: 1.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 /* ===== Themed selects / dropdowns ===== */
@@ -10136,10 +10328,27 @@ select:hover {
     min-width: 0 !important;
   }
 
-  .design-form-input {
+  .design-form-input:not(.design-form-icon-btn) {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  button.design-form-input.design-form-icon-btn {
+    width: 100px !important;
+    height: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
+    min-height: 100px !important;
+    max-height: 100px !important;
+    border-radius: 10px !important;
+    padding: 0 !important;
+  }
+
+  .design-form-icon-wrap {
+    display: inline-block !important;
+    width: auto !important;
+    max-width: none !important;
   }
 
   .design-form-label {
@@ -10594,6 +10803,37 @@ select:hover {
     padding-bottom: 9rem !important;
   }
 
+  /* LINE wizard inside create-bot: trim double horizontal inset (panel + step padding) */
+  .flow-shell .flow-panel:has(.line-setup--in-create-flow) {
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+  }
+
+  .flow-shell .flow-panel-body:has(.line-setup--in-create-flow) .flow-actions {
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+  }
+
+  .flow-shell .line-setup--in-create-flow .line-setup-step-panel {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .flow-shell .line-setup--in-create-flow .line-setup-step-panel--intro {
+    padding-top: 1.35rem !important;
+    padding-bottom: 1.35rem !important;
+  }
+
+  .flow-shell .line-setup--in-create-flow .line-setup-step-footer {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .flow-shell .line-setup--in-create-flow .line-setup-callout {
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+  }
+
   /* Use opacity-only animation — transform-based animations create a new
      stacking context that breaks position:fixed on .flow-actions children */
   .flow-panel-animate {
@@ -10694,22 +10934,14 @@ select:hover {
     backdrop-filter: none !important;
   }
 
-  /* Glass cards become flat, edge-to-edge panels on mobile */
+  /* Glass cards: no white background on mobile — sit on app background */
   .content-shell .ui-glass-card {
     border: none !important;
-    border-radius: 14px !important;
-    background: rgba(255, 255, 255, 0.92) !important;
-    box-shadow: 0 2px 12px rgba(184, 88, 130, 0.06) !important;
-    padding: 1.1rem 0.9rem !important;
-    animation: mobile-card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
   }
-
-  /* Stagger card animations */
-  .content-shell .ui-glass-card:nth-child(1) { animation-delay: 0s !important; }
-  .content-shell .ui-glass-card:nth-child(2) { animation-delay: 0.06s !important; }
-  .content-shell .ui-glass-card:nth-child(3) { animation-delay: 0.12s !important; }
-  .content-shell .ui-glass-card:nth-child(4) { animation-delay: 0.18s !important; }
-  .content-shell .ui-glass-card:nth-child(5) { animation-delay: 0.24s !important; }
 
   /* Page body — tighter, no extra gaps */
   .page-body,
@@ -10762,12 +10994,12 @@ select:hover {
     box-shadow: 0 2px 8px rgba(228, 88, 122, 0.4) !important;
   }
 
-  /* Secondary buttons — pill-shaped, outlined */
+  /* Secondary buttons — pill-shaped, outlined (matches "Choose files" border) */
   .flow-shell .ui-flow-btn--secondary {
     border-radius: 999px !important;
     padding: 0.8rem 1.25rem !important;
     min-height: 50px !important;
-    border: 1.5px solid #e0e0e0 !important;
+    border: 1px solid var(--ui-flow-border) !important;
     background: #fff !important;
     color: #1a1a1a !important;
     transition: all 0.25s ease !important;
@@ -10777,10 +11009,32 @@ select:hover {
     transform: scale(0.96) !important;
   }
 
-  /* Ghost buttons — pill-shaped */
+  /* Ghost buttons — pill-shaped, same border as secondary */
   .flow-shell .ui-flow-btn--ghost {
     border-radius: 999px !important;
     min-height: 50px !important;
+    border: 1px solid var(--ui-flow-border) !important;
+    background: #fff !important;
+    color: #1a1a1a !important;
+  }
+
+  /* In-form reset — same corner radius as desktop flow buttons, not bottom-bar pills */
+  .flow-shell .ui-flow-btn.design-form-reset-btn {
+    border-radius: var(--ui-flow-radius-sm) !important;
+    min-height: unset !important;
+    padding: 0.65rem 1.25rem !important;
+  }
+
+  /* FileDropzone "Choose files" button — pill-shaped */
+  .flow-shell button.secondary {
+    border-radius: 999px !important;
+    border: 1px solid var(--ui-flow-border) !important;
+    background: #fff !important;
+  }
+
+  /* Catch-all: flow-shell buttons become pills (exclude cards, reset, FlowSelect, icon tiles/clear, snippet copy) */
+  .flow-shell button:not(.flow-channel-pick-card):not(.design-form-reset-btn):not(.flow-select-trigger):not(.flow-select-option):not(.design-form-icon-btn):not(.design-form-icon-clear):not(.embed-snippet-copy-btn) {
+    border-radius: 999px !important;
   }
 
   /* Input fields — clean, tall, app-style */

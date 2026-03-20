@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RotateCcw } from 'lucide-react'
 import { FlowSelect } from './FlowSelect'
 import { LinePhonePreview } from './LinePhonePreview'
 import { UiButton } from './ui'
@@ -398,10 +399,12 @@ export function LineDesignForm({
             >
               <div className="card-title" style={{ marginBottom: 0 }}>{t('lineDesign.colorPalette', 'Appearance settings')}</div>
               <UiButton
-                variant="danger"
+                variant="secondary"
+                className="widget-design-reset-btn design-form-reset-btn"
                 onClick={handleResetAppearance}
-                style={{ display: 'inline-flex', alignItems: 'center' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
               >
+                <RotateCcw size={16} className="widget-design-reset-btn-icon" />
                 {t('lineDesign.resetAppearance', 'Reset to defaults')}
               </UiButton>
             </div>

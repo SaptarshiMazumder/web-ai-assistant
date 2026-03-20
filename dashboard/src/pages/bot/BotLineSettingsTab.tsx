@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { type LineChannelTestResult } from '../../hooks/useDashboardData'
@@ -82,6 +82,8 @@ type BotLineSettingsTabProps = {
 export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLineSettingsTabProps = {}) {
   const { botId: routeBotId } = useParams()
   const botId = String(botIdOverride || routeBotId || '').trim()
+  const embeddedInCreateFlow = Boolean(botIdOverride)
+  const lineSetupPageClass = embeddedInCreateFlow ? 'page-body line-setup--in-create-flow' : 'page-body'
   const dialog = useDialog()
   const { getAccessTokenSilently } = useAuth0()
   const { i18n } = useTranslation()
@@ -329,7 +331,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
   if (loading) {
     return (
-      <AnimatedPage className="page-body">
+      <AnimatedPage className={lineSetupPageClass}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem', gap: '0.75rem', color: 'var(--text-secondary)' }}>
           <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
           {tr('Loading LINE settings...', 'LINEè¨­å®šã‚’èª­ã¿è¾¼ã¿ä¸­...')}
@@ -429,7 +431,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
   if (existing && currentStep === 0) {
     return (
-      <AnimatedPage className="page-body">
+      <AnimatedPage className={lineSetupPageClass}>
         <SectionHeader
           eyebrow={tr('Integrations', 'é€£æº')}
           title={tr('LINE channel', 'LINEãƒãƒ£ãƒ³ãƒãƒ«')}
@@ -684,7 +686,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
      Setup Wizard (not connected)
      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
-    <AnimatedPage className="page-body">
+    <AnimatedPage className={lineSetupPageClass}>
       <SectionHeader
         eyebrow={tr('Integrations', 'é€£æº')}
         title={tr('Connect LINE', 'LINEã«æŽ¥ç¶š')}
@@ -699,7 +701,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
       <GlassCard>
         {/* â”€â”€ Step 0: Get Started â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 0 && (
-          <div style={{ padding: '2rem 1rem' }}>
+          <div className="line-setup-step-panel line-setup-step-panel--intro" style={{ padding: '2rem 1rem' }}>
             {/* Hero */}
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <div style={{
@@ -726,7 +728,9 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
             </div>
 
             {/* What you need */}
-            <div style={{
+            <div
+              className="line-setup-callout"
+              style={{
               padding: '1rem 1.25rem',
               background: 'rgba(6,199,85,0.07)',
               borderRadius: '12px',
@@ -734,7 +738,8 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
               marginBottom: '1.25rem',
               fontSize: '0.92rem',
               lineHeight: 1.7,
-            }}>
+            }}
+            >
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <AlertCircle size={16} color={LINE_GREEN} /> {tr('What you need before starting', 'é–‹å§‹å‰ã«å¿…è¦ãªã‚‚ã®')}
               </div>
@@ -749,14 +754,17 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
             </div>
 
             {/* What the 5 steps cover */}
-            <div style={{
+            <div
+              className="line-setup-callout"
+              style={{
               padding: '1rem 1.25rem',
               background: 'var(--ui-flow-surface)',
               borderRadius: '12px',
               border: '1px solid var(--ui-flow-border)',
               marginBottom: '2rem',
               fontSize: '0.9rem',
-            }}>
+            }}
+            >
               <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>{tr('Here\'s what we\'ll do in 5 simple steps:', '5ã¤ã®ç°¡å˜ãªæ‰‹é †ã§é€²ã‚ã¾ã™:')}</div>
               <div style={{ display: 'grid', gap: '0.5rem', color: 'var(--text-secondary)' }}>
                 {[
@@ -812,7 +820,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Step 1: Enable Messaging API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 1 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
+          <div className="line-setup-step-panel" style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
                 width: '42px', height: '42px', borderRadius: '12px',
@@ -878,7 +886,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Step 2: Turn off Auto-reply â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 2 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
+          <div className="line-setup-step-panel" style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
                 width: '42px', height: '42px', borderRadius: '12px',
@@ -930,7 +938,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Step 3: Copy Credentials (must save before webhook verify) â”€ */}
         {currentStep === 3 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
+          <div className="line-setup-step-panel" style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
                 width: '42px', height: '42px', borderRadius: '12px',
@@ -1013,7 +1021,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Step 4: Set Webhook URL (channel must exist for LINE verify) â”€ */}
         {currentStep === 4 && (
-          <div style={{ padding: '1.5rem 1rem' }}>
+          <div className="line-setup-step-panel" style={{ padding: '1.5rem 1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
                 width: '42px', height: '42px', borderRadius: '12px',
@@ -1081,7 +1089,7 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Step 5: Connect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep === 5 && (
-          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          <div className="line-setup-step-panel line-setup-step-panel--intro" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
               background: LINE_GRADIENT,
@@ -1140,11 +1148,14 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* â”€â”€ Navigation Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {currentStep > 0 && currentStep < 5 && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '1rem 1rem 0.5rem', borderTop: '1px solid var(--ui-flow-border)',
-            marginTop: '1.5rem',
-          }}>
+          <div
+            className="line-setup-step-footer"
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '1rem 1rem 0.5rem', borderTop: '1px solid var(--ui-flow-border)',
+              marginTop: '1.5rem',
+            }}
+          >
             <button
               onClick={() => setCurrentStep(currentStep - 1)}
               style={{
@@ -1185,11 +1196,14 @@ export default function BotLineSettingsTab({ botIdOverride, onConnected }: BotLi
 
         {/* Back button on step 5 */}
         {currentStep === 5 && (
-          <div style={{
-            display: 'flex', justifyContent: 'center',
-            padding: '1rem 1rem 0.5rem', borderTop: '1px solid var(--ui-flow-border)',
-            marginTop: '1.5rem',
-          }}>
+          <div
+            className="line-setup-step-footer"
+            style={{
+              display: 'flex', justifyContent: 'center',
+              padding: '1rem 1rem 0.5rem', borderTop: '1px solid var(--ui-flow-border)',
+              marginTop: '1.5rem',
+            }}
+          >
             <button
               onClick={() => setCurrentStep(4)}
               style={{

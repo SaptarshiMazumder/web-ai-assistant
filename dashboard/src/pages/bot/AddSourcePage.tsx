@@ -4,7 +4,7 @@ import {
   ScanSearch,
   FileText,
   CheckCircle2,
-  ArrowLeft,
+  ChevronLeft,
   Plus,
   X,
   FileIcon,
@@ -532,11 +532,9 @@ export default function AddSourcePage() {
     <AnimatedPage>
       <div className="flow-shell">
         <div className="flow-panel-body add-source-page-body">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-            <Link to={`/bots/${botId}/knowledge`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
-              <UiButton variant="ghost" style={{ padding: '0.4rem' }}>
-                <ArrowLeft size={20} strokeWidth={2} />
-              </UiButton>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '1.5rem' }}>
+            <Link to={`/bots/${botId}/knowledge`} className="page-header-back" aria-label="Back">
+              <ChevronLeft size={20} strokeWidth={2} />
             </Link>
             <h2 className="ui-section-header-title" style={{ margin: 0 }}>{t('addSource.title', 'Add source')}</h2>
           </div>
@@ -585,7 +583,7 @@ export default function AddSourcePage() {
               </GlassCard>
 
               {/* OR Divider */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0', opacity: 0.6 }}>
+              <div className="add-source-or-divider" style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0', opacity: 0.6 }}>
                 <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ui-flow-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('addSource.or', 'Or')}</div>
                 <div style={{ flex: 1, height: '1px', background: 'var(--ui-flow-border)' }} />

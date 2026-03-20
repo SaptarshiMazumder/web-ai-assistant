@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { LogOut, Settings } from 'lucide-react'
+import { ChevronLeft, LogOut, Settings } from 'lucide-react'
 import { useDashboardData } from '../hooks/useDashboardData'
 
 import { useTranslation } from 'react-i18next'
@@ -9,9 +9,10 @@ type PageHeaderProps = {
   title: string
   subtitle?: string
   children?: React.ReactNode
+  backTo?: string
 }
 
-export default function PageHeader({ title, subtitle, children }: PageHeaderProps) {
+export default function PageHeader({ title, subtitle, children, backTo }: PageHeaderProps) {
   const { user, logout } = useDashboardData()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -64,6 +65,11 @@ export default function PageHeader({ title, subtitle, children }: PageHeaderProp
           <span className="page-eyebrow">{t('nav.dashboardWorkspace', 'Dashboard workspace')}</span>
           <div className="page-title">
             <span className="page-title-row">
+              {backTo && (
+                <Link to={backTo} className="page-header-back" aria-label="Back">
+                  <ChevronLeft size={20} strokeWidth={2} />
+                </Link>
+              )}
               <span className="page-title-text">{title}</span>
             </span>
           </div>

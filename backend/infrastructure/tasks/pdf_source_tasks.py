@@ -295,6 +295,7 @@ def pdf_source_ingest_job(
         )
         return {"status": "error", "docs_count": len(docs), "gcs_prefix": gcs_prefix, "error": error_msg}
     _set_job_stage(job_repo, job, bot_id, source_id, "import_submitted")
+    _set_job_stage(job_repo, job, bot_id, source_id, "done")
     logger.info("[PDF %s] completed job=%s bot=%s docs=%d stage=%s", source_id[:8], job_id, bot_id, job.docs_count, job.stage)
 
     return {"status": "done", "docs_count": job.docs_count, "gcs_prefix": gcs_prefix}

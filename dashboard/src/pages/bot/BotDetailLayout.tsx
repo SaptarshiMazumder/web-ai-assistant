@@ -92,7 +92,7 @@ export default function BotDetailLayout() {
 
   return (
     <div className="page">
-      <PageHeader title={selectedBot?.display_name || 'Bot'} />
+      <PageHeader title={selectedBot?.display_name || 'Bot'} backTo="/bots" />
 
       {/* Mobile page nav pill — below agent name, only visible on mobile */}
       {secondaryItems.length > 0 && (

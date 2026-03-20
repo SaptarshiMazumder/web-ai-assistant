@@ -80,31 +80,19 @@ export default function CreateBotEmbedPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+        <div className="embed-snippet-row">
           <pre className="snippet" style={{ margin: 0, flex: 1, minWidth: 0 }}>
             {snippet}
           </pre>
           <button
             type="button"
+            className={`embed-snippet-copy-btn${copied ? ' embed-snippet-copy-btn--copied' : ''}`}
             onClick={() => void handleCopy()}
             disabled={!snippet}
             title={copied ? t('createBot.copied', 'Copied!') : t('createBot.copyToClipboard', 'Copy to clipboard')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              border: '1px solid var(--flow-border, #f2d8d2)',
-              background: copied ? 'var(--flow-accent-soft, #fff1ef)' : 'var(--flow-surface, #ffffff)',
-              color: copied ? 'var(--flow-accent, #e4587a)' : 'var(--flow-muted, #7e5a70)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              flexShrink: 0,
-            }}
+            aria-label={copied ? t('createBot.copied', 'Copied!') : t('createBot.copyToClipboard', 'Copy to clipboard')}
           >
-            <FlowIcon name={copied ? 'check' : 'content_copy'} size="sm" />
+            <FlowIcon name={copied ? 'check' : 'content_copy'} size="md" />
           </button>
         </div>
         <div className="muted" style={{ fontSize: '0.85rem' }}>
@@ -167,6 +155,7 @@ export default function CreateBotEmbedPage() {
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <button
           type="button"
+          className="flow-channel-pick-card"
           onClick={() => {
             setInstallView('website')
           }}
@@ -195,6 +184,7 @@ export default function CreateBotEmbedPage() {
 
         <button
           type="button"
+          className="flow-channel-pick-card"
           onClick={() => setInstallView('line')}
           style={{
             textAlign: 'left',

@@ -282,6 +282,7 @@ export default function CreateBotWidgetPage() {
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <button
           type="button"
+          className="flow-channel-pick-card"
           onClick={() => setDesignView('website')}
           style={{
             textAlign: 'left',
@@ -308,6 +309,7 @@ export default function CreateBotWidgetPage() {
 
         <button
           type="button"
+          className="flow-channel-pick-card"
           onClick={() => setDesignView('line')}
           style={{
             textAlign: 'left',
