@@ -147,7 +147,7 @@ export default function CreateBotEmbedPage() {
           <UiButton variant="secondary" onClick={() => setInstallView('hub')}>
             {t('common.back', 'Back')}
           </UiButton>
-          <UiButton variant="primary" onClick={() => setInstallView('hub')} style={{ marginLeft: 'auto' }}>
+          <UiButton variant="primary" onClick={() => setInstallView('hub')}>
             {t('common.continue', 'Continue')}
           </UiButton>
         </div>

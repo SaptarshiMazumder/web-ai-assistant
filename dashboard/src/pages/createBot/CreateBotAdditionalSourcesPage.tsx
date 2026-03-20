@@ -70,7 +70,7 @@ export default function CreateBotAdditionalSourcesPage() {
         </div>
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div className="tabbed-content-section" style={{ marginBottom: '1.5rem' }}>
         <SegmentedTabs
           value={activeTab}
           onChange={setActiveTab}
@@ -224,11 +224,11 @@ export default function CreateBotAdditionalSourcesPage() {
           {t('common.back', 'Back')}
         </UiButton>
         {hasAnySources ? (
-          <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
+          <UiButton variant="primary" onClick={handleContinue}>
             {t('common.continue', 'Continue')}
           </UiButton>
         ) : (
-          <UiButton variant="ghost" onClick={handleSkip} style={{ marginLeft: 'auto' }}>
+          <UiButton variant="ghost" onClick={handleSkip}>
             {t('createBot.skip', 'Skip for now')}
           </UiButton>
         )}

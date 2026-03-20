@@ -159,7 +159,6 @@ export default function CreateBotProgressPage() {
                 variant="primary"
                 onClick={() => void handleStartTraining()}
                 disabled={isStartingTraining}
-                style={{ marginLeft: 'auto' }}
               >
                 {isStartingTraining ? t('createBot.starting', 'Starting...') : t('createBot.startTraining', 'Start training')}
               </UiButton>
@@ -168,7 +167,6 @@ export default function CreateBotProgressPage() {
                 variant="ghost"
                 onClick={() => void handleSkipTraining()}
                 disabled={isStartingTraining}
-                style={{ marginLeft: 'auto' }}
               >
                 {isStartingTraining ? t('createBot.skipping', 'Skipping...') : t('createBot.skipTrainingForNow', 'Skip training for now')}
               </UiButton>
@@ -247,25 +245,25 @@ export default function CreateBotProgressPage() {
           )}
 
           <div className="flow-actions">
-            <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)} style={{ marginRight: 'auto' }}>
+            <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
               {t('common.back', 'Back')}
             </UiButton>
             {isComplete ? (
               flow.nextPath ? (
-                <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)} style={{ marginLeft: 'auto' }}>
+                <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
                   {t('common.continue', 'Continue')}
                 </UiButton>
               ) : (
-                <UiButton variant="primary" onClick={handleFinish} style={{ marginLeft: 'auto' }}>
+                <UiButton variant="primary" onClick={handleFinish}>
                   {t('createBot.finishSetup', 'Finish setup')}
                 </UiButton>
               )
             ) : flow.nextPath ? (
-              <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)} style={{ marginLeft: 'auto' }}>
+              <UiButton variant="primary" onClick={() => navigate(flow.nextPath!)}>
                 {t('common.continue', 'Continue')}
               </UiButton>
             ) : (
-              <UiButton variant="primary" disabled style={{ marginLeft: 'auto' }}>
+              <UiButton variant="primary" disabled>
                 {t('common.continue', 'Continue')}
               </UiButton>
             )}

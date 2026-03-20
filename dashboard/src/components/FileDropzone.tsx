@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FlowIcon } from './FlowIcon'
 
 type Props = {
@@ -34,6 +34,20 @@ export function FileDropzone({
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [isMobilePickerUi, setIsMobilePickerUi] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(max-width: 768px), (pointer: coarse)')
+    const update = () => setIsMobilePickerUi(media.matches)
+    update()
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', update)
+      return () => media.removeEventListener('change', update)
+    }
+    media.addListener(update)
+    return () => media.removeListener(update)
+  }, [])
 
   const acceptLower = accept.toLowerCase()
   const isPdfOnly = acceptLower.includes('pdf')
@@ -56,46 +70,79 @@ export function FileDropzone({
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
+      if (isMobilePickerUi) return
       e.preventDefault()
       setIsDragging(false)
       const list = Array.from(e.dataTransfer.files || [])
       addFiles(list)
     },
-    [addFiles]
+    [addFiles, isMobilePickerUi]
   )
 
   const onBrowse = () => inputRef.current?.click()
 
+  const effectiveLabel = useMemo(() => {
+    if (!isMobilePickerUi) return label
+    return isPdfOnly ? 'Select PDF files' : 'Select files'
+  }, [isMobilePickerUi, isPdfOnly, label])
+
   const subtitle = useMemo(() => {
+    if (isMobilePickerUi) {
+      if (isPdfOnly) return `Choose up to ${maxFiles} PDF files from your device.`
+      return `Choose up to ${maxFiles} files from your device.`
+    }
     if (helperText) return helperText
     if (isPdfOnly) return 'Drag & drop PDFs here, or browse.'
     return 'Drag & drop files here, or browse.'
-  }, [helperText, isPdfOnly])
+  }, [helperText, isMobilePickerUi, isPdfOnly, maxFiles])
+
+  const browseLabel = isMobilePickerUi
+    ? multiple
+      ? 'Choose files'
+      : 'Choose file'
+    : 'Browse files'
+
+  const selectedLabel = files.length > 0
+    ? `${files.length} selected`
+    : isMobilePickerUi
+      ? 'No files selected'
+      : '0 selected'
 
   return (
-    <div>
-      <div className="design-form-label" style={{ marginBottom: '6px' }}>{label}</div>
+    <div className="file-dropzone" data-mobile-picker={isMobilePickerUi ? 'true' : 'false'}>
+      <div className="design-form-label file-dropzone-label" style={{ marginBottom: '6px' }}>{effectiveLabel}</div>
       <div
         onDragOver={(e) => {
+          if (isMobilePickerUi) return
           e.preventDefault()
           setIsDragging(true)
         }}
-        onDragLeave={() => setIsDragging(false)}
+        onDragLeave={() => {
+          if (isMobilePickerUi) return
+          setIsDragging(false)
+        }}
         onDrop={onDrop}
+        className="file-dropzone-surface"
         style={{
-          border: `2px dashed ${isDragging ? 'var(--flow-accent, #e4587a)' : 'var(--flow-border, #f2d8d2)'}`,
+          border: isMobilePickerUi
+            ? `1px solid var(--flow-border, #f2d8d2)`
+            : `2px dashed ${isDragging ? 'var(--flow-accent, #e4587a)' : 'var(--flow-border, #f2d8d2)'}`,
           borderRadius: '14px',
-          padding: '16px',
-          background: isDragging ? 'var(--flow-accent-soft, #fff1ef)' : 'var(--flow-surface, #fff)',
+          padding: isMobilePickerUi ? '12px' : '16px',
+          background: isMobilePickerUi
+            ? 'var(--flow-surface, #fff)'
+            : isDragging
+              ? 'var(--flow-accent-soft, #fff1ef)'
+              : 'var(--flow-surface, #fff)',
           transition: 'border-color 0.2s, background 0.2s',
         }}
       >
-        <div className="muted" style={{ marginBottom: '10px' }}>{subtitle}</div>
-        <div className="row" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="muted file-dropzone-subtitle" style={{ marginBottom: '10px' }}>{subtitle}</div>
+        <div className="row file-dropzone-actions" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
           <button type="button" className="secondary" onClick={onBrowse}>
-            Browse files
+            {browseLabel}
           </button>
-          <div className="muted">{files.length} selected</div>
+          <div className="muted file-dropzone-selected">{selectedLabel}</div>
         </div>
 
         <input

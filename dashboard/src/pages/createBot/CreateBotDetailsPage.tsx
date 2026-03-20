@@ -77,7 +77,6 @@ export default function CreateBotDetailsPage() {
           variant="primary"
           onClick={() => void handleContinue()}
           disabled={!botName.trim()}
-          style={{ marginLeft: 'auto' }}
         >
           {t('common.continue', 'Continue')}
         </UiButton>

@@ -749,12 +749,9 @@ dashboard:
       - id: details
         label: { en: "Name", ja: "名前" }
         description: { en: "Pick a name customers will see.", ja: "お客様に見える名前を決めます。" }
-      - id: sources
-        label: { en: "Website", ja: "Webサイト" }
-        description: { en: "Add sources from your website.", ja: "Webサイトの情報源を追加します。" }
-      - id: additional_sources
-        label: { en: "More sources", ja: "追加ソース" }
-        description: { en: "Add PDFs, text docs, or custom content.", ja: "PDF、テキスト資料、独自コンテンツを追加します。" }
+      - id: add_sources
+        label: { en: "Add sources", ja: "ソース追加" }
+        description: { en: "Add website and additional sources.", ja: "Webサイトと追加ソースを設定します。" }
       - id: training
         label: { en: "Agent Training", ja: "エージェント学習" }
         description: { en: "We'll start learning from what you added.", ja: "追加した内容をもとに学習を始めます。" }
@@ -774,15 +771,15 @@ dashboard:
         component: details
       sources:
         path: "sources"
-        step_group: sources
+        step_group: add_sources
         component: source_urls
       additional_sources:
         path: "additional-sources"
-        step_group: additional_sources
+        step_group: add_sources
         component: additional_sources
       reservation_destination:
         path: "reservation-destination"
-        step_group: additional_sources
+        step_group: add_sources
         component: action_destination_url
         action_key: reservation
         visibility:

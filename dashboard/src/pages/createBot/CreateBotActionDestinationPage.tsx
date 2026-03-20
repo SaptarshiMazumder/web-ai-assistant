@@ -104,7 +104,7 @@ export default function CreateBotActionDestinationPage() {
         <UiButton variant="secondary" onClick={() => flow.prevPath && navigate(flow.prevPath)}>
           {t('common.back', 'Back')}
         </UiButton>
-        <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
+        <UiButton variant="primary" onClick={handleContinue}>
           {t('common.continue', 'Continue')}
         </UiButton>
       </div>

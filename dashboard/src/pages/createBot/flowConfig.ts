@@ -92,6 +92,7 @@ type RawCreateBotFlowConfig = {
 
 const STEP_GROUP_DECORATIONS: Record<string, { icon: string; iconUrl: string }> = {
   details: { icon: 'badge', iconUrl: autographIcon },
+  add_sources: { icon: 'source', iconUrl: googleDocsIcon },
   sources: { icon: 'source', iconUrl: googleDocsIcon },
   additional_sources: { icon: 'library_add', iconUrl: googleDocsIcon },
   training: { icon: 'model_training', iconUrl: learningIcon },
@@ -109,14 +110,9 @@ const DEFAULT_STEP_GROUPS: ReadonlyArray<Omit<CreateBotStepGroup, 'icon' | 'icon
     description: 'Pick a name customers will see.',
   },
   {
-    id: 'sources',
-    label: 'Website',
-    description: 'Add sources from your website.',
-  },
-  {
-    id: 'additional_sources',
-    label: 'More sources',
-    description: 'Add PDFs, text docs, or custom content.',
+    id: 'add_sources',
+    label: 'Add sources',
+    description: 'Add website and additional sources.',
   },
   {
     id: 'training',
@@ -150,19 +146,19 @@ const DEFAULT_SCREEN_DEFINITIONS: Record<string, CreateBotScreen> = {
   sources: {
     id: 'sources',
     path: 'sources',
-    stepGroupId: 'sources',
+    stepGroupId: 'add_sources',
     component: 'source_urls',
   },
   additional_sources: {
     id: 'additional_sources',
     path: 'additional-sources',
-    stepGroupId: 'additional_sources',
+    stepGroupId: 'add_sources',
     component: 'additional_sources',
   },
   reservation_destination: {
     id: 'reservation_destination',
     path: 'reservation-destination',
-    stepGroupId: 'additional_sources',
+    stepGroupId: 'add_sources',
     component: 'action_destination_url',
     actionKey: 'reservation',
     title: 'Where should customers make reservations?',

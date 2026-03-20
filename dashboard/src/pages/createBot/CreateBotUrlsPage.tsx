@@ -389,8 +389,13 @@ export default function CreateBotUrlsPage() {
     const hasExpandableContent = hasChildCategories || category.urls.length > 0
 
     return (
-      <div key={category.path || 'root'} style={{ marginLeft: `${category.level * 20}px` }}>
+      <div
+        key={category.path || 'root'}
+        className="flow-url-tree-node"
+        style={{ ['--tree-level' as any]: category.level }}
+      >
         <div
+          className="flow-url-tree-row"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -399,33 +404,6 @@ export default function CreateBotUrlsPage() {
             userSelect: 'none',
           }}
         >
-          {hasExpandableContent ? (
-            <span
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleSharedCategoryExpand(category.path)
-              }}
-              style={{
-                marginRight: '8px',
-                width: '16px',
-                height: '16px',
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--flow-muted)',
-              }}
-              aria-hidden
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </span>
-          ) : (
-            <span style={{ marginRight: '16px', width: '12px' }} />
-          )}
           <input
             type="checkbox"
             checked={isSelected}
@@ -453,6 +431,7 @@ export default function CreateBotUrlsPage() {
             {getCategoryDisplayPath(category)}
           </span>
           <span
+            className="flow-url-tree-count"
             style={{
               marginLeft: '8px',
               padding: '2px 10px',
@@ -465,6 +444,34 @@ export default function CreateBotUrlsPage() {
           >
             {urlCount}
           </span>
+          {hasExpandableContent ? (
+            <span
+              className="flow-url-tree-toggle"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleSharedCategoryExpand(category.path)
+              }}
+              style={{
+                marginLeft: '8px',
+                width: '16px',
+                height: '16px',
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--flow-muted)',
+              }}
+              aria-hidden
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </span>
+          ) : (
+            <span className="flow-url-tree-toggle-placeholder" style={{ marginLeft: '8px', width: '16px', height: '16px' }} />
+          )}
         </div>
         {hasExpandableContent && isExpanded && (
           <div>
@@ -477,11 +484,11 @@ export default function CreateBotUrlsPage() {
               })
               .map((child) => renderSharedCategory(child))}
             {category.urls.length > 0 && (
-              <div style={{ marginLeft: '20px', paddingLeft: '20px' }}>
+              <div className="url-list-nested flow-url-tree-nested">
                 {category.urls.map((url) => (
                   <label
                     key={url}
-                    className="url-list-item"
+                    className="url-list-item flow-url-tree-item"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -494,7 +501,9 @@ export default function CreateBotUrlsPage() {
                       onChange={() => handleToggleSharedDiscoveredUrl(url)}
                       style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                    <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>
+                      {url}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -707,7 +716,7 @@ export default function CreateBotUrlsPage() {
               </div>
 
               <div
-                className="url-list"
+                className="url-list flow-url-tree-list"
                 style={{
                   maxHeight: '320px',
                   overflowY: 'auto',
@@ -740,7 +749,7 @@ export default function CreateBotUrlsPage() {
                         {sharedUrlCategories.urls.map((url) => (
                           <label
                             key={url}
-                            className="url-list-item"
+                            className="url-list-item flow-url-tree-item"
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -753,7 +762,9 @@ export default function CreateBotUrlsPage() {
                               onChange={() => handleToggleSharedDiscoveredUrl(url)}
                               style={{ marginRight: '8px', cursor: 'pointer' }}
                             />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                            <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>
+                              {url}
+                            </span>
                           </label>
                         ))}
                       </div>
@@ -799,7 +810,6 @@ export default function CreateBotUrlsPage() {
             <UiButton
               variant="primary"
               onClick={() => void handleContinue()}
-              style={{ marginLeft: 'auto' }}
             >
               {t('common.continue', 'Continue')}
             </UiButton>
@@ -807,7 +817,6 @@ export default function CreateBotUrlsPage() {
             <UiButton
               variant="ghost"
               onClick={() => void handleSkip()}
-              style={{ marginLeft: 'auto' }}
             >
               {t('createBot.skip', 'Skip for now')}
             </UiButton>
@@ -851,8 +860,13 @@ export default function CreateBotUrlsPage() {
     const hasExpandableContent = hasChildCategories || category.urls.length > 0
 
     return (
-      <div key={category.path || 'root'} style={{ marginLeft: `${category.level * 20}px` }}>
+      <div
+        key={category.path || 'root'}
+        className="flow-url-tree-node"
+        style={{ ['--tree-level' as any]: category.level }}
+      >
         <div
+          className="flow-url-tree-row"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -861,33 +875,6 @@ export default function CreateBotUrlsPage() {
             userSelect: 'none',
           }}
         >
-          {hasExpandableContent ? (
-            <span
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleCategoryExpand(category.path)
-              }}
-              style={{
-                marginRight: '8px',
-                width: '16px',
-                height: '16px',
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--flow-muted)',
-              }}
-              aria-hidden
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </span>
-          ) : (
-            <span style={{ marginRight: '16px', width: '12px' }} />
-          )}
           <input
             type="checkbox"
             className="url-checkbox"
@@ -916,6 +903,7 @@ export default function CreateBotUrlsPage() {
             {getCategoryDisplayPath(category)}
           </span>
           <span
+            className="flow-url-tree-count"
             style={{
               marginLeft: '8px',
               padding: '2px 10px',
@@ -928,6 +916,34 @@ export default function CreateBotUrlsPage() {
           >
             {urlCount}
           </span>
+          {hasExpandableContent ? (
+            <span
+              className="flow-url-tree-toggle"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleCategoryExpand(category.path)
+              }}
+              style={{
+                marginLeft: '8px',
+                width: '16px',
+                height: '16px',
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--flow-muted)',
+              }}
+              aria-hidden
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </span>
+          ) : (
+            <span className="flow-url-tree-toggle-placeholder" style={{ marginLeft: '8px', width: '16px', height: '16px' }} />
+          )}
         </div>
         {hasExpandableContent && isExpanded && (
           <div>
@@ -940,11 +956,11 @@ export default function CreateBotUrlsPage() {
               })
               .map(child => renderCategory(child))}
             {category.urls.length > 0 && (
-              <div className="url-list-nested" style={{ marginLeft: '20px', paddingLeft: '20px' }}>
+              <div className="url-list-nested flow-url-tree-nested">
                 {category.urls.map(url => (
                   <label
                     key={url}
-                    className="url-list-item"
+                    className="url-list-item flow-url-tree-item"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -958,7 +974,9 @@ export default function CreateBotUrlsPage() {
                       onChange={() => toggleUrl(url)}
                       style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                    <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>
+                      {url}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -1033,7 +1051,7 @@ export default function CreateBotUrlsPage() {
         </span>
       </div>
 
-      <div className="url-list" style={{
+      <div className="url-list flow-url-tree-list" style={{
         maxHeight: '460px',
         overflowY: 'auto',
         border: '1px solid var(--flow-border)',
@@ -1063,7 +1081,7 @@ export default function CreateBotUrlsPage() {
                 {urlCategories.urls.map(url => (
                   <label
                     key={url}
-                    className="url-list-item"
+                    className="url-list-item flow-url-tree-item"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1076,7 +1094,9 @@ export default function CreateBotUrlsPage() {
                       onChange={() => toggleUrl(url)}
                       style={{ marginRight: '8px', cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                    <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>
+                      {url}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -1108,16 +1128,16 @@ export default function CreateBotUrlsPage() {
           {t('common.back', 'Back')}
         </UiButton>
         {isDiscovering ? (
-          <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+          <UiButton variant="primary" onClick={stopDiscovery} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <StopIcon />
             {t('createBot.stop', 'Stop')}
           </UiButton>
         ) : (selectedUrls.length > 0 || pdfFiles.length > 0) ? (
-          <UiButton variant="primary" onClick={handleContinue} style={{ marginLeft: 'auto' }}>
+          <UiButton variant="primary" onClick={handleContinue}>
             {t('common.continue', 'Continue')}
           </UiButton>
         ) : (
-          <UiButton variant="ghost" onClick={() => void handleSkip()} style={{ marginLeft: 'auto' }}>
+          <UiButton variant="ghost" onClick={() => void handleSkip()}>
             {t('createBot.skip', 'Skip for now')}
           </UiButton>
         )}

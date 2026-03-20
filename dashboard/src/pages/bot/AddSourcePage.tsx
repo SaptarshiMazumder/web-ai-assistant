@@ -310,28 +310,12 @@ export default function AddSourcePage() {
     const hasExpandable = category.children.size > 0 || category.urls.length > 0
 
     return (
-      <div key={category.path || 'root'} style={{ marginLeft: `${category.level * 20}px` }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0', cursor: 'pointer', userSelect: 'none' }}>
-          {hasExpandable ? (
-            <span
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleCategoryExpand(category.path)
-              }}
-              style={{
-                marginRight: '8px',
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-                color: 'var(--flow-muted)',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </span>
-          ) : (
-            <span style={{ marginRight: '16px', width: '12px' }} />
-          )}
+      <div
+        key={category.path || 'root'}
+        className="flow-url-tree-node"
+        style={{ ['--tree-level' as any]: category.level }}
+      >
+        <div className="flow-url-tree-row" style={{ display: 'flex', alignItems: 'center', padding: '6px 0', cursor: 'pointer', userSelect: 'none' }}>
           <input
             type="checkbox"
             checked={isSelected}
@@ -358,6 +342,7 @@ export default function AddSourcePage() {
             {getCategoryDisplayPath(category)}
           </span>
           <span
+            className="flow-url-tree-count"
             style={{
               marginLeft: '8px',
               padding: '2px 10px',
@@ -370,6 +355,32 @@ export default function AddSourcePage() {
           >
             {urlCount}
           </span>
+          {hasExpandable ? (
+            <span
+              className="flow-url-tree-toggle"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleCategoryExpand(category.path)
+              }}
+              style={{
+                marginLeft: '8px',
+                width: '16px',
+                height: '16px',
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--flow-muted)',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </span>
+          ) : (
+            <span className="flow-url-tree-toggle-placeholder" style={{ marginLeft: '8px', width: '16px', height: '16px' }} />
+          )}
         </div>
         {hasExpandable && isExpanded && (
           <div>
@@ -377,16 +388,16 @@ export default function AddSourcePage() {
               .sort((a, b) => getCategoryUrlCount(b) - getCategoryUrlCount(a))
               .map((child) => renderCategory(child))}
             {category.urls.length > 0 && (
-              <div style={{ marginLeft: '20px', paddingLeft: '20px' }}>
+              <div className="url-list-nested flow-url-tree-nested">
                 {category.urls.map((url) => (
-                  <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                  <label key={url} className="url-list-item flow-url-tree-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={selectedDiscoveredUrls.has(url)}
                       onChange={() => handleToggleUrl(url)}
                       style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
                     />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                    <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                   </label>
                 ))}
               </div>
@@ -664,7 +675,7 @@ export default function AddSourcePage() {
                     </div>
 
                     <div
-                      className="url-list"
+                      className="url-list flow-url-tree-list"
                       style={{
                         maxHeight: '320px',
                         overflowY: 'auto',
@@ -688,14 +699,14 @@ export default function AddSourcePage() {
                           {urlCategories.urls.length > 0 && (
                             <div style={{ marginLeft: 0 }}>
                               {urlCategories.urls.map((url) => (
-                                <label key={url} className="url-list-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                <label key={url} className="url-list-item flow-url-tree-item" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                                   <input
                                     type="checkbox"
                                     checked={selectedDiscoveredUrls.has(url)}
                                     onChange={() => handleToggleUrl(url)}
                                     style={{ marginRight: '8px', cursor: 'pointer', accentColor: 'var(--flow-accent)' }}
                                   />
-                                  <span style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
+                                  <span className="flow-url-tree-url" style={{ fontSize: '0.85rem', color: 'var(--flow-muted)' }}>{url}</span>
                                 </label>
                               ))}
                             </div>
