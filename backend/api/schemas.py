@@ -217,6 +217,27 @@ class DocsSourceUploadResponse(BaseModel):
     items: List[DocsSourceUploadItem] = []
 
 
+class SourceContentResponse(BaseModel):
+    source_id: str
+    bot_id: str
+    type: str
+    title: Optional[str] = None
+    content: str = ""
+    char_count: int = 0
+
+
+class SourceContentUpdateRequest(BaseModel):
+    content: str
+    title: Optional[str] = None
+
+
+class SourceContentUpdateResponse(BaseModel):
+    source_id: str
+    bot_id: str
+    job_id: str
+    status: str = "queued"
+
+
 class WidgetChatRequest(BaseModel):
     message: str
     site_url: Optional[str] = None

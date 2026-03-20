@@ -206,6 +206,7 @@ export default function BotKnowledgeTab() {
     deleteSource,
     queueCrawlUrls,
     cancelIndexJob,
+    cancelIndexJobById,
     discoverUrls,
     getJobStatus,
     syncSource,
@@ -219,6 +220,8 @@ export default function BotKnowledgeTab() {
     saveWidgetConfig,
     selectedBotWidgetConfig,
     fetchPlatformConfig,
+    getSourceContent,
+    updateSourceContent,
   } = useDashboardData()
 
   const allowKnowledgeDiscovery = !(
@@ -245,6 +248,13 @@ export default function BotKnowledgeTab() {
   const [savingSyncSettings, setSavingSyncSettings] = useState(false)
   const [syncingSelected, setSyncingSelected] = useState(false)
   const syncPopupRef = useRef<HTMLDivElement | null>(null)
+
+  // Source content view/edit modal
+  const [editingSource, setEditingSource] = useState<{ source_id: string; type: string } | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editTitle, setEditTitle] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
 
   // Discovery UI (Add more pages)
   const [discoverInputUrl, setDiscoverInputUrl] = useState('')
@@ -1380,18 +1390,31 @@ export default function BotKnowledgeTab() {
   }, [selectedBot, sourcesSelected, deletingSelectedSources, deleteSource, loadSources, loadJobs])
 
   const handleStopTraining = useCallback(async () => {
-    if (!selectedBot || !activeSourcesJob || stoppingTraining) return
+    if (!selectedBot || stoppingTraining) return
     setStoppingTraining(true)
     try {
-      const cancelUrl =
-        (activeSourcesJob.hostname || '').toLowerCase() === 'batch'
-          ? 'https://batch/'
-          : (activeSourcesJob.url || `https://${activeSourcesJob.hostname || 'batch'}/`)
-      await cancelIndexJob(selectedBot.bot_id, cancelUrl)
+      // Additional sources: cancel each non-terminal job by ID
+      if (additionalSourcesRun && additionalSourcesStatuses) {
+        const nonTerminalJobIds = (additionalSourcesRun.job_ids || []).filter((jobId) => {
+          const status = additionalSourcesStatuses.find((s) => s.job_id === jobId)
+          return !isAdditionalSourcesStageTerminal(status?.stage)
+        })
+        await Promise.all(nonTerminalJobIds.map((jobId) => cancelIndexJobById(selectedBot.bot_id, jobId)))
+      }
+      // Crawl job: existing hostname-based cancel
+      if (activeSourcesJob) {
+        const cancelUrl =
+          (activeSourcesJob.hostname || '').toLowerCase() === 'batch'
+            ? 'https://batch/'
+            : (activeSourcesJob.url || `https://${activeSourcesJob.hostname || 'batch'}/`)
+        await cancelIndexJob(selectedBot.bot_id, cancelUrl)
+      }
+      await loadJobs(selectedBot.bot_id)
+      await loadSources(selectedBot.bot_id)
     } finally {
       setStoppingTraining(false)
     }
-  }, [selectedBot, activeSourcesJob, stoppingTraining, cancelIndexJob])
+  }, [selectedBot, activeSourcesJob, additionalSourcesRun, additionalSourcesStatuses, stoppingTraining, cancelIndexJob, cancelIndexJobById, loadJobs, loadSources])
 
   const handleSyncSource = useCallback(async (sourceId: string) => {
     if (!selectedBot || syncingSourceIds.has(sourceId)) return
@@ -1495,6 +1518,41 @@ export default function BotKnowledgeTab() {
     return () => document.removeEventListener('mousedown', handler)
   }, [actionMenuSourceId])
 
+  // View/Edit source content
+  const handleOpenEditSource = useCallback(async (source: { source_id: string; type: string }) => {
+    if (!selectedBot) return
+    const srcType = (source.type || '').toLowerCase()
+    setEditingSource(source)
+    setEditLoading(true)
+    setEditContent('')
+    setEditTitle('')
+    if (srcType === 'text') {
+      try {
+        const data = await getSourceContent(selectedBot.bot_id, source.source_id)
+        if (data) {
+          setEditContent(data.content || '')
+          setEditTitle(data.title || '')
+        }
+      } finally {
+        setEditLoading(false)
+      }
+    } else {
+      // For PDF/docs: nothing to load inline, show info modal
+      setEditLoading(false)
+    }
+  }, [selectedBot, getSourceContent])
+
+  const handleSaveSourceContent = useCallback(async () => {
+    if (!selectedBot || !editingSource || editSaving) return
+    setEditSaving(true)
+    try {
+      await updateSourceContent(selectedBot.bot_id, editingSource.source_id, editContent, editTitle || null)
+      setEditingSource(null)
+    } finally {
+      setEditSaving(false)
+    }
+  }, [selectedBot, editingSource, editContent, editTitle, editSaving, updateSourceContent])
+
   /** True if at least one selected source is a URL type. */
   const hasSelectedUrlSources = useMemo(() => {
     return sources.some((s) => s.type.toLowerCase() === 'url' && sourcesSelected.has(s.source_id))
@@ -1569,10 +1627,24 @@ export default function BotKnowledgeTab() {
 
   /** For Source column: URL or config summary (not display name). */
   function sourceUrlOrConfig(source: { type: string; config: Record<string, unknown> }): string {
-    if (source.type === 'url' && typeof source.config?.url === 'string') return source.config.url
-    if (source.type === 'pdf' && typeof source.config?.filename === 'string') return `PDF: ${source.config.filename}`
-    if (source.type === 'drive' && typeof source.config?.folder_id === 'string') return `Drive folder: ${source.config.folder_id}`
-    if (source.type === 'docs' && typeof source.config?.doc_id === 'string') return `Doc: ${source.config.doc_id}`
+    const t = (source.type || '').toLowerCase()
+    if (t === 'url' && typeof source.config?.url === 'string') return source.config.url
+    if (t === 'pdf' && typeof source.config?.filename === 'string') return source.config.filename
+    if (t === 'docs') {
+      if (typeof source.config?.filename === 'string') return source.config.filename
+      if (typeof source.config?.doc_id === 'string') return source.config.doc_id
+    }
+    if (t === 'drive' && typeof source.config?.folder_id === 'string') return source.config.folder_id
+    if (t === 'text') {
+      const title = typeof source.config?.title === 'string' ? source.config.title.trim() : ''
+      if (title) return title
+      const content = typeof source.config?.content === 'string' ? source.config.content : ''
+      if (content) {
+        const preview = content.replace(/\s+/g, ' ').trim()
+        return preview.length > 80 ? preview.slice(0, 77) + '…' : preview
+      }
+      return 'Text'
+    }
     return source.type || '—'
   }
 
@@ -1873,18 +1945,34 @@ export default function BotKnowledgeTab() {
                         <td className="knowledge-name" style={{ wordBreak: 'break-all' }}>
                           {(() => {
                             const url = sourceClickableUrl(s)
-                            if (!url) return sourceUrlOrConfig(s)
-                            return (
-                              <a
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="knowledge-source-link"
-                                title={url}
-                              >
-                                {url}
-                              </a>
-                            )
+                            if (url) {
+                              return (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="knowledge-source-link"
+                                  title={url}
+                                >
+                                  {url}
+                                </a>
+                              )
+                            }
+                            const srcType = s.type.toLowerCase()
+                            if (srcType === 'text' || srcType === 'pdf' || srcType === 'docs') {
+                              return (
+                                <button
+                                  type="button"
+                                  className="knowledge-source-link"
+                                  onClick={() => handleOpenEditSource(s)}
+                                  title={sourceUrlOrConfig(s)}
+                                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}
+                                >
+                                  {sourceUrlOrConfig(s)}
+                                </button>
+                              )
+                            }
+                            return sourceUrlOrConfig(s)
                           })()}
                         </td>
                         <td>
@@ -2463,6 +2551,95 @@ export default function BotKnowledgeTab() {
           )}
         </GlassCard>
       )}
+
+      {/* Source content view/edit modal */}
+      {editingSource && (() => {
+        const editSrc = sources.find(s => s.source_id === editingSource.source_id)
+        const editSrcType = (editingSource.type || '').toLowerCase()
+        const isTextType = editSrcType === 'text'
+        const headerLabel = isTextType
+          ? t('botKnowledge.editSource', 'Edit source')
+          : (editSrc ? sourceUrlOrConfig(editSrc) : editSrcType.toUpperCase())
+        return (
+          <>
+            <div className="source-edit-backdrop" onClick={() => !editSaving && setEditingSource(null)} />
+            <div className="source-edit-modal">
+              <div className="source-edit-modal-header">
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {headerLabel}
+                </h3>
+                <button
+                  type="button"
+                  className="source-edit-modal-close"
+                  onClick={() => !editSaving && setEditingSource(null)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              {editLoading ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
+                  {t('botKnowledge.loadingContent', 'Loading...')}
+                </div>
+              ) : isTextType ? (
+                <>
+                  <div style={{ padding: '0.75rem 1.25rem 0' }}>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder={t('botKnowledge.titlePlaceholder', 'Title (optional)')}
+                      className="source-edit-title-input"
+                    />
+                  </div>
+                  <div style={{ padding: '0 1.25rem', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="source-edit-textarea"
+                      placeholder={t('botKnowledge.contentPlaceholder', 'Type or paste your text here...')}
+                    />
+                    <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem', textAlign: 'right' }}>
+                      {editContent.length.toLocaleString()} {t('botKnowledge.chars', 'chars')}
+                    </div>
+                  </div>
+                  <div className="source-edit-modal-footer">
+                    <button type="button" className="ghost" onClick={() => setEditingSource(null)} disabled={editSaving}>
+                      {t('botKnowledge.cancel', 'Cancel')}
+                    </button>
+                    <button type="button" className="primary" onClick={handleSaveSourceContent} disabled={editSaving || !editContent.trim()}>
+                      {editSaving ? t('botKnowledge.saving', 'Saving...') : t('botKnowledge.saveAndRetrain', 'Save & Retrain')}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ padding: '1.25rem', color: '#555', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: 500 }}>{t('botKnowledge.type', 'Type')}: </span>
+                      {editSrcType.toUpperCase()}
+                    </div>
+                    {editSrc && (
+                      <div>
+                        <span style={{ fontWeight: 500 }}>{t('botKnowledge.file', 'File')}: </span>
+                        {sourceUrlOrConfig(editSrc)}
+                      </div>
+                    )}
+                    <div style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#999' }}>
+                      {t('botKnowledge.noInlineEdit', 'To update this source, delete it and re-upload.')}
+                    </div>
+                  </div>
+                  <div className="source-edit-modal-footer">
+                    <button type="button" className="ghost" onClick={() => setEditingSource(null)}>
+                      {t('botKnowledge.close', 'Close')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
     </AnimatedPage>
   )

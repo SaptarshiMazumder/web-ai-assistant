@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import os
 import time
@@ -114,7 +113,6 @@ class VertexRAGRepository(RAGRepository):
     def import_documents(self, corpus_resource: str, storage_prefix: str) -> None:
         """Import documents from storage prefix into the RAG corpus."""
         from infrastructure.rag.crawl_service import _parse_bucket_and_prefix
-        from infrastructure.db.connection import get_connection
 
         bucket_name, _ = _parse_bucket_and_prefix()
         if not bucket_name:
@@ -148,54 +146,58 @@ class VertexRAGRepository(RAGRepository):
             len(batches),
         )
         # Vertex RAG corpora reject concurrent import operations (FailedPrecondition).
-        # We serialize imports per corpus across workers using a Postgres advisory lock,
-        # and add a small retry loop for any lingering in-flight operations.
-        lock_key = int.from_bytes(hashlib.sha1((corpus_resource or "").encode("utf-8")).digest()[:8], "big") % (2**63 - 1)
-
-        con = get_connection()
-        try:
-            with con.cursor() as cur:
-                cur.execute("SELECT pg_advisory_lock(%s)", (lock_key,))
-            con.commit()
-
-            for batch_index, batch_uris in enumerate(batches, start=1):
-                attempt = 0
-                backoff_s = busy_retry_initial_backoff_sec
-                while True:
-                    try:
-                        vx_rag.import_files(
-                            corpus_resource,
-                            batch_uris,
-                            transformation_config=vx_rag.TransformationConfig(
-                                chunking_config=vx_rag.ChunkingConfig(
-                                    chunk_size=CHUNK_SIZE,
-                                    chunk_overlap=CHUNK_OVERLAP,
-                                )
-                            ),
-                            max_embedding_requests_per_min=max_embedding_requests_per_min,
+        # No advisory lock — the Vertex busy-retry loop below handles concurrency
+        # with exponential backoff. Advisory locks caused zombie-lock hangs.
+        for batch_index, batch_uris in enumerate(batches, start=1):
+            attempt = 0
+            backoff_s = busy_retry_initial_backoff_sec
+            while True:
+                try:
+                    logger.info("RAG import: calling vx_rag.import_files batch %d/%d (%d files) ...", batch_index, len(batches), len(batch_uris))
+                    import_result = vx_rag.import_files(
+                        corpus_resource,
+                        batch_uris,
+                        transformation_config=vx_rag.TransformationConfig(
+                            chunking_config=vx_rag.ChunkingConfig(
+                                chunk_size=CHUNK_SIZE,
+                                chunk_overlap=CHUNK_OVERLAP,
+                            )
+                        ),
+                        max_embedding_requests_per_min=max_embedding_requests_per_min,
+                    )
+                    # Log import result to detect silent partial failures
+                    partial_failures = getattr(import_result, "partial_failures_count", None)
+                    skipped = getattr(import_result, "skipped_rag_files_count", None)
+                    imported = getattr(import_result, "imported_rag_files_count", None)
+                    logger.info(
+                        "RAG import: batch %d/%d completed — imported=%s skipped=%s partial_failures=%s result=%s",
+                        batch_index, len(batches), imported, skipped, partial_failures,
+                        str(import_result)[:500] if import_result else "None",
+                    )
+                    if partial_failures and int(partial_failures) > 0:
+                        logger.warning(
+                            "RAG import: batch %d/%d had %s partial failures! Some files may not have been embedded.",
+                            batch_index, len(batches), partial_failures,
                         )
-                        break
-                    except Exception as e:
-                        msg = str(e) or ""
-                        busy = ("There are other operations running on the RagCorpus" in msg) or ("FailedPrecondition" in msg and "RagCorpus" in msg)
-                        attempt += 1
-                        if busy and attempt < busy_retry_max_attempts:
-                            time.sleep(backoff_s)
-                            backoff_s = min(backoff_s * 1.8, busy_retry_max_backoff_sec)
-                            continue
+                    # Fail loudly if nothing was actually imported
+                    if imported is not None and int(imported) == 0:
                         raise RuntimeError(
-                            "RAG import failed for corpus "
-                            f"{corpus_resource}, prefix gs://{bucket_name}/{storage_prefix}/, "
-                            f"batch {batch_index}/{len(batches)} ({len(batch_uris)} files): {e}"
-                        ) from e
-        finally:
-            try:
-                with con.cursor() as cur:
-                    cur.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
-                con.commit()
-            except Exception:
-                pass
-            try:
-                con.close()
-            except Exception:
-                pass
+                            f"RAG import batch {batch_index}/{len(batches)} imported 0 files "
+                            f"(skipped={skipped}, partial_failures={partial_failures}). "
+                            f"Content was NOT embedded into the corpus."
+                        )
+                    break
+                except Exception as e:
+                    msg = str(e) or ""
+                    busy = ("There are other operations running on the RagCorpus" in msg) or ("FailedPrecondition" in msg and "RagCorpus" in msg)
+                    attempt += 1
+                    if busy and attempt < busy_retry_max_attempts:
+                        logger.info("RAG import: corpus busy (attempt %d/%d), retrying in %.1fs ...", attempt, busy_retry_max_attempts, backoff_s)
+                        time.sleep(backoff_s)
+                        backoff_s = min(backoff_s * 1.8, busy_retry_max_backoff_sec)
+                        continue
+                    raise RuntimeError(
+                        "RAG import failed for corpus "
+                        f"{corpus_resource}, prefix gs://{bucket_name}/{storage_prefix}/, "
+                        f"batch {batch_index}/{len(batches)} ({len(batch_uris)} files): {e}"
+                    ) from e

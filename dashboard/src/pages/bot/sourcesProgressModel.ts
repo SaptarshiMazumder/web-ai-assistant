@@ -640,7 +640,7 @@ export function buildUnifiedSourcesProgress(input: BuildUnifiedSourcesProgressIn
     headlineMessageFallback,
     isTerminal,
     isError,
-    showStop: !isTerminal && activeStep.source === 'crawl' && (activeStep.status === 'queued' || activeStep.status === 'running'),
+    showStop: !isTerminal && (activeStep.source === 'crawl' || activeStep.source === 'additional') && (activeStep.status === 'queued' || activeStep.status === 'running'),
     showResume: pipelineStatus === 'paused',
     activeCrawlStats,
   }

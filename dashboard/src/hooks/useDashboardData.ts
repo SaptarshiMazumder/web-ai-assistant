@@ -556,6 +556,8 @@ type DashboardData = {
   uploadTextSources: (botId: string, entries: TextSourceEntry[]) => Promise<TextSourceUploadResponse | null>
   uploadDocsSources: (botId: string, files: File[]) => Promise<DocsSourceUploadResponse | null>
   deleteSource: (botId: string, sourceId: string) => Promise<void>
+  getSourceContent: (botId: string, sourceId: string) => Promise<{ content: string; title: string; char_count: number } | null>
+  updateSourceContent: (botId: string, sourceId: string, content: string, title?: string | null) => Promise<{ job_id: string } | null>
   createBot: (displayName?: string, orgIdOverride?: string | null) => Promise<BotCreateResponse | null>
   loadOrgs: () => Promise<void>
   loadSelfOrgs: () => Promise<void>
@@ -576,6 +578,7 @@ type DashboardData = {
   queueCrawlUrls: (botId: string, urls: string[]) => Promise<string | null>
   cancelCrawl: () => Promise<void>
   cancelIndexJob: (botId: string, cancelUrl: string) => Promise<void>
+  cancelIndexJobById: (botId: string, jobId: string) => Promise<void>
   refreshStatus: (url: string) => Promise<void>
   getJobStatus: (botId: string, jobId: string) => Promise<IndexStatus | null>
   copySnippet: (snippet?: string) => Promise<void>
@@ -1074,6 +1077,44 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
       await loadSources(botId)
     } catch (err) {
       setError((err as Error).message)
+    }
+  }
+
+  async function getSourceContent(botId: string, sourceId: string): Promise<{ content: string; title: string; char_count: number } | null> {
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<{ source_id: string; content: string; title: string; char_count: number }>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}/content`, orgOverride)
+      )
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
+    }
+  }
+
+  async function updateSourceContent(
+    botId: string,
+    sourceId: string,
+    content: string,
+    title?: string | null,
+  ): Promise<{ job_id: string } | null> {
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      const data = await fetchAuthedJson<{ source_id: string; job_id: string; status: string }>(
+        withOrgParam(`/v1/org/bots/${botId}/sources/${sourceId}/content`, orgOverride),
+        {
+          method: 'PUT',
+          body: JSON.stringify({ content, title: title || null }),
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
+      await loadSources(botId)
+      await loadJobs(botId)
+      return data
+    } catch (err) {
+      setError((err as Error).message)
+      return null
     }
   }
 
@@ -2474,6 +2515,18 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     }
   }
 
+  async function cancelIndexJobById(botId: string, jobId: string) {
+    if (isSuperAdmin && !activeOrgId) return
+    try {
+      const orgOverride = selectedBot?.org_id && activeOrgId === ALL_ORGS_ID ? selectedBot.org_id : activeOrgId
+      await fetchAuthedJson(withOrgParam(`/v1/org/bots/${botId}/index/${jobId}/cancel`, orgOverride), {
+        method: 'POST',
+      })
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
   async function refreshStatus(url: string) {
     if (!selectedBot || (isSuperAdmin && !activeOrgId)) return
     try {
@@ -2831,6 +2884,8 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     uploadTextSources,
     uploadDocsSources,
     deleteSource,
+    getSourceContent,
+    updateSourceContent,
     createBot,
     loadOrgs,
     loadSelfOrgs,
@@ -2851,6 +2906,7 @@ export function DashboardDataProvider({ children }: { children: React.ReactNode 
     queueCrawlUrls,
     cancelCrawl,
     cancelIndexJob,
+    cancelIndexJobById,
     refreshStatus,
     getJobStatus,
     copySnippet,

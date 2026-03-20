@@ -513,6 +513,126 @@ class IndexingService:
 
         return source, job_id
 
+    def get_source_content(self, bot_id: str, source_id: str) -> Tuple[str, str, int]:
+        """
+        Retrieve the text content of a text source.
+        Returns (content, title, char_count).
+        """
+        source = self._source_repo.get_source(bot_id, source_id)
+        if not source:
+            raise ValueError("Source not found")
+        src_type = (source.type or "").lower()
+        if src_type != "text":
+            raise ValueError(f"Content retrieval is only supported for text sources, not '{source.type}'")
+
+        cfg = source.config or {}
+        title = cfg.get("title", "") or ""
+        content = cfg.get("content", "") or ""
+
+        # If content is in GCS (large files), download it
+        if not content and cfg.get("gcs_content_blob"):
+            bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+            base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+            file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix)
+            raw = file_repo.download(blob_name=cfg["gcs_content_blob"])
+            content = raw.decode("utf-8", errors="replace")
+
+        char_count = len(content)
+        return content, title, char_count
+
+    async def update_text_source_and_retrain(
+        self,
+        *,
+        bot_id: str,
+        source_id: str,
+        content: str,
+        title: Optional[str] = None,
+    ) -> str:
+        """
+        Update the content of an existing text source and re-trigger ingestion.
+        Returns the new job_id.
+        """
+        if not has_gcp_credentials():
+            raise RuntimeError("No GCP credentials available")
+        source = self._source_repo.get_source(bot_id, source_id)
+        if not source:
+            raise ValueError("Source not found")
+        if (source.type or "").lower() != "text":
+            raise ValueError("Only text sources can be updated")
+
+        content = (content or "").strip()
+        if not content:
+            raise ValueError("Empty text content")
+
+        corpus = self._rag_repo.ensure_corpus(bot_id)
+        bucket_name, base_prefix_root = _parse_bucket_and_prefix()
+        base_prefix = _bot_base_prefix(base_prefix_root, bot_id)
+
+        title_str = (title or "").strip() or None
+        display = title_str or f"Text ({len(content)} chars)"
+
+        # Update source config
+        source.config = dict(source.config or {})
+        source.config["title"] = title_str or ""
+        source.config["char_count"] = len(content)
+
+        if len(content) > 50_000:
+            source.config["content"] = ""
+            file_repo = GcsSourceFileRepository(bucket_name=bucket_name, base_prefix=base_prefix)
+            uploaded = file_repo.upload_text(bot_id=bot_id, source_id=source_id, content=content)
+            source.config["gcs_content_blob"] = uploaded.blob_name
+            source.config["gcs_content_uri"] = uploaded.gcs_uri
+        else:
+            source.config["content"] = content
+            # Clear GCS refs if previously stored there
+            source.config.pop("gcs_content_blob", None)
+            source.config.pop("gcs_content_uri", None)
+
+        source.display_name = display
+        source.updated_at = datetime.now(timezone.utc).isoformat()
+        self._source_repo.update_source(source)
+
+        # Create new ingestion job
+        job_id = uuid.uuid4().hex
+        job = IndexJob(
+            job_id=job_id,
+            bot_id=bot_id,
+            url=f"https://text.local/{bot_id}/{source_id}",
+            hostname="text.local",
+            stage="queued",
+            pages_crawled=0,
+            docs_count=0,
+            last_crawled_url="",
+            last_depth=-1,
+            gcs_prefix="",
+            last_error="",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            source_id=source_id,
+        )
+        self._job_repo.create_job(job)
+
+        try:
+            task = text_source_ingest_job.delay(
+                job_id=job_id,
+                bot_id=bot_id,
+                source_id=source_id,
+                bucket_name=bucket_name,
+                base_prefix=base_prefix,
+                corpus_resource=corpus,
+            )
+            task_id = task.id if task else None
+            if task_id:
+                job.celery_task_id = task_id
+                self._job_repo.update_job(job)
+        except Exception as e:
+            job.stage = "error"
+            job.last_error = f"Failed to queue text retrain task: {str(e)[:200]}"
+            self._job_repo.update_job(job)
+            raise RuntimeError(f"Failed to queue text retrain task: {str(e)}")
+
+        return job_id
+
     async def start_indexing_batch_for_bot(
         self,
         bot_id: str,
@@ -636,6 +756,24 @@ class IndexingService:
                 pass  # Task may already be done
 
         job.stage = "cancelled"
+        self._job_repo.update_job(job)
+
+        return {"status": "stopping", "job_id": job.job_id, "hostname": job.hostname}
+
+    def cancel_job_by_id(self, bot_id: str, job_id: str) -> Dict[str, Any]:
+        """Cancel a job by job_id."""
+        job = self._job_repo.get_job(bot_id, job_id)
+        if not job:
+            return {"status": "not_found"}
+
+        if job.celery_task_id:
+            try:
+                celery_app.control.revoke(job.celery_task_id, terminate=True)
+            except Exception:
+                pass
+
+        job.stage = "cancelled"
+        job.last_error = "Cancelled by user"
         self._job_repo.update_job(job)
 
         return {"status": "stopping", "job_id": job.job_id, "hostname": job.hostname}

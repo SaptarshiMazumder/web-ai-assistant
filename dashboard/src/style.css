@@ -5922,6 +5922,102 @@ button.design-form-input.design-form-icon-btn {
   margin: 0.25rem 0;
 }
 
+/* ===== Source content edit modal ===== */
+.source-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 9000;
+}
+
+.source-edit-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9001;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  width: min(600px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 4rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.source-edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.source-edit-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.source-edit-modal-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.source-edit-title-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--ui-flow-border, #e5d5d0);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  margin-top: 0.25rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.source-edit-title-input:focus {
+  border-color: var(--ui-flow-accent, #e4587a);
+}
+
+.source-edit-textarea {
+  width: 100%;
+  min-height: 250px;
+  max-height: 50dvh;
+  padding: 0.75rem;
+  border: 1px solid var(--ui-flow-border, #e5d5d0);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  flex: 1;
+}
+
+.source-edit-textarea:focus {
+  border-color: var(--ui-flow-accent, #e4587a);
+}
+
+.source-edit-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #f0f0f0;
+}
+
 /* Sync popup dropdowns: enforce a single chevron icon */
 .knowledge-sync-popup-select {
   appearance: none !important;
@@ -10148,15 +10244,31 @@ select:hover {
   .content-shell {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 1rem !important;
+    padding: 0.75rem 0 !important;
     box-sizing: border-box !important;
   }
 
-  /* Page containers */
+  /* Horizontal padding lives on content roots, not on the clipping shell */
+
+  /* Non-bot pages: animated-page is a direct child of content-shell */
+  .animated-page {
+    padding: 0 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Bot detail pages: .page wraps everything (header, nav, body) */
   .page {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
+    padding: 0 1rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* animated-page inside .page already gets padding from .page — don't double it */
+  .page .animated-page,
+  .flow-shell .animated-page {
+    padding: 0 !important;
   }
 
   .page-body,
@@ -11015,23 +11127,30 @@ select:hover {
      4. STRIP OUTER CONTAINERS ON MOBILE — edge-to-edge content
      ================================================================ */
 
-  /* Remove content-shell border, keep comfortable padding on mobile */
+  /* Remove content-shell border, strip horizontal padding — it lives on .page */
   .content-shell {
     border: none !important;
     border-radius: 0 !important;
-    padding: 1rem 1rem !important;
+    padding: 0.75rem 0 !important;
     box-shadow: none !important;
     background: transparent !important;
     backdrop-filter: none !important;
   }
 
-  /* Glass cards: no white background on mobile — sit on app background */
+  /* Glass cards: compact white cards on mobile */
   .content-shell .ui-glass-card {
-    border: none !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
+    background: #fff !important;
+    border: 1px solid rgba(240, 210, 200, 0.55) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 6px rgba(180, 100, 120, 0.06) !important;
+    padding: 0.9rem !important;
+    overflow: visible !important;
+  }
+
+  /* Metric cards: tighter padding on mobile */
+  .ui-metric-card {
+    border-radius: 10px !important;
+    padding: 0.7rem 0.85rem !important;
   }
 
   /* Page body — tighter, no extra gaps */

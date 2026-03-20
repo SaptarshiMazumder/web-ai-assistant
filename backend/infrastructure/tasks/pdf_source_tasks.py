@@ -7,6 +7,7 @@ import google.auth
 from google.cloud import storage
 from google.api_core import exceptions as gcs_exceptions
 import vertexai
+from celery.exceptions import SoftTimeLimitExceeded
 
 from infrastructure.celery_app import celery_app
 from infrastructure.db.repositories import PostgresIndexJobRepository, PostgresBotSourceRepository
@@ -82,12 +83,18 @@ def _make_doc_url(bot_id: str, source_id: str, filename: str, page: int) -> str:
     return f"https://pdf.local/{bot_id}/{source_id}/{safe}?page={page}"
 
 
+_PDF_INGEST_SOFT_LIMIT_SEC = 420
+_PDF_INGEST_HARD_LIMIT_SEC = 440
+
+
 @celery_app.task(
     name="infrastructure.tasks.pdf_source_tasks.pdf_source_ingest_job",
     bind=True,
     # Vertex RAG corpus imports can be temporarily busy; allow retries.
     max_retries=6,
     default_retry_delay=20,
+    soft_time_limit=_PDF_INGEST_SOFT_LIMIT_SEC,
+    time_limit=_PDF_INGEST_HARD_LIMIT_SEC,
 )
 def pdf_source_ingest_job(
     self,
@@ -112,6 +119,16 @@ def pdf_source_ingest_job(
     if not job:
         raise RuntimeError("Index job not found")
     logger.info("[PDF %s] task_started job=%s bot=%s", source_id[:8], job_id, bot_id)
+
+    try:
+        return _execute_pdf_ingest(job_repo, source_repo, job, job_id=job_id, bot_id=bot_id, source_id=source_id, bucket_name=bucket_name, base_prefix=base_prefix, corpus_resource=corpus_resource)
+    except SoftTimeLimitExceeded:
+        logger.error("[PDF %s] job=%s bot=%s TIMEOUT after %ds", source_id[:8], job_id, bot_id, _PDF_INGEST_SOFT_LIMIT_SEC)
+        error_msg = _mark_job_error(job_repo, job, bot_id, source_id, job.stage or "importing", "Task timed out — the RAG import may still be processing. Please retry.", error_kind="SoftTimeLimitExceeded")
+        return {"status": "error", "error": error_msg}
+
+
+def _execute_pdf_ingest(job_repo, source_repo, job, *, job_id, bot_id, source_id, bucket_name, base_prefix, corpus_resource):
     source = source_repo.get_source(bot_id, source_id)
     if not source:
         error_msg = _mark_job_error(
@@ -290,7 +307,7 @@ def pdf_source_ingest_job(
             bot_id,
             source_id,
             "importing",
-            "Failed to import PDF chunks into RAG",
+            f"Failed to import PDF chunks into RAG: {exc}",
             exc=exc,
         )
         return {"status": "error", "docs_count": len(docs), "gcs_prefix": gcs_prefix, "error": error_msg}

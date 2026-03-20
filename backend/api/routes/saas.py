@@ -45,6 +45,9 @@ from api.schemas import (
     TextSourceUploadItem,
     DocsSourceUploadResponse,
     DocsSourceUploadItem,
+    SourceContentResponse,
+    SourceContentUpdateRequest,
+    SourceContentUpdateResponse,
     BotSummary,
     Citation,
     ConversationDetailResponse,
@@ -4406,6 +4409,60 @@ async def v1_org_delete_source(
     return {"ok": True}
 
 
+@router.get("/v1/org/bots/{bot_id}/sources/{source_id}/content", response_model=SourceContentResponse)
+async def v1_org_get_source_content(
+    bot_id: str,
+    source_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Get the text content of a text source."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        content, title, char_count = indexing_service().get_source_content(bot_id, source_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return SourceContentResponse(
+        source_id=source_id,
+        bot_id=bot_id,
+        type="text",
+        title=title or None,
+        content=content,
+        char_count=char_count,
+    )
+
+
+@router.put("/v1/org/bots/{bot_id}/sources/{source_id}/content", response_model=SourceContentUpdateResponse)
+async def v1_org_update_source_content(
+    bot_id: str,
+    source_id: str,
+    payload: SourceContentUpdateRequest,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    """Update the text content of a text source and retrain."""
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    try:
+        job_id = await indexing_service().update_text_source_and_retrain(
+            bot_id=bot_id,
+            source_id=source_id,
+            content=payload.content,
+            title=payload.title,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return SourceContentUpdateResponse(
+        source_id=source_id,
+        bot_id=bot_id,
+        job_id=job_id,
+        status="queued",
+    )
+
+
 @router.post("/v1/org/url-discovery", response_model=UrlDiscoveryResponse)
 async def v1_org_url_discovery(
     payload: UrlDiscoveryRequest,
@@ -4781,6 +4838,18 @@ async def v1_org_cancel_index(
         return indexing_service().cancel_job(bot_id, payload.url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/v1/org/bots/{bot_id}/index/{job_id}/cancel")
+async def v1_org_cancel_index_by_job_id(
+    bot_id: str,
+    job_id: str,
+    org_id: Optional[str] = None,
+    user=Depends(get_current_user),
+):
+    resolved_org = _resolve_org_id(user, org_id)
+    _assert_bot_org(bot_id, resolved_org)
+    return indexing_service().cancel_job_by_id(bot_id, job_id)
 
 
 # ========== Extracted Topics ==========

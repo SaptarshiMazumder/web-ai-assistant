@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import google.auth
 from google.cloud import storage
 import vertexai
+from celery.exceptions import SoftTimeLimitExceeded
 
 from infrastructure.celery_app import celery_app
 from infrastructure.db.repositories import PostgresIndexJobRepository, PostgresBotSourceRepository
@@ -74,11 +75,17 @@ def _mark_job_error(
     return error_msg
 
 
+_TEXT_INGEST_SOFT_LIMIT_SEC = 300
+_TEXT_INGEST_HARD_LIMIT_SEC = 320
+
+
 @celery_app.task(
     name="infrastructure.tasks.text_source_tasks.text_source_ingest_job",
     bind=True,
     max_retries=6,
     default_retry_delay=20,
+    soft_time_limit=_TEXT_INGEST_SOFT_LIMIT_SEC,
+    time_limit=_TEXT_INGEST_HARD_LIMIT_SEC,
 )
 def text_source_ingest_job(
     self,
@@ -105,6 +112,15 @@ def text_source_ingest_job(
         raise RuntimeError("Index job not found")
     logger.info("[TEXT %s] task_started job=%s bot=%s", source_id[:8], job_id, bot_id)
 
+    try:
+        return _execute_text_ingest(job_repo, source_repo, job, job_id=job_id, bot_id=bot_id, source_id=source_id, bucket_name=bucket_name, base_prefix=base_prefix, corpus_resource=corpus_resource)
+    except SoftTimeLimitExceeded:
+        logger.error("[TEXT %s] job=%s bot=%s TIMEOUT after %ds", source_id[:8], job_id, bot_id, _TEXT_INGEST_SOFT_LIMIT_SEC)
+        error_msg = _mark_job_error(job_repo, job, bot_id, source_id, job.stage or "importing", "Task timed out — the RAG import may still be processing. Please retry.", error_kind="SoftTimeLimitExceeded")
+        return {"status": "error", "error": error_msg}
+
+
+def _execute_text_ingest(job_repo, source_repo, job, *, job_id, bot_id, source_id, bucket_name, base_prefix, corpus_resource):
     source = source_repo.get_source(bot_id, source_id)
     if not source:
         error_msg = _mark_job_error(
@@ -238,7 +254,7 @@ def text_source_ingest_job(
             bot_id,
             source_id,
             "importing",
-            "Failed to import text chunks into RAG",
+            f"Failed to import text chunks into RAG: {exc}",
             exc=exc,
         )
         return {"status": "error", "docs_count": len(docs), "gcs_prefix": gcs_prefix, "error": error_msg}
